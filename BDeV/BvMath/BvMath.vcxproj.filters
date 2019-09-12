@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="BvMath.h" />
+    <ClInclude Include="BvFloatTypes.h" />
+    <ClInclude Include="Math\SIMD\BvFastMat_SIMD.inl">
+      <Filter>Math\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\SIMD\BvFastQuat_SIMD.inl">
+      <Filter>Math\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\SIMD\BvFastVec_SIMD.inl">
+      <Filter>Math\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\SIMD\BvLoaders_SIMD.inl">
+      <Filter>Math\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\BvFastMat.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\BvFastQuat.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\BvFastVec.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\BvLoaders.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Wrappers\Matrix\BvMat.h">
+      <Filter>Wrappers\Matrix</Filter>
+    </ClInclude>
+    <ClInclude Include="Wrappers\Quaternion\BvQuat.h">
+      <Filter>Wrappers\Quaternion</Filter>
+    </ClInclude>
+    <ClInclude Include="Wrappers\Vector\BvVec.h">
+      <Filter>Wrappers\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="BvMathDefs.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Math\FPU\BvFastMat_FPU.inl">
+      <Filter>Math\FPU</Filter>
+    </None>
+    <None Include="Math\FPU\BvFastQuat_FPU.inl">
+      <Filter>Math\FPU</Filter>
+    </None>
+    <None Include="Math\FPU\BvFastVec_FPU.inl">
+      <Filter>Math\FPU</Filter>
+    </None>
+    <None Include="Math\FPU\BvLoaders_FPU.inl">
+      <Filter>Math\FPU</Filter>
+    </None>
+    <None Include="Wrappers\Matrix\BvMat.inl">
+      <Filter>Wrappers\Matrix</Filter>
+    </None>
+    <None Include="Wrappers\Quaternion\BvQuat.inl">
+      <Filter>Wrappers\Quaternion</Filter>
+    </None>
+    <None Include="Wrappers\Vector\BvVec.inl">
+      <Filter>Wrappers\Vector</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Wrappers">
+      <UniqueIdentifier>{bfeacad1-653c-4327-88f1-564f06ec98f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Wrappers\Matrix">
+      <UniqueIdentifier>{a1a1596f-83c3-4e39-8e50-6f2792a19beb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Wrappers\Vector">
+      <UniqueIdentifier>{71a1fdab-8766-4b90-86d8-74a14041a51d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Wrappers\Quaternion">
+      <UniqueIdentifier>{98d5a93f-9e8c-4b20-a118-36e31a072b9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{22a3eace-8d4f-4c07-a648-068f987bd998}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math\SIMD">
+      <UniqueIdentifier>{1cdd5e68-89cb-4e49-9a4f-890eaca4557d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math\FPU">
+      <UniqueIdentifier>{e4a51ab0-9ddd-42d5-95ac-2a979cf5b974}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

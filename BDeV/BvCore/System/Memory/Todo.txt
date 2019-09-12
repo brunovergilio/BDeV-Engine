@@ -1,0 +1,10 @@
+* Port my allocators from my old projects to this one
+	* Linear Allocator
+	* Stack Allocator
+	* Heap Allocator
+	* Pool Allocator
+* Override global and class-based new/delete operators
+	* Create tags for different uses of memory
+	* Make every container / system that uses dynamic memory to go through the Memory System
+	* Create macros to ease things out for each class
+* Account for multithreading

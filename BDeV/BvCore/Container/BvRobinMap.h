@@ -1,0 +1,505 @@
+#pragma once
+
+
+#include "BvCore/BvDefines.h"
+#include "BvCore/Container/BvIterator.h"
+#include "BvCore/Utils/Hash.h"
+#include "BvCore/System/Memory/BvMemory.h"
+#include <utility>
+
+
+constexpr size_t kInvalidHashMapIndex = UINT32_MAX;
+
+
+template<typename Key, typename Value>
+class BvRobinMap
+{
+public:
+	using KeyValue = std::pair<Key, Value>;
+
+	using Iterator = RobinIterator<Key, Value>;
+	using ConstIterator = const RobinIterator<Key, Value>;
+
+	BvRobinMap(); // Default
+	explicit BvRobinMap(const size_t capacity); // Fill
+	//explicit BvRobinMap(Iterator start, Iterator end, const size_t capacity = 0); // Range
+	BvRobinMap(const BvRobinMap & rhs); // Copy
+	BvRobinMap(BvRobinMap && rhs); // Move
+	//BvRobinMap(std::initializer_list<Type> list, const size_t capacity = 0); // Initializer List
+
+	BvRobinMap<Key, Value> & operator =(const BvRobinMap & rhs); // Copy Assignment
+	BvRobinMap<Key, Value> & operator =(BvRobinMap && rhs); // Move Assignment
+	//BvRobinMap<Type> & operator =(std::initializer_list<Type> list); // Copy Assignment
+
+	~BvRobinMap();
+
+	// Iterator
+	Iterator begin() const { return Iterator(m_pData, m_pData, m_pHashes, &m_Size); }
+	Iterator end() const { return Iterator(m_pData, m_pData + m_Size, m_pHashes + m_Size, &m_Size); }
+	ConstIterator cbegin() const { return ConstIterator(m_pData, m_pData, m_pHashes, &m_Size); }
+	ConstIterator cend() const { return ConstIterator(m_pData, m_pData + m_Size, m_pHashes + m_Size, &m_Size); }
+
+	void ResizeAndRehash(const size_t size);
+
+	template<typename ...Args>
+	std::pair<typename BvRobinMap<Key, Value>::Iterator, bool> Emplace(Key && key, Args &&... args);
+	template<typename ...Args>
+	std::pair<typename BvRobinMap<Key, Value>::Iterator, bool> Emplace(const Key & key, Args &&... args);
+	template<typename ...Args>
+	std::pair<typename BvRobinMap<Key, Value>::Iterator, bool> EmplaceOrAssign(const Key & key, Args &&... args);
+	const bool Erase(const Key & key);
+
+	const size_t FindKey(const Key & key);
+
+	void Clear();
+
+	Value & operator[] (const Key & key);
+	Value & operator[] (Key && key);
+
+	Value & At(const Key & key);
+	const Value & At(const Key & key) const;
+
+	BV_INLINE const size_t Size() const { return m_Size; }
+	BV_INLINE const size_t Capacity() const { return m_Capacity; }
+	BV_INLINE const bool Empty() const { return m_Size == 0; }
+
+private:
+	template<typename KeyType, typename ...Args>
+	const size_t InsertInternal(KeyType && key, Args &&... args);
+	const size_t MoveObject(KeyValue * const pKeyValue, size_t hash, KeyValue * const pData, size_t * const pHashes);
+	void Destroy();
+	BV_INLINE const size_t HashPos(const u32 hash) const { return (m_Capacity - 1) & hash; };
+	BV_INLINE const size_t Hash(const Key & key) const;
+
+private:
+	KeyValue * m_pData = nullptr;
+	size_t * m_pHashes = nullptr;
+	size_t m_Size = 0;
+	size_t m_Capacity = 0;
+};
+
+
+template<typename Key, typename Value>
+inline BvRobinMap<Key, Value>::BvRobinMap()
+{
+}
+
+
+template<typename Key, typename Value>
+inline BvRobinMap<Key, Value>::BvRobinMap(const size_t capacity)
+{
+	ResizeAndRehash(capacity);
+}
+
+
+template<typename Key, typename Value>
+inline BvRobinMap<Key, Value>::BvRobinMap(const BvRobinMap & rhs)
+{
+	ResizeAndRehash(rhs.m_Capacity);
+
+	for (auto it = rhs.cbegin(); it != rhs.cend(); it++)
+	{
+		Emplace(it->first, it->second);
+	}
+}
+
+
+template<typename Key, typename Value>
+inline BvRobinMap<Key, Value>::BvRobinMap(BvRobinMap && rhs)
+{
+	*this = std::move(rhs);
+}
+
+
+template<typename Key, typename Value>
+inline BvRobinMap<Key, Value>& BvRobinMap<Key, Value>::operator=(const BvRobinMap & rhs)
+{
+	if (this != &rhs)
+	{
+		ResizeAndRehash(rhs.m_Size);
+	}
+
+	return *this;
+}
+
+
+template<typename Key, typename Value>
+inline BvRobinMap<Key, Value>& BvRobinMap<Key, Value>::operator=(BvRobinMap && rhs)
+{
+	if (this != &rhs)
+	{
+		m_pData = rhs.m_pData;
+		m_pHashes = rhs.m_pHashes;
+		m_Size = rhs.m_Size;
+		m_Capacity = rhs.m_Capacity;
+
+		rhs.m_pData = nullptr;
+		rhs.m_pHashes = nullptr;
+		rhs.m_Size = 0;
+		rhs.m_Capacity = 0;
+	}
+
+	return *this;
+}
+
+
+template<typename Key, typename Value>
+inline BvRobinMap<Key, Value>::~BvRobinMap()
+{
+	Destroy();
+}
+
+
+template<typename Key, typename Value>
+inline void BvRobinMap<Key, Value>::ResizeAndRehash(const size_t size)
+{
+	if (size <= m_Capacity)
+	{
+		return;
+	}
+
+	m_Capacity = (size & (size - 1)) == 0 ? size : GetNextPowerOf2(size);
+
+	KeyValue * pNewData = reinterpret_cast<KeyValue *>(BvAlloc(sizeof(KeyValue) * m_Capacity));
+	size_t * pNewHashes = reinterpret_cast<size_t *>(BvAlloc(sizeof(size_t) * m_Capacity));
+
+	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
+
+	for (size_t i = 0; i < m_Size; i++)
+	{
+		if (m_pHashes[i] != 0)
+		{
+			MoveObject(&m_pData[i], m_pHashes[i], pNewData, pNewHashes);
+		}
+	}
+
+	BvFree(m_pData);
+	BvFree(m_pHashes);
+
+	m_pData = pNewData;
+	m_pHashes = pNewHashes;
+}
+
+
+template<typename Key, typename Value>
+template<typename... Args>
+inline std::pair<typename BvRobinMap<Key, Value>::Iterator, bool> BvRobinMap<Key, Value>::Emplace(Key && key, Args &&... args)
+{
+	if (m_Size == m_Capacity)
+	{
+		ResizeAndRehash(GetNextPowerOf2(m_Capacity));
+	}
+
+	size_t index = FindKey(std::forward<Key>(key));
+	if (index != kInvalidHashMapIndex)
+	{
+		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
+	}
+
+	index = InsertInternal(std::forward<Key>(key), std::forward<Args>(args)...);
+	return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), true);
+}
+
+
+template<typename Key, typename Value>
+template<typename... Args>
+inline std::pair<typename BvRobinMap<Key, Value>::Iterator, bool> BvRobinMap<Key, Value>::Emplace(const Key & key, Args &&... args)
+{
+	if (m_Size == m_Capacity)
+	{
+		ResizeAndRehash(GetNextPowerOf2(m_Capacity));
+	}
+
+	size_t index = FindKey(key);
+	if (index != kInvalidHashMapIndex)
+	{
+		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
+	}
+
+	index = InsertInternal(key, std::forward<Args>(args)...);
+	return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), true);
+}
+
+
+template<typename Key, typename Value>
+template<typename ...Args>
+inline std::pair<typename BvRobinMap<Key, Value>::Iterator, bool> BvRobinMap<Key, Value>::EmplaceOrAssign(const Key & key, Args &&... args)
+{
+	size_t index = FindKey(key);
+	if (index != kInvalidHashMapIndex)
+	{
+		m_pData[index].second.~Value();
+		new (&m_pData[index]) Value(std::forward<Args>(args)...);
+		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
+	}
+
+	if (m_Size == m_Capacity)
+	{
+		ResizeAndRehash(GetNextPowerOf2(m_Capacity));
+	}
+
+	index = InsertInternal(key, std::forward<Args>(args)...);
+	return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), true);
+}
+
+
+template<typename Key, typename Value>
+inline const bool BvRobinMap<Key, Value>::Erase(const Key & key)
+{
+	auto index = FindKey(key);
+	if (index == kInvalidHashMapIndex)
+	{
+		return false;
+	}
+
+	m_pData[index].first.~Key();
+	m_pData[index].second.~Value();
+	m_pHashes[index] = 0;
+
+	size_t currShiftIndex = index + 1;
+	size_t shiftCount = 0;
+	for (;;)
+	{
+		if (m_pHashes[currShiftIndex] == 0)
+		{
+			break;
+		}
+
+		size_t currElemDesiredPos = HashPos(m_pHashes[currShiftIndex]);
+		size_t currElemDist = (currShiftIndex - currElemDesiredPos + m_Capacity) & (m_Capacity - 1);
+		if (currElemDist == 0)
+		{
+			break;
+		}
+
+		currShiftIndex = (currShiftIndex + 1) & (m_Capacity - 1);
+	}
+
+	shiftCount = currShiftIndex - index - 1;
+
+	if (shiftCount > 0)
+	{
+		if (index + shiftCount < m_Size)
+		{
+			memmove(&m_pData[index], &m_pData[index + 1], shiftCount * sizeof(KeyValue));
+		}
+		else
+		{
+			size_t remaining = shiftCount;
+			if (index < m_Size - 1)
+			{
+				const size_t count = (m_Size - index - 1);
+				memmove(&m_pData[index], &m_pData[index + 1], count * sizeof(KeyValue));
+				remaining -= count;
+			}
+
+			memmove(&m_pData[m_Size - 1], &m_pData[0], sizeof(KeyValue));
+			remaining--;
+
+			if (remaining > 0)
+			{
+				memmove(&m_pData[0], &m_pData[1], remaining * sizeof(KeyValue));
+			}
+		}
+	}
+
+	return true;
+}
+
+
+template<typename Key, typename Value>
+const size_t BvRobinMap<Key, Value>::FindKey(const Key & key)
+{
+	size_t hash = Hash(key);
+	size_t pos = HashPos(hash);
+	size_t dist = 0;
+
+	for (; dist < m_Capacity;)
+	{
+		if (m_pHashes[pos] == 0)
+		{
+			// If there isn't an element with that key, return false
+			return kInvalidHashMapIndex;
+		}
+
+		if (m_pData[pos].first == key && m_pHashes[pos] == hash)
+		{
+			// If there's already an element with that key, return true and the index where it's stored
+			return pos;
+		}
+
+		size_t currElemDesiredPos = HashPos(m_pHashes[pos]);
+		size_t currElemDist = (pos - currElemDesiredPos + m_Capacity) & (m_Capacity - 1); // Add capacity to make insertion / look-up circular
+		if (dist > currElemDist)
+		{
+			// If there isn't an element with that key, return false
+			return kInvalidHashMapIndex;
+		}
+
+		pos = (pos + 1) & (m_Capacity - 1);
+		dist++;
+	}
+
+	return kInvalidHashMapIndex;
+}
+
+
+template<typename Key, typename Value>
+void BvRobinMap<Key, Value>::Clear()
+{
+	for (size_t i = m_Size; i > 0; i--)
+	{
+		m_pData[i - 1].first.~Key();
+		m_pData[i - 1].second.~Value();
+		m_pHashes[i - 1] = 0;
+	}
+
+	m_Size = 0;
+}
+
+
+template<typename Key, typename Value>
+inline Value & BvRobinMap<Key, Value>::operator[](const Key & key)
+{
+	size_t index = FindKey(key);
+	if (index == kInvalidHashMapIndex)
+	{
+		auto result = Emplace(key, Value());
+		index = result.first.GetIndex();
+	}
+
+	return m_pData[index].second;
+}
+
+
+template<typename Key, typename Value>
+inline Value & BvRobinMap<Key, Value>::operator[](Key && key)
+{
+	size_t index = FindKey(key);
+	if (index == kInvalidHashMapIndex)
+	{
+		auto result = Emplace(std::forward<Key>(key), Value());
+		index = result.first.GetIndex();
+	}
+
+	return m_pData[index].second;
+}
+
+
+template<typename Key, typename Value>
+inline Value & BvRobinMap<Key, Value>::At(const Key & key)
+{
+	size_t index = FindKey(key);
+	BvAssert(index != kInvalidHashMapIndex);
+
+	return m_pData[index].second;
+}
+
+
+template<typename Key, typename Value>
+inline const Value & BvRobinMap<Key, Value>::At(const Key & key) const
+{
+	size_t index = FindKey(key);
+	BvAssert(index != kInvalidHashMapIndex);
+
+	return m_pData[index].second;
+}
+
+
+template<typename Key, typename Value>
+template<typename KeyType, typename... Args>
+const size_t BvRobinMap<Key, Value>::InsertInternal(KeyType && key, Args &&... args)
+{
+	constexpr size_t pairSize = sizeof(KeyValue);
+	char mem[pairSize];
+	KeyValue * pNewPair = reinterpret_cast<KeyValue *>(mem);
+	
+	new (&pNewPair->first) Key(key);
+	new (&pNewPair->second) Value(std::forward<Args>(args)...);
+	size_t hash = Hash(key);
+
+	m_Size++;
+	return MoveObject(pNewPair, hash, m_pData, m_pHashes);
+}
+
+
+template<typename Key, typename Value>
+const size_t BvRobinMap<Key, Value>::MoveObject(KeyValue * const pKeyValue, size_t hash, KeyValue * const pData, size_t * const pHashes)
+{
+	size_t pos = HashPos(hash);
+	size_t dist = 0;
+
+	constexpr size_t pairSize = sizeof(KeyValue);
+	char tmpMem[pairSize];
+	size_t tmpHash = 0;
+
+	for (; dist < m_Capacity;)
+	{
+		if (pHashes[pos] == 0)
+		{
+			memmove(&pData[pos], pKeyValue, pairSize);
+			pHashes[pos] = hash;
+
+			return pos;
+		}
+
+		size_t currElemDesiredPos = HashPos(pHashes[pos]);
+		size_t currElemDist = (pos - currElemDesiredPos + m_Capacity) & (m_Capacity - 1); // Add capacity to make insertion / look-up circular
+		if (dist > currElemDist)
+		{
+			memmove(tmpMem, &pData[pos], pairSize);
+			memmove(&pData[pos], pKeyValue, pairSize);
+			memmove(pKeyValue, tmpMem, pairSize);
+
+			tmpHash = pHashes[pos];
+			pHashes[pos] = hash;
+			hash = tmpHash;
+
+			dist = currElemDist;
+		}
+
+		pos = (pos + 1) & (m_Capacity - 1);
+		dist++;
+	}
+
+	BvAssert(0);
+
+	return kInvalidHashMapIndex;
+}
+
+
+template<typename Key, typename Value>
+void BvRobinMap<Key, Value>::Destroy()
+{
+	Clear();
+
+	m_Capacity = 0;
+
+	if (m_pData)
+	{
+		BvFree(m_pData);
+		m_pData = nullptr;
+	}
+	if (m_pHashes)
+	{
+		BvFree(m_pHashes);
+		m_pHashes = nullptr;
+	}
+}
+
+
+template<typename Key, typename Value>
+inline const size_t BvRobinMap<Key, Value>::Hash(const Key & key) const
+{
+	size_t hash = 0;
+	if constexpr (sizeof(size_t) == sizeof(u64))
+	{
+		hash = FNV1a64(&key, sizeof(Key));
+	}
+	else
+	{
+		hash = FNV1a32(&key, sizeof(Key));
+	}
+
+	return hash != 0 ? hash : 1;
+}

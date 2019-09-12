@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="RenderAPIs\Vulkan\Win32\BvVulkanSwapchainWin32.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanBuffer.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanDevice.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanSwapchain.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanRenderTarget.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanTexture.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanPipeline.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanCommandBuffer.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanDescriptor.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BvRenderDefines.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanBuffer.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanDevice.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanSwapchain.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanRenderTarget.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanTexture.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanPipeline.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanCommandBuffer.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanDescriptor.h" />
+  </ItemGroup>
+</Project>
