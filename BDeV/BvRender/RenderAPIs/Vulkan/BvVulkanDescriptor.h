@@ -53,6 +53,8 @@ public:
 
 	void Update(VkWriteDescriptorSet * const pWriteSets, const uint32_t count);
 
+	const VkDescriptorSet Get() const { return m_DescriptorSet; }
+
 private:
 	const BvVulkanDevice * const m_pDevice = nullptr;
 	VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;

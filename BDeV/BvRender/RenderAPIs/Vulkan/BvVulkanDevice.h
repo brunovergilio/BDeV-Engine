@@ -34,6 +34,8 @@ public:
 	
 	BV_INLINE const VkQueue GetGraphicsQueue() const { return m_Queues[m_GraphicsQueueIndex]; }
 	BV_INLINE const VkQueue GetComputeQueue() const { return m_Queues[m_ComputeQueueIndex]; }
+	BV_INLINE const uint32_t GetGraphicsQueueIndex() const { return m_GraphicsQueueIndex; }
+	BV_INLINE const uint32_t GetComputeQueueIndex() const { return m_ComputeQueueIndex; }
 
 	BV_INLINE const VkInstance GetInstance() const { return m_Instance; }
 	BV_INLINE const VkDevice GetLogical() const { return m_Device; }

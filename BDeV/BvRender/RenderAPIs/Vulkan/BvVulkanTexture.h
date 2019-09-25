@@ -15,6 +15,7 @@ struct TextureDesc
 	VkFormat m_Format = VK_FORMAT_UNDEFINED;
 	bool m_UseAsCubeMap = false;
 	bool m_UseForStenciling = false;
+	bool m_Offscreen = true;
 
 	TextureDesc() = default;
 
@@ -83,15 +84,22 @@ class BvVulkanDevice;
 class BvVulkanTexture
 {
 public:
-	BvVulkanTexture(const BvVulkanDevice * const pDevice, const TextureDesc & TextureDesc);
+	// This will create an image (with its own memory) and an image view
+	// If the third parameter is specified, only an image view is created, based on the provided srcImage and the texture description
+	BvVulkanTexture(const BvVulkanDevice * const pDevice, const TextureDesc & textureDesc, const VkImage srcImage = VK_NULL_HANDLE);
 	~BvVulkanTexture();
 
-	void Create();
-	void Destroy();
+	// Used for when a buffer resize is needed
+	// Previous resources are destroyed
+	void Recreate(const TextureDesc & textureDesc, const VkImage srcImage = VK_NULL_HANDLE);
 
 	BV_INLINE VkImage GetImage() const { return m_Image; }
 	BV_INLINE VkImageView GetView() const { return m_View; }
 	BV_INLINE const TextureDesc & GetTextureDesc() const { return m_TextureDesc; }
+
+private:
+	void Create();
+	void Destroy();
 
 private:
 	const BvVulkanDevice * const m_pDevice = nullptr;

@@ -180,7 +180,7 @@ void BvVulkanDevice::CreateInstance()
 	instanceCreateInfo.pApplicationInfo = &applicationInfo;
 
 	instanceCreateInfo.ppEnabledExtensionNames = enabledExtensions;
-	instanceCreateInfo.enabledExtensionCount = BvArraySize(enabledExtensions);
+	instanceCreateInfo.enabledExtensionCount = BvFixedVectorSize(enabledExtensions);
 
 #if defined(BV_DEBUG)
 	const char * const validationLayers[] =
@@ -188,7 +188,7 @@ void BvVulkanDevice::CreateInstance()
 		"VK_LAYER_LUNARG_standard_validation"
 	};
 	instanceCreateInfo.ppEnabledLayerNames = validationLayers;
-	instanceCreateInfo.enabledLayerCount = BvArraySize(validationLayers);
+	instanceCreateInfo.enabledLayerCount = BvFixedVectorSize(validationLayers);
 #endif // BV_DEBUG
 
 	vkCreateInstance(&instanceCreateInfo, nullptr, &m_Instance);
@@ -209,7 +209,9 @@ void BvVulkanDevice::SelectGPU()
 	result = vkEnumeratePhysicalDevices(m_Instance, &physicalDeviceCount, physicalDevices.Data());
 	BvAssertMsg(result == VK_SUCCESS, "Couldn't enumerate physical devices");
 
-	size_t deviceIndex = UINT32_MAX;
+	constexpr size_t kInvalidDeviceIndex = static_cast<size_t>(-1);
+
+	size_t deviceIndex = kInvalidDeviceIndex;
 	for (size_t i = 0; i < physicalDevices.Size(); ++i)
 	{
 		// =================================
@@ -234,7 +236,7 @@ void BvVulkanDevice::SelectGPU()
 #endif
 		}
 
-		if (deviceIndex != -1)
+		if (deviceIndex != kInvalidDeviceIndex)
 		{
 			m_GPUInfo.m_QueueFamilyProperties = queueFamilyProperties;
 			m_GraphicsQueueIndex = GetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
@@ -255,7 +257,7 @@ void BvVulkanDevice::SelectGPU()
 		}
 	}
 
-	BvAssertMsg(deviceIndex != -1, "Couldn't find a GPU with presentation support");
+	BvAssertMsg(deviceIndex != kInvalidDeviceIndex, "Couldn't find a GPU with presentation support");
 
 	// =================================
 	// Store the physical device
@@ -324,7 +326,7 @@ void BvVulkanDevice::CreateDevice()
 	deviceCreateInfo.pEnabledFeatures = &m_GPUInfo.m_DeviceFeatures;
 
 	VkResult result = vkCreateDevice(m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
-	BvAssertMsg(result == VK_SUCCESS, "Couldn't enumerate physical device properties");
+	BvAssertMsg(result == VK_SUCCESS, "Couldn't create a logical device");
 
 	for (auto i = 0U; i < queueInfos.Size(); i++)
 	{

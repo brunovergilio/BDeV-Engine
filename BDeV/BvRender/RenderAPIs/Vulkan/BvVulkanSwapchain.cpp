@@ -1,10 +1,15 @@
 #include "BvVulkanSwapchain.h"
 #include "BvRender/RenderAPIs/Vulkan/BvVulkanDevice.h"
+#include "BvRender/RenderAPIs/Vulkan/BvVulkanTexture.h"
+#include "BvRender/RenderAPIs/Vulkan/BvVulkanRenderPass.h"
+#include "BvRender/RenderAPIs/Vulkan/BvVulkanFramebuffer.h"
 #include "BvCore/System/Window/BvWindow.h"
+#include "BvCore/Utils/BvUtils.h"
 
 
 BvVulkanSwapchain::BvVulkanSwapchain(const BvVulkanDevice * const pDevice, BvWindow * const pWindow)
-	: m_pDevice(pDevice), m_pWindow(pWindow), m_PresentationQueue(pDevice->GetGraphicsQueue())
+	: m_pDevice(pDevice), m_pWindow(pWindow), m_PresentationQueue(pDevice->GetGraphicsQueue()),
+	m_PresentationQueueIndex(pDevice->GetGraphicsQueueIndex())
 {
 }
 
@@ -27,6 +32,10 @@ void BvVulkanSwapchain::Create(const bool vSync, const bool createDepthBuffer, c
 
 	auto logicalDevice =  m_pDevice->GetLogical();
 	auto physicalDevice = m_pDevice->GetPhysical();
+
+	VkBool32 presentationSupported = VK_FALSE;
+	vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, m_PresentationQueueIndex, m_Surface, &presentationSupported);
+	BvAssert(presentationSupported == VK_TRUE);
 
 	// Get list of supported surface formats
 	u32 formatCount;
@@ -198,15 +207,20 @@ void BvVulkanSwapchain::Create(const bool vSync, const bool createDepthBuffer, c
 
 	vkCreateSwapchainKHR(logicalDevice, &swapchainCreateInfo, nullptr, &m_Swapchain);
 
+	for (auto && pTexture : m_pSwapchainTextures)
+	{
+		pTexture->~BvVulkanTexture();
+	}
+
 	// If an existing swap chain is re-created, destroy the old swap chain
 	// This also cleans up all the presentable images
 	if (oldSwapchain != VK_NULL_HANDLE)
 	{
-		for (size_t i = 0; i < m_SwapchainViews.Size(); i++)
-		{
-			vkDestroyImageView(logicalDevice, m_SwapchainViews[i], nullptr);
-		}
-		m_SwapchainViews.Clear();
+		//for (size_t i = 0; i < m_SwapchainViews.Size(); i++)
+		//{
+		//	vkDestroyImageView(logicalDevice, m_SwapchainViews[i], nullptr);
+		//}
+		//m_SwapchainViews.Clear();
 		m_SwapchainImages.Clear();
 		vkDestroySwapchainKHR(logicalDevice, oldSwapchain, nullptr);
 	}
@@ -215,44 +229,44 @@ void BvVulkanSwapchain::Create(const bool vSync, const bool createDepthBuffer, c
 
 	// Get the swap chain images
 	m_SwapchainImages.Resize(imageCount);
-	m_SwapchainViews.Resize(imageCount);
+	//m_SwapchainViews.Resize(imageCount);
 	vkGetSwapchainImagesKHR(logicalDevice, m_Swapchain, &imageCount, m_SwapchainImages.Data());
 
-	// Get the swap chain buffers containing the image and imageview
-	for (u32 i = 0; i < imageCount; i++)
-	{
-		VkImageViewCreateInfo colorAttachmentView = {};
-		colorAttachmentView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		colorAttachmentView.pNext = nullptr;
-		colorAttachmentView.format = m_ColorFormat;
-		colorAttachmentView.components =
-		{
-			VK_COMPONENT_SWIZZLE_R,
-			VK_COMPONENT_SWIZZLE_G,
-			VK_COMPONENT_SWIZZLE_B,
-			VK_COMPONENT_SWIZZLE_A
-		};
-		colorAttachmentView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		colorAttachmentView.subresourceRange.baseMipLevel = 0;
-		colorAttachmentView.subresourceRange.levelCount = 1;
-		colorAttachmentView.subresourceRange.baseArrayLayer = 0;
-		colorAttachmentView.subresourceRange.layerCount = 1;
-		colorAttachmentView.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		colorAttachmentView.flags = 0;
+	//// Get the swap chain buffers containing the image and imageview
+	//for (u32 i = 0; i < imageCount; i++)
+	//{
+	//	VkImageViewCreateInfo colorAttachmentView = {};
+	//	colorAttachmentView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	//	colorAttachmentView.pNext = nullptr;
+	//	colorAttachmentView.format = m_ColorFormat;
+	//	colorAttachmentView.components =
+	//	{
+	//		VK_COMPONENT_SWIZZLE_R,
+	//		VK_COMPONENT_SWIZZLE_G,
+	//		VK_COMPONENT_SWIZZLE_B,
+	//		VK_COMPONENT_SWIZZLE_A
+	//	};
+	//	colorAttachmentView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	//	colorAttachmentView.subresourceRange.baseMipLevel = 0;
+	//	colorAttachmentView.subresourceRange.levelCount = 1;
+	//	colorAttachmentView.subresourceRange.baseArrayLayer = 0;
+	//	colorAttachmentView.subresourceRange.layerCount = 1;
+	//	colorAttachmentView.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	//	colorAttachmentView.flags = 0;
+	//
+	//	colorAttachmentView.image = m_SwapchainImages[i];
+	//	vkCreateImageView(logicalDevice, &colorAttachmentView, nullptr, &m_SwapchainViews[i]);
+	//}
 
-		colorAttachmentView.image = m_SwapchainImages[i];
-		vkCreateImageView(logicalDevice, &colorAttachmentView, nullptr, &m_SwapchainViews[i]);
+	CreateSwapchainViews();
+
+	if (createDepthBuffer && m_DepthFormat == VK_FORMAT_UNDEFINED)
+	{
+		m_DepthFormat = m_pDevice->GetBestDepthFormat();
+		CreateDepthImage();
 	}
 
-	if (!m_RenderPass)
-	{
-		CreateRenderPass();
-	}
 	CreateFramebuffers();
-	CreateDepthImage();
-
-	m_RenderTarget.m_RenderPass = m_RenderPass;
-	m_RenderTarget.m_Framebuffers = m_Framebuffers;
 }
 
 
@@ -266,17 +280,25 @@ void BvVulkanSwapchain::Destroy()
 {
 	VkDevice device = m_pDevice->GetLogical();
 
-	DestroyFramebuffers();
-	DestroyRenderPass();
-	DestroyDepthImage();
-
-	m_RenderTarget.m_RenderPass = VK_NULL_HANDLE;
-	m_RenderTarget.m_Framebuffers.Clear();
-
-	for (auto && swapchainView : m_SwapchainViews)
+	for (auto && pFramebuffer : m_pFramebuffers)
 	{
-		vkDestroyImageView(device, swapchainView, nullptr);
+		BvDelete(pFramebuffer);
 	}
+
+	BvDelete(m_pRenderPass);
+
+	BvDelete(m_pDepthTexture);
+
+	for (auto && pSwapchainTexture : m_pSwapchainTextures)
+	{
+		BvDelete(pSwapchainTexture);
+	}
+
+
+	//for (auto && swapchainView : m_SwapchainViews)
+	//{
+	//	vkDestroyImageView(device, swapchainView, nullptr);
+	//}
 	vkDestroySwapchainKHR(device, m_Swapchain, nullptr);
 
 	vkDestroySurfaceKHR(m_pDevice->GetInstance(), m_Surface, nullptr);
@@ -309,6 +331,7 @@ void BvVulkanSwapchain::Present(const VkSemaphore waitSemaphore)
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &m_Swapchain;
 	presentInfo.pImageIndices = &m_CurrImageIndex;
+
 	// Check if a wait semaphore has been specified to wait for before presenting the image
 	if (waitSemaphore)
 	{
@@ -320,100 +343,94 @@ void BvVulkanSwapchain::Present(const VkSemaphore waitSemaphore)
 }
 
 
-void BvVulkanSwapchain::CreateDepthImage()
+void BvVulkanSwapchain::CreateSwapchainViews()
 {
-	DestroyDepthImage();
-
-	m_DepthFormat = m_pDevice->GetBestDepthFormat();
-
-	VkImageCreateInfo imageCreateInfo
+	if (m_pSwapchainTextures.Size() == 0)
 	{
-		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		nullptr,
-		0,
-		VK_IMAGE_TYPE_2D,
-		m_DepthFormat,
-		{ m_Width, m_Height, 1 },
-		1,
-		1,
-		VK_SAMPLE_COUNT_1_BIT,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_SHARING_MODE_EXCLUSIVE,
-		0,
-		nullptr,
-		VK_IMAGE_LAYOUT_UNDEFINED
-	};
+		m_pSwapchainTextures.Resize(m_SwapchainImages.Size());
+	}
 
+	TextureDesc colorDesc;
+	colorDesc.m_Width = m_Width;
+	colorDesc.m_Height = m_Height;
+	colorDesc.m_Format = m_ColorFormat;
+	colorDesc.m_Offscreen = false;
+	colorDesc.m_UsageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	auto device = m_pDevice->GetLogical();
-	vkCreateImage(device, &imageCreateInfo, nullptr, &m_DepthImage);
-
-	VkMemoryRequirements reqs{};
-	vkGetImageMemoryRequirements(device, m_DepthImage, &reqs);
-
-	VkMemoryAllocateInfo allocateInfo{};
-	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocateInfo.allocationSize = reqs.size;
-	allocateInfo.memoryTypeIndex = m_pDevice->GetMemoryTypeIndex(reqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-	vkAllocateMemory(device, &allocateInfo, nullptr, &m_DepthImageMemory);
-
-	vkBindImageMemory(device, m_DepthImage, m_DepthImageMemory, 0);
-
-	TextureDesc textureDesc;
-	textureDesc.SetFormat(m_DepthFormat);
-
-	VkImageViewCreateInfo imageViewCreateInfo
+	for (auto i = 0; i < m_pSwapchainTextures.Size(); i++)
 	{
-		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-		nullptr,
-		0,
-		m_DepthImage,
-		VK_IMAGE_VIEW_TYPE_2D,
-		m_DepthFormat,
-		{ VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A },
-		{ textureDesc.GetAspectMask(), 0, 1, 0, 1 }
-	};
-
-	vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_DepthView);
+		if (!m_pSwapchainTextures[i])
+		{
+			m_pSwapchainTextures[i] = new BvVulkanTexture(m_pDevice, colorDesc, m_SwapchainImages[i]);
+		}
+		else
+		{
+			m_pSwapchainTextures[i]->Recreate(colorDesc, m_SwapchainImages[i]);
+		}
+	}
 }
 
 
-void BvVulkanSwapchain::CreateRenderPass()
+void BvVulkanSwapchain::CreateDepthImage()
 {
-	VkAttachmentDescription attachmentDescriptions[2]{};
+	BvAssert(m_DepthFormat != VK_FORMAT_UNDEFINED);
 
-	attachmentDescriptions[0].format = m_ColorFormat;
-	attachmentDescriptions[0].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachmentDescriptions[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDescriptions[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDescriptions[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachmentDescriptions[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDescriptions[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDescriptions[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	TextureDesc depthDesc(m_Width, m_Height, m_DepthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-	attachmentDescriptions[1].format = m_DepthFormat;
-	attachmentDescriptions[1].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachmentDescriptions[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDescriptions[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDescriptions[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachmentDescriptions[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDescriptions[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDescriptions[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	if (!m_pDepthTexture)
+	{
+		m_pDepthTexture = new BvVulkanTexture(m_pDevice, depthDesc);
+	}
+	else
+	{
+		m_pDepthTexture->Recreate(depthDesc);
+	}
+}
 
-	// Collect attachment references
-	VkAttachmentReference colorReference = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-	VkAttachmentReference depthReference = { 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
-	// Default render pass setup uses only one subpass
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.pColorAttachments = &colorReference;
-	subpass.colorAttachmentCount = 1;
-	subpass.pDepthStencilAttachment = &depthReference;
+void BvVulkanSwapchain::CreateFramebuffers()
+{
+	VkAttachmentDescription attachments[2] = {};
+	// Color attachment
+	attachments[0].format = m_ColorFormat;
+	attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	// Depth attachment
+	attachments[1].format = m_DepthFormat;
+	attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDependency dependencies[2]{};
+	VkAttachmentReference colorReference = {};
+	colorReference.attachment = 0;
+	colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthReference = {};
+	depthReference.attachment = 1;
+	depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpassDescription = {};
+	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pColorAttachments = &colorReference;
+	subpassDescription.pDepthStencilAttachment = m_pDepthTexture ? &depthReference : nullptr;
+	subpassDescription.inputAttachmentCount = 0;
+	subpassDescription.pInputAttachments = nullptr;
+	subpassDescription.preserveAttachmentCount = 0;
+	subpassDescription.pPreserveAttachments = nullptr;
+	subpassDescription.pResolveAttachments = nullptr;
+
+	// Subpass dependencies for layout transitions
+	VkSubpassDependency dependencies[2] = {};
 
 	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass = 0;
@@ -431,78 +448,47 @@ void BvVulkanSwapchain::CreateRenderPass()
 	dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-	VkRenderPassCreateInfo renderPassInfo{};
+	VkRenderPassCreateInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = 2;
-	renderPassInfo.pAttachments = attachmentDescriptions;
+	renderPassInfo.attachmentCount = m_pDepthTexture ? 2 : 1;
+	renderPassInfo.pAttachments = attachments;
 	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.pSubpasses = &subpassDescription;
 	renderPassInfo.dependencyCount = 2;
 	renderPassInfo.pDependencies = dependencies;
-	vkCreateRenderPass(m_pDevice->GetLogical(), &renderPassInfo, nullptr, &m_RenderPass);
-}
 
+	m_pRenderPass = new BvVulkanRenderPass(m_pDevice, renderPassInfo);
 
-void BvVulkanSwapchain::CreateFramebuffers()
-{
-	DestroyFramebuffers();
+	FramebufferDesc framebufferDesc;
+	framebufferDesc.m_Width = m_Width;
+	framebufferDesc.m_Height = m_Height;
+	framebufferDesc.m_Textures.Resize(2);
 
-	VkImageView views[2] = { VK_NULL_HANDLE, m_DepthView };
-	VkFramebufferCreateInfo framebufferInfo{};
-	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	framebufferInfo.renderPass = m_RenderPass;
-	framebufferInfo.width = m_Width;
-	framebufferInfo.height = m_Height;
-	framebufferInfo.layers = 1;
-	framebufferInfo.attachmentCount = m_DepthFormat != VK_FORMAT_UNDEFINED ? 2 : 1;
-	framebufferInfo.pAttachments = views;
-
-	for (auto i = 0U; i < m_Framebuffers.Size(); i++)
+	if (m_pFramebuffers.Size() != m_SwapchainImages.Size())
 	{
-		views[0] = m_SwapchainViews[i];
-		vkCreateFramebuffer(m_pDevice->GetLogical(), &framebufferInfo, nullptr, &m_Framebuffers[i]);
-	}
-}
+		for (auto && framebuffer : m_pFramebuffers)
+		{
+			BvDelete(framebuffer);
+		}
 
-
-void BvVulkanSwapchain::DestroyDepthImage()
-{
-	auto device = m_pDevice->GetLogical();
-	if (m_DepthView)
-	{
-		vkDestroyImageView(device, m_DepthView, nullptr);
-		m_DepthView = VK_NULL_HANDLE;
+		m_pFramebuffers.Resize(m_SwapchainImages.Size());
 	}
 
-	if (m_DepthImage)
+	for (auto i = 0; i < m_pFramebuffers.Size(); i++)
 	{
-		vkDestroyImage(device, m_DepthImage, nullptr);
-		m_DepthImage = VK_NULL_HANDLE;
+		framebufferDesc.m_Textures[0] = m_pSwapchainTextures[i];
+		if (m_pDepthTexture)
+		{
+			framebufferDesc.m_Textures[1] = m_pDepthTexture;
+		}
+
+		if (!m_pFramebuffers[i])
+		{
+			m_pFramebuffers[i] = new BvVulkanFramebuffer(m_pDevice, framebufferDesc);
+		}
+		else
+		{
+			m_pFramebuffers[i]->Recreate(framebufferDesc);
+		}
 	}
-
-	if (m_DepthImageMemory)
-	{
-		vkFreeMemory(device, m_DepthImageMemory, nullptr);
-		m_DepthImageMemory = VK_NULL_HANDLE;
-	}
-}
-
-
-void BvVulkanSwapchain::DestroyRenderPass()
-{
-	if (m_RenderPass)
-	{
-		vkDestroyRenderPass(m_pDevice->GetLogical(), m_RenderPass, nullptr);
-	}
-}
-
-
-void BvVulkanSwapchain::DestroyFramebuffers()
-{
-	auto device = m_pDevice->GetLogical();
-	for (auto && framebuffer : m_Framebuffers)
-	{
-		vkDestroyFramebuffer(device, framebuffer, nullptr);
-	}
-	m_Framebuffers.Resize(m_SwapchainViews.Size());
 }

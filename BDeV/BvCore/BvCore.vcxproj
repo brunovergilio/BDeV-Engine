@@ -103,7 +103,7 @@
     <ClInclude Include="BvDebug.h" />
     <ClInclude Include="BvDefines.h" />
     <ClInclude Include="BvPlatform.h" />
-    <ClInclude Include="Container\BvArray.h" />
+    <ClInclude Include="Container\BvFixedVector.h" />
     <ClInclude Include="Container\BvIterator.h" />
     <ClInclude Include="Container\BvVector.h" />
     <ClInclude Include="Container\BvRobinMap.h" />
@@ -126,6 +126,7 @@
     <ClInclude Include="Utils\BvEnum.h" />
     <ClInclude Include="Utils\BvTimer.h" />
     <ClInclude Include="Utils\BvUtils.h" />
+    <ClInclude Include="Utils\CallbackDispatcher.h" />
     <ClInclude Include="Utils\Hash.h" />
   </ItemGroup>
   <ItemGroup>

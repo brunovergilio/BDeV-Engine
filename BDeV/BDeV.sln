@@ -13,10 +13,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{A05CC045
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CoreTests", "TestProjects\CoreTests\CoreTests.vcxproj", "{0BB739ED-8DD5-41E0-A2A1-D92ED244A8A0}"
 	ProjectSection(ProjectDependencies) = postProject
+		{C31C531A-3052-4977-8CBD-8676CF6C5411} = {C31C531A-3052-4977-8CBD-8676CF6C5411}
 		{31BB09A2-E5C6-4862-8EAF-E1A066ABF79C} = {31BB09A2-E5C6-4862-8EAF-E1A066ABF79C}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BvRender", "BvRender\BvRender.vcxproj", "{C31C531A-3052-4977-8CBD-8676CF6C5411}"
+	ProjectSection(ProjectDependencies) = postProject
+		{31BB09A2-E5C6-4862-8EAF-E1A066ABF79C} = {31BB09A2-E5C6-4862-8EAF-E1A066ABF79C}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{191D5239-A9D6-411E-9FCF-4CC81CDB2991}"
 	ProjectSection(SolutionItems) = preProject

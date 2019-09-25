@@ -1,13 +1,15 @@
 #pragma once
 
 
-#include "BvCore/Container/BvVector.h"
 #include "BvRender/BvRenderDefines.h"
-#include "BvRender/RenderAPIs/Vulkan/BvVulkanRenderTarget.h"
+#include "BvCore/Container/BvVector.h"
 
 
 class BvVulkanDevice;
 class BvWindow;
+class BvVulkanTexture;
+class BvVulkanFramebuffer;
+class BvVulkanRenderPass;
 
 
 class BvVulkanSwapchain
@@ -23,23 +25,19 @@ public:
 	void Prepare(u32 & currImageIndex, const VkSemaphore semaphore, const VkFence fence = VK_NULL_HANDLE);
 	void Present(const VkSemaphore waitSemaphore);
 
-	BV_INLINE const BvVector<VkImageView> & GetViews() const { return m_SwapchainViews; }
-	BV_INLINE const BvVector<VkImage> & GetImages() const { return m_SwapchainImages; }
 	BV_INLINE const VkFormat GetColorFormat() const { return m_ColorFormat; }
-	BV_INLINE const u32 GetCurrImage() const { return m_CurrImageIndex; }
+	BV_INLINE const VkFormat GetDepthFormat() const { return m_DepthFormat; }
+	BV_INLINE const u32 GetCurrImageIndex() const { return m_CurrImageIndex; }
 	BV_INLINE const u32 GetWidth() const { return m_Width; }
 	BV_INLINE const u32 GetHeight() const { return m_Height; }
-	BV_INLINE const BvVulkanRenderTarget * const GetRenderTarget() const { return &m_RenderTarget; }
+
+	BV_INLINE const BvVector<BvVulkanFramebuffer *> & GetFramebuffers() const { return m_pFramebuffers; }
 
 private:
 	void CreateSurface(const BvWindow & window);
+	void CreateSwapchainViews();
 	void CreateDepthImage();
-	void CreateRenderPass();
 	void CreateFramebuffers();
-
-	void DestroyDepthImage();
-	void DestroyRenderPass();
-	void DestroyFramebuffers();
 
 private:
 	const BvVulkanDevice * m_pDevice = nullptr;
@@ -48,21 +46,19 @@ private:
 	VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 	VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;
 	VkQueue m_PresentationQueue = VK_NULL_HANDLE;
-
-	VkRenderPass m_RenderPass = VK_NULL_HANDLE;
-	BvVector<VkFramebuffer> m_Framebuffers;
+	uint32_t m_PresentationQueueIndex = 0;
 
 	BvVector<VkImage> m_SwapchainImages;
-	BvVector<VkImageView> m_SwapchainViews;
+	//BvVector<VkImageView> m_SwapchainViews;
+	BvVector<BvVulkanTexture *> m_pSwapchainTextures;
 
-	VkImage m_DepthImage = VK_NULL_HANDLE;
-	VkDeviceMemory m_DepthImageMemory = VK_NULL_HANDLE;
-	VkImageView m_DepthView = VK_NULL_HANDLE;
+	BvVulkanRenderPass * m_pRenderPass = nullptr;
+	BvVulkanTexture * m_pDepthTexture = nullptr;
+
+	BvVector<BvVulkanFramebuffer *> m_pFramebuffers;
 
 	VkFormat m_ColorFormat = VK_FORMAT_UNDEFINED;
 	VkFormat m_DepthFormat = VK_FORMAT_UNDEFINED;
-
-	BvVulkanRenderTarget m_RenderTarget;
 
 	u32 m_Width = 0;
 	u32 m_Height = 0;

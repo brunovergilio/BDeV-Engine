@@ -3,11 +3,11 @@
 
 #include "BvCore/Container/BvVector.h"
 #include "BvRender/BvRenderDefines.h"
-#include "BvRender/RenderAPIs/Vulkan/BvVulkanRenderTarget.h"
 
 
 class BvVulkanDevice;
 class BvVulkanCommandBuffer;
+class BvVulkanFramebuffer;
 
 
 class BvVulkanCommandPool
@@ -43,7 +43,7 @@ public:
 	VkResult BeginCommandBuffer(const VkCommandBufferUsageFlags flags = 0, const VkCommandBufferInheritanceInfo * const pInheritanceInfo = nullptr) const;
 	VkResult EndCommandBuffer() const;
 
-	void BeginRenderPass(const BvVulkanRenderTarget & renderTarget, const uint32_t frameBufferIndex,
+	void BeginRenderPass(const BvVulkanFramebuffer & framebuffer,
 		const uint32_t clearValueCount, const VkClearValue * const pClearValues,
 		const VkSubpassContents subpassContents = VK_SUBPASS_CONTENTS_INLINE) const;
 	void EndRenderPass() const;

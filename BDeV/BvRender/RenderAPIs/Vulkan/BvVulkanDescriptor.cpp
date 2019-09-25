@@ -38,7 +38,7 @@ void BvVulkanDescriptorPool::Create()
 
 	VkDescriptorPoolCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = BvArraySize(poolSizes);
+	createInfo.poolSizeCount = BvFixedVectorSize(poolSizes);
 	createInfo.pPoolSizes = poolSizes;
 	createInfo.maxSets = kDefaultMaxSets;
 	vkCreateDescriptorPool(m_pDevice->GetLogical(), &createInfo, nullptr, &m_DescriptorPool);

@@ -36,15 +36,15 @@
 constexpr float BvEpsilon = 0.0001f;
 
 constexpr float BvPi      = 3.141592653589793238462f;
-constexpr float Bv2Pi     = 6.283185482025146484375f;
-constexpr float Bv3PiDiv2 = 4.712388992309570312500f;
+constexpr float Bv2Pi	  = BvPi * 2.0f;//6.283185482025146484375f;
+constexpr float Bv3PiDiv2 = BvPi * 1.5f;//4.712388992309570312500f;
 
-constexpr float BvPiDiv2  = 1.570796370506286621094f;
-constexpr float BvPiDiv3  = 1.047197580337524414063f;
-constexpr float BvPiDiv4  = 0.785398163397448309616f;
-constexpr float BvPiDiv5  = 0.628318548202514648438f;
-constexpr float BvPiDiv6  = 0.523598790168762207031f;
-constexpr float BvPiDiv8  = 0.392699092626571655273f;
-constexpr float BvPiDiv10 = 0.314159274101257324219f;
-constexpr float BvPiDiv12 = 0.261799395084381103516f;
-constexpr float BvPiDiv16 = 0.196349546313285827637f;
+constexpr float BvPiDiv2  = BvPi / 2.0f;//1.570796370506286621094f;
+constexpr float BvPiDiv3  = BvPi / 3.0f;//1.047197580337524414063f;
+constexpr float BvPiDiv4  = BvPi / 4.0f;//0.785398163397448309616f;
+constexpr float BvPiDiv5  = BvPi / 5.0f;//0.628318548202514648438f;
+constexpr float BvPiDiv6  = BvPi / 6.0f;//0.523598790168762207031f;
+constexpr float BvPiDiv8  = BvPi / 8.0f;//0.392699092626571655273f;
+constexpr float BvPiDiv10 = BvPi / 10.0f;//0.314159274101257324219f;
+constexpr float BvPiDiv12 = BvPi / 12.0f;//0.261799395084381103516f;
+constexpr float BvPiDiv16 = BvPi / 16.0f;//0.196349546313285827637f;

@@ -1,12 +1,13 @@
 #include "BvVulkanCommandBuffer.h"
 #include "BvRender/RenderAPIs/Vulkan/BvVulkanDevice.h"
+#include "BvRender/RenderAPIs/Vulkan/BvVulkanFramebuffer.h"
 
 
 constexpr uint32_t g_DefaultCommandBufferCount = 16;
 
 
 BvVulkanCommandPool::BvVulkanCommandPool(const BvVulkanDevice * const pDevice, const uint32_t queueFamilyIndex, const VkFlags flags)
-	: m_pDevice(pDevice), m_QueueFamilyIndex(queueFamilyIndex), m_Flags(flags), m_CommandBuffers(g_DefaultCommandBufferCount)
+	: m_pDevice(pDevice), m_QueueFamilyIndex(queueFamilyIndex), m_Flags(flags)
 {
 	VkCommandPoolCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -37,7 +38,7 @@ BvVulkanCommandBuffer & BvVulkanCommandPool::RequestCommandBuffer(const VkComman
 	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 	vkAllocateCommandBuffers(m_pDevice->GetLogical(), &allocateInfo, &commandBuffer);
 
-	m_CommandBuffers.EmplaceBack(BvVulkanCommandBuffer(this, commandBuffer, level));
+	//m_CommandBuffers.EmplaceBack(BvVulkanCommandBuffer(this, commandBuffer, level));
 
 	return m_CommandBuffers.Back();
 }
@@ -88,17 +89,17 @@ VkResult BvVulkanCommandBuffer::EndCommandBuffer() const
 }
 
 
-void BvVulkanCommandBuffer::BeginRenderPass(const BvVulkanRenderTarget & renderTarget, const uint32_t frameBufferIndex,
+void BvVulkanCommandBuffer::BeginRenderPass(const BvVulkanFramebuffer & framebuffer,
 	const uint32_t clearValueCount, const VkClearValue * const pClearValues, const VkSubpassContents subpassContents) const
 {
 	assert(m_CommandBuffer != nullptr);
 
 	VkRenderPassBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	beginInfo.renderPass = renderTarget.GetRenderPass();
-	beginInfo.framebuffer = renderTarget.GetFramebuffer(frameBufferIndex);
-	beginInfo.renderArea.extent.width = renderTarget.GetRenderTargetDesc().m_Width;
-	beginInfo.renderArea.extent.height = renderTarget.GetRenderTargetDesc().m_Height;
+	beginInfo.renderPass = framebuffer.GetRenderPass();
+	beginInfo.framebuffer = framebuffer.Get();
+	beginInfo.renderArea.extent.width = framebuffer.GetDesc().m_Width;
+	beginInfo.renderArea.extent.height = framebuffer.GetDesc().m_Height;
 	beginInfo.clearValueCount = clearValueCount;
 	beginInfo.pClearValues = pClearValues;
 

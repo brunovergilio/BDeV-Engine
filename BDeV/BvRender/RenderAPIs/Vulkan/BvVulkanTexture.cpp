@@ -2,15 +2,27 @@
 #include "BvRender/RenderAPIs/Vulkan/BvVulkanDevice.h"
 
 
-BvVulkanTexture::BvVulkanTexture(const BvVulkanDevice * const pDevice, const TextureDesc & textureDesc)
-	: m_pDevice(pDevice), m_TextureDesc(textureDesc)
+BvVulkanTexture::BvVulkanTexture(const BvVulkanDevice * const pDevice, const TextureDesc & textureDesc, const VkImage srcImage)
+	: m_pDevice(pDevice), m_TextureDesc(textureDesc), m_Image(srcImage)
 {
+	Create();
 }
 
 
 BvVulkanTexture::~BvVulkanTexture()
 {
 	Destroy();
+}
+
+
+void BvVulkanTexture::Recreate(const TextureDesc & textureDesc, const VkImage srcImage)
+{
+	Destroy();
+
+	m_TextureDesc = textureDesc;
+	m_Image = srcImage;
+
+	Create();
 }
 
 
@@ -34,43 +46,45 @@ void BvVulkanTexture::Create()
 		layers *= 6;
 	}
 
-	VkImageCreateInfo imageCreateInfo
-	{
-		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		nullptr,
-		imageCreateFlags,
-		VK_IMAGE_TYPE_2D,
-		m_TextureDesc.m_Format,
-		{ m_TextureDesc.m_Width, m_TextureDesc.m_Height, 1 },
-		m_TextureDesc.m_MipLevels,
-		layers,
-		(VkSampleCountFlagBits)m_TextureDesc.m_SampleCount,
-		VK_IMAGE_TILING_OPTIMAL,
-		m_TextureDesc.m_UsageFlags,
-		VK_SHARING_MODE_EXCLUSIVE,
-		0,
-		nullptr,
-		VK_IMAGE_LAYOUT_UNDEFINED
-	};
-
-
 	auto device = m_pDevice->GetLogical();
-	vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
 
-	VkMemoryRequirements reqs{};
-	vkGetImageMemoryRequirements(device, m_Image, &reqs);
+	// If an image wasn't provided then we create one
+	if (m_Image == VK_NULL_HANDLE)
+	{
+		VkImageCreateInfo imageCreateInfo
+		{
+			VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+			nullptr,
+			imageCreateFlags,
+			VK_IMAGE_TYPE_2D,
+			m_TextureDesc.m_Format,
+			{ m_TextureDesc.m_Width, m_TextureDesc.m_Height, 1 },
+			m_TextureDesc.m_MipLevels,
+			layers,
+			(VkSampleCountFlagBits)m_TextureDesc.m_SampleCount,
+			VK_IMAGE_TILING_OPTIMAL,
+			m_TextureDesc.m_UsageFlags,
+			VK_SHARING_MODE_EXCLUSIVE,
+			0,
+			nullptr,
+			VK_IMAGE_LAYOUT_UNDEFINED
+		};
 
-	VkMemoryAllocateInfo allocateInfo{};
-	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocateInfo.allocationSize = reqs.size;
-	allocateInfo.memoryTypeIndex = m_pDevice->GetMemoryTypeIndex(reqs.memoryTypeBits,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | (imageCreateInfo.usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ?
-		 VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT : 0);
+		vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
 
-	vkAllocateMemory(device, &allocateInfo, nullptr, &m_Memory);
+		VkMemoryRequirements reqs{};
+		vkGetImageMemoryRequirements(device, m_Image, &reqs);
 
-	vkBindImageMemory(device, m_Image, m_Memory, 0);
+		VkMemoryAllocateInfo allocateInfo{};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocateInfo.allocationSize = reqs.size;
+		allocateInfo.memoryTypeIndex = m_pDevice->GetMemoryTypeIndex(reqs.memoryTypeBits,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | ((imageCreateInfo.usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) != 0 ?
+			VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT : 0));
 
+		vkAllocateMemory(device, &allocateInfo, nullptr, &m_Memory);
+		vkBindImageMemory(device, m_Image, m_Memory, 0);
+	}
 
 	VkImageViewCreateInfo imageViewCreateInfo
 	{
@@ -97,14 +111,17 @@ void BvVulkanTexture::Destroy()
 		vkDestroyImageView(device, m_View, nullptr);
 		m_View = VK_NULL_HANDLE;
 	}
-	if (m_Image)
-	{
-		vkDestroyImage(device, m_Image, nullptr);
-		m_Image = VK_NULL_HANDLE;
-	}
+	// If this image doesn't have a memory associated with it, then that means this was a view-only texture
+	// So we don't destroy it here
 	if (m_Memory)
 	{
+		if (m_Image)
+		{
+			vkDestroyImage(device, m_Image, nullptr);
+		}
+
 		vkFreeMemory(device, m_Memory, nullptr);
 		m_Memory = VK_NULL_HANDLE;
 	}
+	m_Image = VK_NULL_HANDLE;
 }

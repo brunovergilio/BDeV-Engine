@@ -330,10 +330,10 @@ public:
 	void Create(const VkPipelineLayoutCreateInfo & createInfo);
 	void Destroy();
 
-	BV_INLINE const VkPipelineLayout GetHandle() const { return m_PipelineLayout; }
+	BV_INLINE const VkPipelineLayout Get() const { return m_PipelineLayout; }
 
 private:
-	const BvVulkanDevice * m_pDevice = nullptr;
+	const BvVulkanDevice * const m_pDevice = nullptr;
 	VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
 };
 
@@ -347,10 +347,10 @@ public:
 	void Create();
 	void Destroy();
 
-	BV_INLINE const VkPipelineCache GetHandle() const { return m_PipelineCache; }
+	BV_INLINE const VkPipelineCache Get() const { return m_PipelineCache; }
 
 private:
-	const BvVulkanDevice * m_pDevice = nullptr;
+	const BvVulkanDevice * const m_pDevice = nullptr;
 	VkPipelineCache m_PipelineCache = VK_NULL_HANDLE;
 };
 
@@ -365,7 +365,7 @@ public:
 	void Create(const VkGraphicsPipelineCreateInfo & createInfo, const VkPipelineCache pipelineCache);
 	void Destroy();
 
-	BV_INLINE const VkPipeline GetHandle() const { return m_Pipeline; }
+	BV_INLINE const VkPipeline Get() const { return m_Pipeline; }
 
 private:
 	const BvVulkanDevice * m_pDevice = nullptr;

@@ -55,8 +55,8 @@ void BvWindow::Create(const u32 width, const u32 height)
 	DWORD exStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
 	AdjustWindowRectEx(&windowRect, style, FALSE, exStyle);
 
-	RECT desktopWindowRect{};
-	GetClientRect(GetDesktopWindow(), &desktopWindowRect);
+	//RECT desktopWindowRect{};
+	//GetClientRect(GetDesktopWindow(), &desktopWindowRect);
 
 	m_hWnd = CreateWindow(pAppName, pAppName, style, 0, 0,
 		windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, nullptr, nullptr, hInstance, this);
@@ -101,14 +101,18 @@ LRESULT BvWindow::StaticWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	if (uMsg == WM_NCCREATE)
 	{
 		pWindow = reinterpret_cast<BvWindow *>((reinterpret_cast<LPCREATESTRUCT>(lParam))->lpCreateParams);
-		SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG>(pWindow));
+		SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pWindow));
 	}
 	else
 	{
 		pWindow = reinterpret_cast<BvWindow *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+		if (pWindow)
+		{
+			pWindow->WndProc(hwnd, uMsg, wParam, lParam);
+		}
 	}
 
-	return pWindow ? pWindow->WndProc(hwnd, uMsg, wParam, lParam) : DefWindowProc(hwnd, uMsg, wParam, lParam);
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 

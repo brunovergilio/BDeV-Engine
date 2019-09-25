@@ -26,8 +26,9 @@
     <ClInclude Include="BvPlatform.h" />
     <ClInclude Include="Utils\Hash.h" />
     <ClInclude Include="Container\BvRobinMap.h" />
-    <ClInclude Include="Container\BvArray.h" />
     <ClInclude Include="System\JobSystem\Temp\JobSystem.h" />
+    <ClInclude Include="Container\BvFixedVector.h" />
+    <ClInclude Include="Utils\CallbackDispatcher.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Container\BvString.cpp" />

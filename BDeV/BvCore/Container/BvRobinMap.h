@@ -34,8 +34,8 @@ public:
 	~BvRobinMap();
 
 	// Iterator
-	Iterator begin() const { return Iterator(m_pData, m_pData, m_pHashes, &m_Size); }
-	Iterator end() const { return Iterator(m_pData, m_pData + m_Size, m_pHashes + m_Size, &m_Size); }
+	Iterator begin() { return Iterator(m_pData, m_pData, m_pHashes, &m_Size); }
+	Iterator end() { return Iterator(m_pData, m_pData + m_Size, m_pHashes + m_Size, &m_Size); }
 	ConstIterator cbegin() const { return ConstIterator(m_pData, m_pData, m_pHashes, &m_Size); }
 	ConstIterator cend() const { return ConstIterator(m_pData, m_pData + m_Size, m_pHashes + m_Size, &m_Size); }
 

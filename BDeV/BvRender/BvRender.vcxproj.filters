@@ -5,21 +5,23 @@
     <ClCompile Include="RenderAPIs\Vulkan\BvVulkanBuffer.cpp" />
     <ClCompile Include="RenderAPIs\Vulkan\BvVulkanDevice.cpp" />
     <ClCompile Include="RenderAPIs\Vulkan\BvVulkanSwapchain.cpp" />
-    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanRenderTarget.cpp" />
     <ClCompile Include="RenderAPIs\Vulkan\BvVulkanTexture.cpp" />
     <ClCompile Include="RenderAPIs\Vulkan\BvVulkanPipeline.cpp" />
     <ClCompile Include="RenderAPIs\Vulkan\BvVulkanCommandBuffer.cpp" />
     <ClCompile Include="RenderAPIs\Vulkan\BvVulkanDescriptor.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanRenderPass.cpp" />
+    <ClCompile Include="RenderAPIs\Vulkan\BvVulkanFramebuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BvRenderDefines.h" />
     <ClInclude Include="RenderAPIs\Vulkan\BvVulkanBuffer.h" />
     <ClInclude Include="RenderAPIs\Vulkan\BvVulkanDevice.h" />
     <ClInclude Include="RenderAPIs\Vulkan\BvVulkanSwapchain.h" />
-    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanRenderTarget.h" />
     <ClInclude Include="RenderAPIs\Vulkan\BvVulkanTexture.h" />
     <ClInclude Include="RenderAPIs\Vulkan\BvVulkanPipeline.h" />
     <ClInclude Include="RenderAPIs\Vulkan\BvVulkanCommandBuffer.h" />
     <ClInclude Include="RenderAPIs\Vulkan\BvVulkanDescriptor.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanRenderPass.h" />
+    <ClInclude Include="RenderAPIs\Vulkan\BvVulkanFramebuffer.h" />
   </ItemGroup>
 </Project>
