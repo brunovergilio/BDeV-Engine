@@ -1,0 +1,178 @@
+// =============================================
+GLSL
+// =============================================
+
+#version N [core/compatibility]
+
+layout(location = #, [component = #]) [in/out] [type] [name]
+layout([constant_id = #], [push_constant], [input_attachment_index = #], [set = #], binding = #, [std140/std430/row_major/column_major], [format]) [type] [name]
+
+[type] can be:
+uniform image2D // storage image - load, store, and atomic operations on image memory (needs [format])
+uniform sampler // sampler
+uniform texture2D // sampled image -> use texture(sampler2D(samplerObj, texture2DObj), UV);
+uniform sampler2D // combined image sampler -> use texture(sampler2DObj, UV);
+uniform samplerBuffer // uniform texel buffer - tightly packed array of homogeneous formatted data
+uniform imageBuffer // storage texel buffer - same as above, but also supports stores and atomic operations in shaders, may support a different maximum length (needs [format])
+uniform // uniform buffer
+buffer // storage buffer - supports both read and write access (and atomics on unsigned integers) - array member doesn't have number ('[]')
+subpassInput // for subpass loads
+
+
+// =============================================
+Vertex Shader
+// =============================================
+
+Inputs:
+int gl_VertexID;
+int gl_InstanceID;
+int gl_DrawID; // Requires GLSL 4.60 or ARB_shader_draw_parameters
+int gl_BaseVertex; // Requires GLSL 4.60 or ARB_shader_draw_parameters
+int gl_BaseInstance; // Requires GLSL 4.60 or ARB_shader_draw_parameters
+
+Outputs:
+vec4  gl_Position;
+float gl_PointSize;
+float gl_ClipDistance[];
+
+
+// =============================================
+Tessellation Control Shader
+// =============================================
+
+variables as arrays -> in/out vec3 pos[];
+
+Inputs:
+int gl_PatchVerticesIn; // number of vertices in patch
+int gl_PrimitiveID; // current patch index
+int gl_InvocationID; // index of the TCS invocation within this patch
+
+
+Outputs:
+layout(vertices = #​) out;
+patch out [type] [name];
+
+patch out float gl_TessLevelOuter[4];
+patch out float gl_TessLevelInner[2];
+
+
+// =============================================
+Tessellation Evaluation Shader
+// =============================================
+
+variables as arrays -> in vec3 pos[]; // call .length() for size
+
+Inputs:
+patch in [type] [name];
+layout([isolines/triangles/quads], [equal_spacing/fractional_even_spacing/fractional_odd_spacing (default: equal_spacing)], [cw/ccw (default: ccw)], [point_mode]) in;
+
+vec3 gl_TessCoord;
+int gl_PatchVerticesIn;
+int gl_PrimitiveID;
+
+patch in float gl_TessLevelOuter[4];
+patch in float gl_TessLevelInner[2];
+
+
+Outputs:
+vec4  gl_Position;
+float gl_PointSize;
+float gl_ClipDistance[];
+
+// =============================================
+Geometry Shader
+// =============================================
+
+variables as arrays -> in/out vec3 pos[];
+
+Inputs:
+layout([points/lines/lines_adjacency/triangles/triangles_adjacency]) in; // vertex count: 1/2/4/3/6
+layout(invocations = #) in;
+
+vec4  gl_Position;
+float gl_PointSize;
+float gl_ClipDistance[];
+int gl_PrimitiveIDIn;
+int gl_InvocationID; // Requires GLSL 4.0 or ARB_gpu_shader5
+
+Outputs:
+layout([points/line_strip/triangle_strip], max_vertices = # * [1/2/3]) out;
+
+vec4  gl_Position;
+float gl_PointSize;
+float gl_ClipDistance[];
+int gl_PrimitiveID;
+
+int gl_Layer;
+int gl_ViewportIndex; // Requires GL 4.1 or ARB_viewport_array.
+
+Methods:
+EmitVertex()
+EndPrimitive()
+
+
+// =============================================
+Pixel Shader
+// =============================================
+
+Inputs:
+[layout(early_fragment_tests) in;]
+[layout(origin_upper_left) in vec4 gl_FragCoord;]
+[layout(pixel_center_integer​) in vec4 gl_FragCoord;]
+
+vec4 gl_FragCoord;
+bool gl_FrontFacing;
+vec2 gl_PointCoord; // The location within a point primitive that defines the position of the fragment relative to the side of the point
+
+int  gl_SampleID;
+vec2 gl_SamplePosition;
+int  gl_SampleMaskIn[];
+float gl_ClipDistance[];
+int gl_PrimitiveID;
+
+From Geometry Shader:
+int gl_Layer;
+int gl_ViewportIndex;
+
+Outputs:
+out float gl_FragDepth;
+out int gl_SampleMask[];
+
+
+
+// =============================================
+Compute Shader
+// =============================================
+
+
+Inputs:
+layout(local_size_x = #​, [local_size_y] = #​, [local_size_z] = #​) in;
+
+Inputs:
+uvec3 gl_NumWorkGroups;
+uvec3 gl_WorkGroupID;
+uvec3 gl_LocalInvocationID;
+uvec3 gl_GlobalInvocationID; // gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID;
+uint  gl_LocalInvocationIndex; // gl_LocalInvocationIndex = gl_LocalInvocationID.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y +
+							   // gl_LocalInvocationID.y * gl_WorkGroupSize.x + 
+							   // gl_LocalInvocationID.x;
+uvec3 gl_WorkGroupSize;
+
+shared [type] [name];
+
+memoryBarrier // Provides a barrier for all of the below operations. This is the only function that doesn't require GL 4.3 or some 4.3 core extension.
+memoryBarrierAtomicCounter // Provides a barrier for Atomic Counters.
+memoryBarrierImage // Provides a barrier for image variables.
+memoryBarrierBuffer // Provides a barrier for buffer variables.
+memoryBarrierShared // Provides a barrier for Compute Shader shared variables.
+groupMemoryBarrier // Provides a limited barrier. It creates visibility for all incoherent memory operations,
+				   // but only within a Compute Shader work group. This can only be used in Compute Shaders.
+				   
+nint atomicAdd(inout nint mem​, nint data​)
+nint atomicMin(inout nint mem​, nint data​)
+nint atomicMax(inout nint mem​, nint data​)
+nint atomicAnd (inout nint mem​, nint data​)
+nint atomicOr(inout nint mem​, nint data​)
+nint atomicXor(inout nint mem​, nint data​)
+nint atomicExchange(inout nint mem​, nint data​)
+nint atomicCompSwap(inout nint mem​, nint compare​, nint data​)

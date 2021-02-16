@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{C31C531A-3052-4977-8CBD-8676CF6C5411}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>BvRenderVK</RootNamespace>
+    <ProjectName>BvRenderVK</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)Libs\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)Libs\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(SolutionDir)Libs\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>$(SolutionDir)Libs\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="BvBufferViewVk.cpp" />
+    <ClCompile Include="BvBufferVk.cpp" />
+    <ClCompile Include="BvCommandPoolVk.cpp" />
+    <ClCompile Include="BvCommandQueueVk.cpp" />
+    <ClCompile Include="BvDebugReportVk.cpp" />
+    <ClCompile Include="BvLoaderVk.cpp" />
+    <ClCompile Include="BvShaderResourceSetPoolVk.cpp" />
+    <ClCompile Include="BvFenceVk.cpp" />
+    <ClCompile Include="BvFramebufferVk.cpp" />
+    <ClCompile Include="BvPipelineStateVk.cpp" />
+    <ClCompile Include="BvRenderDeviceVk.cpp" />
+    <ClCompile Include="BvSamplerVk.cpp" />
+    <ClCompile Include="BvSemaphoreVk.cpp" />
+    <ClCompile Include="BvShaderResourceVk.cpp" />
+    <ClCompile Include="BvSwapChainVk.cpp" />
+    <ClCompile Include="BvTextureViewVk.cpp" />
+    <ClCompile Include="BvTypeConversionsVk.cpp" />
+    <ClCompile Include="BvCommandBufferVk.cpp" />
+    <ClCompile Include="BvRenderEngineVk.cpp" />
+    <ClCompile Include="BvRenderPassVk.cpp" />
+    <ClCompile Include="Platform\BvSwapChainVkWin32.cpp" />
+    <ClCompile Include="BvTextureVk.cpp" />
+    <ClCompile Include="BvUtilsVk.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BvBufferViewVk.h" />
+    <ClInclude Include="BvBufferVk.h" />
+    <ClInclude Include="BvCommandPoolVk.h" />
+    <ClInclude Include="BvCommandQueueVk.h" />
+    <ClInclude Include="BvCommonVk.h" />
+    <ClInclude Include="BvDebugReportVk.h" />
+    <ClInclude Include="BvLoaderVk.h" />
+    <ClInclude Include="BvShaderResourceSetPoolVk.h" />
+    <ClInclude Include="BvFenceVk.h" />
+    <ClInclude Include="BvFramebufferVk.h" />
+    <ClInclude Include="BvGPUInfoVk.h" />
+    <ClInclude Include="BvPipelineStateVk.h" />
+    <ClInclude Include="BvRenderDeviceVk.h" />
+    <ClInclude Include="BvSamplerVk.h" />
+    <ClInclude Include="BvSemaphoreVk.h" />
+    <ClInclude Include="BvShaderResourceVk.h" />
+    <ClInclude Include="BvSwapChainVk.h" />
+    <ClInclude Include="BvTextureViewVk.h" />
+    <ClInclude Include="BvTypeConversionsVk.h" />
+    <ClInclude Include="BvCommandBufferVk.h" />
+    <ClInclude Include="BvRenderEngineVk.h" />
+    <ClInclude Include="BvRenderPassVk.h" />
+    <ClInclude Include="BvTextureVk.h" />
+    <ClInclude Include="BvUtilsVk.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

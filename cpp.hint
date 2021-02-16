@@ -1,0 +1,21 @@
+#if defined(BV_DEBUG)
+#define BV_SINGLETON(Class) BvSingletonValidator<Class> m_SingletonValidator;
+
+#else
+
+#define BV_SINGLETON(Class)
+
+#endif // #if defined(BV_DEBUG)
+
+
+#define BV_NOCOPY(className)					  		\
+public:											  		\
+	className(const className &) = delete;			  	\
+	className & operator =(const className &) = delete; \
+
+#define BV_NOCOPYMOVE(className)					  	\
+public:											  		\
+	className(const className &) = delete;			  	\
+	className & operator =(const className &) = delete; \
+	className(className &&) = delete;			  		\
+	className & operator =(className &&) = delete;		\#define BV_EXTERN_C

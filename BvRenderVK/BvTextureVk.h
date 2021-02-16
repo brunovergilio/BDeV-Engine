@@ -1,0 +1,48 @@
+#pragma once
+
+
+#include "BvRender/BvTexture.h"
+#include "BvCommonVk.h"
+
+
+class BvRenderDeviceVk;
+class BvSwapChainVk;
+
+
+class BvTextureVk final : public BvTexture
+{
+	BV_NOCOPYMOVE(BvTextureVk);
+
+public:
+	BvTextureVk(const BvRenderDeviceVk & device, const TextureDesc & textureDesc);
+	~BvTextureVk();
+
+	bool Create();
+	void Destroy();
+
+	BV_INLINE VkImage GetHandle() const { return m_Image; }
+	BV_INLINE ClassType GetClassType() const override final { return ClassType::kTexture; }
+
+protected:
+	const BvRenderDeviceVk & m_Device;
+	VkImage m_Image = VK_NULL_HANDLE;
+	VkDeviceMemory m_Memory = VK_NULL_HANDLE;
+};
+
+
+class BvSwapChainTextureVk final : public BvTexture
+{
+	BV_NOCOPYMOVE(BvSwapChainTextureVk);
+
+public:
+	BvSwapChainTextureVk(BvSwapChainVk * pSwapChain, const TextureDesc & textureDesc, VkImage image);
+	~BvSwapChainTextureVk();
+
+	BV_INLINE BvSwapChainVk * GetSwapChain() const { return m_pSwapChain; }
+	BV_INLINE VkImage GetHandle() const { return m_Image; }
+	BV_INLINE ClassType GetClassType() const override final { return ClassType::kSwapChainTexture; }
+
+private:
+	BvSwapChainVk * m_pSwapChain = nullptr;
+	VkImage m_Image = VK_NULL_HANDLE;
+};

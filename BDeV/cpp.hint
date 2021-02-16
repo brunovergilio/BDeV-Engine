@@ -1,8 +1,0 @@
-#if defined(BV_DEBUG)
-#define BV_SINGLETON(Class) BvSingletonValidator<Class> m_SingletonValidator;
-
-#else
-
-#define BV_SINGLETON(Class)
-
-#endif // #if defined(BV_DEBUG)
