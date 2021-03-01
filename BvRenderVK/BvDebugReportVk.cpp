@@ -44,19 +44,19 @@ VkBool32 VKAPI_PTR BvDebugReportVk::DebugReportCallback(VkDebugReportFlagsEXT fl
 	// Error that may result in undefined behaviour
 	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
 	{
-		BvDebugPrint("Error on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
+		DPrintF("Error on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
 		abort();
 	};
 	// Warnings may hint at unexpected / non-spec API usage
 	if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
 	{
-		BvDebugPrint("Warning on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
+		DPrintF("Warning on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
 		abort();
 	};
 	// May indicate sub-optimal usage of the API
 	if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
 	{
-		BvDebugPrint("Performance Warning on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
+		DPrintF("Performance Warning on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
 		abort();
 	};
 	// Informal messages that may become handy during debugging

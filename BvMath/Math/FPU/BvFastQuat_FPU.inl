@@ -48,7 +48,7 @@ BvFastVec QuaternionQCVQKeenan(const BvFastQuat & q, const BvFastVec & v);
 BvFastMat QuaternionToMatrix(const BvFastQuat & q);
 BvFastQuat QuaternionFromMatrix(const BvFastMat & m);
 
-BvFastQuat QuaternionSlerp(const BvFastQuat & q1, const BvFastQuat & q2, const float t, const float epsilon = BvEpsilon);
+BvFastQuat QuaternionSlerp(const BvFastQuat & q1, const BvFastQuat & q2, const float t, const float epsilon = kEpsilon);
 
 float QuaternionAngle(const BvFastQuat & q);
 

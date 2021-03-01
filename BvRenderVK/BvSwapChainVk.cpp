@@ -110,8 +110,14 @@ bool BvSwapChainVk::Create()
 	{
 		// If the surface size is defined, the swap chain size must match
 		swapchainExtent = surfCaps.currentExtent;
-		//m_SwapChainDesc.m_Width = surfCaps.currentExtent.width;
-		//m_SwapChainDesc.m_Height = surfCaps.currentExtent.height;
+
+		// Sometimes when restoring from a minimized state, the swap chain won't pick up
+		// the latest changes from the window, so force it here
+		if (swapchainExtent.width == 0 || swapchainExtent.height == 0)
+		{
+			swapchainExtent.width = width;
+			swapchainExtent.height = height;
+		}
 	}
 
 	// Select a present mode for the swapchain
@@ -297,11 +303,6 @@ void BvSwapChainVk::Destroy()
 
 void BvSwapChainVk::Present(bool vSync)
 {
-	if (m_Window.IsMinimized())
-	{
-		return;
-	}
-
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.pNext = nullptr;
@@ -310,18 +311,18 @@ void BvSwapChainVk::Present(bool vSync)
 	presentInfo.pImageIndices = &m_CurrImageIndex;
 
 	VkSemaphore semaphores[kMaxWaitSemaphores]{};
-	if (m_WaitSemaphoreCount[m_CurrImageIndex] > 0)
+	auto count = m_WaitSemaphoreCount[m_CurrImageIndex].count.load();
+	if (count > 0)
 	{
-		for (auto i = 0u; i < m_WaitSemaphoreCount[m_CurrImageIndex]; i++)
+		for (auto i = 0u; i < count; i++)
 		{
 			semaphores[i] = m_SignalSemaphores[m_CurrImageIndex][i]->GetHandle();
 		}
-		presentInfo.waitSemaphoreCount = m_WaitSemaphoreCount[m_CurrImageIndex];
+		presentInfo.waitSemaphoreCount = count;
 		presentInfo.pWaitSemaphores = semaphores;
 	}
 
-
-	auto result = VkResult::VK_SUCCESS;
+	auto result = VK_SUCCESS;
 	if (vSync == m_SwapChainDesc.m_VSync)
 	{
 		result = m_Device.GetDeviceFunctions().vkQueuePresentKHR(m_CommandQueue.GetHandle(), &presentInfo);
@@ -347,18 +348,18 @@ void BvSwapChainVk::Present(bool vSync)
 
 	AcquireImage();
 
-	m_WaitSemaphoreCount[m_CurrImageIndex] = 0;
+	m_WaitSemaphoreCount[m_CurrImageIndex].count = 0;
 }
 
 
 BvSemaphoreVk * BvSwapChainVk::RegisterSignalSemaphore()
 {
-	if (m_WaitSemaphoreCount[m_CurrImageIndex] == kMaxWaitSemaphores)
+	if (m_WaitSemaphoreCount[m_CurrImageIndex].count == kMaxWaitSemaphores)
 	{
 		return nullptr;
 	}
 
-	return m_SignalSemaphores[m_CurrImageIndex][m_WaitSemaphoreCount[m_CurrImageIndex]++];
+	return m_SignalSemaphores[m_CurrImageIndex][m_WaitSemaphoreCount[m_CurrImageIndex].count++];
 }
 
 
@@ -371,11 +372,6 @@ void BvSwapChainVk::DestroySurface()
 
 void BvSwapChainVk::Resize()
 {
-	if (m_Window.IsResizing() || m_Window.IsMinimized())
-	{
-		return;
-	}
-
 	m_CommandQueue.WaitIdle();
 
 	DestroySynchronizationResources();
@@ -385,11 +381,6 @@ void BvSwapChainVk::Resize()
 
 void BvSwapChainVk::AcquireImage()
 {
-	if (m_Window.IsMinimized())
-	{
-		return;
-	}
-
 	auto result = m_Device.GetDeviceFunctions().vkAcquireNextImageKHR(m_Device.GetHandle(), m_Swapchain, UINT64_MAX,
 		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]->GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
 	if (result != VkResult::VK_SUCCESS)
@@ -442,7 +433,7 @@ void BvSwapChainVk::CreateSynchronizationResources()
 		}
 	}
 
-	m_WaitSemaphoreCount.Resize(m_SignalSemaphores.Size(), 0);
+	m_WaitSemaphoreCount.Resize(m_SignalSemaphores.Size());
 }
 
 

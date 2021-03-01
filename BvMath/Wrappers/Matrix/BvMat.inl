@@ -36,10 +36,19 @@ inline BvMat::BvMat(const Float2 & r1, const Float2 & r2)
 	: mat{ Load2(r1.v), Load2(r2.v), VectorSet(0.0f, 0.0f, 1.0f, 0.0f), VectorSet(0.0f, 0.0f, 0.0f, 1.0f) } {}
 
 inline BvMat::BvMat(const Float3 & r1, const Float3 & r2, const Float3 & r3, const Float3 & r4)
-	: mat{ Load3(r1.v), Load3(r2.v), Load3(r3.v), Load3(r4.v) } {}
+	: mat{ Load3(r1.v), Load3(r2.v), Load3(r3.v), VectorSet(r4.x, r4.y, r4.z, 1.0f) } {}
 
 inline BvMat::BvMat(const Float4 & r1, const Float4 & r2, const Float4 & r3, const Float4 & r4)
 	: mat{ Load4(r1.v), Load4(r2.v), Load4(r3.v), Load4(r4.v) } {}
+
+inline BvMat::BvMat(const Float22& m)
+	: mat{ Load2(m.r[0].v), Load2(m.r[1].v), VectorSet(0.0f, 0.0f, 1.0f, 0.0f), VectorSet(0.0f, 0.0f, 0.0f, 1.0f) } {}
+inline BvMat::BvMat(const Float33& m)
+	: mat{ Load3(m.r[0].v), Load3(m.r[1].v), Load3(m.r[2].v), VectorSet(0.0f, 0.0f, 0.0f, 1.0f) } {}
+inline BvMat::BvMat(const Float43& m)
+	: mat{ Load3(m.r[0].v), Load3(m.r[1].v), Load3(m.r[2].v), Load3(m.r[3].v) } {}
+inline BvMat::BvMat(const Float44& m)
+	: mat{ Load4(m.r[0].v), Load4(m.r[1].v), Load4(m.r[2].v), VectorSet(m.r[3].x, m.r[3].y, m.r[3].z, 1.0f) } {}
 
 inline BvMat::BvMat(const BvVec & r1, const BvVec & r2, const BvVec & r3, const BvVec & r4)
 	: arr{ r1, r2, r3, r4 } {}
@@ -47,7 +56,7 @@ inline BvMat::BvMat(const BvVec & r1, const BvVec & r2, const BvVec & r3, const 
 inline BvMat::BvMat(BvFastVec r1, BvFastVec r2, BvFastVec r3, BvFastVec r4)
 	: mat{ r1, r2, r3, r4 } {}
 
-inline BvMat::BvMat(const BvFastMat m)
+inline BvMat::BvMat(const BvFastMat & m)
 	: mat(m) {}
 
 inline BvMat::BvMat(const BvQuat & q)

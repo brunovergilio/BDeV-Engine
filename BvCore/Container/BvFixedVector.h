@@ -5,9 +5,9 @@
 // Container class, with fixed-sized stack memory.
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 #include "BvCore/Container/BvIterator.h"
-#include "BvCore/BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include <utility>
 
 

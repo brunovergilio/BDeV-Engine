@@ -48,7 +48,7 @@ BvFastVec QuaternionQCVQKeenan(BvFastQuat q, BvFastVec v);
 BvFastMat QuaternionToMatrix(BvFastQuat q);
 BvFastQuat QuaternionFromMatrix(const BvFastMat & m);
 
-BvFastQuat QuaternionSlerp(BvFastQuat q1, BvFastQuat q2, const float t, const float epsilon = BvEpsilon);
+BvFastQuat QuaternionSlerp(BvFastQuat q1, BvFastQuat q2, const float t, const float epsilon = kEpsilon);
 
 float QuaternionAngle(BvFastQuat q);
 
@@ -539,7 +539,7 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 		shuffle2 = _mm_and_ps(shuffle2, if2);
 		shuffle3 = _mm_and_ps(shuffle3, if3);
 
-		// Then concantenate them all
+		// Then concatenate them all
 		shuffle0 = _mm_or_ps(shuffle0, shuffle1);
 		shuffle0 = _mm_or_ps(shuffle0, shuffle2);
 		shuffle0 = _mm_or_ps(shuffle0, shuffle3);
@@ -573,7 +573,7 @@ inline BvFastQuat QuaternionSlerp(BvFastQuat q1, BvFastQuat q2, const float t, c
 
 	c0 = VectorReplicate(1.0f);
 	BvFastVec lerp2 = VectorReplicate(t);
-	BvFastVec lerp1 = _mm_sub_ps(lerp1, lerp2);
+	BvFastVec lerp1 = _mm_sub_ps(c0, lerp2);
 
 	BvFastVec oneOverSinAngle = VectorReplicate(sinf(VectorGetX(vAngle)));
 	oneOverSinAngle = _mm_rcp_ps(oneOverSinAngle);

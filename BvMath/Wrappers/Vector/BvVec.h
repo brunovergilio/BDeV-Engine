@@ -58,8 +58,8 @@ public:
 	BvVec Round() const;
 	BvVec Zero() const;
 
-	BvVec IsNearlyEqual(const BvVec & v, const float eps = BvEpsilon) const;
-	BvVec IsZero(const float eps = BvEpsilon) const;
+	BvVec IsNearlyEqual(const BvVec & v, const float eps = kEpsilon) const;
+	BvVec IsZero(const float eps = kEpsilon) const;
 
 	BvVec Add(const BvVec & v) const;
 	BvVec Sub(const BvVec & v) const;

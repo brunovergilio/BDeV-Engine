@@ -4,7 +4,7 @@
 #include "BvRender/BvSwapChain.h"
 #include "BvRenderDeviceVk.h"
 #include "BvTextureViewVk.h"
-#include "BvCore/System/Threading/BvAtomic.h"
+#include "BvCore/System/Threading/BvSync.h"
 
 
 class BvTextureVk;
@@ -41,6 +41,15 @@ private:
 	void DestroySynchronizationResources();
 
 private:
+	struct WaitSemaphoreCount
+	{
+		WaitSemaphoreCount() {}
+		WaitSemaphoreCount(const WaitSemaphoreCount& rhs) : count(rhs.count.load()) {}
+		WaitSemaphoreCount& operator=(const WaitSemaphoreCount& rhs) { count = rhs.count.load(); return *this; }
+		WaitSemaphoreCount(WaitSemaphoreCount&& rhs) noexcept { *this = std::move(rhs); }
+		WaitSemaphoreCount& operator=(WaitSemaphoreCount&& rhs) noexcept { count = rhs.count.load(); return *this; }
+		std::atomic<u32> count;
+	};
 	const BvRenderDeviceVk & m_Device;
 	BvCommandQueueVk & m_CommandQueue;
 
@@ -53,7 +62,7 @@ private:
 	BvVector<BvSemaphoreVk *> m_ImageAcquiredSemaphores;
 	BvVector<BvVector<BvSemaphoreVk *>> m_SignalSemaphores;
 	// Using atomics in case I want to render to the swap chain from multiple command buffers from separate threads
-	BvVector<BvAtomic<u32>> m_WaitSemaphoreCount;
+	BvVector<WaitSemaphoreCount> m_WaitSemaphoreCount;
 	BvVector<BvFenceVk *> m_ImageAcquiredFences;
 	u32 m_CurrSemaphoreIndex = 0;
 

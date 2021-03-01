@@ -5,7 +5,7 @@
 
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include "BvCore/System/File/Win32/BvAsyncFileWin32.h"
+#include "BvCore/Utils/Win32/BvDebugWin32.h"
 #else
 #error "Platform not yet supported"
 #endif

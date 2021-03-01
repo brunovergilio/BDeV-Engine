@@ -33,7 +33,8 @@ public:
 	// CreateQuery
 	virtual BvRenderPass * CreateRenderPass(const RenderPassDesc & renderPassDesc) = 0;
 	virtual BvCommandPool * CreateCommandPool(const CommandPoolDesc & commandPoolDesc = CommandPoolDesc()) = 0;
-	virtual BvShaderResourceLayout * CreateShaderResourceLayout(const ShaderResourceLayoutDesc & shaderResourceLayoutDesc) = 0;
+	virtual BvShaderResourceLayout * CreateShaderResourceLayout(const ShaderResourceLayoutDesc & shaderResourceLayoutDesc =
+		ShaderResourceLayoutDesc()) = 0;
 	virtual BvGraphicsPipelineState * CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc) = 0;
 
 	virtual void WaitIdle() const = 0;

@@ -1,19 +1,14 @@
 #pragma once
 
 
-// Based on "Parallelizing the Naughty Dog Engine Using Fibers" by Christian Gyrling
-// https://www.gdcvault.com/play/1022186/Parallelizing-the-Naughty-Dog-Engine
-
-
-#include "BvCore/BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include "BvCore/System/Threading/BvThread.h"
 #include "BvCore/System/Threading/BvFiber.h"
 #include "BvCore/System/Threading/BvSync.h"
 #include "BvCore/System/Threading/BvProcess.h"
-#include "BvCore/System/Threading/BvAtomic.h"
 #include "BvCore/Utils/BvUtils.h"
 #include "BvCore/Container/BvVector.h"
-#include <utility>
+#include "BvCore/System/JobSystem/BvJob.h"
 
 
 class BvJobCounter
@@ -22,117 +17,56 @@ public:
 	friend class BvJobSystem;
 
 	BvJobCounter()
-		: m_Counter(INT32_MAX) {}
+		: m_Counter(kI32Max) {}
 	~BvJobCounter() {}
 
 	// All empty stubs, but they have to be here
 	BvJobCounter(const BvJobCounter & rhs) : BvJobCounter() {}
 	BvJobCounter & operator=(const BvJobCounter & rhs) { return *this; }
-	BvJobCounter(BvJobCounter && rhs) : BvJobCounter() {}
-	BvJobCounter & operator=(BvJobCounter && rhs) { return *this; }
+	BvJobCounter(BvJobCounter && rhs) noexcept : BvJobCounter() {}
+	BvJobCounter & operator=(BvJobCounter && rhs) noexcept { return *this; }
 
-	bool IsDone() { return m_Counter.Load() == 0; }
+	bool IsDone() { return m_Counter.load() == 0; }
 
 private:
-	void Set(const i32 count) { m_Counter.Store(count); }
+	void Set(const i32 count) { m_Counter.store(count); }
 	void Decrement() { m_Counter--; }
 
 private:
-	BvAtomic<i32> m_Counter;
+	std::atomic<i32> m_Counter;
 };
 
 
-class BvJob
+class BvJobList;
+
+
+struct JobSystemDesc
 {
-	static constexpr size_t s_JobSize = kCacheLineSize - sizeof(BvJobCounter *);
-
-public:
-	BvJob() {}
-
-	template<typename Fn, typename... Args,
-		typename = typename std::enable_if_t<
-		!std::is_same_v<std::decay_t<Fn>, BvJob>
-		&& std::is_invocable_v<Fn, Args...>
-		&& std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
-	explicit BvJob(Fn && fn, Args &&... args)
+	enum class Parallelism : u8
 	{
-		BvCompilerAssert(sizeof(BvDelegate<Fn, Args...>) <= s_JobSize, "Job object is too big");
-		Set(std::forward<Fn>(fn), std::forward<Args>(args)...);
-	}
+		kUseThreadCount,
+		kUseCoreCount,
+		kCustom,
+		kSingleThreaded // For debugging purposes only
+	};
 
-	explicit BvJob(const BvJob & rhs)
-	{
-		memcpy(m_Data, rhs.m_Data, s_JobSize);
-	}
+	static constexpr const u32 kDefaultJobListPoolSize = 200;
 
-	BvJob & operator=(const BvJob & rhs)
-	{
-		if (this != &rhs)
-		{
-			this->~BvJob();
-			memcpy(m_Data, rhs.m_Data, s_JobSize);
-		}
-
-		return *this;
-	}
-	
-	explicit BvJob(BvJob && rhs)
-	{
-		*this = std::move(rhs);
-	}
-
-	BvJob & operator=(BvJob && rhs)
-	{
-		if (this != &rhs)
-		{
-			this->~BvJob();
-			memcpy(m_Data, rhs.m_Data, s_JobSize);
-			rhs.~BvJob();
-		}
-
-		return *this;
-	}
-
-	~BvJob()
-	{
-		if (IsSet())
-		{
-			reinterpret_cast<BvDelegateBase * const>(m_Data)->~BvDelegateBase();
-			Reset();
-		}
-	}
-
-	void Run()
-	{
-		BvAssert(IsSet());
-		reinterpret_cast<const BvDelegateBase * const>(m_Data)->Invoke();
-	}
-
-	template<typename Fn, typename... Args,
-		typename = typename std::enable_if_t<
-		!std::is_same_v<std::decay_t<Fn>, BvJob>
-		&& std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
-	void Set(Fn && fn, Args &&... args)
-	{
-		BvCompilerAssert(sizeof(BvDelegate<Fn, Args...>) <= s_JobSize, "Job object is too big");
-		new (m_Data) BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...);
-	}
-
-	bool IsSet() const
-	{
-		auto vp = *reinterpret_cast<const u64 * const>(m_Data);
-		return vp != 0;
-	}
-
-	void Reset()
-	{
-		auto pVp = reinterpret_cast<u64 * const>(m_Data);
-		pVp = 0;
-	}
-
-private:
-	u8 m_Data[s_JobSize]{};
+	u32 m_JobListPoolSize = kDefaultJobListPoolSize;
+	u32 m_NumThreads = 0;
+	u32* m_pThreadCores = nullptr;
+	Parallelism m_Parallelism = Parallelism::kUseThreadCount;
 };
+
+
+enum class JobListPriority : u8
+{
+	kLow,
+	kNormal,
+	kHigh
+};
+
+class BvJobSystemWorker;
 
 
 class BvJobSystem
@@ -143,43 +77,103 @@ public:
 	BvJobSystem();
 	~BvJobSystem();
 
-	void Initialize();
+	void Initialize(const JobSystemDesc desc = JobSystemDesc());
 	void Shutdown();
 
-	void RunJobs(BvJob * const pJobs, const u32 jobCount, BvJobCounter * pCounter);
-	void WaitForCounter(BvJobCounter * const pCounter);
+	BvJobList* AllocJobList(const u32 jobListSize, JobListPriority priority = JobListPriority::kNormal);
+	void Submit(BvJobList* pJobList);
+
+	BV_INLINE bool IsActive() const { return m_IsActive.load() == true; }
 
 private:
-	// For TLS values - will reside in a separate cpp
-	u32 GetThreadIndex() const;
-	void SetThreadIndex(const u32 index);
+	BvVector<BvJobList*> m_JobListPool;
+	BvVector<BvJobSystemWorker *> m_Workers;
+	std::atomic<u32> m_JobListCount;
+	std::atomic<bool> m_IsActive;
+};
+
+
+class BvJobList
+{
+	BV_NOCOPYMOVE(BvJobList);
+
+	static constexpr BvJobList* kSyncPoint = (BvJobList*)1;
+	static constexpr u32 kMaxJobs = 32;
+
+	friend class BvJobSystem;
+	friend class BvJobSystemWorker;
+
+	using JobDataType = std::pair<BvJobT<56>, BvJobList*>;
+
+public:
+	template<typename Fn, typename... Args>
+	void AddJob(Fn&& fn, Args &&... args)
+	{
+		BvAssertMsg(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
+		m_Jobs.EmplaceBack(JobDataType());
+		m_Jobs[m_Jobs.Size() - 1].first.Set(std::forward<Fn>(fn), std::forward<Args>(args)...);
+		m_Jobs[m_Jobs.Size() - 1].second = nullptr;
+	}
+
+	void AddSyncPoint()
+	{
+		BvAssertMsg(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
+		m_Jobs.EmplaceBack(JobDataType());
+		m_Jobs[m_Jobs.Size() - 1].second = kSyncPoint;
+	}
+
+	void AddDependency(BvJobList * pDependency)
+	{
+		BvAssertMsg(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
+		m_Jobs.EmplaceBack(JobDataType());
+		m_Jobs[m_Jobs.Size() - 1].second = pDependency;
+	}
+
+	void Submit()
+	{
+		m_pJobSystem->Submit(this);
+	}
+
+	bool TryWait() const
+	{
+		return m_JobsDone.load() >= m_Jobs.Size();
+	}
+
+	void Reset()
+	{
+		m_CurrJob = 0;
+		m_JobsDone = 0;
+	}
+
+	JobListPriority GetPriority() const
+	{
+		return m_Priority;
+	}
+
+	bool IsWaitingForDependency() const
+	{
+		auto index = m_CurrJob.load();
+		if (index < m_Jobs.Size())
+		{
+			return m_Jobs[index].second != nullptr && m_Jobs[index].second != kSyncPoint;
+		}
+
+		return false;
+	}
+	
+private:
+	BvJobList(BvJobSystem* pJobSystem, const JobListPriority priority)
+		: m_pJobSystem(pJobSystem), m_Priority(priority)
+	{
+		m_Jobs.Reserve(kMaxJobs);
+	}
+	~BvJobList() {}
 
 private:
-	struct alignas(kCacheLineSize) JobData
-	{
-		BvJob job;
-		BvJobCounter * pCounter;
-	};
-
-	struct ThreadData
-	{
-		BvJobSystem * pJobSys;
-		BvEvent workEvent;
-		BvFiber threadFiber;
-		u32 threadIndex;
-		u32 fiberIndex;
-	};
-
-	struct FiberData
-	{
-		BvJobSystem * pJobSys;
-		BvFiber fiber;
-	};
-
-	BvVector<JobData> m_Jobs;
-	BvVector<ThreadData> m_Threads;
-	BvVector<FiberData> m_Fibers;
-
-	BvSpinlock<> m_QueuedJobIndex;
-	BvAtomic<u32> m_CurrJob;
+	BvJobSystem* m_pJobSystem;
+	BvVector<JobDataType> m_Jobs;
+	std::atomic<u32> m_CurrJob;
+	std::atomic<u32> m_JobsDone;
+	BvSpinlock m_Lock;
+	JobListPriority m_Priority;
 };

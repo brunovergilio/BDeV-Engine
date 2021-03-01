@@ -1,15 +1,14 @@
 #pragma once
 
 
-#include "../BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include <string.h>
 
 
 class BvString
 {
 public:
-	static constexpr u32 kDefaultStringSize = 32;
-	static constexpr u32 kInvalidIndex = UINT32_MAX;
+	static constexpr u32 kInvalidIndex = kU32Max;
 
 	BvString();
 	explicit BvString(const u32 size);
@@ -90,7 +89,7 @@ public:
 	BV_INLINE const char & operator[](const u32 index) const { BvAssertMsg(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
 	BV_INLINE char & operator[](const u32 index) { BvAssertMsg(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
 	BV_INLINE const char At(const u32 index) const { BvAssertMsg(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
-	BV_INLINE const char Front() const { return m_pStr[0]; }
+	BV_INLINE const char Front() const { BvAssertMsg(m_Size > 0, "Index out of bounds"); return m_pStr[0]; }
 	BV_INLINE const char Back() const { BvAssertMsg(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
 
 	BV_INLINE const char * const CStr() const { return m_pStr; }

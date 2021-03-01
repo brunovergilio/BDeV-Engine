@@ -74,7 +74,7 @@ struct Float22
 {
 	union
 	{
-		Float2 r[2];
+		Float2 r[2]{};
 		float m[4];
 		struct
 		{
@@ -96,7 +96,7 @@ struct Float33
 {
 	union
 	{
-		Float3 r[3];
+		Float3 r[3]{};
 		float m[9];
 		struct
 		{
@@ -120,7 +120,7 @@ struct Float43
 {
 	union
 	{
-		Float3 r[4];
+		Float3 r[4]{};
 		float m[12];
 		struct
 		{
@@ -146,7 +146,7 @@ struct Float44
 {
 	union
 	{
-		Float4 r[4];
+		Float4 r[4]{};
 		float m[16];
 		struct
 		{

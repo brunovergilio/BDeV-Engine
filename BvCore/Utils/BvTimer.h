@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 #include <chrono>
 
 
@@ -15,12 +15,12 @@ public:
 	BvTimer & operator=(BvTimer && rhs) = default;
 	~BvTimer();
 
-	void Tick();
 	void Reset();
 
-	BV_INLINE const f32 GetDt() const { return std::chrono::duration<double, std::milli>(m_CurrCycle - m_PrevCycle).count(); }
+	const f32 GetDt() const;
 
 protected:
-	std::chrono::high_resolution_clock::time_point m_PrevCycle;
-	std::chrono::high_resolution_clock::time_point m_CurrCycle;
+	std::chrono::high_resolution_clock::time_point m_CurrTime;
 };
+
+i64 GetCurrentTimestamp();

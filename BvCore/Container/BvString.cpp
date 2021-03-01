@@ -2,6 +2,7 @@
 #include "BvCore/System/Memory/BvMemory.h"
 #include "BvCore/Utils/BvUtils.h"
 #include "BvCore/Utils/Hash.h"
+#include <cstdarg>
 
 
 BvString::BvString()

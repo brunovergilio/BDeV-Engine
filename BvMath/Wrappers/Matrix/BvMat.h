@@ -21,9 +21,13 @@ public:
 	explicit BvMat(const Float2 & r1, const Float2 & r2);
 	explicit BvMat(const Float3 & r1, const Float3 & r2, const Float3 & r3, const Float3 & r4 = Float3());
 	explicit BvMat(const Float4 & r1, const Float4 & r2, const Float4 & r3, const Float4 & r4);
+	explicit BvMat(const Float22& m);
+	explicit BvMat(const Float33& m);
+	explicit BvMat(const Float43& m);
+	explicit BvMat(const Float44& m);
 	explicit BvMat(const BvVec & r1, const BvVec & r2, const BvVec & r3, const BvVec & r4 = BvVec(0.0f, 0.0f, 0.0f, 1.0f));
 	explicit BvMat(BvFastVec r1, BvFastVec r2, BvFastVec r3, BvFastVec r4);
-	explicit BvMat(BvFastMat m);
+	explicit BvMat(const BvFastMat & m);
 	explicit BvMat(const BvQuat & q);
 
 	void Set(const Float2 & r1, const Float2 & r2);

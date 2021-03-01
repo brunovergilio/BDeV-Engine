@@ -1,12 +1,12 @@
 #pragma once
 
 
-#include "BvCore/BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include "BvRenderVK/BvCommonVk.h"
 #include "BvRender/BvCommon.h"
 
 
-#define BvDebugVkResult(result) BvDebugPrint("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)
+#define BvDebugVkResult(result) DPrintF("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)
 #define BvCheckErrorReturnVk(result, ret) if (result != VK_SUCCESS) \
 {																	\
 	BvDebugVkResult(result);										\

@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 #include "BvCore/Utils/BvEnum.h"
 #include "BvCore/Utils/BvUtils.h"
 

@@ -1,5 +1,5 @@
 #include "BvTimer.h"
-#include "../BvDebug.h"
+#include "../Utils/BvDebug.h"
 
 
 BvTimer::BvTimer()
@@ -13,14 +13,19 @@ BvTimer::~BvTimer()
 }
 
 
-void BvTimer::Tick()
+void BvTimer::Reset()
 {
-	m_PrevCycle = m_CurrCycle;
-	m_CurrCycle = std::chrono::high_resolution_clock::now();
+	m_CurrTime = std::chrono::high_resolution_clock::now();
 }
 
 
-void BvTimer::Reset()
+const f32 BvTimer::GetDt() const
 {
-	m_PrevCycle = m_CurrCycle = std::chrono::high_resolution_clock::now();
+	return std::chrono::duration<f32, std::milli>(std::chrono::high_resolution_clock::now() - m_CurrTime).count();
+}
+
+
+i64 GetCurrentTimestamp()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 }

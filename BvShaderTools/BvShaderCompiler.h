@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 #include "BvCore/Container/BvString.h"
 #include "BvRender/BvShaderResource.h"
 #include "BvCore/Utils/BvUtils.h"

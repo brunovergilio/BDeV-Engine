@@ -7,9 +7,9 @@
 // The class can reserve and/or resize its underlying container
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 #include "BvCore/Container/BvIterator.h"
-#include "BvCore/BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include "BvCore/System/Memory/BvMemory.h"
 
 
@@ -91,7 +91,7 @@ public:
 	void EmplaceBack(Args&&... args);
 
 private:
-	void Grow(const size_t size);
+	void Grow(const size_t size, const bool forceSize = false);
 	void Destroy();
 
 private:
@@ -236,7 +236,7 @@ inline void BvVector<Type>::Resize(const size_t size, const Type & value)
 
 		if (size > m_Capacity)
 		{
-			Grow(size);
+			Grow(size, true);
 		}
 
 		m_Size = size;
@@ -261,7 +261,7 @@ inline void BvVector<Type>::Reserve(const size_t size)
 {
 	if (size > m_Size && size > m_Capacity)
 	{
-		Grow(size);
+		Grow(size, true);
 	}
 }
 
@@ -666,19 +666,26 @@ inline void BvVector<Type>::EmplaceBack(Args && ...args)
 }
 
 template<class Type>
-inline void BvVector<Type>::Grow(const size_t size)
+inline void BvVector<Type>::Grow(const size_t size, const bool forceSize)
 {
-	if (size == 0)
+	if (forceSize)
 	{
-		return;
-	}
-	else if (size == 1)
-	{
-		m_Capacity = size << 1;
+		m_Capacity = size;
 	}
 	else
 	{
-		m_Capacity = size + (size >> 1);
+		if (size == 0)
+		{
+			return;
+		}
+		else if (size == 1)
+		{
+			m_Capacity = size << 1;
+		}
+		else
+		{
+			m_Capacity = size + (size >> 1);
+		}
 	}
 
 	void * pNewData = BvAlloc(sizeof(Type) * m_Capacity, alignof(Type));

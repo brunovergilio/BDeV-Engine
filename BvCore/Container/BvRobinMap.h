@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 #include "BvCore/Container/BvIterator.h"
 #include "BvCore/Utils/Hash.h"
 #include "BvCore/System/Memory/BvMemory.h"
@@ -25,11 +25,11 @@ public:
 	explicit BvRobinMap(const size_t capacity); // Fill
 	//explicit BvRobinMap(Iterator start, Iterator end, const size_t capacity = 0); // Range
 	BvRobinMap(const BvRobinMap & rhs); // Copy
-	BvRobinMap(BvRobinMap && rhs); // Move
+	BvRobinMap(BvRobinMap && rhs) noexcept; // Move
 	BvRobinMap(std::initializer_list<KeyValue> list); // Initializer List
 
 	BvRobinMap<Key, Value> & operator =(const BvRobinMap & rhs); // Copy Assignment
-	BvRobinMap<Key, Value> & operator =(BvRobinMap && rhs); // Move Assignment
+	BvRobinMap<Key, Value> & operator =(BvRobinMap && rhs) noexcept; // Move Assignment
 	BvRobinMap<Key, Value> & operator =(std::initializer_list<KeyValue> list); // Copy Assignment
 
 	~BvRobinMap();
@@ -120,7 +120,7 @@ inline BvRobinMap<Key, Value>::BvRobinMap(std::initializer_list<KeyValue> list)
 
 
 template<typename Key, typename Value>
-inline BvRobinMap<Key, Value>::BvRobinMap(BvRobinMap && rhs)
+inline BvRobinMap<Key, Value>::BvRobinMap(BvRobinMap && rhs) noexcept
 {
 	*this = std::move(rhs);
 }
@@ -139,7 +139,7 @@ inline BvRobinMap<Key, Value>& BvRobinMap<Key, Value>::operator=(const BvRobinMa
 
 
 template<typename Key, typename Value>
-inline BvRobinMap<Key, Value>& BvRobinMap<Key, Value>::operator=(BvRobinMap && rhs)
+inline BvRobinMap<Key, Value>& BvRobinMap<Key, Value>::operator=(BvRobinMap && rhs) noexcept
 {
 	if (this != &rhs)
 	{

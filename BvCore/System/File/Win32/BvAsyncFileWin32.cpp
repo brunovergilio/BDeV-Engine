@@ -1,7 +1,6 @@
 #include "BvCore/System/File/BvAsyncFile.h"
-#include "BvCore/BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include "BvCore/System/Threading/BvSync.h"
-#include "BvCore/System/Threading/BvAtomic.h"
 #include "BvCore/Utils/BvUtils.h"
 
 
@@ -13,7 +12,7 @@ struct AsyncFileData
 	BvEvent m_Signal;
 	OVERLAPPED m_OverlappedIO{};
 	HANDLE m_hFile{};
-	BvAtomic<u32> m_UseCount;
+	std::atomic<u32> m_UseCount;
 
 	AsyncFileData()
 		: m_Signal(BvEvent(true)), m_UseCount(1) {}

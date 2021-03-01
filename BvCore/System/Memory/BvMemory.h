@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include "BvCore/BvPlatform.h"
-#include "BvCore/BvDebug.h"
+#include "BvCore/BvCore.h"
+#include "BvCore/Utils/BvDebug.h"
 #include <memory>
 
 

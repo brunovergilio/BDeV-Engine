@@ -1,30 +1,31 @@
-#include "BvCore/System/Threading/BvProcess.h"
+#include "BvCore/System/Threading/Win32/BvProcessWin32.h"
 #include "BvCore/System/Memory/BvMemory.h"
+#include "BvCore/Container/BvVector.h"
+#include <Windows.h>
 
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include <intrin.h>
 
 BvSystemInfo g_SystemInfo = []()
 {
 	BvSystemInfo systemInfo{};
 
+	BvVector<u8> bufferData;
 	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
-	DWORD bufferSize;
+	DWORD bufferSize = 0;
 	DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 	if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 	{
-		pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(malloc(bufferSize));
-		if (!pBuffer)
-		{
-			return systemInfo;
-		}
-
+		bufferData.Resize(bufferSize);
+		pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(bufferData.Data());
 		result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 		if (result == FALSE)
 		{
+			BV_WIN32_ERROR();
 			return systemInfo;
 		}
+	}
+	else
+	{
+		BV_WIN32_ERROR();
 	}
 
 	auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
@@ -37,11 +38,8 @@ BvSystemInfo g_SystemInfo = []()
 
 			// A hyperthreaded core supplies more than one logical processor.
 			systemInfo.m_NumLogicalProcessors += __popcnt(pBuffer[i].ProcessorMask);
-			break;
 		}
 	}
-
-	free(pBuffer);
 
 	SYSTEM_INFO osInfo;
 	GetSystemInfo(&osInfo);
@@ -55,6 +53,3 @@ const BvSystemInfo & GetSystemInfo()
 {
 	return g_SystemInfo;
 }
-
-
-#endif

@@ -1,44 +1,8 @@
 #pragma once
 
 
-#include "../BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include <tuple>
-
-
-#define BV_NOCOPY(className)					  		\
-public:											  		\
-	className(const className &) = delete;			  	\
-	className & operator =(const className &) = delete; \
-
-#define BV_NOCOPYMOVE(className)					  	\
-public:											  		\
-	className(const className &) = delete;			  	\
-	className & operator =(const className &) = delete; \
-	className(className &&) = delete;			  		\
-	className & operator =(className &&) = delete;		\
-
-
-#define BvDelete(ptr) if (ptr) \
-{ \
-	delete ptr; \
-	ptr = nullptr; \
-}
-
-#define BvDeleteArray(ptr) if (ptr) \
-{ \
-	delete[] ptr; \
-	ptr = nullptr; \
-}
-
-
-#define BvBit(bit) (1 << bit)
-
-
-template<u32 N, class Type>
-constexpr u32 BvArraySize(Type(&)[N])
-{
-	return N;
-}
 
 
 namespace Internal
@@ -83,34 +47,3 @@ namespace Internal
 		return RunHelper(std::forward<Fn>(fn), std::make_tuple<Args...>(std::forward<Args>(args)...), MakeIndexSequence<sizeof...(Args)>());
 	}
 }
-
-
-class BvDelegateBase
-{
-public:
-	virtual ~BvDelegateBase() {}
-	virtual void Invoke() const = 0;
-};
-
-
-template<class Fn, class... Args>
-class BvDelegate : public BvDelegateBase
-{
-public:
-	template<typename = typename std::enable_if_t<std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
-	BvDelegate(Fn && fn, Args &&... args)
-		: m_Function(std::forward<Fn>(fn)), m_Args(std::forward<Args>(args)...) {}
-
-	~BvDelegate() {}
-
-	void Invoke() const override
-	{
-		// I was initially using the index sequence above and the call helpers,
-		// but because I'm using C++ 17, I'll just stick to std::apply instead
-		std::apply(m_Function, m_Args);
-	}
-
-private:
-	Fn m_Function;
-	std::tuple<Args...> m_Args;
-};

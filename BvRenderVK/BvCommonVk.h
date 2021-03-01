@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 
 // Platform-dependent stuff
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
@@ -15,5 +15,5 @@
 #endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 
 
-#include "BvCore/BvDebug.h"
+#include "BvCore/Utils/BvDebug.h"
 #include "vulkan/vulkan.h"

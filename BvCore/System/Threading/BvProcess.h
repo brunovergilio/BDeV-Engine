@@ -1,15 +1,11 @@
 #pragma once
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 
 
-struct BvSystemInfo
-{
-	u32 m_NumCores;
-	u32 m_NumLogicalProcessors;
-	u32 m_MemPageSize;
-};
-
-
-const BvSystemInfo & GetSystemInfo();
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include "BvCore/System/Threading/Win32/BvProcessWin32.h"
+#else
+#error "Platform not yet supported"
+#endif

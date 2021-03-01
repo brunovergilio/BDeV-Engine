@@ -1,7 +1,4 @@
-#include "BvCore/System/Library/BvSharedLib.h"
-
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include "BvCore/System/Library/Win32/BvSharedLibWin32.h"
 
 
 BvSharedLib::BvSharedLib()
@@ -44,6 +41,3 @@ void * BvSharedLib::GetProcAddressInternal(const char * const pFunctionName) con
 {
 	return ::GetProcAddress(m_hLib, pFunctionName);
 }
-
-
-#endif

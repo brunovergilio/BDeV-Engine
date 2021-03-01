@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="BvDebug.h" />
     <ClInclude Include="Container\BvString.h" />
     <ClInclude Include="Utils\BvUtils.h" />
     <ClInclude Include="Utils\BvEnum.h" />
@@ -15,16 +14,29 @@
     <ClInclude Include="System\Threading\BvSync.h" />
     <ClInclude Include="System\Threading\BvThread.h" />
     <ClInclude Include="System\JobSystem\BvJobSystem.h" />
-    <ClInclude Include="BvPlatform.h" />
     <ClInclude Include="Utils\Hash.h" />
     <ClInclude Include="Container\BvRobinMap.h" />
     <ClInclude Include="Container\BvFixedVector.h" />
     <ClInclude Include="Utils\CallbackDispatcher.h" />
     <ClInclude Include="System\Window\BvNativeWindow.h" />
-    <ClInclude Include="System\Threading\BvAtomic.h" />
     <ClInclude Include="System\File\BvAsyncFile.h" />
     <ClInclude Include="System\File\BvFileSystem.h" />
     <ClInclude Include="System\Library\BvSharedLib.h" />
+    <ClInclude Include="System\JobSystem\BvJob.h" />
+    <ClInclude Include="System\Threading\Win32\BvSyncWin32.h" />
+    <ClInclude Include="BvCore.h" />
+    <ClInclude Include="System\Threading\Win32\BvFiberWin32.h" />
+    <ClInclude Include="System\Threading\Win32\BvThreadWin32.h" />
+    <ClInclude Include="System\Threading\Win32\BvProcessWin32.h" />
+    <ClInclude Include="System\Window\Win32\BvNativeWindowWin32.h" />
+    <ClInclude Include="System\Library\Win32\BvSharedLibWin32.h" />
+    <ClInclude Include="System\File\Win32\BvFileSystemWin32.h" />
+    <ClInclude Include="System\File\Win32\BvFileWin32.h" />
+    <ClInclude Include="System\File\Win32\BvAsyncFileWin32.h" />
+    <ClInclude Include="Utils\BvDelegate.h" />
+    <ClInclude Include="Utils\BvDebug.h" />
+    <ClInclude Include="Utils\Win32\BvDebugWin32.h" />
+    <ClInclude Include="System\Input\BvKeyboard.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Container\BvString.cpp" />
@@ -36,11 +48,11 @@
     <ClCompile Include="System\Threading\Win32\BvThreadWin32.cpp" />
     <ClCompile Include="System\Threading\Win32\BvProcessWin32.cpp" />
     <ClCompile Include="System\JobSystem\BvJobSystem.cpp" />
-    <ClCompile Include="Utils\Hash.cpp" />
     <ClCompile Include="System\Window\Win32\BvNativeWindowWin32.cpp" />
-    <ClCompile Include="System\Threading\Win32\BvAtomicWin32.cpp" />
     <ClCompile Include="System\File\Win32\BvAsyncFileWin32.cpp" />
     <ClCompile Include="System\File\Win32\BvFileSystemWin32.cpp" />
     <ClCompile Include="System\Library\Win32\BvSharedLibWin32.cpp" />
+    <ClCompile Include="Utils\Win32\BvDebugWin32.cpp" />
+    <ClCompile Include="System\Input\BvKeyboard.cpp" />
   </ItemGroup>
 </Project>

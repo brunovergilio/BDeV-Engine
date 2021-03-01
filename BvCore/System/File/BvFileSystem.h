@@ -1,24 +1,11 @@
 #pragma once
 
 
-#include "BvCore/System/File/BvFile.h"
-#include "BvCore/System/File/BvAsyncFile.h"
+#include "BvCore/BvCore.h"
 
 
-class BvFileSystem
-{
-public:
-	BvFileSystem();
-	~BvFileSystem();
-
-	BvFile OpenFile(const char * const pFilename, const BvFileAccess mode = BvFileAccess::kReadWrite);
-	BvAsyncFile OpenAsyncFile(const char * const pFilename, const BvFileAccess mode = BvFileAccess::kReadWrite);
-
-	void CloseFile(BvFile & file);
-	void CloseFile(BvAsyncFile & file);
-
-	bool FileExists(const char * const pFileName) const;
-	bool DirectoryExists(const char * const pDirName) const;
-
-private:
-};
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include "BvCore/System/File/Win32/BvFileSystemWin32.h"
+#else
+#error "Platform not yet supported"
+#endif

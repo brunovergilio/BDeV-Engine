@@ -54,9 +54,9 @@ BV_INLINE Type operator &(const Type v1, const Type v2)
 
 
 template<class Type, typename = typename std::enable_if_t<std::is_enum_v<Type> && UseEnumClassOperators<Type>::value>>
-BV_INLINE std::underlying_type_t<Type> operator &(const std::underlying_type_t<Type> v1, const Type v2)
+BV_INLINE Type operator &(const std::underlying_type_t<Type> v1, const Type v2)
 {
-	return v1 & static_cast<std::underlying_type_t<Type>>(v2);
+	return static_cast<Type>(v1 & static_cast<std::underlying_type_t<Type>>(v2));
 }
 
 

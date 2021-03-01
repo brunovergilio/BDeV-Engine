@@ -1,9 +1,6 @@
-#include "BvCore/System/Threading/BvFiber.h"
-#include "BvCore/BvDebug.h"
+#include "BvCore/System/Threading/Win32/BvFiberWin32.h"
+#include "BvCore/Utils/BvDebug.h"
 #include <utility>
-
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
 
 
 BvFiber::BvFiber()
@@ -124,6 +121,3 @@ void BvFiber::FiberEntryPoint(void * pData)
 	BvFiber * pFiber = reinterpret_cast<BvFiber *>(pData);
 	pFiber->m_pFunction(pFiber->m_pData);
 }
-
-
-#endif

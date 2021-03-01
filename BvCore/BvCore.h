@@ -30,16 +30,6 @@
 #define no_init_all deprecated
 #endif
 
-#include <Windows.h>
-
-#define BV_PAUSE YieldProcessor()
-#define aligned_alloc _aligned_malloc
-#define aligned_free _aligned_free
-
-using FileHandle = HANDLE;
-using MutexHandle = CRITICAL_SECTION;
-using EventHandle = HANDLE;
-
 // Compiler-dependent stuff
 #if defined(_MSC_VER)
 #define BV_FUNCTION __FUNCTION__
@@ -61,10 +51,13 @@ using EventHandle = HANDLE;
 #pragma warning(disable:4302) // truncation from 'src' to 'dst'
 #pragma warning(disable:4244) // conversion from 'src' to 'dst', possible loss of data
 #pragma warning(disable:4267) // conversion from 'src' to 'dst', possible loss of data
-#pragma warning(disable:6100) // deref possible nullptr
+#pragma warning(disable:6011) // deref possible nullptr
+#pragma warning(disable:26812) // unscoped enum
 
 #else
 #define BV_FUNCTION __func__
+#define BV_FILE __FILE__
+#define BV_LINE __LINE__
 #define BV_INLINE inline
 #define BV_CPP_VER __cplusplus
 #endif // #if defined(_MSC_VER)
@@ -81,7 +74,9 @@ using EventHandle = HANDLE;
 #endif // #if defined(_DEBUG) || defined(DEBUG)
 
 
+#include <limits>
 #include <cstdint>
+#include <new>
 
 
 typedef int8_t    i8;
@@ -97,5 +92,64 @@ typedef uint64_t u64;
 typedef float	 f32;
 typedef double	 f64;
 
+template<typename Type> constexpr const Type kMin = std::numeric_limits<Type>::min();
+template<typename Type> constexpr const Type kMax = std::numeric_limits<Type>::max();
 
-constexpr u32 kInfinite = UINT32_MAX;
+constexpr const auto kI8Min = kMin<i8>;
+constexpr const auto kI8Max = kMax<i8>;
+constexpr const auto kU8Min = kMin<u8>;
+constexpr const auto kU8Max = kMax<u8>;
+
+constexpr const auto kI16Min = kMin<i16>;
+constexpr const auto kI16Max = kMax<i16>;
+constexpr const auto kU16Min = kMin<u16>;
+constexpr const auto kU16Max = kMax<u16>;
+
+constexpr const auto kI32Min = kMin<i32>;
+constexpr const auto kI32Max = kMax<i32>;
+constexpr const auto kU32Min = kMin<u32>;
+constexpr const auto kU32Max = kMax<u32>;
+
+constexpr const auto kI64Min = kMin<i64>;
+constexpr const auto kI64Max = kMax<i64>;
+constexpr const auto kU64Min = kMin<u64>;
+constexpr const auto kU64Max = kMax<u64>;
+
+
+constexpr size_t kCacheLineSize = std::hardware_destructive_interference_size;
+
+
+#define BV_NOCOPY(className)					  		\
+public:											  		\
+	className(const className &) = delete;			  	\
+	className & operator =(const className &) = delete; \
+
+#define BV_NOCOPYMOVE(className)					  	\
+public:											  		\
+	className(const className &) = delete;			  	\
+	className & operator =(const className &) = delete; \
+	className(className &&) = delete;			  		\
+	className & operator =(className &&) = delete;		\
+
+
+#define BvDelete(ptr) if (ptr) \
+{ \
+	delete ptr; \
+	ptr = nullptr; \
+}
+
+#define BvDeleteArray(ptr) if (ptr) \
+{ \
+	delete[] ptr; \
+	ptr = nullptr; \
+}
+
+
+#define BvBit(bit) (1 << (bit))
+
+
+template<u32 N, class Type>
+constexpr u32 BvArraySize(Type(&)[N])
+{
+	return N;
+}

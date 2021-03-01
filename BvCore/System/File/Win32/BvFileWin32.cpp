@@ -1,8 +1,5 @@
-#include "BvCore/System/File/BvFile.h"
-#include "BvCore/BvDebug.h"
-
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include "BvCore/System/File/Win32/BvFileWin32.h"
+#include "BvCore/Utils/BvDebug.h"
 
 
 BvFile::BvFile()
@@ -121,6 +118,3 @@ const bool BvFile::IsValid() const
 {
 	return m_hFile != INVALID_HANDLE_VALUE;
 }
-
-
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)

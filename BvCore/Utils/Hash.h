@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvCore/BvPlatform.h"
+#include "BvCore/BvCore.h"
 
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
@@ -11,9 +11,6 @@ __pragma(warning(suppress:4100))
 #else
 #define BV_SUPRESS_HASH_WARNING
 #endif
-
-
-u32 FastHash(const void * const pBytes, const size_t size);
 
 
 template<typename Type, Type fnvOffsetBasis, Type fnvPrime>
@@ -90,3 +87,49 @@ constexpr size_t ConstexprStringLength(const char * pBytes)
 
 #define ConstexprFNV1a32(bytes) BV_SUPRESS_HASH_WARNING ConstexprFNV1aHelper<u32, ConstexprStringLength(bytes), 0>(bytes, 2166136261u, 16777619u)
 #define ConstexprFNV1a64(bytes) BV_SUPRESS_HASH_WARNING ConstexprFNV1aHelper<u64, ConstexprStringLength(bytes), 0>(bytes, 14695981039346656037ull, 1099511628211ull)
+
+/*
+ * MurmurHash64A (C) Austin Appleby
+ */
+//u64 MurmurHash64A(const void* const pBytes, size_t size, u64 seed = 0)
+//{
+//	constexpr u64 m = 0xc6a4a7935bd1e995LLU;
+//	constexpr i32 shift = 47;
+//
+//	u64 h = seed ^ (size * m);
+//
+//	const u64* pData = (const u64*)pBytes;
+//	const u64* pEnd = (size >> 3) + pData;
+//
+//	while (pData != pEnd)
+//	{
+//		u64 k = *pData++;
+//
+//		k *= m;
+//		k ^= k >> shift;
+//		k *= m;
+//
+//		h ^= k;
+//		h *= m;
+//	}
+//
+//	const u8* pData2 = (const u8*)pData;
+//
+//	switch (size & 7)
+//	{
+//	case 7: h ^= (u64)(pData2[6]) << 48; [[fallthrough]];
+//	case 6: h ^= (u64)(pData2[5]) << 40; [[fallthrough]];
+//	case 5: h ^= (u64)(pData2[4]) << 32; [[fallthrough]];
+//	case 4: h ^= (u64)(pData2[3]) << 24; [[fallthrough]];
+//	case 3: h ^= (u64)(pData2[2]) << 16; [[fallthrough]];
+//	case 2: h ^= (u64)(pData2[1]) << 8;	 [[fallthrough]];
+//	case 1: h ^= (u64)(pData2[0]);		 [[fallthrough]];
+//		h *= m;
+//	};
+//
+//	h ^= h >> shift;
+//	h *= m;
+//	h ^= h >> shift;
+//
+//	return h;
+//}

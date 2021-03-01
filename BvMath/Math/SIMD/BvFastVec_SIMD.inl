@@ -43,10 +43,10 @@ BvFastVec VectorRound(BvFastVec v);
 BvFastVec VectorNegate(BvFastVec v);
 BvFastVec VectorZero();
 
-BvFastVec VectorIsZeroV(BvFastVec v, const float epsilon = BvEpsilon);
-bool VectorIsZero(BvFastVec v, const float epsilon = BvEpsilon);
-BvFastVec VectorIsEqualV(BvFastVec v1, BvFastVec v2, const float epsilon = BvEpsilon);
-bool VectorIsEqual(BvFastVec v1, BvFastVec v2, const float epsilon = BvEpsilon);
+BvFastVec VectorIsZeroV(BvFastVec v, const float epsilon = kEpsilon);
+bool VectorIsZero(BvFastVec v, const float epsilon = kEpsilon);
+BvFastVec VectorIsEqualV(BvFastVec v1, BvFastVec v2, const float epsilon = kEpsilon);
+bool VectorIsEqual(BvFastVec v1, BvFastVec v2, const float epsilon = kEpsilon);
 BvFastVec VectorIsExactlyEqualV(BvFastVec v1, BvFastVec v2);
 bool VectorIsExactlyEqual(BvFastVec v1, BvFastVec v2);
 

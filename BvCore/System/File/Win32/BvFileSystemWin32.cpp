@@ -1,9 +1,5 @@
-#include "BvCore/System/File/BvFileSystem.h"
+#include "BvCore/System/File/Win32/BvFileSystemWin32.h"
 #include "BvCore/System/JobSystem/BvJobSystem.h"
-
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-
 
 
 BvFileSystem::BvFileSystem()
@@ -124,6 +120,3 @@ bool BvFileSystem::DirectoryExists(const char * const pDirName) const
 {
 	return FileExists(pDirName);
 }
-
-
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)

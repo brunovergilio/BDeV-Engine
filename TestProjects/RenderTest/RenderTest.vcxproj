@@ -157,6 +157,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RenderTestBase\RenderTestBase.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\BvCore\BvCore.vcxproj">
@@ -168,6 +169,9 @@
     <ProjectReference Include="..\..\BvShaderTools\BvShaderTools.vcxproj">
       <Project>{7519e997-2db6-482c-abea-9080ed3f2b88}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RenderTestBase\RenderTestBase.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

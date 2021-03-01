@@ -1,68 +1,4 @@
-#include "BvCore/System/Threading/BvSync.h"
-
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-
-
-//BvSpinlock::BvSpinlock()
-//{
-//}
-//
-//
-//BvSpinlock::~BvSpinlock()
-//{
-//}
-//
-//
-//BvSpinlock::BvSpinlock(BvSpinlock && rhs)
-//{
-//	*this = std::move(rhs);
-//}
-//
-//
-//BvSpinlock & BvSpinlock::operator =(BvSpinlock && rhs)
-//{
-//	if (this != &rhs)
-//	{
-//		m_Lock = rhs.m_Lock;
-//		rhs.m_Lock.SetValue(0);
-//	}
-//
-//	return *this;
-//}
-//
-//
-//void BvSpinlock::Lock()
-//{
-//	for (;;)
-//	{
-//		if (m_Lock.Load() == 0)
-//		{
-//			if (m_Lock.CompareExchange(1, 0) == 0)
-//			{
-//				break;
-//			}
-//		}
-//		BV_PAUSE;
-//	}
-//}
-//
-//
-//bool BvSpinlock::TryLock()
-//{
-//	if (m_Lock.Load() == 0)
-//	{
-//		return m_Lock.CompareExchange(1, 0) == 0;
-//	}
-//
-//	return false;
-//}
-//
-//
-//void BvSpinlock::Unlock()
-//{
-//	m_Lock.Store(0);
-//}
+#include "BvCore/System/Threading/Win32/BvSyncWin32.h"
 
 
 BvMutex::BvMutex()
@@ -111,6 +47,46 @@ bool BvMutex::TryLock()
 void BvMutex::Unlock()
 {
 	LeaveCriticalSection(&m_Mutex);
+}
+
+
+BvSpinlock::BvSpinlock()
+{
+}
+
+
+BvSpinlock::~BvSpinlock()
+{
+}
+
+
+void BvSpinlock::Lock()
+{
+	for (;;)
+	{
+		if (!m_Lock.exchange(true, std::memory_order::memory_order_acquire))
+		{
+			return;
+		}
+
+		while (m_Lock.load(std::memory_order::memory_order_relaxed))
+		{
+			YieldProcessor();
+		}
+	}
+}
+
+
+bool BvSpinlock::TryLock()
+{
+	return !m_Lock.load(std::memory_order::memory_order_relaxed) &&
+		!m_Lock.exchange(true, std::memory_order::memory_order_acquire);
+}
+
+
+void BvSpinlock::Unlock()
+{
+	m_Lock.store(false, std::memory_order::memory_order_release);
 }
 
 
@@ -177,6 +153,3 @@ void BvEvent::Destroy()
 		m_hEvent = nullptr;
 	}
 }
-
-
-#endif

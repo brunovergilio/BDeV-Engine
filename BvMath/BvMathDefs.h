@@ -30,18 +30,18 @@
 
 
 // Default floating point error threshold
-constexpr float BvEpsilon = 0.0001f;
+constexpr float kEpsilon = 0.0001f;
 
-constexpr float BvPi      = 3.141592653589793238462f;
-constexpr float Bv2Pi	  = BvPi * 2.0f;//6.283185482025146484375f;
-constexpr float Bv3PiDiv2 = BvPi * 1.5f;//4.712388992309570312500f;
+constexpr float kPi      = 3.141592653589793238462f;
+constexpr float k2Pi	 = kPi * 2.0f;//6.283185482025146484375f;
+constexpr float k3PiDiv2 = kPi * 1.5f;//4.712388992309570312500f;
 
-constexpr float BvPiDiv2  = BvPi / 2.0f;//1.570796370506286621094f;
-constexpr float BvPiDiv3  = BvPi / 3.0f;//1.047197580337524414063f;
-constexpr float BvPiDiv4  = BvPi / 4.0f;//0.785398163397448309616f;
-constexpr float BvPiDiv5  = BvPi / 5.0f;//0.628318548202514648438f;
-constexpr float BvPiDiv6  = BvPi / 6.0f;//0.523598790168762207031f;
-constexpr float BvPiDiv8  = BvPi / 8.0f;//0.392699092626571655273f;
-constexpr float BvPiDiv10 = BvPi / 10.0f;//0.314159274101257324219f;
-constexpr float BvPiDiv12 = BvPi / 12.0f;//0.261799395084381103516f;
-constexpr float BvPiDiv16 = BvPi / 16.0f;//0.196349546313285827637f;
+constexpr float kPiDiv2  = kPi / 2.0f;//1.570796370506286621094f;
+constexpr float kPiDiv3  = kPi / 3.0f;//1.047197580337524414063f;
+constexpr float kPiDiv4  = kPi / 4.0f;//0.785398163397448309616f;
+constexpr float kPiDiv5  = kPi / 5.0f;//0.628318548202514648438f;
+constexpr float kPiDiv6  = kPi / 6.0f;//0.523598790168762207031f;
+constexpr float kPiDiv8  = kPi / 8.0f;//0.392699092626571655273f;
+constexpr float kPiDiv10 = kPi / 10.0f;//0.314159274101257324219f;
+constexpr float kPiDiv12 = kPi / 12.0f;//0.261799395084381103516f;
+constexpr float kPiDiv16 = kPi / 16.0f;//0.196349546313285827637f;
