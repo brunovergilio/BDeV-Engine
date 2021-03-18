@@ -47,6 +47,11 @@ void BvCommandPoolVk::Create()
 
 void BvCommandPoolVk::Destroy()
 {
+	for (auto&& pCommandBuffer : m_CommandBuffers)
+	{
+		BvDelete(pCommandBuffer);
+	}
+
 	if (m_CommandPool)
 	{
 		m_Device.GetDeviceFunctions().vkDestroyCommandPool(m_Device.GetHandle(), m_CommandPool, nullptr);
@@ -72,7 +77,9 @@ void BvCommandPoolVk::AllocateCommandBuffers(const u32 commandBufferCount, BvCom
 	auto result = m_Device.GetDeviceFunctions().vkAllocateCommandBuffers(m_Device.GetHandle(), &allocateInfo, commandBuffers);
 	for (u32 i = 0; i < allocateInfo.commandBufferCount; i++)
 	{
-		ppCommandBuffers[i] = new BvCommandBufferVk(m_Device, this, commandBuffers[i]);
+		auto pCommandBuffer = new BvCommandBufferVk(m_Device, this, commandBuffers[i]);
+		m_CommandBuffers.EmplaceBack(pCommandBuffer);
+		ppCommandBuffers[i] = pCommandBuffer;
 	}
 }
 
@@ -90,7 +97,20 @@ void BvCommandPoolVk::FreeCommandBuffers(const u32 commandBufferCount, BvCommand
 	{
 		auto pCbVk = reinterpret_cast<BvCommandBufferVk *>(ppCommandBuffers[i]);
 		commandBuffers[i] = pCbVk->GetHandle();
-		BvDelete(pCbVk);
+
+		for (auto j = 0u; j < m_CommandBuffers.Size(); j++)
+		{
+			if (m_CommandBuffers[j] == pCbVk)
+			{
+				if (j != m_CommandBuffers.Size() - 1)
+				{
+					std::swap(m_CommandBuffers[j], m_CommandBuffers[m_CommandBuffers.Size() - 1]);
+				}
+				m_CommandBuffers.PopBack();
+				BvDelete(pCbVk);
+				break;
+			}
+		}
 	}
 
 	m_Device.GetDeviceFunctions().vkFreeCommandBuffers(m_Device.GetHandle(), m_CommandPool, count, commandBuffers);

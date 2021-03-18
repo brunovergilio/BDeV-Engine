@@ -19,102 +19,102 @@
 // Access
 // ======================
 
-BvFastMat MatrixSet(BvFastVec v0, BvFastVec v1, BvFastVec v2, BvFastVec v3);
+mf32 MatrixSet(vf32 v0, vf32 v1, vf32 v2, vf32 v3);
 
 // ======================
 // Basic Operations
 // ======================
 
-BvFastMat MatrixAdd(const BvFastMat & m1, const BvFastMat & m2);
-BvFastMat MatrixAdd(const BvFastMat & m, const float s);
+mf32 MatrixAdd(const mf32 & m1, const mf32 & m2);
+mf32 MatrixAdd(const mf32 & m, const float s);
 
-BvFastMat MatrixSub(const BvFastMat & m1, const BvFastMat & m2);
-BvFastMat MatrixSub(const BvFastMat & m, const float s);
+mf32 MatrixSub(const mf32 & m1, const mf32 & m2);
+mf32 MatrixSub(const mf32 & m, const float s);
 
-BvFastMat MatrixMul(const BvFastMat & m1, const BvFastMat & m2);
-BvFastMat MatrixMul(const BvFastMat & m, const float s);
+mf32 MatrixMul(const mf32 & m1, const mf32 & m2);
+mf32 MatrixMul(const mf32 & m, const float s);
 
-BvFastMat MatrixDiv(const BvFastMat & m, const float s);
+mf32 MatrixDiv(const mf32 & m, const float s);
 
-BvFastMat MatrixIdentity();
+mf32 MatrixIdentity();
 
-BvFastMat MatrixTranspose(const BvFastMat & m);
+mf32 MatrixTranspose(const mf32 & m);
 
-BvFastVec MatrixDeterminantV(const BvFastMat & m);
-float MatrixDeterminant(const BvFastMat & m);
+vf32 MatrixDeterminantV(const mf32 & m);
+float MatrixDeterminant(const mf32 & m);
 
-BvFastMat MatrixInverse(const BvFastMat & m);
+mf32 MatrixInverse(const mf32 & m);
 
 // ======================
 // Operators
 // ======================
 
-BvFastMat operator + (const BvFastMat & m);
-BvFastMat operator - (const BvFastMat & m);
+mf32 operator + (const mf32 & m);
+mf32 operator - (const mf32 & m);
 
-BvFastMat operator + (const BvFastMat & m1, const BvFastMat & m2);
-BvFastMat & operator += (BvFastMat & m1, const BvFastMat & m2);
+mf32 operator + (const mf32 & m1, const mf32 & m2);
+mf32 & operator += (mf32 & m1, const mf32 & m2);
 
-BvFastMat operator - (const BvFastMat & m1, const BvFastMat & m2);
-BvFastMat & operator -= (BvFastMat & m1, const BvFastMat & m2);
+mf32 operator - (const mf32 & m1, const mf32 & m2);
+mf32 & operator -= (mf32 & m1, const mf32 & m2);
 
-BvFastMat operator * (const BvFastMat & m1, const BvFastMat & m2);
-BvFastMat & operator *= (BvFastMat & m1, const BvFastMat & m2);
+mf32 operator * (const mf32 & m1, const mf32 & m2);
+mf32 & operator *= (mf32 & m1, const mf32 & m2);
 
-BvFastMat operator + (const BvFastMat & m, const float s);
-BvFastMat & operator += (BvFastMat & m, const float s);
+mf32 operator + (const mf32 & m, const float s);
+mf32 & operator += (mf32 & m, const float s);
 
-BvFastMat operator - (const BvFastMat & m, const float s);
-BvFastMat & operator -= (BvFastMat & m, const float s);
+mf32 operator - (const mf32 & m, const float s);
+mf32 & operator -= (mf32 & m, const float s);
 
-BvFastMat operator * (const BvFastMat & m, const float s);
-BvFastMat & operator *= (BvFastMat & m, const float s);
+mf32 operator * (const mf32 & m, const float s);
+mf32 & operator *= (mf32 & m, const float s);
 
-BvFastMat operator / (const BvFastMat & m, const float s);
-BvFastMat & operator /= (BvFastMat & m, const float s);
+mf32 operator / (const mf32 & m, const float s);
+mf32 & operator /= (mf32 & m, const float s);
 
 // ======================
 // Specialized Operations
 // ======================
 
-BvFastMat MatrixScaling(const float sX, const float sY, const float sZ);
+mf32 MatrixScaling(const float sX, const float sY, const float sZ);
 
-BvFastMat MatrixTranslation(const float tX, const float tY, const float tZ);
+mf32 MatrixTranslation(const float tX, const float tY, const float tZ);
 
-BvFastMat MatrixRotationX(const float angle);
-BvFastMat MatrixRotationY(const float angle);
-BvFastMat MatrixRotationZ(const float angle);
-BvFastMat MatrixRotationAxis(BvFastVec axis, const float angle);
+mf32 MatrixRotationX(const float angle);
+mf32 MatrixRotationY(const float angle);
+mf32 MatrixRotationZ(const float angle);
+mf32 MatrixRotationAxis(vf32 axis, const float angle);
 		 
-BvFastMat MatrixLookAt(BvFastVec eyePos, BvFastVec dirVec, BvFastVec upVec);
-BvFastMat MatrixLookAtLH(BvFastVec eyePos, BvFastVec lookPos, BvFastVec upVec);
-BvFastMat MatrixLookAtRH(BvFastVec eyePos, BvFastVec lookPos, BvFastVec upVec);
+mf32 MatrixLookAt(vf32 eyePos, vf32 dirVec, vf32 upVec);
+mf32 MatrixLookAtLH(vf32 eyePos, vf32 lookPos, vf32 upVec);
+mf32 MatrixLookAtRH(vf32 eyePos, vf32 lookPos, vf32 upVec);
 		 
-BvFastMat MatrixPerspectiveLH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
-BvFastMat MatrixPerspectiveRH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveLH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveRH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
 		 
-BvFastMat MatrixPerspectiveLH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
-BvFastMat MatrixPerspectiveRH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveLH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveRH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
 
-BvFastMat MatrixPerspectiveLH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
-BvFastMat MatrixPerspectiveRH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveLH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveRH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
 
-BvFastMat MatrixOrthographicOffCenterLH_DX(const float right, const float left, const float top, const float bottom, const float
+mf32 MatrixOrthographicOffCenterLH_DX(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ);
 
-BvFastMat MatrixOrthographicOffCenterRH_DX(const float right, const float left, const float top, const float bottom, const float
+mf32 MatrixOrthographicOffCenterRH_DX(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ);
 
-BvFastMat MatrixOrthographicOffCenterLH_GL(const float right, const float left, const float top, const float bottom, const float
+mf32 MatrixOrthographicOffCenterLH_GL(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ);
 
-BvFastMat MatrixOrthographicOffCenterRH_GL(const float right, const float left, const float top, const float bottom, const float
+mf32 MatrixOrthographicOffCenterRH_GL(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ);
 
-BvFastMat MatrixOrthographicOffCenterLH_VK(const float right, const float left, const float top, const float bottom, const float
+mf32 MatrixOrthographicOffCenterLH_VK(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ);
 
-BvFastMat MatrixOrthographicOffCenterRH_VK(const float right, const float left, const float top, const float bottom, const float
+mf32 MatrixOrthographicOffCenterRH_VK(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ);
 
 // ======================
@@ -125,9 +125,9 @@ BvFastMat MatrixOrthographicOffCenterRH_VK(const float right, const float left, 
 // Access
 // ======================
 
-inline BvFastMat MatrixSet(BvFastVec v0, BvFastVec v1, BvFastVec v2, BvFastVec v3)
+inline mf32 MatrixSet(vf32 v0, vf32 v1, vf32 v2, vf32 v3)
 {
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = v0;
 	r.r[1] = v1;
 	r.r[2] = v2;
@@ -140,9 +140,9 @@ inline BvFastMat MatrixSet(BvFastVec v0, BvFastVec v1, BvFastVec v2, BvFastVec v
 // Basic Operations
 // ======================
 
-inline BvFastMat MatrixAdd(const BvFastMat & m1, const BvFastMat & m2)
+inline mf32 MatrixAdd(const mf32 & m1, const mf32 & m2)
 {
-	BvFastMat m;
+	mf32 m;
 	m.r[0] = _mm_add_ps(m1.r[0], m2.r[0]);
 	m.r[1] = _mm_add_ps(m1.r[1], m2.r[1]);
 	m.r[2] = _mm_add_ps(m1.r[2], m2.r[2]);
@@ -151,10 +151,10 @@ inline BvFastMat MatrixAdd(const BvFastMat & m1, const BvFastMat & m2)
 	return m;
 }
 
-inline BvFastMat MatrixAdd(const BvFastMat & m, const float s)
+inline mf32 MatrixAdd(const mf32 & m, const float s)
 {
-	BvFastVec v = _mm_set1_ps(s);
-	BvFastMat r;
+	vf32 v = _mm_set1_ps(s);
+	mf32 r;
 	r.r[0] = _mm_add_ps(m.r[0], v);
 	r.r[1] = _mm_add_ps(m.r[1], v);
 	r.r[2] = _mm_add_ps(m.r[2], v);
@@ -163,9 +163,9 @@ inline BvFastMat MatrixAdd(const BvFastMat & m, const float s)
 	return r;
 }
 
-inline BvFastMat MatrixSub(const BvFastMat & m1, const BvFastMat & m2)
+inline mf32 MatrixSub(const mf32 & m1, const mf32 & m2)
 {
-	BvFastMat m;
+	mf32 m;
 	m.r[0] = _mm_sub_ps(m1.r[0], m2.r[0]);
 	m.r[1] = _mm_sub_ps(m1.r[1], m2.r[1]);
 	m.r[2] = _mm_sub_ps(m1.r[2], m2.r[2]);
@@ -174,10 +174,10 @@ inline BvFastMat MatrixSub(const BvFastMat & m1, const BvFastMat & m2)
 	return m;
 }
 
-inline BvFastMat MatrixSub(const BvFastMat & m, const float s)
+inline mf32 MatrixSub(const mf32 & m, const float s)
 {
-	BvFastVec v = _mm_set1_ps(s);
-	BvFastMat r;
+	vf32 v = _mm_set1_ps(s);
+	mf32 r;
 	r.r[0] = _mm_sub_ps(m.r[0], v);
 	r.r[1] = _mm_sub_ps(m.r[1], v);
 	r.r[2] = _mm_sub_ps(m.r[2], v);
@@ -186,21 +186,21 @@ inline BvFastMat MatrixSub(const BvFastMat & m, const float s)
 	return r;
 }
 
-inline BvFastMat MatrixMul(const BvFastMat & m1, const BvFastMat & m2)
+inline mf32 MatrixMul(const mf32 & m1, const mf32 & m2)
 {
-	BvFastMat m;
+	mf32 m;
 
 	// Row 0
-	BvFastVec tmp0 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(0, 0, 0, 0));
+	vf32 tmp0 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(0, 0, 0, 0));
 	tmp0 = _mm_mul_ps(tmp0, m2.r[0]);
 
-	BvFastVec tmp1 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(1, 1, 1, 1));
+	vf32 tmp1 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(1, 1, 1, 1));
 	tmp1 = _mm_mul_ps(tmp1, m2.r[1]);
 
-	BvFastVec tmp2 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(2, 2, 2, 2));
+	vf32 tmp2 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(2, 2, 2, 2));
 	tmp2 = _mm_mul_ps(tmp2, m2.r[2]);
 
-	BvFastVec tmp3 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(3, 3, 3, 3));
+	vf32 tmp3 = _mm_shuffle_ps(m1.r[0], m1.r[0], _MM_SHUFFLE(3, 3, 3, 3));
 	tmp3 = _mm_mul_ps(tmp3, m2.r[3]);
 
 	m.r[0] = _mm_add_ps(tmp0, tmp1);
@@ -257,10 +257,10 @@ inline BvFastMat MatrixMul(const BvFastMat & m1, const BvFastMat & m2)
 	return m;
 }
 
-inline BvFastMat MatrixMul(const BvFastMat & m, const float s)
+inline mf32 MatrixMul(const mf32 & m, const float s)
 {
-	BvFastVec v = _mm_set1_ps(s);
-	BvFastMat r;
+	vf32 v = _mm_set1_ps(s);
+	mf32 r;
 	r.r[0] = _mm_mul_ps(m.r[0], v);
 	r.r[1] = _mm_mul_ps(m.r[1], v);
 	r.r[2] = _mm_mul_ps(m.r[2], v);
@@ -269,10 +269,10 @@ inline BvFastMat MatrixMul(const BvFastMat & m, const float s)
 	return r;
 }
 
-inline BvFastMat MatrixDiv(const BvFastMat & m, const float s)
+inline mf32 MatrixDiv(const mf32 & m, const float s)
 {
-	BvFastVec v = _mm_set1_ps(s);
-	BvFastMat r;
+	vf32 v = _mm_set1_ps(s);
+	mf32 r;
 	r.r[0] = _mm_div_ps(m.r[0], v);
 	r.r[1] = _mm_div_ps(m.r[1], v);
 	r.r[2] = _mm_div_ps(m.r[2], v);
@@ -281,11 +281,11 @@ inline BvFastMat MatrixDiv(const BvFastMat & m, const float s)
 	return r;
 }
 
-inline BvFastMat MatrixIdentity()
+inline mf32 MatrixIdentity()
 {
-	BvFastVec id = _mm_set_ss(1.0f);
+	vf32 id = _mm_set_ss(1.0f);
 
-	BvFastMat m;
+	mf32 m;
 	m.r[0] = id;
 	m.r[1] = _mm_shuffle_ps(id, id, _MM_SHUFFLE(1, 1, 0, 1));
 	m.r[2] = _mm_shuffle_ps(id, id, _MM_SHUFFLE(1, 0, 1, 1));
@@ -294,14 +294,14 @@ inline BvFastMat MatrixIdentity()
 	return m;
 }
 
-inline BvFastMat MatrixTranspose(const BvFastMat & m)
+inline mf32 MatrixTranspose(const mf32 & m)
 {
 	// top left 2x2 matrix
-	BvFastVec upperBlock = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(1, 0, 1, 0));
+	vf32 upperBlock = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(1, 0, 1, 0));
 	// bottom left 2x2 matrix
-	BvFastVec lowerBlock = _mm_shuffle_ps(m.r[2], m.r[3], _MM_SHUFFLE(1, 0, 1, 0));
+	vf32 lowerBlock = _mm_shuffle_ps(m.r[2], m.r[3], _MM_SHUFFLE(1, 0, 1, 0));
 
-	BvFastMat mT;
+	mf32 mT;
 	mT.r[0] = _mm_shuffle_ps(upperBlock, lowerBlock, _MM_SHUFFLE(2, 0, 2, 0));
 	mT.r[1] = _mm_shuffle_ps(upperBlock, lowerBlock, _MM_SHUFFLE(3, 1, 3, 1));
 
@@ -316,18 +316,18 @@ inline BvFastMat MatrixTranspose(const BvFastMat & m)
 	return mT;
 }
 
-inline BvFastVec MatrixDeterminantV(const BvFastMat & m)
+inline vf32 MatrixDeterminantV(const mf32 & m)
 {
 	// Calculate the first 12 2x2 determinant multiplications, to avoid repeating them later
-	BvFastVec cf1 = _mm_mul_ps(_mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(3, 1, 3, 2)), _mm_shuffle_ps(m.r[3], m.r[3], _MM_SHUFFLE(1, 3, 2, 3)));
-	BvFastVec cf2 = _mm_mul_ps(_mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(3, 0, 2, 1)), _mm_shuffle_ps(m.r[3], m.r[3], _MM_SHUFFLE(0, 3, 1, 2)));
-	BvFastVec cf3 = _mm_mul_ps(_mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(1, 0, 2, 0)), _mm_shuffle_ps(m.r[3], m.r[3], _MM_SHUFFLE(0, 1, 0, 2)));
+	vf32 cf1 = _mm_mul_ps(_mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(3, 1, 3, 2)), _mm_shuffle_ps(m.r[3], m.r[3], _MM_SHUFFLE(1, 3, 2, 3)));
+	vf32 cf2 = _mm_mul_ps(_mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(3, 0, 2, 1)), _mm_shuffle_ps(m.r[3], m.r[3], _MM_SHUFFLE(0, 3, 1, 2)));
+	vf32 cf3 = _mm_mul_ps(_mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(1, 0, 2, 0)), _mm_shuffle_ps(m.r[3], m.r[3], _MM_SHUFFLE(0, 1, 0, 2)));
 
 	// Compute the first multiplication for the first row
-	BvFastVec tmp1 = _mm_shuffle_ps(cf1, cf3, _MM_SHUFFLE(3, 2, 1, 0));
-	BvFastVec tmp2 = _mm_shuffle_ps(m.r[1], m.r[1], _MM_SHUFFLE(2, 3, 0, 1));
+	vf32 tmp1 = _mm_shuffle_ps(cf1, cf3, _MM_SHUFFLE(3, 2, 1, 0));
+	vf32 tmp2 = _mm_shuffle_ps(m.r[1], m.r[1], _MM_SHUFFLE(2, 3, 0, 1));
 
-	BvFastVec row0 = _mm_mul_ps(tmp1, tmp2);
+	vf32 row0 = _mm_mul_ps(tmp1, tmp2);
 
 	// Compute the second multiplication and first subtraction for the first row
 	tmp1 = _mm_shuffle_ps(tmp1, tmp1, _MM_SHUFFLE(2, 3, 0, 1));
@@ -358,7 +358,7 @@ inline BvFastVec MatrixDeterminantV(const BvFastMat & m)
 	row0 = _mm_sub_ps(row0, _mm_mul_ps(tmp1, tmp2));
 
 	// Compute the determinant
-	BvFastVec det = _mm_mul_ps(row0, m.r[0]);
+	vf32 det = _mm_mul_ps(row0, m.r[0]);
 
 	// Sum all values and replicate them through all elements
 	det = _mm_add_ps(det, _mm_shuffle_ps(det, det, _MM_SHUFFLE(2, 3, 0, 1)));
@@ -367,29 +367,29 @@ inline BvFastVec MatrixDeterminantV(const BvFastMat & m)
 	return det;
 }
 
-inline float MatrixDeterminant(const BvFastMat & m)
+inline float MatrixDeterminant(const mf32 & m)
 {
 	return _mm_cvtss_f32(MatrixDeterminantV(m));
 }
 
-inline BvFastMat MatrixInverse(const BvFastMat & m)
+inline mf32 MatrixInverse(const mf32 & m)
 {
-	BvFastMat mTmp = MatrixTranspose(m);
+	mf32 mTmp = MatrixTranspose(m);
 
 	// Calculate the first 12 2x2 determinant multiplications, to avoid repeating them later
-	BvFastVec cf1 = _mm_mul_ps(_mm_shuffle_ps(mTmp.r[2], mTmp.r[2], _MM_SHUFFLE(3, 1, 3, 2)), _mm_shuffle_ps(mTmp.r[3], mTmp.r[3], _MM_SHUFFLE(1, 3, 2, 3)));
-	BvFastVec cf2 = _mm_mul_ps(_mm_shuffle_ps(mTmp.r[2], mTmp.r[2], _MM_SHUFFLE(3, 0, 2, 1)), _mm_shuffle_ps(mTmp.r[3], mTmp.r[3], _MM_SHUFFLE(0, 3, 1, 2)));
-	BvFastVec cf3 = _mm_mul_ps(_mm_shuffle_ps(mTmp.r[2], mTmp.r[2], _MM_SHUFFLE(1, 0, 2, 0)), _mm_shuffle_ps(mTmp.r[3], mTmp.r[3], _MM_SHUFFLE(0, 1, 0, 2)));
+	vf32 cf1 = _mm_mul_ps(_mm_shuffle_ps(mTmp.r[2], mTmp.r[2], _MM_SHUFFLE(3, 1, 3, 2)), _mm_shuffle_ps(mTmp.r[3], mTmp.r[3], _MM_SHUFFLE(1, 3, 2, 3)));
+	vf32 cf2 = _mm_mul_ps(_mm_shuffle_ps(mTmp.r[2], mTmp.r[2], _MM_SHUFFLE(3, 0, 2, 1)), _mm_shuffle_ps(mTmp.r[3], mTmp.r[3], _MM_SHUFFLE(0, 3, 1, 2)));
+	vf32 cf3 = _mm_mul_ps(_mm_shuffle_ps(mTmp.r[2], mTmp.r[2], _MM_SHUFFLE(1, 0, 2, 0)), _mm_shuffle_ps(mTmp.r[3], mTmp.r[3], _MM_SHUFFLE(0, 1, 0, 2)));
 
 	// Compute the first multiplication for the first row
-	BvFastVec tmp1 = _mm_shuffle_ps(cf1, cf3, _MM_SHUFFLE(3, 2, 1, 0));
-	BvFastVec tmp2 = _mm_shuffle_ps(mTmp.r[1], mTmp.r[1], _MM_SHUFFLE(2, 3, 0, 1));
+	vf32 tmp1 = _mm_shuffle_ps(cf1, cf3, _MM_SHUFFLE(3, 2, 1, 0));
+	vf32 tmp2 = _mm_shuffle_ps(mTmp.r[1], mTmp.r[1], _MM_SHUFFLE(2, 3, 0, 1));
 
-	BvFastVec row0 = _mm_mul_ps(tmp1, tmp2);
+	vf32 row0 = _mm_mul_ps(tmp1, tmp2);
 
 	// Compute the first multiplication for the second row
 	tmp2 = _mm_shuffle_ps(mTmp.r[0], mTmp.r[0], _MM_SHUFFLE(2, 3, 0, 1));
-	BvFastVec row1 = _mm_mul_ps(tmp1, tmp2);
+	vf32 row1 = _mm_mul_ps(tmp1, tmp2);
 
 	// Compute the second multiplication and first subtraction for the first row
 	tmp1 = _mm_shuffle_ps(tmp1, tmp1, _MM_SHUFFLE(2, 3, 0, 1));
@@ -456,11 +456,11 @@ inline BvFastMat MatrixInverse(const BvFastMat & m)
 	tmp1 = _mm_shuffle_ps(cf1, cf3, _MM_SHUFFLE(3, 2, 1, 0));
 	tmp2 = _mm_shuffle_ps(mTmp.r[3], mTmp.r[3], _MM_SHUFFLE(2, 3, 0, 1));
 
-	BvFastVec row2 = _mm_mul_ps(tmp1, tmp2);
+	vf32 row2 = _mm_mul_ps(tmp1, tmp2);
 
 	// Compute the first multiplication for the fourth row
 	tmp2 = _mm_shuffle_ps(mTmp.r[2], mTmp.r[2], _MM_SHUFFLE(2, 3, 0, 1));
-	BvFastVec row3 = _mm_mul_ps(tmp1, tmp2);
+	vf32 row3 = _mm_mul_ps(tmp1, tmp2);
 
 	// Compute the second multiplication and first subtraction for the third row
 	tmp1 = _mm_shuffle_ps(tmp1, tmp1, _MM_SHUFFLE(2, 3, 0, 1));
@@ -519,7 +519,7 @@ inline BvFastMat MatrixInverse(const BvFastMat & m)
 	row3 = _mm_add_ps(row3, _mm_mul_ps(tmp1, tmp2));
 
 	// Compute the determinant
-	BvFastVec det = _mm_mul_ps(row0, mTmp.r[0]);
+	vf32 det = _mm_mul_ps(row0, mTmp.r[0]);
 
 	// Sum all values and replicate them through all elements
 	det = _mm_add_ps(det, _mm_shuffle_ps(det, det, _MM_SHUFFLE(2, 3, 0, 1)));
@@ -542,14 +542,14 @@ inline BvFastMat MatrixInverse(const BvFastMat & m)
 // Operators
 // ======================
 
-inline BvFastMat operator + (const BvFastMat & m)
+inline mf32 operator + (const mf32 & m)
 {
 	return m;
 }
 
-inline BvFastMat operator - (const BvFastMat & m)
+inline mf32 operator - (const mf32 & m)
 {
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = VectorNegate(m.r[0]);
 	r.r[1] = VectorNegate(m.r[1]);
 	r.r[2] = VectorNegate(m.r[2]);
@@ -558,65 +558,65 @@ inline BvFastMat operator - (const BvFastMat & m)
 	return r;
 }
 
-inline BvFastMat operator + (const BvFastMat & m1, const BvFastMat & m2)
+inline mf32 operator + (const mf32 & m1, const mf32 & m2)
 {
 	return MatrixAdd(m1, m2);
 }
 
-inline BvFastMat & operator += (BvFastMat & m1, const BvFastMat & m2)
+inline mf32 & operator += (mf32 & m1, const mf32 & m2)
 {
 	m1 = MatrixAdd(m1, m2);
 	return m1;
 }
 
-inline BvFastMat operator - (const BvFastMat & m1, const BvFastMat & m2)
+inline mf32 operator - (const mf32 & m1, const mf32 & m2)
 {
 	return MatrixSub(m1, m2);
 }
 
-inline BvFastMat & operator -= (BvFastMat & m1, const BvFastMat & m2)
+inline mf32 & operator -= (mf32 & m1, const mf32 & m2)
 {
 	m1 = MatrixSub(m1, m2);
 	return m1;
 }
 
-inline BvFastMat operator * (const BvFastMat & m1, const BvFastMat & m2)
+inline mf32 operator * (const mf32 & m1, const mf32 & m2)
 {
 	return MatrixMul(m1, m2);
 }
 
-inline BvFastMat & operator *= (BvFastMat & m1, const BvFastMat & m2)
+inline mf32 & operator *= (mf32 & m1, const mf32 & m2)
 {
 	m1 = MatrixMul(m1, m2);
 	return m1;
 }
 
-inline BvFastMat operator+(const BvFastMat & m, const float s)
+inline mf32 operator+(const mf32 & m, const float s)
 {
 	return MatrixAdd(m, s);
 }
 
-inline BvFastMat & operator+=(BvFastMat & m, const float s)
+inline mf32 & operator+=(mf32 & m, const float s)
 {
 	m = MatrixAdd(m, s);
 	return m;
 }
 
-inline BvFastMat operator-(const BvFastMat & m, const float s)
+inline mf32 operator-(const mf32 & m, const float s)
 {
 	return MatrixSub(m, s);
 }
 
-inline BvFastMat & operator-=(BvFastMat & m, const float s)
+inline mf32 & operator-=(mf32 & m, const float s)
 {
 	m = MatrixSub(m, s);
 	return m;
 }
 
-inline BvFastMat operator * (const BvFastMat & m, const float s)
+inline mf32 operator * (const mf32 & m, const float s)
 {
-	BvFastVec v = _mm_set1_ps(s);
-	BvFastMat r;
+	vf32 v = _mm_set1_ps(s);
+	mf32 r;
 	r.r[0] = _mm_mul_ps(m.r[0], v);
 	r.r[1] = _mm_mul_ps(m.r[1], v);
 	r.r[2] = _mm_mul_ps(m.r[2], v);
@@ -625,9 +625,9 @@ inline BvFastMat operator * (const BvFastMat & m, const float s)
 	return r;
 }
 
-inline BvFastMat & operator *= (BvFastMat & m, const float s)
+inline mf32 & operator *= (mf32 & m, const float s)
 {
-	BvFastVec v = _mm_set1_ps(s);
+	vf32 v = _mm_set1_ps(s);
 	m.r[0] = _mm_mul_ps(m.r[0], v);
 	m.r[1] = _mm_mul_ps(m.r[1], v);
 	m.r[2] = _mm_mul_ps(m.r[2], v);
@@ -636,12 +636,12 @@ inline BvFastMat & operator *= (BvFastMat & m, const float s)
 	return m;
 }
 
-inline BvFastMat operator / (const BvFastMat & m, const float s)
+inline mf32 operator / (const mf32 & m, const float s)
 {
 	return MatrixDiv(m, s);
 }
 
-inline BvFastMat & operator /= (BvFastMat & m, const float s)
+inline mf32 & operator /= (mf32 & m, const float s)
 {
 	m = MatrixDiv(m, s);
 	return m;
@@ -651,9 +651,9 @@ inline BvFastMat & operator /= (BvFastMat & m, const float s)
 // Specialized Operations
 // ======================
 
-inline BvFastMat MatrixScaling(const float sX, const float sY, const float sZ)
+inline mf32 MatrixScaling(const float sX, const float sY, const float sZ)
 {
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = VectorSet(sX, 0.0f, 0.0f, 0.0f);
 	r.r[1] = VectorSet(0.0f, sY, 0.0f, 0.0f);
 	r.r[2] = VectorSet(0.0f, 0.0f, sZ, 0.0f);
@@ -662,9 +662,9 @@ inline BvFastMat MatrixScaling(const float sX, const float sY, const float sZ)
 	return r;
 }
 
-inline BvFastMat MatrixTranslation(const float tX, const float tY, const float tZ)
+inline mf32 MatrixTranslation(const float tX, const float tY, const float tZ)
 {
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = VectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 	r.r[1] = VectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	r.r[2] = VectorSet(0.0f, 0.0f, 1.0f, 0.0f);
@@ -673,14 +673,14 @@ inline BvFastMat MatrixTranslation(const float tX, const float tY, const float t
 	return r;
 }
 
-inline BvFastMat MatrixRotationX(const float angle)
+inline mf32 MatrixRotationX(const float angle)
 {
 	float cosSin[] = { cosf(angle), sinf(angle) };
-	BvFastVec vCosSin = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
+	vf32 vCosSin = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
 	cosSin[1] = -cosSin[1];
-	BvFastVec vMinusSinCos = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
+	vf32 vMinusSinCos = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = VectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 	r.r[1] = _mm_shuffle_ps(vCosSin, vCosSin, _MM_SHUFFLE(3, 1, 0, 2));
 	r.r[2] = _mm_shuffle_ps(vMinusSinCos, vMinusSinCos, _MM_SHUFFLE(3, 0, 1, 2));
@@ -689,14 +689,14 @@ inline BvFastMat MatrixRotationX(const float angle)
 	return r;
 }
 
-inline BvFastMat MatrixRotationY(const float angle)
+inline mf32 MatrixRotationY(const float angle)
 {
 	float cosSin[] = { cosf(angle), sinf(angle) };
-	BvFastVec vCosSin = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
+	vf32 vCosSin = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
 	cosSin[1] = -cosSin[1];
-	BvFastVec vMinusSinCos = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
+	vf32 vMinusSinCos = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(vMinusSinCos, vMinusSinCos, _MM_SHUFFLE(3, 1, 2, 0));
 	r.r[1] = VectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	r.r[2] = _mm_shuffle_ps(vCosSin, vCosSin, _MM_SHUFFLE(3, 0, 2, 1));
@@ -705,14 +705,14 @@ inline BvFastMat MatrixRotationY(const float angle)
 	return r;
 }
 
-inline BvFastMat MatrixRotationZ(const float angle)
+inline mf32 MatrixRotationZ(const float angle)
 {
 	float cosSin[] = { cosf(angle), sinf(angle) };
-	BvFastVec vCosSin = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
+	vf32 vCosSin = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
 	cosSin[1] = -cosSin[1];
-	BvFastVec vMinusSinCos = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
+	vf32 vMinusSinCos = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = vCosSin;
 	r.r[1] = _mm_shuffle_ps(vMinusSinCos, vMinusSinCos, _MM_SHUFFLE(3, 2, 0, 1));
 	r.r[2] = VectorSet(0.0f, 0.0f, 1.0f, 0.0f);
@@ -721,19 +721,19 @@ inline BvFastMat MatrixRotationZ(const float angle)
 	return r;
 }
 
-inline BvFastMat MatrixRotationAxis(BvFastVec axis, const float angle)
+inline mf32 MatrixRotationAxis(vf32 axis, const float angle)
 {
 	float sin = sinf(angle);
 	float cos = cosf(angle);
 
-	BvFastVec vSin = _mm_set1_ps(sin);
-	BvFastVec vCos = _mm_set_ps(0.0f, cos, cos, cos);
-	BvFastVec vOneMinusCos = _mm_set1_ps(1.0f - cos);
+	vf32 vSin = _mm_set1_ps(sin);
+	vf32 vCos = _mm_set_ps(0.0f, cos, cos, cos);
+	vf32 vOneMinusCos = _mm_set1_ps(1.0f - cos);
 
 	// x * (1 - cos), y * (1 - cos), z * (1 - cos)
-	BvFastVec d = _mm_mul_ps(axis, vOneMinusCos);
+	vf32 d = _mm_mul_ps(axis, vOneMinusCos);
 
-	BvFastVec t1 = d;
+	vf32 t1 = d;
 
 	// x^2 * (1 - cos), y^2 * (1 - cos), z^2 * (1 - cos)
 	d = _mm_mul_ps(d, axis);
@@ -741,23 +741,23 @@ inline BvFastMat MatrixRotationAxis(BvFastVec axis, const float angle)
 	d = _mm_add_ps(d, vCos);
 
 	// x * (sin), y * (sin), z * (sin)
-	BvFastVec t0 = _mm_mul_ps(axis, vSin);
+	vf32 t0 = _mm_mul_ps(axis, vSin);
 
 	// z * (1 - cos), x * (1 - cos), y * (1 - cos)
 	t1 = _mm_shuffle_ps(t1, t1, _MM_SHUFFLE(3, 1, 0, 2));
 	// y * z * (1 - cos), z * x * (1 - cos), x * y * (1 - cos)
 	t1 = _mm_mul_ps(t1, _mm_shuffle_ps(axis, axis, _MM_SHUFFLE(3, 0, 2, 1)));
 	// y * z * (1 - cos) - x * (sin), z * x * (1 - cos) - y * (sin), x * y * (1 - cos) - z * (sin)
-	BvFastVec t2 = _mm_sub_ps(t1, t0);
+	vf32 t2 = _mm_sub_ps(t1, t0);
 	// y * z * (1 - cos) + x * (sin), z * x * (1 - cos) + y * (sin), x * y * (1 - cos) + z * (sin)
 	t1 = _mm_add_ps(t1, t0);
 
 	// y * z * (1 - cos) + x * (sin), x * y * (1 - cos) + z * (sin), z * x * (1 - cos) - y * (sin), x * y * (1 - cos) - z * (sin)
-	BvFastVec g0 = _mm_shuffle_ps(t1, t2, _MM_SHUFFLE(2, 1, 2, 0));
+	vf32 g0 = _mm_shuffle_ps(t1, t2, _MM_SHUFFLE(2, 1, 2, 0));
 	// y * z * (1 - cos) + x * (sin), 0, y * z * (1 - cos) - x * (sin), 0
-	BvFastVec g1 = _mm_shuffle_ps(t1, t2, _MM_SHUFFLE(3, 0, 3, 1));
+	vf32 g1 = _mm_shuffle_ps(t1, t2, _MM_SHUFFLE(3, 0, 3, 1));
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(d, g0, _MM_SHUFFLE(2, 1, 3, 0));
 	r.r[0] = _mm_shuffle_ps(r.r[0], r.r[0], _MM_SHUFFLE(1, 3, 2, 0));
 
@@ -772,16 +772,16 @@ inline BvFastMat MatrixRotationAxis(BvFastVec axis, const float angle)
 	return r;
 }
 
-inline BvFastMat MatrixLookAt(BvFastVec eyePos, BvFastVec dirVec, BvFastVec upVec)
+inline mf32 MatrixLookAt(vf32 eyePos, vf32 dirVec, vf32 upVec)
 {
-	BvFastVec z = VectorNormalize(dirVec);
+	vf32 z = VectorNormalize(dirVec);
 
-	BvFastVec x = VectorCross(upVec, z);
+	vf32 x = VectorCross(upVec, z);
 	x = VectorNormalize(x);
 
-	BvFastVec y = VectorCross(z, x);
+	vf32 y = VectorCross(z, x);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = x;
 	r.r[1] = y;
 	r.r[2] = z;
@@ -793,27 +793,27 @@ inline BvFastMat MatrixLookAt(BvFastVec eyePos, BvFastVec dirVec, BvFastVec upVe
 	return r;
 }
 
-inline BvFastMat MatrixLookAtLH(BvFastVec eyePos, BvFastVec lookPos, BvFastVec upVec)
+inline mf32 MatrixLookAtLH(vf32 eyePos, vf32 lookPos, vf32 upVec)
 {
-	BvFastVec dir = VectorSub(lookPos, eyePos);
+	vf32 dir = VectorSub(lookPos, eyePos);
 	return MatrixLookAt(eyePos, dir, upVec);
 }
 
-inline BvFastMat MatrixLookAtRH(BvFastVec eyePos, BvFastVec lookPos, BvFastVec upVec)
+inline mf32 MatrixLookAtRH(vf32 eyePos, vf32 lookPos, vf32 upVec)
 {
-	BvFastVec dir = VectorSub(eyePos, lookPos);
+	vf32 dir = VectorSub(eyePos, lookPos);
 	return MatrixLookAt(eyePos, dir, upVec);
 }
 
-inline BvFastMat MatrixPerspectiveLH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveLH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
 {
 	float a = 1.0f / tanf(fovY * 0.5f);
 	float b = farZ / (farZ - nearZ);
 
-	BvFastVec v0 = _mm_set_ps(0.0f, -nearZ * b, a, a / aspectRatio);
-	BvFastVec v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, b);
+	vf32 v0 = _mm_set_ps(0.0f, -nearZ * b, a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, b);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v1, v1, _MM_SHUFFLE(1, 0, 3, 3));
@@ -822,15 +822,15 @@ inline BvFastMat MatrixPerspectiveLH_DX(const float nearZ, const float farZ, con
 	return r;
 }
 
-inline BvFastMat MatrixPerspectiveRH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveRH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
 {
 	float a = 1.0f / tanf(fovY * 0.5f);
 	float b = farZ / (farZ - nearZ);
 
-	BvFastVec v0 = _mm_set_ps(0.0f, nearZ * b, a, a / aspectRatio);
-	BvFastVec v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, b);
+	vf32 v0 = _mm_set_ps(0.0f, nearZ * b, a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, b);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v1, v1, _MM_SHUFFLE(1, 0, 3, 3));
@@ -839,15 +839,15 @@ inline BvFastMat MatrixPerspectiveRH_DX(const float nearZ, const float farZ, con
 	return r;
 }
 
-inline BvFastMat MatrixPerspectiveLH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveLH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
 {
 	float a = 1.0f / tanf(fovY * 0.5f);
 	float b = farZ - nearZ;
 
-	BvFastVec v0 = _mm_set_ps(0.0f, (2.0f * farZ * nearZ) / b, a, a / aspectRatio);
-	BvFastVec v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, -(farZ + nearZ) / b);
+	vf32 v0 = _mm_set_ps(0.0f, (2.0f * farZ * nearZ) / b, a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, -(farZ + nearZ) / b);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v1, v1, _MM_SHUFFLE(1, 0, 3, 3));
@@ -856,15 +856,15 @@ inline BvFastMat MatrixPerspectiveLH_GL(const float nearZ, const float farZ, con
 	return r;
 }
 
-inline BvFastMat MatrixPerspectiveRH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveRH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
 {
 	float a = 1.0f / tanf(fovY * 0.5f);
 	float b = farZ - nearZ;
 
-	BvFastVec v0 = _mm_set_ps(0.0f, (-2.0f * farZ * nearZ) / b, a, a / aspectRatio);
-	BvFastVec v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, -(farZ + nearZ) / b);
+	vf32 v0 = _mm_set_ps(0.0f, (-2.0f * farZ * nearZ) / b, a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, -(farZ + nearZ) / b);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v1, v1, _MM_SHUFFLE(1, 0, 3, 3));
@@ -873,15 +873,15 @@ inline BvFastMat MatrixPerspectiveRH_GL(const float nearZ, const float farZ, con
 	return r;
 }
 
-inline BvFastMat MatrixPerspectiveLH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveLH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
 {
 	float a = 1.0f / tanf(fovY * 0.5f);
 	float b = farZ / (farZ - nearZ);
 
-	BvFastVec v0 = _mm_set_ps(0.0f, -nearZ * b, -a, a / aspectRatio);
-	BvFastVec v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, b);
+	vf32 v0 = _mm_set_ps(0.0f, -nearZ * b, -a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, b);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v1, v1, _MM_SHUFFLE(1, 0, 3, 3));
@@ -890,15 +890,15 @@ inline BvFastMat MatrixPerspectiveLH_VK(const float nearZ, const float farZ, con
 	return r;
 }
 
-inline BvFastMat MatrixPerspectiveRH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveRH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
 {
 	float a = 1.0f / tanf(fovY * 0.5f);
 	float b = farZ / (farZ - nearZ);
 
-	BvFastVec v0 = _mm_set_ps(0.0f, nearZ * b, -a, a / aspectRatio);
-	BvFastVec v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, b);
+	vf32 v0 = _mm_set_ps(0.0f, nearZ * b, -a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, b);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v1, v1, _MM_SHUFFLE(1, 0, 3, 3));
@@ -907,18 +907,18 @@ inline BvFastMat MatrixPerspectiveRH_VK(const float nearZ, const float farZ, con
 	return r;
 }
 
-inline BvFastMat MatrixOrthographicOffCenterLH_DX(const float right, const float left, const float top, const float bottom, const float
+inline mf32 MatrixOrthographicOffCenterLH_DX(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ)
 {
 	float oneOverRMinusL = 1.0f / (right - left);
 	float oneOverTMinusB = 1.0f / (top - bottom);
 	float oneOverFMinusN = 1.0f / (farZ - nearZ);
 
-	BvFastVec v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverFMinusN, 0.0f);
-	BvFastVec v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
+	vf32 v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverFMinusN, 0.0f);
+	vf32 v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
 		-oneOverFMinusN * nearZ, 1.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 2, 3, 3));
@@ -927,18 +927,18 @@ inline BvFastMat MatrixOrthographicOffCenterLH_DX(const float right, const float
 	return r;
 }
 
-inline BvFastMat MatrixOrthographicOffCenterRH_DX(const float right, const float left, const float top, const float bottom, const float
+inline mf32 MatrixOrthographicOffCenterRH_DX(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ)
 {
 	float oneOverRMinusL = 1.0f / (right - left);
 	float oneOverTMinusB = 1.0f / (top - bottom);
 	float oneOverNMinusF = 1.0f / (nearZ - farZ);
 
-	BvFastVec v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverNMinusF, 0.0f);
-	BvFastVec v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
+	vf32 v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverNMinusF, 0.0f);
+	vf32 v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
 		oneOverNMinusF * nearZ, 1.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 2, 3, 3));
@@ -947,18 +947,18 @@ inline BvFastMat MatrixOrthographicOffCenterRH_DX(const float right, const float
 	return r;
 }
 
-inline BvFastMat MatrixOrthographicOffCenterLH_GL(const float right, const float left, const float top, const float bottom, const float
+inline mf32 MatrixOrthographicOffCenterLH_GL(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ)
 {
 	float oneOverRMinusL = 1.0f / (right - left);
 	float oneOverTMinusB = 1.0f / (top - bottom);
 	float oneOverNMinusF = 1.0f / (nearZ - farZ);
 
-	BvFastVec v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, -2.0f * oneOverNMinusF, 0.0f);
-	BvFastVec v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
+	vf32 v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, -2.0f * oneOverNMinusF, 0.0f);
+	vf32 v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
 		(nearZ + farZ) * oneOverNMinusF, 1.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 2, 3, 3));
@@ -967,18 +967,18 @@ inline BvFastMat MatrixOrthographicOffCenterLH_GL(const float right, const float
 	return r;
 }
 
-inline BvFastMat MatrixOrthographicOffCenterRH_GL(const float right, const float left, const float top, const float bottom, const float
+inline mf32 MatrixOrthographicOffCenterRH_GL(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ)
 {
 	float oneOverRMinusL = 1.0f / (right - left);
 	float oneOverTMinusB = 1.0f / (top - bottom);
 	float oneOverFMinusN = 1.0f / (farZ - nearZ);
 
-	BvFastVec v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, -2.0f * oneOverFMinusN, 0.0f);
-	BvFastVec v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
+	vf32 v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, -2.0f * oneOverFMinusN, 0.0f);
+	vf32 v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
 		-(nearZ + farZ) * oneOverFMinusN, 1.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 2, 3, 3));
@@ -987,18 +987,18 @@ inline BvFastMat MatrixOrthographicOffCenterRH_GL(const float right, const float
 	return r;
 }
 
-inline BvFastMat MatrixOrthographicOffCenterLH_VK(const float right, const float left, const float top, const float bottom, const float
+inline mf32 MatrixOrthographicOffCenterLH_VK(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ)
 {
 	float oneOverRMinusL = 1.0f / (right - left);
 	float oneOverTMinusB = 1.0f / (bottom - top);
 	float oneOverFMinusN = 1.0f / (farZ - nearZ);
 
-	BvFastVec v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverFMinusN, 0.0f);
-	BvFastVec v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
+	vf32 v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverFMinusN, 0.0f);
+	vf32 v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
 		-oneOverFMinusN * nearZ, 1.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 2, 3, 3));
@@ -1007,18 +1007,18 @@ inline BvFastMat MatrixOrthographicOffCenterLH_VK(const float right, const float
 	return r;
 }
 
-inline BvFastMat MatrixOrthographicOffCenterRH_VK(const float right, const float left, const float top, const float bottom, const float
+inline mf32 MatrixOrthographicOffCenterRH_VK(const float right, const float left, const float top, const float bottom, const float
 	nearZ, const float farZ)
 {
 	float oneOverRMinusL = 1.0f / (right - left);
 	float oneOverTMinusB = 1.0f / (bottom - top);
 	float oneOverNMinusF = 1.0f / (nearZ - farZ);
 
-	BvFastVec v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverNMinusF, 0.0f);
-	BvFastVec v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
+	vf32 v0 = VectorSet(oneOverRMinusL + oneOverRMinusL, oneOverTMinusB + oneOverTMinusB, oneOverNMinusF, 0.0f);
+	vf32 v1 = VectorSet(-(left + right) * oneOverRMinusL, -(bottom + top) * oneOverTMinusB,
 		oneOverNMinusF * nearZ, 1.0f);
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
 	r.r[1] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 1, 3));
 	r.r[2] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 2, 3, 3));

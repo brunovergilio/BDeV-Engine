@@ -3,9 +3,11 @@
 
 #include "BvRender/BvCommandPool.h"
 #include "BvRenderVK/BvCommonVk.h"
+#include "BvCore/Container/BvVector.h"
 
 
 class BvRenderDeviceVk;
+class BvCommandBufferVk;
 
 
 class BvCommandPoolVk final : public BvCommandPool
@@ -27,4 +29,5 @@ public:
 private:
 	const BvRenderDeviceVk & m_Device;
 	VkCommandPool m_CommandPool = VK_NULL_HANDLE;
+	BvVector<BvCommandBufferVk*> m_CommandBuffers;
 };

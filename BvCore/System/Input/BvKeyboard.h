@@ -4,6 +4,7 @@
 #include "BvCore/System/Threading/BvSync.h"
 
 
+// Kept the same as virtual key codes for simplicity
 enum class BvKey : u8
 {
 	kLButton			=	1  ,	// Left mouse button
@@ -273,7 +274,7 @@ class BvKeyboard
 {
 	BV_NOCOPYMOVE(BvKeyboard);
 
-	static constexpr auto kKeyGroupCount = 256 / 8;
+	static constexpr auto kKeyGroupCount = 256 / 64;
 
 public:
 	BvKeyboard();
@@ -287,8 +288,6 @@ public:
 	bool IsKeyUp(BvKey key) const;
 
 private:
-	BvNativeWindow* m_pWindow = nullptr;
-
 	u64 m_PrevKeyStates[kKeyGroupCount]{};
 	u64 m_CurrKeyStates[kKeyGroupCount]{};
 	std::atomic<u64> m_KeyStates[kKeyGroupCount]{};

@@ -7,22 +7,13 @@
 #include "../../Math/BvFastVec.h"
 
 
-constexpr int g_Shuffles[4] =
-{
-	_MM_SHUFFLE(0, 0, 0, 0),
-	_MM_SHUFFLE(1, 1, 1, 1),
-	_MM_SHUFFLE(2, 2, 2, 2),
-	_MM_SHUFFLE(3, 3, 3, 3)
-};
-
-
 inline BvVec::BvVec()
 	: m128(VectorZero()) {}
 
 inline BvVec::BvVec(const BvVec & rhs)
 	: m128(rhs.m128) {}
 
-inline BvVec::BvVec(BvVec && rhs)
+inline BvVec::BvVec(BvVec && rhs) noexcept
 	: m128(rhs.m128) {}
 
 inline BvVec & BvVec::operator=(const BvVec & rhs)
@@ -35,7 +26,7 @@ inline BvVec & BvVec::operator=(const BvVec & rhs)
 	return *this;
 }
 
-inline BvVec & BvVec::operator=(BvVec && rhs)
+inline BvVec & BvVec::operator=(BvVec && rhs) noexcept
 {
 	m128 = rhs.m128;
 
@@ -57,7 +48,7 @@ inline BvVec::BvVec(const Float3 & v)
 inline BvVec::BvVec(const Float4 & v)
 	: m128(Load4(v.v)) {}
 
-inline BvVec::BvVec(const BvFastVec & m128)
+inline BvVec::BvVec(const vf32 & m128)
 	: m128(m128) {}
 
 inline void BvVec::Set(const float x, const float y, const float z, const float w)
@@ -85,7 +76,7 @@ inline void BvVec::Set(const Float4 & v)
 	m128 = Load4(v.v);
 }
 
-inline void BvVec::Set(const BvFastVec & v)
+inline void BvVec::Set(const vf32 & v)
 {
 	m128 = v;
 }
@@ -115,17 +106,17 @@ inline float BvVec::GetW() const
 	return VectorGetW(m128);
 }
 
-inline Float2 BvVec::AsFloat2() const
+inline const Float2& BvVec::AsFloat2() const
 {
 	return v2;
 }
 
-inline Float3 BvVec::AsFloat3() const
+inline const Float3& BvVec::AsFloat3() const
 {
 	return v3;
 }
 
-inline Float4 BvVec::AsFloat4() const
+inline const Float4& BvVec::AsFloat4() const
 {
 	return v4;
 }
@@ -198,12 +189,12 @@ inline BvVec BvVec::Zero() const
 
 inline BvVec BvVec::IsNearlyEqual(const BvVec & v, const float eps) const
 {
-	return BvVec(VectorIsEqual(m128, v.m128, eps));
+	return BvVec(VectorNearlyEqual(m128, v.m128, eps));
 }
 
 inline BvVec BvVec::IsZero(const float eps) const
 {
-	return BvVec(VectorIsZero(m128, eps));
+	return BvVec(VectorNearlyEqual(m128, VectorZero(), eps));
 }
 
 inline BvVec BvVec::Add(const BvVec & v) const
@@ -291,9 +282,14 @@ inline BvVec BvVec::Lerp(const BvVec & toVec, const float t) const
 	return BvVec(VectorLerp(m128, toVec.m128, t));
 }
 
-inline BvVec BvVec::Reflect(const BvVec & normal)
+inline BvVec BvVec::Reflect(const BvVec & normal) const
 {
 	return BvVec(VectorReflection(m128, normal.m128));
+}
+
+inline BvVec BvVec::Refract(const BvVec& normal, const float eta) const
+{
+	return BvVec(VectorRefraction(m128, normal.m128, eta));
 }
 
 inline const float & BvVec::operator[](const unsigned int index) const
@@ -446,7 +442,7 @@ inline BvVec & BvVec::operator*=(const BvMat & m)
 
 inline BvVec operator==(const BvVec & lhs, const BvVec & rhs)
 {
-	return BvVec(VectorIsExactlyEqualV(lhs.m128, rhs.m128));
+	return BvVec(VectorEqual(lhs.m128, rhs.m128));
 }
 
 inline BvVec operator<(const BvVec & lhs, const BvVec & rhs)
@@ -456,7 +452,7 @@ inline BvVec operator<(const BvVec & lhs, const BvVec & rhs)
 
 inline BvVec operator<=(const BvVec & lhs, const BvVec & rhs)
 {
-	return BvVec(VectorLessEq(lhs.m128, rhs.m128));
+	return BvVec(VectorLessEqual(lhs.m128, rhs.m128));
 }
 
 inline BvVec operator>(const BvVec & lhs, const BvVec & rhs)
@@ -466,7 +462,7 @@ inline BvVec operator>(const BvVec & lhs, const BvVec & rhs)
 
 inline BvVec operator>=(const BvVec & lhs, const BvVec & rhs)
 {
-	return BvVec(VectorGreaterEq(lhs.m128, rhs.m128));
+	return BvVec(VectorGreaterEqual(lhs.m128, rhs.m128));
 }
 
 inline bool BvVec::AllTrue() const

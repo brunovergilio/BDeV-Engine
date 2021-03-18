@@ -21,7 +21,8 @@ public:
 	void Destroy();
 
 	void GetGPUInfo(const u32 index, BvGPUInfo & info) const override final;
-	BvRenderDevice * const CreateRenderDevice(const u32 gpuIndex, const DeviceCreateDesc & deviceDesc) override final;
+	BvRenderDevice * const CreateRenderDevice(const DeviceCreateDesc& deviceDesc, const u32 gpuIndex) override final;
+	void DestroyRenderDevice(const u32 gpuIndex) override final;
 	
 	BV_INLINE const char * const GetAPIName() const override final { return "Vulkan"; }
 
@@ -41,5 +42,4 @@ private:
 };
 
 
-/*BV_EXTERN_C BV_API */BvRenderEngine* CreateRenderEngineVk();
-/*BV_EXTERN_C BV_API */void DestroyRenderEngineVk(BvRenderEngine* pRenderEngine);
+/*BV_EXTERN_C BV_API */BvRenderEngine* GetRenderEngineVk();

@@ -14,20 +14,20 @@ public:
 	BvQuat();
 
 	BvQuat(const BvQuat & rhs);
-	BvQuat(BvQuat && rhs);
+	BvQuat(BvQuat && rhs) noexcept;
 	BvQuat & operator=(const BvQuat & rhs);
-	BvQuat & operator=(BvQuat && rhs);
+	BvQuat & operator=(BvQuat && rhs) noexcept;
 
 	explicit BvQuat(const float x, const float y, const float z, const float w);
 	explicit BvQuat(const Float4 & v);
-	explicit BvQuat(const BvFastQuat & m128);
+	explicit BvQuat(const qf32 & m128);
 	explicit BvQuat(const BvVec & v);
 	explicit BvQuat(const BvVec & axis, const float rad);
 	explicit BvQuat(const BvMat & m);
 
 	void Set(const float x, const float y, const float z, const float w);
 	void Set(const Float4 & v);
-	void Set(const BvFastQuat & q);
+	void Set(const qf32 & q);
 	void Set(const BvVec & v);
 	void Set(const BvVec & axis, const float rad);
 	void Set(const BvMat & m);
@@ -82,7 +82,7 @@ public:
 public:
 	union
 	{
-		BvFastQuat m128;
+		qf32 m128;
 		Float4 v4;
 		float arr[4];
 		struct

@@ -62,6 +62,11 @@ void BvShaderResourceSetPoolVk::Create(const ShaderResourceSetPoolDesc & desc)
 
 void BvShaderResourceSetPoolVk::Destroy()
 {
+	for (auto&& pSet : m_Sets)
+	{
+		BvDelete(pSet);
+	}
+
 	if (m_DescriptorPool)
 	{
 		m_Device.GetDeviceFunctions().vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
@@ -106,27 +111,42 @@ void BvShaderResourceSetPoolVk::AllocateSets(const u32 count, BvShaderResourceSe
 	auto result = m_Device.GetDeviceFunctions().vkAllocateDescriptorSets(m_Device.GetHandle(), &allocateInfo, descriptorSets);
 	for (u32 i = 0; i < allocateInfo.descriptorSetCount; i++)
 	{
-		ppSets[i] = new BvShaderResourceSetVk(m_Device, pLayoutVk, descriptorSets[i], this, set);
+		auto pSet = new BvShaderResourceSetVk(m_Device, pLayoutVk, descriptorSets[i], this, set);
+		m_Sets.EmplaceBack(pSet);
+		ppSets[i] = pSet;
 	}
 }
 
 
-void BvShaderResourceSetPoolVk::FreeSets(const u32 count, BvShaderResourceSet ** ppSets)
+void BvShaderResourceSetPoolVk::FreeSets(const u32 setCount, BvShaderResourceSet ** ppSets)
 {
-	if (count > kMmaxDescriptorSetsPerAllocation)
+	if (setCount > kMmaxDescriptorSetsPerAllocation)
 	{
-		FreeSets(count - kMmaxDescriptorSetsPerAllocation, ppSets + kMmaxDescriptorSetsPerAllocation);
+		FreeSets(setCount - kMmaxDescriptorSetsPerAllocation, ppSets + kMmaxDescriptorSetsPerAllocation);
 	}
 
 	VkDescriptorSet descriptorSets[kMmaxDescriptorSetsPerAllocation];
-	u32 descriptorCount = count > kMmaxDescriptorSetsPerAllocation ? kMmaxDescriptorSetsPerAllocation : count;
+	u32 count = setCount > kMmaxDescriptorSetsPerAllocation ? kMmaxDescriptorSetsPerAllocation : setCount;
 	for (auto i = 0u; i < count; i++)
 	{
 		auto pDsVk = reinterpret_cast<BvShaderResourceSetVk *>(ppSets[i]);
 		descriptorSets[i] = pDsVk->GetHandle();
-		BvDelete(pDsVk);
+
+		for (auto j = 0u; j < m_Sets.Size(); j++)
+		{
+			if (m_Sets[j] == pDsVk)
+			{
+				if (j != m_Sets.Size() - 1)
+				{
+					std::swap(m_Sets[j], m_Sets[m_Sets.Size() - 1]);
+				}
+				m_Sets.PopBack();
+				BvDelete(pDsVk);
+				break;
+			}
+		}
 	}
 
 	// Maybe shouldn't be freeing them, will cause fragmentation
-	m_Device.GetDeviceFunctions().vkFreeDescriptorSets(m_Device.GetHandle(), m_DescriptorPool, descriptorCount, descriptorSets);
+	m_Device.GetDeviceFunctions().vkFreeDescriptorSets(m_Device.GetHandle(), m_DescriptorPool, count, descriptorSets);
 }

@@ -84,7 +84,7 @@ public:
 
 private:
 	BvRobinMap<u64, BvFramebufferVk *> m_Framebuffers;
-	BvMutex m_Lock;
+	BvSpinlock m_Lock;
 };
 
 

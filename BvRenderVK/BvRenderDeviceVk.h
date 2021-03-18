@@ -16,21 +16,28 @@ public:
 	bool Create(const DeviceCreateDesc & deviceCreateDesc);
 	void Destroy();
 
-	BvSwapChain * CreateSwapChain(BvNativeWindow & window, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;
-	BvSemaphore * CreateSemaphore(const u64 initialValue) override final;
-	BvRenderPass * CreateRenderPass(const RenderPassDesc & renderPassDesc) override final;
-	BvCommandPool * CreateCommandPool(const CommandPoolDesc & commandPoolDesc) override final;
-	BvShaderResourceLayout * CreateShaderResourceLayout(const ShaderResourceLayoutDesc & shaderResourceLayoutDesc) override final;
-	BvGraphicsPipelineState * CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc) override final;
+	BvSwapChain* CreateSwapChain(BvNativeWindow & window, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;
+	BvBuffer* CreateBuffer(const BufferDesc& desc) override final;
+	BvBufferView* CreateBufferView(const BufferViewDesc& desc)  override final;
+	BvTexture* CreateTexture(const TextureDesc& desc)  override final;
+	BvTextureView* CreateTextureView(const TextureViewDesc& desc)  override final;
+	BvSemaphore* CreateSemaphore(const u64 initialValue) override final;
+	BvRenderPass* CreateRenderPass(const RenderPassDesc & renderPassDesc) override final;
+	BvCommandPool* CreateCommandPool(const CommandPoolDesc & commandPoolDesc) override final;
+	BvShaderResourceLayout* CreateShaderResourceLayout(const ShaderResourceLayoutDesc & shaderResourceLayoutDesc) override final;
+	BvShaderResourceSetPool* CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc =
+		ShaderResourceSetPoolDesc()) override final;
+	BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc) override final;
+	
 	void WaitIdle() const override final;
 
-	const uint32_t GetMemoryTypeIndex(const uint32_t memoryTypeBits, const VkMemoryPropertyFlags properties) const;
+	const u32 GetMemoryTypeIndex(const u32 memoryTypeBits, const VkMemoryPropertyFlags properties) const;
 	const VkFormat GetBestDepthFormat(const VkFormat format = VK_FORMAT_UNDEFINED) const;
 	bool QueueFamilySupportsPresent(const QueueFamilyType queueFamilyType) const override final;
 
-	BV_INLINE const BvVector<BvCommandQueue *> & GetGraphicsQueue(const u32 index = 0) const override final { return m_GraphicsQueues; }
-	BV_INLINE const BvVector<BvCommandQueue *> & GetComputeQueue(const u32 index = 0) const override final { return m_ComputeQueues; }
-	BV_INLINE const BvVector<BvCommandQueue *> & GetTransferQueue(const u32 index = 0) const override final { return m_TransferQueues; }
+	BV_INLINE BvCommandQueue* GetGraphicsQueue(const u32 index = 0) const override final { return m_GraphicsQueues[index]; }
+	BV_INLINE BvCommandQueue* GetComputeQueue(const u32 index = 0) const override final { return m_ComputeQueues[index]; }
+	BV_INLINE BvCommandQueue* GetTransferQueue(const u32 index = 0) const override final { return m_TransferQueues[index]; }
 
 	BV_INLINE const VkDevice GetHandle() const { return m_Device; }
 	BV_INLINE const VkInstance GetInstanceHandle() const { return m_Instance; }
@@ -42,9 +49,10 @@ private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
 	VkDevice m_Device = VK_NULL_HANDLE;
 	const BvGPUInfoVk & m_GPUInfo;
-	BvVector<BvCommandQueue *> m_GraphicsQueues;
-	BvVector<BvCommandQueue *> m_ComputeQueues;
-	BvVector<BvCommandQueue *> m_TransferQueues;
+	BvVector<BvCommandQueueVk*> m_GraphicsQueues;
+	BvVector<BvCommandQueueVk*> m_ComputeQueues;
+	BvVector<BvCommandQueueVk*> m_TransferQueues;
+	BvRenderDeviceFactory* m_pFactory = nullptr;
 	BvLoaderVk & m_Loader;
-	VulkanFunctions::DeviceFunctions m_Functions;
+	VulkanFunctions::DeviceFunctions m_Functions{};
 };

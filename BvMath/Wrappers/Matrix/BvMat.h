@@ -14,9 +14,9 @@ public:
 	BvMat();
 
 	BvMat(const BvMat & rhs);
-	BvMat(BvMat && rhs);
+	BvMat(BvMat && rhs) noexcept;
 	BvMat & operator=(const BvMat & rhs);
-	BvMat & operator=(BvMat && rhs);
+	BvMat & operator=(BvMat && rhs) noexcept;
 
 	explicit BvMat(const Float2 & r1, const Float2 & r2);
 	explicit BvMat(const Float3 & r1, const Float3 & r2, const Float3 & r3, const Float3 & r4 = Float3());
@@ -26,15 +26,15 @@ public:
 	explicit BvMat(const Float43& m);
 	explicit BvMat(const Float44& m);
 	explicit BvMat(const BvVec & r1, const BvVec & r2, const BvVec & r3, const BvVec & r4 = BvVec(0.0f, 0.0f, 0.0f, 1.0f));
-	explicit BvMat(BvFastVec r1, BvFastVec r2, BvFastVec r3, BvFastVec r4);
-	explicit BvMat(const BvFastMat & m);
+	explicit BvMat(vf32 r1, vf32 r2, vf32 r3, vf32 r4);
+	explicit BvMat(const mf32 & m);
 	explicit BvMat(const BvQuat & q);
 
 	void Set(const Float2 & r1, const Float2 & r2);
 	void Set(const Float3 & r1, const Float3 & r2, const Float3 & r3, const Float3 & r4 = Float3());
 	void Set(const Float4 & r1, const Float4 & r2, const Float4 & r3, const Float4 & r4);
 	void Set(const BvVec & r1, const BvVec & r2, const BvVec & r3, const BvVec & r4);
-	void Set(BvFastVec r1, BvFastVec r2, BvFastVec r3, BvFastVec r4);
+	void Set(vf32 r1, vf32 r2, vf32 r3, vf32 r4);
 	void Set(const BvQuat & q);
 
 	BvVec Get(const unsigned int row) const;
@@ -42,7 +42,7 @@ public:
 	Float22 AsFloat22() const;
 	Float33 AsFloat33() const;
 	Float43 AsFloat43() const;
-	Float44 AsFloat44() const;
+	const Float44& AsFloat44() const;
 
 	BvQuat ToQuaternion() const;
 	BvMat FromQuaternion(const BvQuat & q) const;
@@ -124,7 +124,7 @@ public:
 public:
 	union
 	{
-		BvFastMat mat;
+		mf32 mat;
 		Float44 m44;
 		BvVec arr[4];
 		struct

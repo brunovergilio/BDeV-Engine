@@ -2,6 +2,10 @@
 #include "../Utils/BvDebug.h"
 
 
+const i64 g_InitialTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>
+	(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+
+
 BvTimer::BvTimer()
 {
 	Reset();
@@ -27,5 +31,6 @@ const f32 BvTimer::GetDt() const
 
 i64 GetCurrentTimestamp()
 {
-	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count()
+		- g_InitialTimestamp;
 }

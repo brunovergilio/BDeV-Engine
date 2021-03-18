@@ -22,7 +22,8 @@ class BvRenderEngine
 public:
 	virtual ~BvRenderEngine() = 0 {};
 	virtual void GetGPUInfo(const u32 index, BvGPUInfo & info) const = 0;
-	virtual BvRenderDevice * const CreateRenderDevice(const u32 gpuIndex = 0, const DeviceCreateDesc & deviceDesc = DeviceCreateDesc()) = 0;
+	virtual BvRenderDevice * const CreateRenderDevice(const DeviceCreateDesc& deviceDesc = DeviceCreateDesc(), const u32 gpuIndex = 0) = 0;
+	virtual void DestroyRenderDevice(const u32 gpuIndex) = 0;
 	virtual const char * const GetAPIName() const = 0;
 
 	BV_INLINE u32 GetSupportedGPUCount() const { return m_Devices.Size(); }

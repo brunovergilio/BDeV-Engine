@@ -53,10 +53,10 @@ static const BvRobinMap<VkFormat, std::pair<bool, bool>> s_DepthStencilFormats =
 	{ VK_FORMAT_D16_UNORM, std::make_pair(true, false) },
 	{ VK_FORMAT_X8_D24_UNORM_PACK32, std::make_pair(true, false) },
 	{ VK_FORMAT_D32_SFLOAT, std::make_pair(true, false) },
+	{ VK_FORMAT_S8_UINT, std::make_pair(false, true) },
 	{ VK_FORMAT_D16_UNORM_S8_UINT, std::make_pair(true, true) },
 	{ VK_FORMAT_D24_UNORM_S8_UINT, std::make_pair(true, true) },
 	{ VK_FORMAT_D32_SFLOAT_S8_UINT, std::make_pair(true, true) },
-	{ VK_FORMAT_S8_UINT, std::make_pair(false, true) },
 };
 
 

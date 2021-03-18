@@ -12,7 +12,7 @@ class BvGraphicsPipelineStateVk final : public BvGraphicsPipelineState
 {
 public:
 	BvGraphicsPipelineStateVk(const BvRenderDeviceVk & device, const GraphicsPipelineStateDesc & pipelineStateDesc,
-		const VkPipelineCache pipelineCache);
+		const VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	~BvGraphicsPipelineStateVk();
 
 	void Create();

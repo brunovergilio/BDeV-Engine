@@ -169,16 +169,16 @@ struct Float44
 
 
 #if (BV_MATH_USE_TYPE == BV_MATH_TYPE_SIMD)
-typedef __m128 BvFastVec;
+using vf32 = __m128;
 
-struct BvFastMat
+struct mf32
 {
-	BvFastVec r[4];
+	vf32 r[4];
 };
 
-typedef __m128 BvFastQuat;
+using qf32 = __m128;
 #elif (BV_MATH_USE_TYPE == BV_MATH_TYPE_FPU)
-struct BvFastVec
+struct vf32
 {
 	union
 	{
@@ -189,8 +189,8 @@ struct BvFastVec
 		float v[4];
 	};
 
-	BvFastVec() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
-	explicit BvFastVec(const float x, const float y, const float z, const float w = 0.0f)
+	vf32() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
+	explicit vf32(const float x, const float y, const float z, const float w = 0.0f)
 		: x(x), y(y), z(z), w(w) {}
 
 	void Set(const float x, const float y, const float z, const float w)
@@ -202,10 +202,10 @@ struct BvFastVec
 	}
 };
 
-struct BvFastMat
+struct mf32
 {
-	BvFastMat() {}
-	explicit BvFastMat(const BvFastVec & r0, const BvFastVec & r1, const BvFastVec & r2, const BvFastVec & r3)
+	mf32() {}
+	explicit mf32(const vf32 & r0, const vf32 & r1, const vf32 & r2, const vf32 & r3)
 	{
 		r[0] = r0;
 		r[1] = r1;
@@ -213,9 +213,9 @@ struct BvFastMat
 		r[3] = r3;
 	}
 
-	BvFastVec r[4];
+	vf32 r[4];
 };
 
-typedef BvFastVec BvFastQuat;
+using qf32 = vf32;
 
 #endif

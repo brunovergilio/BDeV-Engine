@@ -8,12 +8,12 @@
 
 
 inline BvQuat::BvQuat()
-	: m128(VectorSet(0.0f, 0.0f, 0.0f, 1.0f)) {}
+	: m128(QuaternionIdentity()) {}
 
 inline BvQuat::BvQuat(const BvQuat & rhs)
 	: m128(rhs.m128) {}
 
-inline BvQuat::BvQuat(BvQuat && rhs)
+inline BvQuat::BvQuat(BvQuat && rhs) noexcept
 	: m128(rhs.m128) {}
 
 inline BvQuat & BvQuat::operator=(const BvQuat & rhs)
@@ -26,7 +26,7 @@ inline BvQuat & BvQuat::operator=(const BvQuat & rhs)
 	return *this;
 }
 
-inline BvQuat & BvQuat::operator=(BvQuat && rhs)
+inline BvQuat & BvQuat::operator=(BvQuat && rhs) noexcept
 {
 	m128 = rhs.m128;
 
@@ -39,7 +39,7 @@ inline BvQuat::BvQuat(const float x, const float y, const float z, const float w
 inline BvQuat::BvQuat(const Float4 & v)
 	: m128(Load4(v.v)) {}
 
-inline BvQuat::BvQuat(const BvFastQuat & m128)
+inline BvQuat::BvQuat(const qf32 & m128)
 	: m128(m128) {}
 
 inline BvQuat::BvQuat(const BvVec & v)
@@ -61,7 +61,7 @@ inline void BvQuat::Set(const Float4 & v)
 	m128 = Load4(v.v);
 }
 
-inline void BvQuat::Set(const BvFastQuat & q)
+inline void BvQuat::Set(const qf32 & q)
 {
 	m128 = q;
 }

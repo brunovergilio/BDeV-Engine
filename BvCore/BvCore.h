@@ -39,6 +39,7 @@
 #define BV_CPP_VER _MSVC_LANG
 
 #pragma warning(disable:4100) // unref
+#pragma warning(disable:4103) // alignment changed after including header, may be due to missing #pragma pack(pop)
 #pragma warning(disable:4189) // init but unref
 #pragma warning(disable:4201) // nonstandard extension used: nameless struct/union
 #pragma warning(disable:4458) // declaration of 'variable' hides class member

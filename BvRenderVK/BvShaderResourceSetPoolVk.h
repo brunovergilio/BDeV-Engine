@@ -6,6 +6,7 @@
 
 
 class BvRenderDeviceVk;
+class BvShaderResourceSetVk;
 
 
 class BvShaderResourceSetPoolVk final : public BvShaderResourceSetPool
@@ -26,4 +27,5 @@ public:
 private:
 	const BvRenderDeviceVk & m_Device;
 	VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
+	BvVector<BvShaderResourceSetVk*> m_Sets;
 };

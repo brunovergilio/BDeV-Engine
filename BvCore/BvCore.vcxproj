@@ -100,6 +100,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="System\Input\BvKeyboard.h" />
+    <ClInclude Include="System\Memory\Allocators\BvDefaultAllocator.h" />
+    <ClInclude Include="System\Memory\Allocators\BvLinearAllocator.h" />
+    <ClInclude Include="System\Memory\Allocators\BvHeapAllocator.h" />
+    <ClInclude Include="System\Memory\Allocators\BvPoolAllocator.h" />
+    <ClInclude Include="System\Memory\Allocators\BvStackAllocator.h" />
     <ClInclude Include="Utils\BvDebug.h" />
     <ClInclude Include="BvCore.h" />
     <ClInclude Include="Container\BvFixedVector.h" />
@@ -132,14 +137,19 @@
     <ClInclude Include="Utils\BvEnum.h" />
     <ClInclude Include="Utils\BvTimer.h" />
     <ClInclude Include="Utils\BvUtils.h" />
-    <ClInclude Include="Utils\CallbackDispatcher.h" />
     <ClInclude Include="Utils\Hash.h" />
+    <ClInclude Include="Utils\RTTI.h" />
     <ClInclude Include="Utils\Win32\BvDebugWin32.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Container\BvString.cpp" />
     <ClCompile Include="System\Input\BvKeyboard.cpp" />
     <ClCompile Include="System\Library\Win32\BvSharedLibWin32.cpp" />
+    <ClCompile Include="System\Memory\Allocators\BvDefaultAllocator.cpp" />
+    <ClCompile Include="System\Memory\Allocators\BvHeapAllocator.cpp" />
+    <ClCompile Include="System\Memory\Allocators\BvPoolAllocator.cpp" />
+    <ClCompile Include="System\Memory\Allocators\BvStackAllocator.cpp" />
+    <ClCompile Include="System\Memory\Allocators\BvLinearAllocator.cpp" />
     <ClCompile Include="System\Memory\BvMemory.cpp" />
     <ClCompile Include="System\File\Win32\BvAsyncFileWin32.cpp" />
     <ClCompile Include="System\File\Win32\BvFileWin32.cpp" />

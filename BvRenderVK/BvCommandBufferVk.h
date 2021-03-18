@@ -44,7 +44,7 @@ public:
 	void SetIndexBuffer(const BvBuffer * const pIndexBuffer, const IndexFormat indexFormat) override final;
 
 	void Draw(const u32 vertexCount, const u32 instanceCount = 1,
-		const u32 firstVertex = 0, const uint32_t firstInstance = 0) override final;
+		const u32 firstVertex = 0, const u32 firstInstance = 0) override final;
 	void DrawIndexed(const u32 indexCount, const u32 instanceCount = 1, const u32 firstIndex = 0,
 		const i32 vertexOffset = 0, const u32 firstInstance = 0) override final;
 	void Dispatch(const u32 x, const u32 y = 1, const u32 z = 1) override final;

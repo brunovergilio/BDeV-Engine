@@ -5,6 +5,7 @@
 
 constexpr uint32_t kCreateWindowMessage = WM_APP + 0x100;
 constexpr uint32_t kDestroyWindowMessage = kCreateWindowMessage + 1;
+constexpr size_t kMaxClassNameSize = 256;
 
 
 constexpr DWORD kWindowedStyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
@@ -89,6 +90,11 @@ void BvWindowsMessageController::Stop()
 }
 
 
+BvNativeWindow::BvNativeWindow()
+{
+}
+
+
 BvNativeWindow::BvNativeWindow(const char* const pName, const WindowDesc& windowDesc)
 	: m_WindowDesc(windowDesc), m_WindowedWidth(windowDesc.m_Width), m_WindowedHeight(windowDesc.m_Height),
 	m_Event(false, false)
@@ -109,6 +115,7 @@ BvNativeWindow& BvNativeWindow::operator=(BvNativeWindow&& rhs) noexcept
 	{
 		m_hWnd = rhs.m_hWnd; rhs.m_hWnd = nullptr;
 		m_SizeChangedCallbacks = std::move(rhs.m_SizeChangedCallbacks);
+		m_KeyboardCallbacks = std::move(rhs.m_KeyboardCallbacks);
 
 		m_WindowDesc = std::move(rhs.m_WindowDesc);
 
@@ -124,6 +131,8 @@ BvNativeWindow& BvNativeWindow::operator=(BvNativeWindow&& rhs) noexcept
 		m_IsResizing = rhs.m_IsResizing;
 		m_IsMinimized = rhs.m_IsMinimized;
 		m_IsMaximized = rhs.m_IsMaximized;
+
+		SetWindowLongPtr(m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 	}
 
 	return *this;
@@ -311,17 +320,20 @@ void BvNativeWindow::NotifyKeyboard(u32 vkCode, u32 scanCode, bool isKeyDown)
 
 void BvNativeWindow::RequestCreate(const char* const pName)
 {
-	{
-		//DEVMODE devMode = {};
-		//devMode.dmSize = sizeof(DEVMODE);
-		//if (!EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &devMode))
-		//{
-		//	BV_WIN32_ERROR();
-		//}
-		//SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
-		m_FullscreenWidth = GetSystemMetrics(SM_CXSCREEN);//devMode.dmPelsWidth;
-		m_FullscreenHeight = GetSystemMetrics(SM_CYSCREEN);//devMode.dmPelsHeight;
-	}
+	BvAssertMsg(strlen(pName) < kMaxClassNameSize, "Window name exceeds the maximum amount of characters");
+
+	//{
+	//	DEVMODE devMode = {};
+	//	devMode.dmSize = sizeof(DEVMODE);
+	//	if (!EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &devMode))
+	//	{
+	//		BV_WIN32_ERROR();
+	//	}
+	//	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+	//}
+
+	m_FullscreenWidth = GetSystemMetrics(SM_CXSCREEN);//devMode.dmPelsWidth;
+	m_FullscreenHeight = GetSystemMetrics(SM_CYSCREEN);//devMode.dmPelsHeight;
 
 	HINSTANCE hInstance = GetModuleHandle(nullptr);
 
@@ -369,7 +381,6 @@ void BvNativeWindow::RequestDestroy()
 {
 	if (m_hWnd)
 	{
-		constexpr auto kMaxClassNameSize = 256;
 		char className[kMaxClassNameSize];
 		GetClassName(m_hWnd, className, kMaxClassNameSize);
 

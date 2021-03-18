@@ -7,16 +7,21 @@
 #include "BvShaderResourceVk.h"
 #include "BvPipelineStateVk.h"
 #include "BvSemaphoreVk.h"
+#include "BvBufferVk.h"
+#include "BvBufferViewVk.h"
+#include "BvShaderResourceSetPoolVk.h"
+#include "BvCore/Utils/RTTI.h"
 
 
 BvRenderDeviceVk::BvRenderDeviceVk(VkInstance instance, BvLoaderVk & loader, const BvGPUInfoVk & gpuInfo)
-	: m_Instance(instance), m_Loader(loader), m_GPUInfo(gpuInfo)
+	: m_Instance(instance), m_Loader(loader), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory())
 {
 }
 
 
 BvRenderDeviceVk::~BvRenderDeviceVk()
 {
+	Destroy();
 }
 
 
@@ -120,9 +125,9 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.pQueueCreateInfos = queueInfos.Data();
-	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.Size());
+	deviceCreateInfo.queueCreateInfoCount = static_cast<u32>(queueInfos.Size());
 	deviceCreateInfo.ppEnabledExtensionNames = enabledExtensions.Data();
-	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.Size());
+	deviceCreateInfo.enabledExtensionCount = static_cast<u32>(enabledExtensions.Size());
 	//deviceCreateInfo.pEnabledFeatures = &m_GPUInfo.m_DeviceFeatures;
 	deviceCreateInfo.pNext = &m_GPUInfo.m_DeviceFeatures;
 
@@ -158,23 +163,21 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 
 void BvRenderDeviceVk::Destroy()
 {
+	m_Functions.vkDeviceWaitIdle(m_Device);
+
+	BvDelete(m_pFactory);
+
 	for (auto && pQueue : m_GraphicsQueues)
 	{
-		auto pQueueVk = static_cast<BvCommandQueueVk *>(pQueue);
-		BvDelete(pQueueVk);
-		pQueue = nullptr;
+		BvDelete(pQueue);
 	}
 	for (auto && pQueue : m_ComputeQueues)
 	{
-		auto pQueueVk = static_cast<BvCommandQueueVk *>(pQueue);
-		BvDelete(pQueueVk);
-		pQueue = nullptr;
+		BvDelete(pQueue);
 	}
 	for (auto && pQueue : m_TransferQueues)
 	{
-		auto pQueueVk = static_cast<BvCommandQueueVk *>(pQueue);
-		BvDelete(pQueueVk);
-		pQueue = nullptr;
+		BvDelete(pQueue);
 	}
 
 	if (m_Device)
@@ -190,23 +193,61 @@ BvSwapChain * BvRenderDeviceVk::CreateSwapChain(BvNativeWindow & window, const S
 	auto pQueue = static_cast<BvCommandQueueVk *>(&commandQueue);
 
 	BvSwapChainVk * pSwapChain = nullptr;
-	pSwapChain = new BvSwapChainVk(*this, *pQueue, window, swapChainDesc);
+	pSwapChain = m_pFactory->Create<BvSwapChainVk>(*this, *pQueue, window, swapChainDesc);
 	pSwapChain->Create();
 
 	return pSwapChain;
 }
 
+
+BvBuffer* BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc)
+{
+	auto pBuffer = m_pFactory->Create<BvBufferVk>(*this, desc);
+	pBuffer->Create();
+
+	return pBuffer;
+}
+
+
+BvBufferView* BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc)
+{
+	auto pView = m_pFactory->Create<BvBufferViewVk>(*this, desc);
+	pView->Create();
+
+	return pView;
+}
+
+
+BvTexture* BvRenderDeviceVk::CreateTexture(const TextureDesc& desc)
+{
+	auto pTexture = m_pFactory->Create<BvTextureVk>(*this, desc);
+	pTexture->Create();
+
+	return pTexture;
+}
+
+
+BvTextureView* BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc)
+{
+	auto pView = m_pFactory->Create<BvTextureViewVk>(*this, desc);
+	pView->Create();
+
+	return pView;
+}
+
+
 BvSemaphore * BvRenderDeviceVk::CreateSemaphore(const u64 initialValue)
 {
-	auto pSemaphore = new BvSemaphoreVk(*this);
+	auto pSemaphore = m_pFactory->Create<BvSemaphoreVk>(*this);
 	pSemaphore->Create(true, initialValue);
 
 	return pSemaphore;
 }
 
+
 BvRenderPass * BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc & renderPassDesc)
 {
-	auto pRenderPass = new BvRenderPassVk(*this, renderPassDesc);
+	auto pRenderPass = m_pFactory->Create<BvRenderPassVk>(*this, renderPassDesc);
 	pRenderPass->Create();
 	return pRenderPass;
 }
@@ -214,7 +255,7 @@ BvRenderPass * BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc & renderP
 
 BvCommandPool * BvRenderDeviceVk::CreateCommandPool(const CommandPoolDesc & commandPoolDesc)
 {
-	auto pCommandPool = new BvCommandPoolVk(*this, commandPoolDesc);
+	auto pCommandPool = m_pFactory->Create<BvCommandPoolVk>(*this, commandPoolDesc);
 	pCommandPool->Create();
 	return pCommandPool;
 }
@@ -222,15 +263,21 @@ BvCommandPool * BvRenderDeviceVk::CreateCommandPool(const CommandPoolDesc & comm
 
 BvShaderResourceLayout * BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc & shaderResourceLayoutDesc)
 {
-	auto pShaderResourceLayout = new BvShaderResourceLayoutVk(*this, shaderResourceLayoutDesc);
+	auto pShaderResourceLayout = m_pFactory->Create<BvShaderResourceLayoutVk>(*this, shaderResourceLayoutDesc);
 	pShaderResourceLayout->Create();
 	return pShaderResourceLayout;
 }
 
 
+BvShaderResourceSetPool* BvRenderDeviceVk::CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc)
+{
+	return m_pFactory->Create<BvShaderResourceSetPoolVk>(*this, shaderResourceSetPoolDesc);
+}
+
+
 BvGraphicsPipelineState * BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc)
 {
-	auto pGraphicsPSO = new BvGraphicsPipelineStateVk(*this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
+	auto pGraphicsPSO = m_pFactory->Create<BvGraphicsPipelineStateVk>(*this, graphicsPipelineStateDesc, VkPipelineCache(VK_NULL_HANDLE));
 	pGraphicsPSO->Create();
 	return pGraphicsPSO;
 }
@@ -242,14 +289,14 @@ void BvRenderDeviceVk::WaitIdle() const
 }
 
 
-const uint32_t BvRenderDeviceVk::GetMemoryTypeIndex(const uint32_t memoryTypeBits, const VkMemoryPropertyFlags properties) const
+const u32 BvRenderDeviceVk::GetMemoryTypeIndex(const u32 memoryTypeBits, const VkMemoryPropertyFlags properties) const
 {
-	uint32_t index = UINT32_MAX;
-	uint32_t typeBits = memoryTypeBits;
+	u32 index = UINT32_MAX;
+	u32 typeBits = memoryTypeBits;
 
 	auto & memoryProperties = m_GPUInfo.m_DeviceMemoryProperties;
 	// Iterate over all memory types available for the device used in this example
-	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+	for (u32 i = 0; i < memoryProperties.memoryTypeCount; i++)
 	{
 		if ((typeBits & 1) == 1)
 		{
@@ -306,9 +353,9 @@ bool BvRenderDeviceVk::QueueFamilySupportsPresent(const QueueFamilyType queueFam
 
 	switch (queueFamilyType)
 	{
-	case QueueFamilyType::kGraphics:	queueFamilyIndex = m_GPUInfo.m_GraphicsQueueIndex;
-	case QueueFamilyType::kCompute:		queueFamilyIndex = m_GPUInfo.m_ComputeQueueIndex;
-	case QueueFamilyType::kTransfer:	queueFamilyIndex = m_GPUInfo.m_TransferQueueIndex;
+	case QueueFamilyType::kGraphics:	queueFamilyIndex = m_GPUInfo.m_GraphicsQueueIndex; break;
+	case QueueFamilyType::kCompute:		queueFamilyIndex = m_GPUInfo.m_ComputeQueueIndex; break;
+	case QueueFamilyType::kTransfer:	queueFamilyIndex = m_GPUInfo.m_TransferQueueIndex; break;
 	}
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)

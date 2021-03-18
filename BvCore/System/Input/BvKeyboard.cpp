@@ -2,6 +2,10 @@
 #include "BvCore/System/Window/BvNativeWindow.h"
 
 
+constexpr u64 kU64Mask = 63;
+constexpr i32 kDivShift = 6;
+
+
 BvKeyboard::BvKeyboard()
 {
 }
@@ -16,8 +20,8 @@ void BvKeyboard::Link(BvNativeWindow& window)
 {
 	window.AddKeyboardCallback(this, [this](u32 vkCode, u32 scanCode, bool isKeyDown)
 	{
-		auto index = vkCode >> 3;
-		u64 mask = (1ull << u64(vkCode & 7));
+		auto index = vkCode >> kDivShift;
+		u64 mask = (1ull << u64(vkCode & kU64Mask));
 
 		if (isKeyDown)
 		{
@@ -44,8 +48,8 @@ void BvKeyboard::Update()
 
 bool BvKeyboard::IsKeyPressed(BvKey key) const
 {
-	auto index = u64(key) >> 3;
-	u64 mask = (1ull << u64(u64(key) & 7));
+	auto index = u64(key) >> kDivShift;
+	u64 mask = (1ull << u64(u64(key) & kU64Mask));
 
 	return (m_CurrKeyStates[index] & mask) != 0
 		&& (m_PrevKeyStates[index] & mask) == 0;
@@ -54,11 +58,11 @@ bool BvKeyboard::IsKeyPressed(BvKey key) const
 
 bool BvKeyboard::IsKeyDown(BvKey key) const
 {
-	return (m_CurrKeyStates[u64(key) >> 3] & (1ull << u64(u64(key) & 7))) != 0;
+	return (m_CurrKeyStates[u64(key) >> kDivShift] & (1ull << u64(u64(key) & kU64Mask))) != 0;
 }
 
 
 bool BvKeyboard::IsKeyUp(BvKey key) const
 {
-	return (m_CurrKeyStates[u64(key) >> 3] & (1ull << u64(u64(key) & 7))) == 0;
+	return (m_CurrKeyStates[u64(key) >> kDivShift] & (1ull << u64(u64(key) & kU64Mask))) == 0;
 }

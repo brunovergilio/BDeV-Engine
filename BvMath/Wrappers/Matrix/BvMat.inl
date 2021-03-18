@@ -7,12 +7,13 @@
 #include "../../Math/BvFastMat.h"
 
 
-inline BvMat::BvMat() : mat(MatrixIdentity()) {}
+inline BvMat::BvMat()
+	: mat(MatrixIdentity()) {}
 
 inline BvMat::BvMat(const BvMat & rhs)
 	: mat(rhs.mat) {}
 
-inline BvMat::BvMat(BvMat && rhs)
+inline BvMat::BvMat(BvMat && rhs) noexcept
 	: mat(rhs.mat) {}
 
 inline BvMat & BvMat::operator=(const BvMat & rhs)
@@ -25,7 +26,7 @@ inline BvMat & BvMat::operator=(const BvMat & rhs)
 	return *this;
 }
 
-inline BvMat & BvMat::operator=(BvMat && rhs)
+inline BvMat & BvMat::operator=(BvMat && rhs) noexcept
 {
 	mat = rhs.mat;
 
@@ -53,10 +54,10 @@ inline BvMat::BvMat(const Float44& m)
 inline BvMat::BvMat(const BvVec & r1, const BvVec & r2, const BvVec & r3, const BvVec & r4)
 	: arr{ r1, r2, r3, r4 } {}
 
-inline BvMat::BvMat(BvFastVec r1, BvFastVec r2, BvFastVec r3, BvFastVec r4)
+inline BvMat::BvMat(vf32 r1, vf32 r2, vf32 r3, vf32 r4)
 	: mat{ r1, r2, r3, r4 } {}
 
-inline BvMat::BvMat(const BvFastMat & m)
+inline BvMat::BvMat(const mf32 & m)
 	: mat(m) {}
 
 inline BvMat::BvMat(const BvQuat & q)
@@ -94,7 +95,7 @@ inline void BvMat::Set(const BvVec & r1, const BvVec & r2, const BvVec & r3, con
 	mat.r[3] = r4.m128;
 }
 
-inline void BvMat::Set(BvFastVec r1, BvFastVec r2, BvFastVec r3, BvFastVec r4)
+inline void BvMat::Set(vf32 r1, vf32 r2, vf32 r3, vf32 r4)
 {
 	mat.r[0] = r1;
 	mat.r[1] = r2;
@@ -127,9 +128,9 @@ inline Float43 BvMat::AsFloat43() const
 	return Float43(Float3(m00, m01, m02), Float3(m10, m11, m12), Float3(m20, m21, m22), Float3(m30, m31, m32));
 }
 
-inline Float44 BvMat::AsFloat44() const
+inline const Float44& BvMat::AsFloat44() const
 {
-	return Float44(Float4(m00, m01, m02, m03), Float4(m10, m11, m12, m13), Float4(m20, m21, m22, m23), Float4(m30, m31, m32, m33));
+	return m44;
 }
 
 inline BvQuat BvMat::ToQuaternion() const
@@ -355,13 +356,13 @@ inline BvMat operator+(const float val, const BvMat & rhs)
 
 inline BvMat operator-(const float val, const BvMat & rhs)
 {
-	BvFastMat lhs{ VectorReplicate(val), VectorReplicate(val), VectorReplicate(val), VectorReplicate(val) };
+	mf32 lhs{ VectorReplicate(val), VectorReplicate(val), VectorReplicate(val), VectorReplicate(val) };
 	return BvMat(MatrixSub(lhs, rhs.mat));
 }
 
 inline BvMat operator*(const float val, const BvMat & rhs)
 {
-	BvFastMat lhs{ VectorReplicate(val), VectorReplicate(val), VectorReplicate(val), VectorReplicate(val) };
+	mf32 lhs{ VectorReplicate(val), VectorReplicate(val), VectorReplicate(val), VectorReplicate(val) };
 	return BvMat(MatrixSub(lhs, rhs.mat));
 }
 

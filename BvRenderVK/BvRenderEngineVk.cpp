@@ -79,6 +79,13 @@ bool BvRenderEngineVk::Create()
 
 void BvRenderEngineVk::Destroy()
 {
+	for (auto pDevice : m_Devices)
+	{
+		auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(pDevice);
+		delete pDeviceVk;
+	}
+	m_Devices.Clear();
+
 #if defined(BV_DEBUG)
 	if (m_pDebugReport)
 	{
@@ -118,7 +125,7 @@ void BvRenderEngineVk::GetGPUInfo(const u32 index, BvGPUInfo & gpuInfo) const
 }
 
 
-BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const u32 gpuIndex, const DeviceCreateDesc & deviceDesc)
+BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, const u32 gpuIndex)
 {
 	BvAssert(m_Devices[gpuIndex] == nullptr);
 	if (m_Devices[gpuIndex] != nullptr)
@@ -131,6 +138,15 @@ BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const u32 gpuIndex, 
 	m_Devices[gpuIndex] = pDevice;
 
 	return pDevice;
+}
+
+void BvRenderEngineVk::DestroyRenderDevice(const u32 gpuIndex)
+{
+	BvAssert(m_Devices[gpuIndex] != nullptr);
+
+	auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(m_Devices[gpuIndex]);
+	delete pDeviceVk;
+	m_Devices[gpuIndex] = nullptr;
 }
 
 
@@ -337,13 +353,10 @@ u32 BvRenderEngineVk::GetQueueFamilyIndex(const VkQueueFlags queueFlags, const u
 }
 
 
-BvRenderEngine* CreateRenderEngineVk()
-{
-	return new BvRenderEngineVk();
-}
+BvRenderEngineVk g_Engine;
 
-void DestroyRenderEngineVk(BvRenderEngine* pRenderEngine)
+
+BvRenderEngine* GetRenderEngineVk()
 {
-	auto pPtr = static_cast<BvRenderEngineVk*>(pRenderEngine);
-	delete pPtr;
+	return &g_Engine;
 }

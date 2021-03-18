@@ -19,38 +19,39 @@
 // Specialized Operations
 // ======================
 
-BvFastQuat QuaternionIdentity();
+qf32 QuaternionIdentity();
 
-BvFastQuat QuaternionMul(BvFastQuat q1, BvFastQuat q2);
-BvFastQuat QuaternionMulKeenan(BvFastQuat q1, BvFastQuat q2);
+qf32 QuaternionMul(qf32 q1, qf32 q2);
+qf32 QuaternionMulKeenan(qf32 q1, qf32 q2);
 
-BvFastQuat QuaternionConjugate(BvFastQuat q);
-BvFastQuat QuaternionInverse(BvFastQuat q);
+qf32 QuaternionConjugate(qf32 q);
+qf32 QuaternionInverse(qf32 q);
+qf32 QuaternionInverseN(qf32 q);
 
-BvFastQuat QuaternionNormalize(BvFastQuat q);
+qf32 QuaternionNormalize(qf32 q);
 
-float QuaternionDot(BvFastQuat q1, BvFastQuat q2);
-BvFastQuat QuaternionDotV(BvFastQuat q1, BvFastQuat q2);
+float QuaternionDot(qf32 q1, qf32 q2);
+qf32 QuaternionDotV(qf32 q1, qf32 q2);
 
-float QuaternionLengthSqr(BvFastQuat q);
-BvFastQuat QuaternionLengthSqrV(BvFastQuat q);
+float QuaternionLengthSqr(qf32 q);
+qf32 QuaternionLengthSqrV(qf32 q);
 
-float QuaternionLength(BvFastQuat q);
-BvFastQuat QuaternionLengthV(BvFastQuat q);
+float QuaternionLength(qf32 q);
+qf32 QuaternionLengthV(qf32 q);
 
-BvFastQuat QuaternionRotationAxis(BvFastVec v, float angle);
-BvFastVec QuaternionQVQC(BvFastQuat q, BvFastVec v);
-BvFastVec QuaternionQCVQ(BvFastQuat q, BvFastVec v);
+qf32 QuaternionRotationAxis(vf32 v, float angle);
+vf32 QuaternionQVQC(qf32 q, vf32 v);
+vf32 QuaternionQCVQ(qf32 q, vf32 v);
 
-BvFastVec QuaternionQVQCKeenan(BvFastQuat q, BvFastVec v);
-BvFastVec QuaternionQCVQKeenan(BvFastQuat q, BvFastVec v);
+vf32 QuaternionQVQCKeenan(qf32 q, vf32 v);
+vf32 QuaternionQCVQKeenan(qf32 q, vf32 v);
 
-BvFastMat QuaternionToMatrix(BvFastQuat q);
-BvFastQuat QuaternionFromMatrix(const BvFastMat & m);
+mf32 QuaternionToMatrix(qf32 q);
+qf32 QuaternionFromMatrix(const mf32 & m);
 
-BvFastQuat QuaternionSlerp(BvFastQuat q1, BvFastQuat q2, const float t, const float epsilon = kEpsilon);
+qf32 QuaternionSlerp(qf32 q1, qf32 q2, const float t, const float epsilon = kEpsilon);
 
-float QuaternionAngle(BvFastQuat q);
+float QuaternionAngle(qf32 q);
 
 // =================
 // Definitions
@@ -60,12 +61,12 @@ float QuaternionAngle(BvFastQuat q);
 // Specialized Operations
 // ======================
 
-inline BvFastQuat QuaternionIdentity()
+inline qf32 QuaternionIdentity()
 {
 	return VectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-inline BvFastQuat QuaternionMul(BvFastQuat q1, BvFastQuat q2)
+inline qf32 QuaternionMul(qf32 q1, qf32 q2)
 {
 	// [q1s * q2v + q2s * q1v + q1 x q2] [q1s * q2s - q1.q2]
 	// Expanding the equation
@@ -75,18 +76,18 @@ inline BvFastQuat QuaternionMul(BvFastQuat q1, BvFastQuat q2)
 	// w => q1.w * q2.w - q2.x * q1.x - q1.y * q2.y - q1.z * q2.z
 
 	// v0 = q1.w, q1.w, q1.w, q1.w
-	BvFastVec v0 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(3, 3, 3, 3));
+	vf32 v0 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(3, 3, 3, 3));
 
 	// r = q1.w * q2.x, q1.w * q2.y, q1.w * q2.z, q1.w * q2.w
-	BvFastVec r = _mm_mul_ps(v0, q2);
+	vf32 r = _mm_mul_ps(v0, q2);
 
 	// v1 = q2.w, q2.w, q2.w, q2.x
-	BvFastVec v1 = _mm_shuffle_ps(q2, q2, _MM_SHUFFLE(0, 3, 3, 3));
+	vf32 v1 = _mm_shuffle_ps(q2, q2, _MM_SHUFFLE(0, 3, 3, 3));
 	// v2 = q1.x, q1.y, q1.z, q1.x
-	BvFastVec v2 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(0, 2, 1, 0));
+	vf32 v2 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(0, 2, 1, 0));
 
 	// c0 = 1.0, 1.0, 1.0, -1.0
-	BvFastVec c0 = _mm_set_ps(-1.0f, 1.0f, 1.0f, 1.0f);
+	vf32 c0 = _mm_set_ps(-1.0f, 1.0f, 1.0f, 1.0f);
 
 	// v1 = q2.w * q1.x, q2.w * q1.y, q2.w * q1.z, q2.x * q1.x
 	v1 = _mm_mul_ps(v1, v2);
@@ -123,7 +124,7 @@ inline BvFastQuat QuaternionMul(BvFastQuat q1, BvFastQuat q2)
 	return r;
 }
 
-inline BvFastQuat QuaternionMulKeenan(BvFastQuat q1, BvFastQuat q2)
+inline qf32 QuaternionMulKeenan(qf32 q1, qf32 q2)
 {
 	// [q1s * q2v + q2s * q1v + q2 x q1] [q1s * q2s - q1.q2]
 	// Expanding the equation
@@ -133,18 +134,18 @@ inline BvFastQuat QuaternionMulKeenan(BvFastQuat q1, BvFastQuat q2)
 	// w => q1.w * q2.w - q2.x * q1.x - q2.y * q1.y - q2.z * q1.z
 
 	// v0 = q1.w, q1.w, q1.w, q1.w
-	BvFastVec v0 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(3, 3, 3, 3));
+	vf32 v0 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(3, 3, 3, 3));
 
 	// r = q1.w * q2.x, q1.w * q2.y, q1.w * q2.z, q1.w * q2.w
-	BvFastVec r = _mm_mul_ps(v0, q2);
+	vf32 r = _mm_mul_ps(v0, q2);
 
 	// v1 = q2.w, q2.w, q2.w, q2.x
-	BvFastVec v1 = _mm_shuffle_ps(q2, q2, _MM_SHUFFLE(0, 3, 3, 3));
+	vf32 v1 = _mm_shuffle_ps(q2, q2, _MM_SHUFFLE(0, 3, 3, 3));
 	// v2 = q1.x, q1.y, q1.z, q1.x
-	BvFastVec v2 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(0, 2, 1, 0));
+	vf32 v2 = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(0, 2, 1, 0));
 
 	// c0 = 1.0, 1.0, 1.0, -1.0
-	BvFastVec c0 = _mm_set_ps(-1.0f, 1.0f, 1.0f, 1.0f);
+	vf32 c0 = _mm_set_ps(-1.0f, 1.0f, 1.0f, 1.0f);
 
 	// v1 = q2.w * q1.x, q2.w * q1.y, q2.w * q1.z, q2.x * q1.x
 	v1 = _mm_mul_ps(v1, v2);
@@ -181,34 +182,39 @@ inline BvFastQuat QuaternionMulKeenan(BvFastQuat q1, BvFastQuat q2)
 	return r;
 }
 
-inline BvFastQuat QuaternionConjugate(BvFastQuat q)
+inline qf32 QuaternionConjugate(qf32 q)
 {
-	BvFastQuat conj = _mm_set_ps(1.0f, -1.0f, -1.0f, -1.0f);
+	qf32 conj = _mm_set_ps(1.0f, -1.0f, -1.0f, -1.0f);
 
 	return _mm_mul_ps(q, conj);
 }
 
-inline BvFastQuat QuaternionInverse(BvFastQuat q)
+inline qf32 QuaternionInverse(qf32 q)
 {
-	BvFastQuat conj = QuaternionConjugate(q);
-	BvFastQuat oneOverLengthSqr = _mm_rcp_ps(QuaternionLengthSqrV(q));
+	qf32 conj = QuaternionConjugate(q);
+	qf32 oneOverLengthSqr = _mm_rcp_ps(QuaternionLengthSqrV(q));
 
 	return _mm_mul_ps(conj, oneOverLengthSqr);
 }
 
-inline BvFastQuat QuaternionNormalize(BvFastQuat q)
+inline qf32 QuaternionInverseN(qf32 q)
+{
+	return QuaternionConjugate(q);
+}
+
+inline qf32 QuaternionNormalize(qf32 q)
 {
 	return _mm_mul_ps(q, _mm_rsqrt_ps(QuaternionLengthSqrV(q)));
 }
 
-inline float QuaternionDot(BvFastQuat q1, BvFastQuat q2)
+inline float QuaternionDot(qf32 q1, qf32 q2)
 {
 	// _mm_cvtss_f32 gets the value of the lowest float, in this case, X
 	// _mm_store_ss could also be used, but I think it might be slower
 	return _mm_cvtss_f32(QuaternionDotV(q1, q2));
 }
 
-inline BvFastQuat QuaternionDotV(BvFastQuat q1, BvFastQuat q2)
+inline qf32 QuaternionDotV(qf32 q1, qf32 q2)
 {
 	// _mm_dp_ps will use a 8 bit mask where:
 	// bits 7, 6, 5 and 4 describe which elements to Mul
@@ -219,44 +225,44 @@ inline BvFastQuat QuaternionDotV(BvFastQuat q1, BvFastQuat q2)
 	return _mm_dp_ps(q1, q2, 0xFF);
 }
 
-inline float QuaternionLengthSqr(BvFastQuat q)
+inline float QuaternionLengthSqr(qf32 q)
 {
 	return _mm_cvtss_f32(QuaternionLengthSqrV(q));
 }
 
-inline BvFastQuat QuaternionLengthSqrV(BvFastQuat q)
+inline qf32 QuaternionLengthSqrV(qf32 q)
 {
 	return QuaternionDotV(q, q);
 }
 
-inline float QuaternionLength(BvFastQuat v)
+inline float QuaternionLength(qf32 v)
 {
 	return _mm_cvtss_f32(QuaternionLengthV(v));
 }
 
-inline BvFastQuat QuaternionLengthV(BvFastQuat v)
+inline qf32 QuaternionLengthV(qf32 v)
 {
 	return _mm_sqrt_ps(QuaternionLengthSqrV(v));
 }
 
-inline BvFastQuat QuaternionRotationAxis(BvFastVec v, float angle)
+inline qf32 QuaternionRotationAxis(vf32 v, float angle)
 {
 	float halfAngle = angle * 0.5f;
 	float sinCos[] = { sinf(halfAngle), cosf(halfAngle) };
-	BvFastVec q = VectorSet(sinCos[0], sinCos[0], sinCos[0], sinCos[1]);
-	BvFastVec n = VectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	vf32 q = VectorSet(sinCos[0], sinCos[0], sinCos[0], sinCos[1]);
+	vf32 n = VectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 	n = _mm_or_ps(v, n);
 
 	return VectorMul(q, n);
 }
 
-inline BvFastVec QuaternionQVQC(BvFastQuat q, BvFastVec v)
+inline vf32 QuaternionQVQC(qf32 q, vf32 v)
 {
-	BvFastVec v0 = VectorReplicateW(q);
-	BvFastVec v1 = VectorMul(v0, v0);
+	vf32 v0 = VectorReplicateW(q);
+	vf32 v1 = VectorMul(v0, v0);
 	v0 = VectorAdd(v0, v0);
 
-	BvFastVec v2 = VectorDotV(q, q);
+	vf32 v2 = VectorDotV(q, q);
 	v2 = VectorSub(v1, v2);
 	v2 = VectorMul(v2, v);
 
@@ -270,13 +276,13 @@ inline BvFastVec QuaternionQVQC(BvFastQuat q, BvFastVec v)
 	return VectorAdd(v0, VectorAdd(v1, v2));
 }
 
-inline BvFastVec QuaternionQCVQ(BvFastQuat q, BvFastVec v)
+inline vf32 QuaternionQCVQ(qf32 q, vf32 v)
 {
-	BvFastVec v0 = VectorReplicateW(q);
-	BvFastVec v1 = VectorMul(v0, v0);
+	vf32 v0 = VectorReplicateW(q);
+	vf32 v1 = VectorMul(v0, v0);
 	v0 = VectorAdd(v0, v0);
 
-	BvFastVec v2 = VectorDotV(q, q);
+	vf32 v2 = VectorDotV(q, q);
 	v2 = VectorSub(v1, v2);
 	v2 = VectorMul(v2, v);
 
@@ -290,30 +296,30 @@ inline BvFastVec QuaternionQCVQ(BvFastQuat q, BvFastVec v)
 	return VectorAdd(v0, VectorAdd(v1, v2));
 }
 
-inline BvFastVec QuaternionQVQCKeenan(BvFastQuat q, BvFastVec v)
+inline vf32 QuaternionQVQCKeenan(qf32 q, vf32 v)
 {
 	return QuaternionQCVQ(q, v);
 }
 
-inline BvFastVec QuaternionQCVQKeenan(BvFastQuat q, BvFastVec v)
+inline vf32 QuaternionQCVQKeenan(qf32 q, vf32 v)
 {
 	return QuaternionQVQC(q, v);
 }
 
-inline BvFastMat QuaternionToMatrix(BvFastQuat q)
+inline mf32 QuaternionToMatrix(qf32 q)
 {
 	// v0 = 2 * q.x, 2 * q.y, 2 * q.z, 2 * q.w
-	BvFastVec v0 = _mm_add_ps(q, q);
+	vf32 v0 = _mm_add_ps(q, q);
 
 	// v1 = 2 * q.x, 2 * q.x, 2 * q.x, 2 * q.y
-	BvFastVec v1 = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(1, 0, 0, 0));
+	vf32 v1 = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(1, 0, 0, 0));
 	// v3 = q.y, q.z, q.y, q.z
-	BvFastVec v3 = _mm_shuffle_ps(q, q, _MM_SHUFFLE(2, 1, 2, 1));
+	vf32 v3 = _mm_shuffle_ps(q, q, _MM_SHUFFLE(2, 1, 2, 1));
 	// v1 = 2 * q.x * q.y, 2 * q.x * q.z, 2 * q.x * q.y, 2 * q.y * q.z
 	v1 = _mm_mul_ps(v1, v3);
 
 	// v2 = 2 * q.w, 2 * q.w, 2 * q.w, 2 * q.w
-	BvFastVec v2 = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 3));
+	vf32 v2 = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 3));
 	// v3 = q.z, q.y, q.z, q.x
 	v3 = _mm_shuffle_ps(q, q, _MM_SHUFFLE(0, 2, 1, 2));
 	// v2 = 2 * q.w * q.z, 2 * q.w * q.y, 2 * q.w * q.z, 2 * q.w * q.x
@@ -345,7 +351,7 @@ inline BvFastMat QuaternionToMatrix(BvFastQuat q)
 	v2 = _mm_shuffle_ps(v3, v2, _MM_SHUFFLE(3, 3, 1, 1));
 
 	// c0 = 1, 1, 1, 0
-	BvFastVec c0 = _mm_set_ps(0.0f, 1.0f, 1.0f, 1.0f);
+	vf32 c0 = _mm_set_ps(0.0f, 1.0f, 1.0f, 1.0f);
 
 	// v0 = 2 * q.x ^ 2, 2 * q.y ^ 2, 2 * q.z ^ 2, 2 * q.w ^ 2
 	v0 = _mm_mul_ps(v0, q);
@@ -361,7 +367,7 @@ inline BvFastMat QuaternionToMatrix(BvFastQuat q)
 	// v3 = 1 - 2 * q.y ^ 2 - 2 * q.z ^ 2, 2 * q.x * q.y + 2 * q.w * q.z, 2 * q.x * q.z - 2 * q.w * q.y, 0
 	v3 = _mm_shuffle_ps(v3, v3, _MM_SHUFFLE(1, 3, 2, 0));
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0] = v3;
 
 	// v3 = 1 - 2 * q.z ^ 2 - 2 * q.x ^ 2, 0, 2 * q.x * q.y - 2 * q.w * q.z, 2 * q.y * q.z + 2 * q.w * q.x
@@ -386,21 +392,21 @@ inline BvFastMat QuaternionToMatrix(BvFastQuat q)
 	return r;
 }
 
-inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
+inline qf32 QuaternionFromMatrix(const mf32 & m)
 {
-	BvFastVec v0;
+	vf32 v0;
 
 	// z0 = 0, 0, 0, 0
-	BvFastVec z0 = _mm_setzero_ps();
+	vf32 z0 = _mm_setzero_ps();
 
-	BvFastVec if0, if1, if2, if3;
+	vf32 if0, if1, if2, if3;
 	{
 		// m00 = m00, m00, m00, m00
-		BvFastVec m00 = _mm_shuffle_ps(m.r[0], m.r[0], _MM_SHUFFLE(0, 0, 0, 0));
+		vf32 m00 = _mm_shuffle_ps(m.r[0], m.r[0], _MM_SHUFFLE(0, 0, 0, 0));
 		// m11 = m11, m11, m11, m11
-		BvFastVec m11 = _mm_shuffle_ps(m.r[1], m.r[1], _MM_SHUFFLE(1, 1, 1, 1));
+		vf32 m11 = _mm_shuffle_ps(m.r[1], m.r[1], _MM_SHUFFLE(1, 1, 1, 1));
 		// m22 = m22, m22, m22, m22
-		BvFastVec m22 = _mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(2, 2, 2, 2));
+		vf32 m22 = _mm_shuffle_ps(m.r[2], m.r[2], _MM_SHUFFLE(2, 2, 2, 2));
 
 		// v0 = m00 + m11, m00 + m11, m00 + m11, m00 + m11
 		v0 = _mm_add_ps(m00, m11);
@@ -414,7 +420,7 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 		// if1 = m00 > m11 ? 0xffffffff : 0
 		if1 = _mm_cmpgt_ps(m00, m11);
 		// if11 = m00 > m22 ? 0xffffffff : 0
-		BvFastVec if11 = _mm_cmpgt_ps(m00, m22);
+		vf32 if11 = _mm_cmpgt_ps(m00, m22);
 		// if1 = if1  > 0 ? 0xffffffff : 0
 		if1 = _mm_cmpgt_ps(if1, z0);
 		// if11 = if11  > 0 ? 0xffffffff : 0
@@ -435,11 +441,11 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 
 
 	// m0 = m00, m00, m11, m11
-	BvFastVec m0 = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(1, 1, 0, 0));
+	vf32 m0 = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(1, 1, 0, 0));
 	// m1 = 1, 1, -1, -1
-	BvFastVec m1 = _mm_set_ps(-1.0f, -1.0f, 1.0f, 1.0f);
+	vf32 m1 = _mm_set_ps(-1.0f, -1.0f, 1.0f, 1.0f);
 	// m2 = m22, m22, 1, 1
-	BvFastVec m2 = _mm_shuffle_ps(m.r[2], m1, _MM_SHUFFLE(0, 0, 2, 2));
+	vf32 m2 = _mm_shuffle_ps(m.r[2], m1, _MM_SHUFFLE(0, 0, 2, 2));
 
 	// m0 = m00, m11, m22, 1
 	m0 = _mm_shuffle_ps(m0, m2, _MM_SHUFFLE(2, 0, 2, 0));
@@ -450,13 +456,13 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 	// Control signs
 
 	// c0 = 1, 1, 1, 1
-	BvFastVec c0 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(0, 0, 0, 0));
+	vf32 c0 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(0, 0, 0, 0));
 	// c1 = 1, 1, -1, -1
-	BvFastVec c1 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(2, 2, 0, 0));
+	vf32 c1 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(2, 2, 0, 0));
 	// c2 = 1, -1, 1, -1
-	BvFastVec c2 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(2, 0, 2, 0));
+	vf32 c2 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(2, 0, 2, 0));
 	// c3 = 1, -1, -1, 1
-	BvFastVec c3 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(0, 2, 2, 0));
+	vf32 c3 = _mm_shuffle_ps(m1, m1, _MM_SHUFFLE(0, 2, 2, 0));
 
 	// m2 = 0.25, 0, 0, 0
 	m2 = _mm_set_ss(0.25f);
@@ -464,7 +470,7 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 	// First block of the component-wise addition
 
 	// s0 = m02, m02, m10, m10
-	BvFastVec s0 = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(0, 0, 2, 2));
+	vf32 s0 = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(0, 0, 2, 2));
 	// s0 = m23, m21, m02, m10
 	s0 = _mm_shuffle_ps(m.r[2], s0, _MM_SHUFFLE(2, 0, 1, 3));
 	// s0 = 0.25, m21, m02, m10
@@ -473,7 +479,7 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 	// Second block of the component-wise addition
 
 	// s1 = m12, m12, m20, m20
-	BvFastVec s1 = _mm_shuffle_ps(m.r[1], m.r[2], _MM_SHUFFLE(0, 0, 2, 2));
+	vf32 s1 = _mm_shuffle_ps(m.r[1], m.r[2], _MM_SHUFFLE(0, 0, 2, 2));
 	// s1 = 0, m01, m12, m20
 	s1 = _mm_shuffle_ps(m.r[0], s1, _MM_SHUFFLE(2, 0, 1, 3));
 	// s1 = 0, m12, m20, m01
@@ -529,10 +535,10 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 	s0 = _mm_mul_ps(s0, m0);
 
 	{
-		BvFastVec shuffle0 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(0, 3, 2, 1));
-		BvFastVec shuffle1 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(1, 2, 3, 0));
-		BvFastVec shuffle2 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(2, 1, 0, 3));
-		BvFastVec shuffle3 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(3, 0, 1, 2));
+		vf32 shuffle0 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(0, 3, 2, 1));
+		vf32 shuffle1 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(1, 2, 3, 0));
+		vf32 shuffle2 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(2, 1, 0, 3));
+		vf32 shuffle3 = _mm_shuffle_ps(s0, s0, _MM_SHUFFLE(3, 0, 1, 2));
 
 		shuffle0 = _mm_and_ps(shuffle0, if0);
 		shuffle1 = _mm_and_ps(shuffle1, if1);
@@ -550,14 +556,14 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 	return QuaternionNormalize(s0);
 }
 
-inline BvFastQuat QuaternionSlerp(BvFastQuat q1, BvFastQuat q2, const float t, const float epsilon)
+inline qf32 QuaternionSlerp(qf32 q1, qf32 q2, const float t, const float epsilon)
 {
-	BvFastVec c0 = QuaternionDotV(q1, q2);
-	BvFastVec v0 = VectorNegate(c0);
-	BvFastQuat q = VectorNegate(q2);
+	vf32 c0 = QuaternionDotV(q1, q2);
+	vf32 v0 = VectorNegate(c0);
+	qf32 q = VectorNegate(q2);
 
-	BvFastVec v1 = VectorZero();
-	BvFastVec c1 = _mm_cmplt_ps(c0, v1);
+	vf32 v1 = VectorZero();
+	vf32 c1 = _mm_cmplt_ps(c0, v1);
 
 	v0 = _mm_and_ps(v0, c1);
 	c0 = _mm_andnot_ps(c1, c0);
@@ -568,20 +574,20 @@ inline BvFastQuat QuaternionSlerp(BvFastQuat q1, BvFastQuat q2, const float t, c
 
 	v0 = VectorReplicate(epsilon);
 
-	BvFastVec vAngle = VectorReplicate(acosf(VectorGetX(c0)));
+	vf32 vAngle = VectorReplicate(acosf(VectorGetX(c0)));
 	c1 = _mm_cmpgt_ps(vAngle, v0);
 
 	c0 = VectorReplicate(1.0f);
-	BvFastVec lerp2 = VectorReplicate(t);
-	BvFastVec lerp1 = _mm_sub_ps(c0, lerp2);
+	vf32 lerp2 = VectorReplicate(t);
+	vf32 lerp1 = _mm_sub_ps(c0, lerp2);
 
-	BvFastVec oneOverSinAngle = VectorReplicate(sinf(VectorGetX(vAngle)));
+	vf32 oneOverSinAngle = VectorReplicate(sinf(VectorGetX(vAngle)));
 	oneOverSinAngle = _mm_rcp_ps(oneOverSinAngle);
 	v1 = _mm_mul_ps(lerp1, vAngle);
 	v1 = VectorReplicate(sinf(VectorGetX(v1)));
 	v1 = _mm_mul_ps(v1, oneOverSinAngle);
 
-	BvFastVec v2 = _mm_mul_ps(lerp2, vAngle);
+	vf32 v2 = _mm_mul_ps(lerp2, vAngle);
 	v2 = VectorReplicate(sinf(VectorGetX(v2)));
 	v2 = _mm_mul_ps(v2, oneOverSinAngle);
 
@@ -600,7 +606,7 @@ inline BvFastQuat QuaternionSlerp(BvFastQuat q1, BvFastQuat q2, const float t, c
 	return _mm_add_ps(v1, v2);
 }
 
-inline float QuaternionAngle(BvFastQuat q)
+inline float QuaternionAngle(qf32 q)
 {
 	return 2.0f * acosf(VectorGetW(q));
 }

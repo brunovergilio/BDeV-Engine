@@ -19,38 +19,38 @@
 // Specialized Operations
 // ======================
 
-BvFastQuat QuaternionIdentity();
+qf32 QuaternionIdentity();
 
-BvFastQuat QuaternionMul(const BvFastQuat & q1, const BvFastQuat & q2);
-BvFastQuat QuaternionMulKeenan(const BvFastQuat & q1, const BvFastQuat & q2);
+qf32 QuaternionMul(const qf32 & q1, const qf32 & q2);
+qf32 QuaternionMulKeenan(const qf32 & q1, const qf32 & q2);
 
-BvFastQuat QuaternionConjugate(const BvFastQuat & q);
-BvFastQuat QuaternionInverse(const BvFastQuat & q);
+qf32 QuaternionConjugate(const qf32 & q);
+qf32 QuaternionInverse(const qf32 & q);
 
-BvFastQuat QuaternionNormalize(const BvFastQuat & q);
+qf32 QuaternionNormalize(const qf32 & q);
 
-float QuaternionDot(const BvFastQuat & q1, const BvFastQuat & q2);
-BvFastQuat QuaternionDotV(const BvFastQuat & q1, const BvFastQuat & q2);
+float QuaternionDot(const qf32 & q1, const qf32 & q2);
+qf32 QuaternionDotV(const qf32 & q1, const qf32 & q2);
 
-float QuaternionLengthSqr(const BvFastQuat & q);
-BvFastQuat QuaternionLengthSqrV(const BvFastQuat & q);
+float QuaternionLengthSqr(const qf32 & q);
+qf32 QuaternionLengthSqrV(const qf32 & q);
 
-float QuaternionLength(const BvFastQuat & q);
-BvFastQuat QuaternionLengthV(const BvFastQuat & q);
+float QuaternionLength(const qf32 & q);
+qf32 QuaternionLengthV(const qf32 & q);
 
-BvFastQuat QuaternionRotationAxis(const BvFastVec & v, float angle);
-BvFastVec QuaternionQVQC(const BvFastQuat & q, const BvFastVec & v);
-BvFastVec QuaternionQCVQ(const BvFastQuat & q, const BvFastVec & v);
+qf32 QuaternionRotationAxis(const vf32 & v, float angle);
+vf32 QuaternionQVQC(const qf32 & q, const vf32 & v);
+vf32 QuaternionQCVQ(const qf32 & q, const vf32 & v);
 
-BvFastVec QuaternionQVQCKeenan(const BvFastQuat & q, const BvFastVec & v);
-BvFastVec QuaternionQCVQKeenan(const BvFastQuat & q, const BvFastVec & v);
+vf32 QuaternionQVQCKeenan(const qf32 & q, const vf32 & v);
+vf32 QuaternionQCVQKeenan(const qf32 & q, const vf32 & v);
 
-BvFastMat QuaternionToMatrix(const BvFastQuat & q);
-BvFastQuat QuaternionFromMatrix(const BvFastMat & m);
+mf32 QuaternionToMatrix(const qf32 & q);
+qf32 QuaternionFromMatrix(const mf32 & m);
 
-BvFastQuat QuaternionSlerp(const BvFastQuat & q1, const BvFastQuat & q2, const float t, const float epsilon = kEpsilon);
+qf32 QuaternionSlerp(const qf32 & q1, const qf32 & q2, const float t, const float epsilon = kEpsilon);
 
-float QuaternionAngle(const BvFastQuat & q);
+float QuaternionAngle(const qf32 & q);
 
 // =================
 // Definitions
@@ -60,12 +60,12 @@ float QuaternionAngle(const BvFastQuat & q);
 // Specialized Operations
 // ======================
 
-inline BvFastQuat QuaternionIdentity()
+inline qf32 QuaternionIdentity()
 {
-	return BvFastQuat(0.0f, 0.0f, 0.0f, 1.0f);
+	return qf32(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-inline BvFastQuat QuaternionMul(const BvFastQuat & q1, const BvFastQuat & q2)
+inline qf32 QuaternionMul(const qf32 & q1, const qf32 & q2)
 {
 	// Quaternion Multiplication
 	// [q1s * q2v + q2s * q1v + q1 x q2] [q1s * q2s - q1.q2]
@@ -83,7 +83,7 @@ inline BvFastQuat QuaternionMul(const BvFastQuat & q1, const BvFastQuat & q2)
 		);
 }
 
-inline BvFastQuat QuaternionMulKeenan(const BvFastQuat & q1, const BvFastQuat & q2)
+inline qf32 QuaternionMulKeenan(const qf32 & q1, const qf32 & q2)
 {
 	// Quaternion Multiplication
 	// [q1s * q2v + q2s * q1v + q2 x q1] [q1s * q2s - q1.q2]
@@ -101,17 +101,17 @@ inline BvFastQuat QuaternionMulKeenan(const BvFastQuat & q1, const BvFastQuat & 
 	);
 }
 
-inline BvFastQuat QuaternionConjugate(const BvFastQuat & q)
+inline qf32 QuaternionConjugate(const qf32 & q)
 {
 	return VectorSet(-q.x, -q.y, -q.z, q.w);
 }
 
-inline BvFastQuat QuaternionInverse(const BvFastQuat & q)
+inline qf32 QuaternionInverse(const qf32 & q)
 {
-	BvFastQuat conj = QuaternionConjugate(q);
+	qf32 conj = QuaternionConjugate(q);
 	float oneOverLengthSqr = 1.0f / (QuaternionLengthSqr(q));
 
-	return BvFastQuat(
+	return qf32(
 		conj.x * oneOverLengthSqr,
 		conj.y * oneOverLengthSqr,
 		conj.z * oneOverLengthSqr,
@@ -119,11 +119,11 @@ inline BvFastQuat QuaternionInverse(const BvFastQuat & q)
 		);
 }
 
-inline BvFastQuat QuaternionNormalize(const BvFastQuat & q)
+inline qf32 QuaternionNormalize(const qf32 & q)
 {
 	float oneOverLengthSqr = QuaternionLengthSqr(q);
 
-	return BvFastQuat(
+	return qf32(
 		q.x * oneOverLengthSqr,
 		q.y * oneOverLengthSqr,
 		q.z * oneOverLengthSqr,
@@ -131,82 +131,82 @@ inline BvFastQuat QuaternionNormalize(const BvFastQuat & q)
 	);
 }
 
-inline float QuaternionDot(const BvFastQuat & q1, const BvFastQuat & q2)
+inline float QuaternionDot(const qf32 & q1, const qf32 & q2)
 {
 	// _mm_cvtss_f32 gets the value of the lowest float, in this case, X
 	// _mm_store_ss could also be used, but I think it might be slower
 	return QuaternionDotV(q1, q2).x;
 }
 
-inline BvFastQuat QuaternionDotV(const BvFastQuat & q1, const BvFastQuat & q2)
+inline qf32 QuaternionDotV(const qf32 & q1, const qf32 & q2)
 {
 	return VectorReplicate(q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w);
 }
 
-inline float QuaternionLengthSqr(const BvFastQuat & q)
+inline float QuaternionLengthSqr(const qf32 & q)
 {
 	return QuaternionLengthSqrV(q).x;
 }
 
-inline BvFastQuat QuaternionLengthSqrV(const BvFastQuat & q)
+inline qf32 QuaternionLengthSqrV(const qf32 & q)
 {
 	return QuaternionDotV(q, q);
 }
 
-inline float QuaternionLength(const BvFastQuat & v)
+inline float QuaternionLength(const qf32 & v)
 {
 	return QuaternionLengthV(v).x;
 }
 
-inline BvFastQuat QuaternionLengthV(const BvFastQuat & v)
+inline qf32 QuaternionLengthV(const qf32 & v)
 {
 	float oneOverLengthSqr = 1.0f / QuaternionLengthSqr(v);
-	return BvFastQuat(v.x * oneOverLengthSqr, v.y * oneOverLengthSqr, v.z * oneOverLengthSqr, v.w * oneOverLengthSqr);
+	return qf32(v.x * oneOverLengthSqr, v.y * oneOverLengthSqr, v.z * oneOverLengthSqr, v.w * oneOverLengthSqr);
 }
 
-inline BvFastQuat QuaternionRotationAxis(const BvFastVec & v, float angle)
+inline qf32 QuaternionRotationAxis(const vf32 & v, float angle)
 {
 	float halfAngle = angle * 0.5f;
 	float sinCos[] = { sinf(halfAngle), cosf(halfAngle) };
 
-	return BvFastVec(v.x * sinCos[0], v.y * sinCos[0], v.z * sinCos[0], sinCos[1]);
+	return vf32(v.x * sinCos[0], v.y * sinCos[0], v.z * sinCos[0], sinCos[1]);
 }
 
-inline BvFastVec QuaternionQVQC(const BvFastQuat & q, const BvFastVec & v)
+inline vf32 QuaternionQVQC(const qf32 & q, const vf32 & v)
 {
 	float w2MinusQDotQ = q.w * q.w - VectorDot(q, q);
 	float twoTimesQDotV = 2.0f * VectorDot(q, v);
 	float wTimesTwo = 2.0f * q.w;
-	BvFastVec qCrossV = VectorCross(q, v);
+	vf32 qCrossV = VectorCross(q, v);
 
-	return BvFastVec(w2MinusQDotQ * v.x + twoTimesQDotV * q.x + wTimesTwo * qCrossV.x,
+	return vf32(w2MinusQDotQ * v.x + twoTimesQDotV * q.x + wTimesTwo * qCrossV.x,
 		w2MinusQDotQ * v.y + twoTimesQDotV * q.y + wTimesTwo * qCrossV.y,
 		w2MinusQDotQ * v.z + twoTimesQDotV * q.z + wTimesTwo * qCrossV.z);
 }
 
-inline BvFastVec QuaternionQCVQ(const BvFastQuat & q, const BvFastVec & v)
+inline vf32 QuaternionQCVQ(const qf32 & q, const vf32 & v)
 {
 	float w2MinusQDotQ = q.w * q.w - VectorDot(q, q);
 	float twoTimesQDotV = 2.0f * VectorDot(q, v);
 	float wTimesTwo = 2.0f * q.w;
-	BvFastVec vCrossQ = VectorCross(v, q);
+	vf32 vCrossQ = VectorCross(v, q);
 
-	return BvFastVec(w2MinusQDotQ * v.x + twoTimesQDotV * q.x + wTimesTwo * vCrossQ.x,
+	return vf32(w2MinusQDotQ * v.x + twoTimesQDotV * q.x + wTimesTwo * vCrossQ.x,
 		w2MinusQDotQ * v.y + twoTimesQDotV * q.y + wTimesTwo * vCrossQ.y,
 		w2MinusQDotQ * v.z + twoTimesQDotV * q.z + wTimesTwo * vCrossQ.z);
 }
 		
-inline BvFastVec QuaternionQVQCKeenan(const BvFastQuat & q, const BvFastVec & v)
+inline vf32 QuaternionQVQCKeenan(const qf32 & q, const vf32 & v)
 {
 	return QuaternionQCVQ(q, v);
 }
 
-inline BvFastVec QuaternionQCVQKeenan(const BvFastQuat & q, const BvFastVec & v)
+inline vf32 QuaternionQCVQKeenan(const qf32 & q, const vf32 & v)
 {
 	return QuaternionQVQC(q, v);
 }
 
-inline BvFastMat QuaternionToMatrix(const BvFastQuat & q)
+inline mf32 QuaternionToMatrix(const qf32 & q)
 {
 	float xy = q.x * q.y;
 	float xz = q.x * q.z;
@@ -221,7 +221,7 @@ inline BvFastMat QuaternionToMatrix(const BvFastQuat & q)
 	float yy = q.y * q.y;
 	float zz = q.z * q.z;
 
-	BvFastMat r;
+	mf32 r;
 	r.r[0].x = 1.0f - 2.0f * (yy + zz);
 	r.r[0].y = 2.0f * (xy + zw);
 	r.r[0].z = 2.0f * (xz - yw);
@@ -245,11 +245,11 @@ inline BvFastMat QuaternionToMatrix(const BvFastQuat & q)
 	return r;
 }
 
-inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
+inline qf32 QuaternionFromMatrix(const mf32 & m)
 {
 	float trace = m.r[0].x + m.r[1].y + m.r[2].z;
 
-	BvFastQuat q;
+	qf32 q;
 	if (trace > 0.0f)
 	{
 		float s = sqrtf(trace + 1.0f) * 2.0f; // S=4*qw 
@@ -286,10 +286,10 @@ inline BvFastQuat QuaternionFromMatrix(const BvFastMat & m)
 	return QuaternionNormalize(q);
 }
 
-inline BvFastQuat QuaternionSlerp(const BvFastQuat & q1, const BvFastQuat & q2, const float t, const float epsilon)
+inline qf32 QuaternionSlerp(const qf32 & q1, const qf32 & q2, const float t, const float epsilon)
 {
 	float cosOmega = QuaternionDot(q1, q2);
-	BvFastQuat qt(q2);
+	qf32 qt(q2);
 	if (cosOmega < 0.0f)
 	{
 		cosOmega = -cosOmega;
@@ -307,12 +307,12 @@ inline BvFastQuat QuaternionSlerp(const BvFastQuat & q1, const BvFastQuat & q2, 
 		mult2 = sinf(mult2 * omega) * oneOverSinOmega;
 	}
 
-	BvFastQuat r = q1 * mult1 + qt * mult2;
+	qf32 r = q1 * mult1 + qt * mult2;
 
 	return QuaternionNormalize(r);
 }
 
-inline float QuaternionAngle(const BvFastQuat & q)
+inline float QuaternionAngle(const qf32 & q)
 {
 	return 2.0f * acosf(q.w);
 }

@@ -14,23 +14,23 @@ public:
 	BvVec();
 
 	BvVec(const BvVec & rhs);
-	BvVec(BvVec && rhs);
+	BvVec(BvVec && rhs) noexcept;
 	BvVec & operator=(const BvVec & rhs);
-	BvVec & operator=(BvVec && rhs);
+	BvVec & operator=(BvVec && rhs) noexcept;
 
 	explicit BvVec(const float x, const float y, const float z, const float w = 0.0f);
 	explicit BvVec(const float s);
 	explicit BvVec(const Float2 & v);
 	explicit BvVec(const Float3 & v);
 	explicit BvVec(const Float4 & v);
-	explicit BvVec(const BvFastVec & m128);
+	explicit BvVec(const vf32 & m128);
 
 	void Set(const float x, const float y, const float z, const float w = 0.0f);
 	void Set(const float s);
 	void Set(const Float2 & v);
 	void Set(const Float3 & v);
 	void Set(const Float4 & v);
-	void Set(const BvFastVec & m128);
+	void Set(const vf32 & m128);
 	void SetZero();
 
 	float GetX() const;
@@ -38,9 +38,9 @@ public:
 	float GetZ() const;
 	float GetW() const;
 
-	Float2 AsFloat2() const;
-	Float3 AsFloat3() const;
-	Float4 AsFloat4() const;
+	const Float2& AsFloat2() const;
+	const Float3& AsFloat3() const;
+	const Float4& AsFloat4() const;
 
 	BvQuat ToQuat() const;
 
@@ -84,7 +84,8 @@ public:
 
 	BvVec Project(const BvVec & normal) const;
 	BvVec Lerp(const BvVec & toVec, const float t) const;
-	BvVec Reflect(const BvVec & normal);
+	BvVec Reflect(const BvVec & normal) const;
+	BvVec Refract(const BvVec& normal, const float eta) const;
 
 	const float & operator[](const unsigned int index) const;
 	float & operator[](const unsigned int index);
@@ -138,7 +139,7 @@ public:
 public:
 	union
 	{
-		BvFastVec m128;
+		vf32 m128;
 		Float2 v2;
 		Float3 v3;
 		Float4 v4;
