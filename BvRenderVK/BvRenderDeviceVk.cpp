@@ -27,7 +27,8 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 
 bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 {
-	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0);
+	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
+		"No device queues");
 
 	// ===========================================================
 	// Prepare Device Queues and create the logical device
@@ -35,9 +36,9 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 	VkDeviceQueueCreateInfo queueCreateInfo{};
 
 	constexpr u32 kMaxQueueCount = 64;
-	BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount);
-	BvAssert(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount);
-	BvAssert(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount);
+	BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount, "Graphics queue count greater than limit");
+	BvAssert(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount, "Compute queue count greater than limit");
+	BvAssert(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount, "Transfer queue count greater than limit");
 
 	constexpr float queuePriorities[kMaxQueueCount] =
 	{
@@ -132,7 +133,7 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 	deviceCreateInfo.pNext = &m_GPUInfo.m_DeviceFeatures;
 
 	VkResult result = VulkanFunctions::vkCreateDevice(m_GPUInfo.m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
-	BvAssertMsg(result == VK_SUCCESS, "Couldn't create a logical device");
+	BvAssert(result == VK_SUCCESS, "Couldn't create a logical device");
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -165,19 +166,19 @@ void BvRenderDeviceVk::Destroy()
 {
 	m_Functions.vkDeviceWaitIdle(m_Device);
 
-	BvDelete(m_pFactory);
+	delete m_pFactory;
 
 	for (auto && pQueue : m_GraphicsQueues)
 	{
-		BvDelete(pQueue);
+		delete pQueue;
 	}
 	for (auto && pQueue : m_ComputeQueues)
 	{
-		BvDelete(pQueue);
+		delete pQueue;
 	}
 	for (auto && pQueue : m_TransferQueues)
 	{
-		BvDelete(pQueue);
+		delete pQueue;
 	}
 
 	if (m_Device)
@@ -188,12 +189,12 @@ void BvRenderDeviceVk::Destroy()
 }
 
 
-BvSwapChain * BvRenderDeviceVk::CreateSwapChain(BvNativeWindow & window, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue)
+BvSwapChain * BvRenderDeviceVk::CreateSwapChain(const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue)
 {
 	auto pQueue = static_cast<BvCommandQueueVk *>(&commandQueue);
 
 	BvSwapChainVk * pSwapChain = nullptr;
-	pSwapChain = m_pFactory->Create<BvSwapChainVk>(*this, *pQueue, window, swapChainDesc);
+	pSwapChain = m_pFactory->Create<BvSwapChainVk>(*this, *pQueue, swapChainDesc);
 	pSwapChain->Create();
 
 	return pSwapChain;

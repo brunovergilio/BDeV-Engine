@@ -28,7 +28,7 @@ class BvRenderDevice
 	BV_NOCOPYMOVE(BvRenderDevice);
 
 public:
-	virtual BvSwapChain* CreateSwapChain(BvNativeWindow& window, const SwapChainDesc& desc, BvCommandQueue& commandQueue) = 0;
+	virtual BvSwapChain* CreateSwapChain(const SwapChainDesc& desc, BvCommandQueue& commandQueue) = 0;
 	virtual BvBuffer* CreateBuffer(const BufferDesc& desc) = 0;
 	virtual BvBufferView* CreateBufferView(const BufferViewDesc& desc) = 0;
 	virtual BvTexture* CreateTexture(const TextureDesc& desc) = 0;
@@ -154,7 +154,7 @@ public:
 	{
 		for (auto&& obj : m_ObjPools)
 		{
-			BvDelete(obj.second);
+			delete obj.second;
 		}
 	}
 

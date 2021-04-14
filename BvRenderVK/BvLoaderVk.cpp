@@ -51,28 +51,28 @@ namespace VulkanFunctions
 #define BV_VK_EXPORTED_FUNCTION(pfn) VulkanFunctions::pfn = m_DLL.GetProcAddress<PFN_##pfn>(#pfn); \
 if (!VulkanFunctions::##pfn) \
 { \
-	BvAssertMsg(0, "Failed to load function pointer for "#pfn); \
+	BvAssert(0, "Failed to load function pointer for "#pfn); \
 }
 
 
 #define BV_VK_GLOBAL_LEVEL_FUNCTION(pfn) VulkanFunctions::pfn = (PFN_##pfn)VulkanFunctions::vkGetInstanceProcAddr(nullptr, #pfn); \
 if (!VulkanFunctions::##pfn) \
 { \
-	BvAssertMsg(0, "Failed to load function pointer for "#pfn); \
+	BvAssert(0, "Failed to load function pointer for "#pfn); \
 }
 
 
 #define BV_VK_INSTANCE_LEVEL_FUNCTION(pfn) VulkanFunctions::pfn = (PFN_##pfn)VulkanFunctions::vkGetInstanceProcAddr(instance, #pfn); \
 if (!VulkanFunctions::##pfn) \
 { \
-	BvAssertMsg(0, "Failed to load function pointer for "#pfn); \
+	BvAssert(0, "Failed to load function pointer for "#pfn); \
 }
 
 
 #define BV_VK_DEVICE_LEVEL_FUNCTION(pfn) deviceFunctions.pfn = (PFN_##pfn)VulkanFunctions::vkGetDeviceProcAddr(device, #pfn); \
 if (!deviceFunctions.##pfn) \
 { \
-	BvAssertMsg(0, "Failed to load function pointer for "#pfn); \
+	BvAssert(0, "Failed to load function pointer for "#pfn); \
 }
 
 

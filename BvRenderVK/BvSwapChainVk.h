@@ -17,8 +17,7 @@ class BvCommandQueueVk;
 class BvSwapChainVk final : public BvSwapChain
 {
 public:
-	BvSwapChainVk(const BvRenderDeviceVk & renderDevice, BvCommandQueueVk & commandQueue,
-		BvNativeWindow & window, const SwapChainDesc & swapChainParams);
+	BvSwapChainVk(const BvRenderDeviceVk & renderDevice, BvCommandQueueVk & commandQueue, const SwapChainDesc & swapChainParams);
 	~BvSwapChainVk();
 
 	bool Create();

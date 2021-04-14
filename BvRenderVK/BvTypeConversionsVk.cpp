@@ -172,9 +172,9 @@ VkImageType GetVkImageType(const TextureType type)
 {
 	switch (type)
 	{
-	case TextureType::kTexture1D: VkImageType::VK_IMAGE_TYPE_1D;
-	case TextureType::kTexture2D: VkImageType::VK_IMAGE_TYPE_2D;
-	case TextureType::kTexture3D: VkImageType::VK_IMAGE_TYPE_3D;
+	case TextureType::kTexture1D: return VkImageType::VK_IMAGE_TYPE_1D;
+	case TextureType::kTexture2D: return VkImageType::VK_IMAGE_TYPE_2D;
+	case TextureType::kTexture3D: return VkImageType::VK_IMAGE_TYPE_3D;
 	}
 
 	return VkImageType::VK_IMAGE_TYPE_2D;
@@ -422,7 +422,7 @@ VkStencilOp GetVkStencilOp(const StencilOp stencilOp)
 
 VkSampleCountFlagBits GetVkSampleCountFlagBits(const u8 sampleCount)
 {
-	BvAssert((sampleCount & (sampleCount - 1)) == 0);
+	BvAssert((sampleCount & (sampleCount - 1)) == 0, "Sample count must be a power of 2");
 	switch (sampleCount)
 	{
 	case 1:		return VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
@@ -715,4 +715,28 @@ VkPipelineStageFlags GetVkPipelineStageFlags(const PipelineStage pipelineStage)
 	if ((pipelineStage & PipelineStage::kEnd					) == PipelineStage::kEnd					) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; }
 
 	return stageFlags;
+}
+
+
+VkCommandPoolCreateFlags GetVkCommandPoolCreateFlags(const CommandPoolFlags commandPoolFlags)
+{
+	VkCommandPoolCreateFlags flags = 0;
+	if ((commandPoolFlags & CommandPoolFlags::kTransient) == CommandPoolFlags::kTransient)
+	{
+		flags |= VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+	}
+
+	return flags;
+}
+
+
+VkDescriptorPoolCreateFlags GetVkDescriptorPoolCreateFlags(const ShaderResourcePoolFlags poolFlags)
+{
+	VkDescriptorPoolCreateFlags flags = 0;
+	if ((poolFlags & ShaderResourcePoolFlags::kFreeDescriptors) == ShaderResourcePoolFlags::kFreeDescriptors)
+	{
+		flags |= VkDescriptorPoolCreateFlagBits::VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	}
+
+	return flags;
 }

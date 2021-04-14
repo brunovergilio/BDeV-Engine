@@ -14,43 +14,52 @@ constexpr DWORD kFullscreenStyle = WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
 constexpr DWORD kFullscreenExStyle = WS_EX_APPWINDOW;
 
 
-class BvWindowsMessageController
+class BvWindowsMessageHandler
 {
-	BV_NOCOPYMOVE(BvWindowsMessageController);
+	BV_NOCOPYMOVE(BvWindowsMessageHandler);
 
 public:
-	BvWindowsMessageController();
-	~BvWindowsMessageController();
+	BvWindowsMessageHandler();
+	~BvWindowsMessageHandler();
 
 	void Start();
 	void Stop();
 
-	DWORD GetThreadId() const { return m_MessageThread.GetId(); }
+	DWORD GetThreadId() const { return m_MessageHandlerThread.GetId(); }
 
 private:
-	BvThread m_MessageThread;
+	BvThread m_MessageHandlerThread;
 };
 
 
-BvWindowsMessageController g_WindowsMessageController;
-
-
-BvWindowsMessageController::BvWindowsMessageController()
-	: m_MessageThread(BvThread([this]()
-		{
-			Start();
-		}))
+BvWindowsMessageHandler::BvWindowsMessageHandler()
 {
+	BvEvent handlerSignal(false);
+	m_MessageHandlerThread = BvThread([this, &handlerSignal]()
+	{
+		// Call PeekMessage() once to force the handler thread
+		// to create a message queue
+		MSG msg;
+		PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
+
+		// Set the event after that
+		handlerSignal.Set();
+
+		// Start processing messages
+		Start();
+	});
+
+	handlerSignal.Wait();
 }
 
 
-BvWindowsMessageController::~BvWindowsMessageController()
+BvWindowsMessageHandler::~BvWindowsMessageHandler()
 {
 	Stop();
 }
 
 
-void BvWindowsMessageController::Start()
+void BvWindowsMessageHandler::Start()
 {
 	RAWINPUTDEVICE device;
 	device.usUsagePage = 0x01;
@@ -60,7 +69,7 @@ void BvWindowsMessageController::Start()
 	RegisterRawInputDevices(&device, 1, sizeof(device));
 
 	MSG msg = {};
-	while (GetMessage(&msg, NULL, 0, 0) > 0)
+	while (GetMessage(&msg, nullptr, 0, 0) > 0)
 	{
 		if (msg.message == kCreateWindowMessage)
 		{
@@ -83,16 +92,23 @@ void BvWindowsMessageController::Start()
 }
 
 
-void BvWindowsMessageController::Stop()
+void BvWindowsMessageHandler::Stop()
 {
-	PostThreadMessage(DWORD(m_MessageThread.GetId()), WM_QUIT, 0, 0);
-	m_MessageThread.Wait();
+	PostThreadMessage(DWORD(m_MessageHandlerThread.GetId()), WM_QUIT, 0, 0);
+	m_MessageHandlerThread.Wait();
 }
 
 
-BvNativeWindow::BvNativeWindow()
+BvWindowsMessageHandler& GetWindowsMessageController()
 {
+	static BvWindowsMessageHandler s_Controller;
+	return s_Controller;
 }
+
+
+//BvNativeWindow::BvNativeWindow()
+//{
+//}
 
 
 BvNativeWindow::BvNativeWindow(const char* const pName, const WindowDesc& windowDesc)
@@ -103,40 +119,41 @@ BvNativeWindow::BvNativeWindow(const char* const pName, const WindowDesc& window
 }
 
 
-BvNativeWindow::BvNativeWindow(BvNativeWindow&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvNativeWindow& BvNativeWindow::operator=(BvNativeWindow&& rhs) noexcept
-{
-	if (this != &rhs)
-	{
-		m_hWnd = rhs.m_hWnd; rhs.m_hWnd = nullptr;
-		m_SizeChangedCallbacks = std::move(rhs.m_SizeChangedCallbacks);
-		m_KeyboardCallbacks = std::move(rhs.m_KeyboardCallbacks);
-
-		m_WindowDesc = std::move(rhs.m_WindowDesc);
-
-		m_FullscreenWidth = rhs.m_FullscreenWidth;
-		m_FullscreenHeight = rhs.m_FullscreenHeight;
-
-		m_WindowedWidth = rhs.m_WindowedWidth;
-		m_WindowedHeight = rhs.m_WindowedHeight;
-		m_WindowedPosX = rhs.m_WindowedPosX;
-		m_WindowedPosY = rhs.m_WindowedPosY;
-
-		m_IsActive = rhs.m_IsActive;
-		m_IsResizing = rhs.m_IsResizing;
-		m_IsMinimized = rhs.m_IsMinimized;
-		m_IsMaximized = rhs.m_IsMaximized;
-
-		SetWindowLongPtr(m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-	}
-
-	return *this;
-}
+//BvNativeWindow::BvNativeWindow(BvNativeWindow&& rhs) noexcept
+//{
+//	*this = std::move(rhs);
+//}
+//
+//
+//BvNativeWindow& BvNativeWindow::operator=(BvNativeWindow&& rhs) noexcept
+//{
+//	if (this != &rhs)
+//	{
+//		m_hWnd = rhs.m_hWnd; rhs.m_hWnd = nullptr;
+//		m_Event = std::move(rhs.m_Event);
+//		m_SizeChangedCallbacks = std::move(rhs.m_SizeChangedCallbacks);
+//		m_KeyboardCallbacks = std::move(rhs.m_KeyboardCallbacks);
+//
+//		m_WindowDesc = std::move(rhs.m_WindowDesc);
+//
+//		m_FullscreenWidth = rhs.m_FullscreenWidth;
+//		m_FullscreenHeight = rhs.m_FullscreenHeight;
+//
+//		m_WindowedWidth = rhs.m_WindowedWidth;
+//		m_WindowedHeight = rhs.m_WindowedHeight;
+//		m_WindowedPosX = rhs.m_WindowedPosX;
+//		m_WindowedPosY = rhs.m_WindowedPosY;
+//
+//		m_IsActive = rhs.m_IsActive;
+//		m_IsResizing = rhs.m_IsResizing;
+//		m_IsMinimized = rhs.m_IsMinimized;
+//		m_IsMaximized = rhs.m_IsMaximized;
+//
+//		SetWindowLongPtr(m_hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+//	}
+//
+//	return *this;
+//}
 
 
 BvNativeWindow::~BvNativeWindow()
@@ -147,7 +164,7 @@ BvNativeWindow::~BvNativeWindow()
 
 void BvNativeWindow::Create(const char* const pName)
 {
-	PostThreadMessage(g_WindowsMessageController.GetThreadId(), kCreateWindowMessage,
+	PostThreadMessage(GetWindowsMessageController().GetThreadId(), kCreateWindowMessage,
 		reinterpret_cast<WPARAM>(this), reinterpret_cast<LPARAM>(pName));
 	m_Event.Wait();
 }
@@ -155,7 +172,7 @@ void BvNativeWindow::Create(const char* const pName)
 
 void BvNativeWindow::Destroy()
 {
-	PostThreadMessage(g_WindowsMessageController.GetThreadId(), kDestroyWindowMessage, reinterpret_cast<WPARAM>(this), 0);
+	PostThreadMessage(GetWindowsMessageController().GetThreadId(), kDestroyWindowMessage, reinterpret_cast<WPARAM>(this), 0);
 	m_Event.Wait();
 }
 
@@ -223,7 +240,7 @@ void BvNativeWindow::Move(const i32 posX, const i32 posY)
 
 void BvNativeWindow::Show()
 {
-	BvAssertMsg(m_hWnd != nullptr, "Window Handle can't be null");
+	BvAssert(m_hWnd != nullptr, "Window Handle can't be null");
 	ShowWindow(m_hWnd, SW_SHOW);
 	m_IsActive = true;
 }
@@ -231,7 +248,7 @@ void BvNativeWindow::Show()
 
 void BvNativeWindow::Hide()
 {
-	BvAssertMsg(m_hWnd != nullptr, "Window Handle can't be null");
+	BvAssert(m_hWnd != nullptr, "Window Handle can't be null");
 	m_IsActive = false;
 	ShowWindow(m_hWnd, SW_HIDE);
 }
@@ -239,7 +256,7 @@ void BvNativeWindow::Hide()
 
 void BvNativeWindow::SetTitle(const char* const pTitle)
 {
-	BvAssertMsg(m_hWnd != nullptr, "Window Handle can't be null");
+	BvAssert(m_hWnd != nullptr, "Window Handle can't be null");
 	SetWindowText(m_hWnd, pTitle);
 }
 
@@ -293,7 +310,7 @@ void BvNativeWindow::GetWindowDescForMode(const WindowMode windowMode, WindowDes
 
 		break;
 	case WindowMode::kFullscreen:
-		BvAssertMsg(0, "Not implemented yet");
+		BvAssert(0, "Not implemented yet");
 		break;
 	}
 }
@@ -320,7 +337,7 @@ void BvNativeWindow::NotifyKeyboard(u32 vkCode, u32 scanCode, bool isKeyDown)
 
 void BvNativeWindow::RequestCreate(const char* const pName)
 {
-	BvAssertMsg(strlen(pName) < kMaxClassNameSize, "Window name exceeds the maximum amount of characters");
+	BvAssert(strlen(pName) < kMaxClassNameSize, "Window name exceeds the maximum amount of characters");
 
 	//{
 	//	DEVMODE devMode = {};

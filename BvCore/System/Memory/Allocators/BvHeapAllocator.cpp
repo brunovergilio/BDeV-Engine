@@ -17,7 +17,7 @@ BvHeapAllocator::BvHeapAllocator(void* pStart, void* pEnd)
 	: m_pStart(reinterpret_cast<char*>(pStart)), m_pEnd(reinterpret_cast<char*>(pEnd))
 {
 	const size_t size = size_t(m_pEnd - m_pStart);
-	BvAssertMsg(size > kBlockInfoSize, "Total memory size is smaller than a single memory block!");
+	BvAssert(size > kBlockInfoSize, "Total memory size is smaller than a single memory block!");
 	SetBlockInfo(reinterpret_cast<size_t*>(m_pStart), size - kBlockInfoSize, false);
 }
 
@@ -30,7 +30,8 @@ BvHeapAllocator::~BvHeapAllocator()
 
 void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t offset /*= 0*/)
 {
-	size = RoundToNearestMultiple(size, 4ull) + sizeof(u32) + alignment;
+	alignment = std::max(alignment, kDefaultAlignSize);
+	size = RoundToNearestMultipleP2(size, kMinAllocationSize) + sizeof(u32) + alignment;
 	
 	size_t blockSize = 0;
 	bool blockInUse = true;
@@ -72,9 +73,11 @@ void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t offset /*=
 		// Move the address by the block header size
 		mem.pAsCharPtr += kBlockHeaderSize;
 
-		// Offset an extra size_t bytes to ensure space for the misaligned address
-		// and align memory before returning
-		MemType alignedMem{ BvAlign(mem.pAsCharPtr + sizeof(u32), alignment) };
+		// Align the pointer with the added offset
+		MemType alignedMem{ BvAlign(mem.pAsCharPtr + sizeof(u32) + offset, alignment) };
+		// Offset it back
+		alignedMem.pAsCharPtr -= offset;
+		// Store the offset to the misaligned memory address
 		alignedMem.pAsUIntPtr[-1] = u32(alignedMem.pAsCharPtr - mem.pAsCharPtr);
 		
 		mem.pAsVoidPtr = alignedMem.pAsVoidPtr;
@@ -86,7 +89,7 @@ void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t offset /*=
 
 void BvHeapAllocator::Free(void* ptr)
 {
-	BvAssertMsg(ptr != nullptr, "Trying to free nullptr");
+	BvAssert(ptr != nullptr, "Trying to free nullptr");
 
 	MemType mem{ ptr };
 	// Retrieve the misaligned address
@@ -131,6 +134,22 @@ void BvHeapAllocator::Free(void* ptr)
 		}
 	}
 }
+
+
+size_t BvHeapAllocator::GetAllocationSize(void* pMem) const
+{
+	MemType mem{ pMem };
+	// Retrieve the original address
+	MemType original{ mem.pAsCharPtr - mem.pAsUIntPtr[-1] - kBlockHeaderSize };
+	
+	size_t blockSize;
+	bool inUse;
+	GetBlockInfo(original.pAsSizeTPtr, blockSize, inUse);
+	original.pAsCharPtr += kBlockHeaderSize;
+
+	return blockSize - (mem.asSizeT - original.asSizeT);
+}
+
 
 void BvHeapAllocator::Debug()
 {

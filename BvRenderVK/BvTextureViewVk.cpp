@@ -18,7 +18,7 @@ BvTextureViewVk::~BvTextureViewVk()
 
 bool BvTextureViewVk::Create()
 {
-	BvAssert(m_TextureViewDesc.m_pTexture != nullptr);
+	BvAssert(m_TextureViewDesc.m_pTexture != nullptr, "Invalid texture handle");
 
 	decltype(auto) textureDesc = m_TextureViewDesc.m_pTexture->GetDesc();
 

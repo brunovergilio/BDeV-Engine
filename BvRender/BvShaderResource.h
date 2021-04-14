@@ -135,6 +135,20 @@ protected:
 };
 
 
+enum class ShaderResourcePoolFlags : u8
+{
+	// No flags
+	kNone = 0,
+
+	// The default pool behaviour is to recycle the sets that are freed, but if
+	// this flag is set, the sets will actually be freed. In Vulkan, this may
+	// be a less efficient path, since it might trigger a different
+	// allocation strategy on some implementations
+	kFreeDescriptors = 1
+};
+BV_USE_ENUM_CLASS_OPERATORS(ShaderResourcePoolFlags);
+
+
 struct ShaderResourceSetPoolDesc
 {
 	static constexpr u32 kDefaultResourceCount = 1024;
@@ -147,6 +161,7 @@ struct ShaderResourceSetPoolDesc
 	u32 m_TextureCount = kDefaultResourceCount;
 	u32 m_RWTextureCount = kDefaultResourceCount;
 	u32 m_SamplerCount = kDefaultResourceCount;
+	ShaderResourcePoolFlags m_Flags = ShaderResourcePoolFlags::kNone;
 };
 
 
@@ -155,8 +170,8 @@ class BvShaderResourceSetPool
 	BV_NOCOPYMOVE(BvShaderResourceSetPool);
 
 public:
-	virtual void AllocateSets(const u32 count, BvShaderResourceSet ** ppSets, const BvShaderResourceLayout * const pLayout, const u32 set = 0) = 0;
-	virtual void FreeSets(const u32 count, BvShaderResourceSet ** ppSets) = 0;
+	virtual void AllocateSets(u32 count, BvShaderResourceSet ** ppSets, const BvShaderResourceLayout * const pLayout, u32 set = 0) = 0;
+	virtual void FreeSets(u32 count, BvShaderResourceSet ** ppSets) = 0;
 
 	BvShaderResourceSet * AllocateSet(const BvShaderResourceLayout * const pLayout, const u32 set = 0)
 	{
@@ -172,6 +187,10 @@ public:
 	}
 
 protected:
-	BvShaderResourceSetPool() {}
+	BvShaderResourceSetPool(const ShaderResourceSetPoolDesc& poolDesc)
+		: m_ShaderResourceSetPoolDesc(poolDesc) {}
 	virtual ~BvShaderResourceSetPool() = 0 {}
+
+protected:
+	ShaderResourceSetPoolDesc m_ShaderResourceSetPoolDesc;
 };

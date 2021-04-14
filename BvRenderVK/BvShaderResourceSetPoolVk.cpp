@@ -8,7 +8,7 @@ const u32 kMmaxDescriptorSetsPerAllocation = 16;
 
 
 BvShaderResourceSetPoolVk::BvShaderResourceSetPoolVk(const BvRenderDeviceVk & device, const ShaderResourceSetPoolDesc & desc)
-	: m_Device(device)
+	: BvShaderResourceSetPool(desc), m_Device(device)
 {
 	Create(desc);
 }
@@ -24,23 +24,14 @@ void BvShaderResourceSetPoolVk::Create(const ShaderResourceSetPoolDesc & desc)
 {
 	constexpr auto kMaxPoolSizes = 8u;
 	BvFixedVector<VkDescriptorPoolSize, kMaxPoolSizes> poolSizes;
-	poolSizes[0].type = GetVkDescriptorType(ShaderResourceType::kConstantBuffer);
-	poolSizes[1].type = GetVkDescriptorType(ShaderResourceType::kStructuredBuffer);
-	poolSizes[2].type = GetVkDescriptorType(ShaderResourceType::kRWStructuredBuffer);
-	poolSizes[3].type = GetVkDescriptorType(ShaderResourceType::kFormattedBuffer);
-	poolSizes[4].type = GetVkDescriptorType(ShaderResourceType::kRWFormattedBuffer);
-	poolSizes[5].type = GetVkDescriptorType(ShaderResourceType::kTexture);
-	poolSizes[6].type = GetVkDescriptorType(ShaderResourceType::kRWTexture);
-	poolSizes[7].type = GetVkDescriptorType(ShaderResourceType::kSampler);
-
-	poolSizes[0].descriptorCount = desc.m_ConstantBufferCount;
-	poolSizes[1].descriptorCount = desc.m_StructuredBufferCount;
-	poolSizes[2].descriptorCount = desc.m_RWStructuredBufferCount;
-	poolSizes[3].descriptorCount = desc.m_FormattedBufferCount;
-	poolSizes[4].descriptorCount = desc.m_RWFormattedBufferCount;
-	poolSizes[5].descriptorCount = desc.m_TextureCount;
-	poolSizes[6].descriptorCount = desc.m_RWTextureCount;
-	poolSizes[7].descriptorCount = desc.m_SamplerCount;
+	if (desc.m_ConstantBufferCount > 0)		{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kConstantBuffer)		, desc.m_ConstantBufferCount	});	 }
+	if (desc.m_StructuredBufferCount > 0)	{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kStructuredBuffer)	, desc.m_StructuredBufferCount	});	 }
+	if (desc.m_RWStructuredBufferCount > 0)	{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kRWStructuredBuffer)	, desc.m_RWStructuredBufferCount});	 }
+	if (desc.m_FormattedBufferCount > 0)	{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kFormattedBuffer)	, desc.m_FormattedBufferCount	});	 }
+	if (desc.m_RWFormattedBufferCount > 0)	{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kRWFormattedBuffer)	, desc.m_RWFormattedBufferCount });	 }
+	if (desc.m_TextureCount > 0)			{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kTexture)			, desc.m_TextureCount			});	 }
+	if (desc.m_RWTextureCount > 0)			{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kRWTexture)			, desc.m_RWTextureCount			});	 }
+	if (desc.m_SamplerCount > 0)			{ poolSizes.PushBack({ GetVkDescriptorType(ShaderResourceType::kSampler)			, desc.m_SamplerCount			});	 }
 
 	u32 maxSets = 0;
 	for (auto && poolSize : poolSizes)
@@ -49,8 +40,8 @@ void BvShaderResourceSetPoolVk::Create(const ShaderResourceSetPoolDesc & desc)
 	}
 
 	VkDescriptorPoolCreateInfo poolCI{};
-	//poolCI.flags = 0;
 	//poolCI.pNext = nullptr;
+	poolCI.flags = GetVkDescriptorPoolCreateFlags(m_ShaderResourceSetPoolDesc.m_Flags);
 	poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolCI.maxSets = maxSets;
 	poolCI.poolSizeCount = (u32)poolSizes.Size();
@@ -62,10 +53,25 @@ void BvShaderResourceSetPoolVk::Create(const ShaderResourceSetPoolDesc & desc)
 
 void BvShaderResourceSetPoolVk::Destroy()
 {
-	for (auto&& pSet : m_Sets)
+	for (auto&& pLayout : m_UsedSets)
 	{
-		BvDelete(pSet);
+		for (auto&& pSet : pLayout.second)
+		{
+			delete pSet;
+		}
+		pLayout.second.Clear();
 	}
+	m_UsedSets.Clear();
+
+	for (auto&& pLayout : m_FreeSets)
+	{
+		for (auto&& pSet : pLayout.second)
+		{
+			delete pSet;
+		}
+		pLayout.second.Clear();
+	}
+	m_FreeSets.Clear();
 
 	if (m_DescriptorPool)
 	{
@@ -75,9 +81,33 @@ void BvShaderResourceSetPoolVk::Destroy()
 }
 
 
-void BvShaderResourceSetPoolVk::AllocateSets(const u32 count, BvShaderResourceSet ** ppSets,
-	const BvShaderResourceLayout * const pLayout, const u32 set /*= 0*/)
+void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceSet ** ppSets,
+	const BvShaderResourceLayout * const pLayout, u32 set /*= 0*/)
 {
+	// Check for free, recycled sets
+	if ((m_ShaderResourceSetPoolDesc.m_Flags & ShaderResourcePoolFlags::kFreeDescriptors) == ShaderResourcePoolFlags::kNone)
+	{
+		u32 i = 0;
+		auto& freeSets = m_FreeSets[pLayout];
+		auto freeSetCount = freeSets.Size();
+		for (; i < count && i < freeSetCount; i++)
+		{
+			ppSets[i] = freeSets.Back();
+			freeSets.PopBack();
+		}
+
+		if (i > 0)
+		{
+			count -= i;
+			ppSets += i;
+
+			if (count == 0)
+			{
+				return;
+			}
+		}
+	}
+
 	if (count > kMmaxDescriptorSetsPerAllocation)
 	{
 		AllocateSets(count - kMmaxDescriptorSetsPerAllocation, ppSets + kMmaxDescriptorSetsPerAllocation, pLayout, set);
@@ -90,7 +120,7 @@ void BvShaderResourceSetPoolVk::AllocateSets(const u32 count, BvShaderResourceSe
 	{
 		auto & pLayouts = pLayoutVk->GetSetLayoutHandles();
 		auto pIter = pLayouts.FindKey(set);
-		BvAssert(pIter != pLayouts.cend());
+		BvAssert(pIter != pLayouts.cend(), "Invalid set");
 		layoutVk = pIter->second;
 	}
 
@@ -112,41 +142,67 @@ void BvShaderResourceSetPoolVk::AllocateSets(const u32 count, BvShaderResourceSe
 	for (u32 i = 0; i < allocateInfo.descriptorSetCount; i++)
 	{
 		auto pSet = new BvShaderResourceSetVk(m_Device, pLayoutVk, descriptorSets[i], this, set);
-		m_Sets.EmplaceBack(pSet);
+		m_UsedSets[pLayout].EmplaceBack(pSet);
 		ppSets[i] = pSet;
 	}
 }
 
 
-void BvShaderResourceSetPoolVk::FreeSets(const u32 setCount, BvShaderResourceSet ** ppSets)
+void BvShaderResourceSetPoolVk::FreeSets(u32 setCount, BvShaderResourceSet ** ppSets)
 {
-	if (setCount > kMmaxDescriptorSetsPerAllocation)
+	if ((m_ShaderResourceSetPoolDesc.m_Flags & ShaderResourcePoolFlags::kFreeDescriptors) == ShaderResourcePoolFlags::kNone)
 	{
-		FreeSets(setCount - kMmaxDescriptorSetsPerAllocation, ppSets + kMmaxDescriptorSetsPerAllocation);
-	}
-
-	VkDescriptorSet descriptorSets[kMmaxDescriptorSetsPerAllocation];
-	u32 count = setCount > kMmaxDescriptorSetsPerAllocation ? kMmaxDescriptorSetsPerAllocation : setCount;
-	for (auto i = 0u; i < count; i++)
-	{
-		auto pDsVk = reinterpret_cast<BvShaderResourceSetVk *>(ppSets[i]);
-		descriptorSets[i] = pDsVk->GetHandle();
-
-		for (auto j = 0u; j < m_Sets.Size(); j++)
+		for (auto i = 0u; i < setCount; i++)
 		{
-			if (m_Sets[j] == pDsVk)
+			auto pSetVk = reinterpret_cast<BvShaderResourceSetVk*>(ppSets[i]);
+			auto& usedSets = m_UsedSets[pSetVk->GetLayout()];
+			auto& freeSets = m_FreeSets[pSetVk->GetLayout()];
+			for (auto j = 0u; j < usedSets.Size(); j++)
 			{
-				if (j != m_Sets.Size() - 1)
+				if (usedSets[j] == pSetVk)
 				{
-					std::swap(m_Sets[j], m_Sets[m_Sets.Size() - 1]);
+					if (j != usedSets.Size() - 1)
+					{
+						std::swap(usedSets[j], usedSets[usedSets.Size() - 1]);
+					}
+					usedSets.PopBack();
+					freeSets.EmplaceBack(pSetVk);
+					break;
 				}
-				m_Sets.PopBack();
-				BvDelete(pDsVk);
-				break;
 			}
 		}
 	}
+	else
+	{
+		if (setCount > kMmaxDescriptorSetsPerAllocation)
+		{
+			FreeSets(setCount - kMmaxDescriptorSetsPerAllocation, ppSets + kMmaxDescriptorSetsPerAllocation);
+		}
 
-	// Maybe shouldn't be freeing them, will cause fragmentation
-	m_Device.GetDeviceFunctions().vkFreeDescriptorSets(m_Device.GetHandle(), m_DescriptorPool, count, descriptorSets);
+		VkDescriptorSet descriptorSets[kMmaxDescriptorSetsPerAllocation];
+		u32 count = setCount > kMmaxDescriptorSetsPerAllocation ? kMmaxDescriptorSetsPerAllocation : setCount;
+		for (auto i = 0u; i < count; i++)
+		{
+			auto pDsVk = reinterpret_cast<BvShaderResourceSetVk*>(ppSets[i]);
+			auto& usedSets = m_UsedSets[pDsVk->GetLayout()];
+			descriptorSets[i] = pDsVk->GetHandle();
+
+			for (auto j = 0u; j < usedSets.Size(); j++)
+			{
+				if (usedSets[j] == pDsVk)
+				{
+					if (j != usedSets.Size() - 1)
+					{
+						std::swap(usedSets[j], usedSets[usedSets.Size() - 1]);
+					}
+					usedSets.PopBack();
+					delete pDsVk;
+					break;
+				}
+			}
+		}
+
+		// Maybe shouldn't be freeing them, will cause fragmentation
+		m_Device.GetDeviceFunctions().vkFreeDescriptorSets(m_Device.GetHandle(), m_DescriptorPool, count, descriptorSets);
+	}
 }

@@ -21,13 +21,14 @@ public:
 	void Create();
 	void Destroy();
 
-	void AllocateCommandBuffers(const u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override final;
-	void FreeCommandBuffers(const u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override final;
+	void AllocateCommandBuffers(u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override final;
+	void FreeCommandBuffers(u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override final;
 
 	void Reset() override final;
 
 private:
 	const BvRenderDeviceVk & m_Device;
 	VkCommandPool m_CommandPool = VK_NULL_HANDLE;
-	BvVector<BvCommandBufferVk*> m_CommandBuffers;
+	BvVector<BvCommandBufferVk*> m_UsedCommandBuffers;
+	BvVector<BvCommandBufferVk*> m_FreeCommandBuffers;
 };

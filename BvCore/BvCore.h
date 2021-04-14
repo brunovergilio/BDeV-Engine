@@ -78,7 +78,8 @@
 #include <limits>
 #include <cstdint>
 #include <new>
-
+#include <algorithm>
+#include <type_traits>
 
 typedef int8_t    i8;
 typedef int16_t  i16;
@@ -117,40 +118,18 @@ constexpr const auto kU64Min = kMin<u64>;
 constexpr const auto kU64Max = kMax<u64>;
 
 
+template<typename Type>
+inline constexpr bool IsPodV = std::is_trivial_v<Type> && std::is_standard_layout_v<Type>;
+
 constexpr size_t kCacheLineSize = std::hardware_destructive_interference_size;
 
-
-#define BV_NOCOPY(className)					  		\
-public:											  		\
-	className(const className &) = delete;			  	\
-	className & operator =(const className &) = delete; \
-
-#define BV_NOCOPYMOVE(className)					  	\
-public:											  		\
-	className(const className &) = delete;			  	\
-	className & operator =(const className &) = delete; \
-	className(className &&) = delete;			  		\
-	className & operator =(className &&) = delete;		\
+constexpr size_t kMinAllocationSize = 8;
+constexpr size_t kDefaultAlignSize = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
 
-#define BvDelete(ptr) if (ptr) \
-{ \
-	delete ptr; \
-	ptr = nullptr; \
-}
-
-#define BvDeleteArray(ptr) if (ptr) \
-{ \
-	delete[] ptr; \
-	ptr = nullptr; \
-}
-
-
-#define BvBit(bit) (1 << (bit))
-
-
-template<u32 N, class Type>
-constexpr u32 BvArraySize(Type(&)[N])
+struct BvSourceInfo
 {
-	return N;
-}
+	const char* m_pFunction;
+	const char* m_pFile;
+	size_t m_Line;
+};

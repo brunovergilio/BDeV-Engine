@@ -81,6 +81,11 @@ private:
 	VkPipelineStageFlags m_RenderTargetDstStageFlags = 0;
 
 	BvVector<VkSemaphore> m_SwapChainSignalSemaphores;
+
+	BvVector<VkMemoryBarrier> m_MemoryBarriers;
+	BvVector<VkBufferMemoryBarrier> m_BufferBarriers;
+	BvVector<VkImageMemoryBarrier> m_ImageBarriers;
+
 	VkPipelineStageFlags m_WaitStageFlags = 0;
 	bool m_IsInRenderPass = false;
 };

@@ -44,6 +44,7 @@ public:
 
 	void Update() override final;
 
+	BV_INLINE const BvShaderResourceLayoutVk* GetLayout() const { return &m_Layout; }
 	BV_INLINE VkDescriptorSet GetHandle() const { return m_DescriptorSet; }
 	BV_INLINE u32 GetSetIndex() const { return m_SetIndex; }
 
@@ -70,9 +71,8 @@ private:
 	} * m_pDescriptorData = nullptr;
 
 	const BvRenderDeviceVk & m_Device;
-	const ShaderResourceLayoutDesc::SetDesc & m_SetDesc;
+	const BvShaderResourceLayoutVk& m_Layout;
 	VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;
-
 
 	u32 m_SetIndex = 0;
 };

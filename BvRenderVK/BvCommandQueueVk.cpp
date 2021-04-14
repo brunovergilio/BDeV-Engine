@@ -33,9 +33,9 @@ BvCommandQueueVk::~BvCommandQueueVk()
 
 void BvCommandQueueVk::Submit(const SubmitInfo & submitInfo)
 {
-	BvAssert(submitInfo.commandBufferCount <= kMaxCommandBuffersPerSubmission);
-	BvAssert(submitInfo.waitSemaphoreCount <= kMaxWaitSignalSemaphoresSubmission);
-	BvAssert(submitInfo.signalSemaphoreCount <= kMaxWaitSignalSemaphoresSubmission);
+	BvAssert(submitInfo.commandBufferCount <= kMaxCommandBuffersPerSubmission, "Command buffer count greater than limit");
+	BvAssert(submitInfo.waitSemaphoreCount <= kMaxWaitSignalSemaphoresSubmission, "Wait semaphore count greater than limit");
+	BvAssert(submitInfo.signalSemaphoreCount <= kMaxWaitSignalSemaphoresSubmission, "Signal semaphore count greater than limit");
 	
 	BvFixedVector<u64, kMaxWaitSignalSemaphoresSubmission> waitValues(submitInfo.waitSemaphoreCount + m_SwapChains.Size());
 	for (auto i = 0u; i < submitInfo.waitSemaphoreCount; i++)

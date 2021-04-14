@@ -45,7 +45,7 @@ BvThread::~BvThread()
 
 void BvThread::Wait()
 {
-	BvAssertMsg(m_hThread != nullptr, "Thread handle is invalid");
+	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
 
 	WaitForSingleObject(m_hThread, INFINITE);
 }
@@ -53,7 +53,7 @@ void BvThread::Wait()
 
 void BvThread::SetAffinity(const u32 affinityMask) const
 {
-	BvAssertMsg(m_hThread != nullptr, "Thread handle is invalid");
+	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
 
 	SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(affinityMask));
 }
@@ -103,7 +103,7 @@ void BvThread::Destroy()
 		CloseHandle(m_hThread);
 		m_hThread = nullptr;
 
-		BvDelete(m_pDelegate);
+		delete m_pDelegate;
 	}
 }
 

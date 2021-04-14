@@ -16,7 +16,7 @@ public:
 	bool Create(const DeviceCreateDesc & deviceCreateDesc);
 	void Destroy();
 
-	BvSwapChain* CreateSwapChain(BvNativeWindow & window, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;
+	BvSwapChain* CreateSwapChain(const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;
 	BvBuffer* CreateBuffer(const BufferDesc& desc) override final;
 	BvBufferView* CreateBufferView(const BufferViewDesc& desc)  override final;
 	BvTexture* CreateTexture(const TextureDesc& desc)  override final;

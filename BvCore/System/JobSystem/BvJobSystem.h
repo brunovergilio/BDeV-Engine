@@ -109,7 +109,7 @@ public:
 	template<typename Fn, typename... Args>
 	void AddJob(Fn&& fn, Args &&... args)
 	{
-		BvAssertMsg(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
+		BvAssert(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
 		m_Jobs.EmplaceBack(JobDataType());
 		m_Jobs[m_Jobs.Size() - 1].first.Set(std::forward<Fn>(fn), std::forward<Args>(args)...);
 		m_Jobs[m_Jobs.Size() - 1].second = nullptr;
@@ -117,14 +117,14 @@ public:
 
 	void AddSyncPoint()
 	{
-		BvAssertMsg(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
+		BvAssert(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
 		m_Jobs.EmplaceBack(JobDataType());
 		m_Jobs[m_Jobs.Size() - 1].second = kSyncPoint;
 	}
 
 	void AddDependency(BvJobList * pDependency)
 	{
-		BvAssertMsg(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
+		BvAssert(m_Jobs.Size() < kMaxJobs, "A BvJobList can't have more than kMaxJobs - increase its value to add more");
 		m_Jobs.EmplaceBack(JobDataType());
 		m_Jobs[m_Jobs.Size() - 1].second = pDependency;
 	}

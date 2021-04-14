@@ -32,7 +32,7 @@ EShLanguage GetEShShaderStage(const ShaderStage stage)
 	case ShaderStage::kAmplificationOrTask:	return EShLanguage::EShLangTaskNV;
 	case ShaderStage::kCompute:				return EShLanguage::EShLangCompute;
 	default:
-		BvAssert(0);
+		BvAssert(0, "This code should be unreachable");
 		return EShLanguage::EShLangCount;
 	}
 }

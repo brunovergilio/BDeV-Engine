@@ -104,7 +104,7 @@ void BvRenderEngineVk::Destroy()
 
 void BvRenderEngineVk::GetGPUInfo(const u32 index, BvGPUInfo & gpuInfo) const
 {
-	BvAssert(index < m_GPUs.Size());
+	BvAssert(index < m_GPUs.Size(), "Invalid GPU index");
 
 	gpuInfo.m_DeviceName = m_GPUs[index].m_DeviceProperties.properties.deviceName;
 	gpuInfo.m_DeviceId = m_GPUs[index].m_DeviceProperties.properties.deviceID;
@@ -127,7 +127,7 @@ void BvRenderEngineVk::GetGPUInfo(const u32 index, BvGPUInfo & gpuInfo) const
 
 BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, const u32 gpuIndex)
 {
-	BvAssert(m_Devices[gpuIndex] == nullptr);
+	BvAssert(m_Devices[gpuIndex] == nullptr, "Render device already created");
 	if (m_Devices[gpuIndex] != nullptr)
 	{
 		return GetRenderDevice(gpuIndex);
@@ -142,7 +142,7 @@ BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const DeviceCreateDe
 
 void BvRenderEngineVk::DestroyRenderDevice(const u32 gpuIndex)
 {
-	BvAssert(m_Devices[gpuIndex] != nullptr);
+	BvAssert(m_Devices[gpuIndex] != nullptr, "Invalid render device");
 
 	auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(m_Devices[gpuIndex]);
 	delete pDeviceVk;
@@ -353,10 +353,8 @@ u32 BvRenderEngineVk::GetQueueFamilyIndex(const VkQueueFlags queueFlags, const u
 }
 
 
-BvRenderEngineVk g_Engine;
-
-
 BvRenderEngine* GetRenderEngineVk()
 {
-	return &g_Engine;
+	static BvRenderEngineVk s_Engine;
+	return &s_Engine;
 }

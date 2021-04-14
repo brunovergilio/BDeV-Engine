@@ -11,9 +11,8 @@ BvString::BvString()
 
 
 BvString::BvString(const u32 size)
-	: m_pStr(size > 0 ? new char[size] : nullptr), m_Size(0), m_Capacity(size)
 {
-	BvAssert(m_pStr != nullptr);
+	Resize(size);
 }
 
 
@@ -34,13 +33,13 @@ BvString & BvString::operator=(const BvString & rhs)
 }
 
 
-BvString::BvString(BvString && rhs)
+BvString::BvString(BvString && rhs) noexcept
 {
 	*this = std::move(rhs);
 }
 
 
-BvString & BvString::operator=(BvString && rhs)
+BvString & BvString::operator=(BvString && rhs) noexcept
 {
 	if (this != &rhs)
 	{
@@ -77,7 +76,7 @@ BvString & BvString::operator=(const char c)
 
 BvString::~BvString()
 {
-	BvDeleteArray(m_pStr);
+	delete[] m_pStr;
 	m_Size = 0;
 	m_Capacity = 0;
 }
@@ -138,7 +137,7 @@ void BvString::Assign(const char * const pStr, const u32 start, const u32 count)
 		return;
 	}
 
-	BvAssert(m_pStr != pStr);
+	BvAssert(m_pStr != pStr, "Same underlying string pointer");
 
 	if (m_Capacity <= count)
 	{
@@ -177,7 +176,7 @@ void BvString::Insert(const BvString & str, const u32 start, const u32 count, co
 
 void BvString::Insert(const char * const pStr, const u32 start, const u32 count, const u32 where)
 {
-	BvAssert(m_Size >= where);
+	BvAssert(m_Size >= where, "Position past the string's size");
 	if (count == 0)
 	{
 		return;
@@ -277,7 +276,7 @@ void BvString::Format(const char * const format, ...)
 
 void BvString::Erase(const u32 start, const u32 count)
 {
-	BvAssert(start < m_Size && count > 0);
+	BvAssert(start < m_Size && count > 0, "Erasing past the string's size");
 	u32 end = start + count;
 	
 	u32 removed = count;
@@ -297,18 +296,21 @@ void BvString::Erase(const u32 start, const u32 count)
 
 void BvString::Resize(const u32 size)
 {
-	BvAssert(size > 0);
-
-	u32 copyLen = size > m_Size ? m_Size : size - 1;
+	BvAssert(size > 0, "String resizing needs a valid size");
+	if (size <= m_Capacity)
+	{
+		return;
+	}
 
 	char * pNewStr = new char[size];
-
-	memcpy(pNewStr, m_pStr, copyLen);
-	pNewStr[copyLen] = 0;
-	BvDelete(m_pStr);
+	if (m_Size > 0)
+	{
+		memcpy(pNewStr, m_pStr, m_Size - 1);
+	}
+	pNewStr[m_Size] = 0;
+	delete[] m_pStr;
 
 	m_pStr = pNewStr;
-	m_Size = copyLen;
 	m_Capacity = size;
 }
 
@@ -484,9 +486,9 @@ const u32 BvString::RFind(const char * const pStr, const u32 size) const
 }
 
 
-const u32 BvString::Hash32() const
+const u64 BvString::Hash() const
 {
-	return FNV1a32(m_pStr, m_Size);
+	return FNV1a64(m_pStr, m_Size);
 }
 
 

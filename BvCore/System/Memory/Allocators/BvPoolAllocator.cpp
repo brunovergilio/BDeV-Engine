@@ -2,6 +2,7 @@
 
 
 BvPoolAllocator::BvPoolAllocator(void* pStart, void* pEnd, size_t elementSize, size_t alignment)
+	: m_ElementSize(elementSize)
 {
 	MemType start{ pStart }, end{ pEnd };
 	start.pAsVoidPtr = BvAlign(start.pAsVoidPtr, alignment);
@@ -50,7 +51,7 @@ void* BvPoolAllocator::Allocate(size_t size /*= 0*/, size_t alignment /*= 0*/, s
 
 void BvPoolAllocator::Free(void* ptr)
 {
-	BvAssertMsg(ptr != nullptr, "Trying to free nullptr");
+	BvAssert(ptr != nullptr, "Trying to free nullptr");
 
 	MemType mem{ ptr };
 	MemType head{ m_pMem };

@@ -1,11 +1,12 @@
 #pragma once
 
 
-#include "BvCore/System/Memory/BvMemory.h"
+#include "BvCore/System/Memory/BvMemoryCommon.h"
 
 
 class BvLinearAllocator
 {
+	BV_NOCOPYMOVE(BvLinearAllocator);
 public:
 	BvLinearAllocator(void* pStart, void* pEnd);
 	~BvLinearAllocator();
@@ -14,6 +15,8 @@ public:
 	void Free(void* ptr);
 
 	void Reset();
+
+	size_t GetAllocationSize(void* pMem) const;
 
 	void Debug();
 

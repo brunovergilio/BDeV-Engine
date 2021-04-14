@@ -65,7 +65,7 @@ public:
 
 	void Run() const
 	{
-		BvAssert(IsSet());
+		BvAssert(IsSet(), "Job doesn't have an entry point");
 		reinterpret_cast<const BvDelegateBase* const>(m_Data)->Invoke();
 	}
 

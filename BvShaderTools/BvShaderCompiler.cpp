@@ -16,7 +16,7 @@ public:
 		memcpy(m_pBlob, pBlob, blobSize);
 	}
 
-	~BvShaderBlob() { BvDeleteArray(m_pBlob); }
+	~BvShaderBlob() { delete[] m_pBlob; }
 
 	BV_INLINE const u8* const GetBufferPointer() const override { return m_pBlob; }
 	BV_INLINE const size_t GetBufferSize() const override { return m_BlobSize; }
@@ -59,7 +59,10 @@ IBvShaderBlob* BvShaderCompiler::CompileFromFile(const char * const pFilename, c
 {
 	BvFileSystem fileSys;
 	BvFile file = fileSys.OpenFile(pFilename, BvFileAccess::kRead);
-	BvAssert(file.IsValid());
+	if (!file.IsValid())
+	{
+		return nullptr;
+	}
 
 	auto size = file.GetSize();
 	auto pBlob = new u8[size];
@@ -67,7 +70,7 @@ IBvShaderBlob* BvShaderCompiler::CompileFromFile(const char * const pFilename, c
 
 	auto result = CompileFromMemory(pBlob, size, shaderDesc, pErrors);
 
-	BvDeleteArray(pBlob);
+	delete[] pBlob;
 
 	return result;
 }
@@ -103,15 +106,8 @@ void BvShaderCompiler::DestroyShader(IBvShaderBlob*& pCompiledShader) const
 }
 
 
-IBvShaderCompiler* CreateShaderCompiler()
+IBvShaderCompiler* GetShaderCompiler()
 {
-	return new BvShaderCompiler();
-}
-
-
-void DestroyShaderCompiler(IBvShaderCompiler*& pCompiler)
-{
-	auto pPtr = reinterpret_cast<BvShaderCompiler*>(pCompiler);
-	delete pPtr;
-	pCompiler = nullptr;
+	static BvShaderCompiler s_ShaderCompiler;
+	return &s_ShaderCompiler;
 }

@@ -3,14 +3,14 @@
 
 // BvVector
 // Container class, with variable-sized memory. Once memory has been allocated for a specific instance, the specified amount becomes
-// the maximum size for that instance. Requested sizes are rounded to the next power of 2 (if they're not one already).
+// the maximum size for that instance. If the size needs to be increased, memory is reallocated again.
 // The class can reserve and/or resize its underlying container
 
 
 #include "BvCore/BvCore.h"
 #include "BvCore/Container/BvIterator.h"
 #include "BvCore/Utils/BvDebug.h"
-#include "BvCore/System/Memory/BvMemory.h"
+#include "BvCore/System/Memory/BvAlloc.h"
 
 
 template<class Type>
@@ -84,6 +84,7 @@ public:
 	Iterator Insert(ConstIterator position, std::initializer_list<Type> list);
 	Iterator Erase(ConstIterator position);
 	Iterator Erase(ConstIterator first, ConstIterator last);
+	void RemoveIndex(size_t index);
 	void Clear();
 	template <class... Args>
 	Iterator Emplace(ConstIterator position, Args&&... args);
@@ -247,9 +248,12 @@ inline void BvVector<Type>::Resize(const size_t size, const Type & value)
 	}
 	else
 	{
-		for (auto i = m_Size; i > size; i--)
+		if constexpr (!std::is_trivially_destructible_v<Type>)
 		{
-			m_pData[i - 1].~Type();
+			for (auto i = m_Size; i > size; i--)
+			{
+				m_pData[i - 1].~Type();
+			}
 		}
 
 		m_Size = size;
@@ -268,56 +272,56 @@ inline void BvVector<Type>::Reserve(const size_t size)
 template<class Type>
 inline Type & BvVector<Type>::operator[](const size_t index)
 {
-	BvAssert(m_Size > 0 && index < m_Size);
+	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<class Type>
 inline const Type & BvVector<Type>::operator[](const size_t index) const
 {
-	BvAssert(m_Size > 0 && index < m_Size);
+	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<class Type>
 inline Type & BvVector<Type>::At(const size_t index)
 {
-	BvAssert(m_Size > 0 && index < m_Size);
+	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<class Type>
 inline const Type & BvVector<Type>::At(const size_t index) const
 {
-	BvAssert(m_Size > 0 && index < m_Size);
+	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<class Type>
 inline Type & BvVector<Type>::Front()
 {
-	BvAssert(m_Size > 0);
+	BvAssert(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
 template<class Type>
 inline const Type & BvVector<Type>::Front() const
 {
-	BvAssert(m_Size > 0);
+	BvAssert(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
 template<class Type>
 inline Type & BvVector<Type>::Back()
 {
-	BvAssert(m_Size > 0);
+	BvAssert(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 
 template<class Type>
 inline const Type & BvVector<Type>::Back() const
 {
-	BvAssert(m_Size > 0);
+	BvAssert(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 
@@ -403,9 +407,16 @@ inline void BvVector<Type>::PushBack(Type && value)
 template<class Type>
 inline void BvVector<Type>::PopBack()
 {
-	if (m_Size > 0)
+	if constexpr (!std::is_trivially_destructible_v<Type>)
 	{
-		m_pData[--m_Size].~Type();
+		if (m_Size > 0)
+		{
+			m_pData[--m_Size].~Type();
+		}
+	}
+	else
+	{
+		m_Size--;
 	}
 }
 
@@ -573,7 +584,10 @@ inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(ConstIterator pos
 		return Iterator(m_pData + m_Size);
 	}
 
-	m_pData[pos].~Type();
+	if constexpr (!std::is_trivially_destructible_v<Type>)
+	{
+		m_pData[pos].~Type();
+	}
 
 	if (pos < m_Size - 1)
 	{
@@ -611,6 +625,13 @@ inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(ConstIterator fir
 	m_Size -= count;
 
 	return Iterator(m_pData + pos);
+}
+
+template<class Type>
+inline void BvVector<Type>::RemoveIndex(size_t index)
+{
+	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	Erase(cbegin() + index);
 }
 
 template<class Type>
@@ -688,7 +709,7 @@ inline void BvVector<Type>::Grow(const size_t size, const bool forceSize)
 		}
 	}
 
-	void * pNewData = BvAlloc(sizeof(Type) * m_Capacity, alignof(Type));
+	void * pNewData = BvMAlloc(sizeof(Type) * m_Capacity, alignof(Type));
 	if (m_Size > 0)
 	{
 		Type * pObjs = reinterpret_cast<Type *>(pNewData);

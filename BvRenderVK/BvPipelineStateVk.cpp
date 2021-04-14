@@ -68,14 +68,14 @@ void BvGraphicsPipelineStateVk::Create()
 
 	VkPipelineRasterizationStateCreateInfo rasterizerCI{};
 	rasterizerCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizerCI.depthBiasConstantFactor = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBias;
-	rasterizerCI.depthBiasClamp = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBiasClamp;
-	rasterizerCI.depthBiasSlopeFactor = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBiasSlope;
-	rasterizerCI.depthBiasEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthClip;
-	rasterizerCI.depthClampEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthClamp;
 	rasterizerCI.polygonMode = GetVkPolygonMode(m_PipelineStateDesc.m_RasterizerStateDesc.m_FillMode);
 	rasterizerCI.cullMode = GetVkCullModeFlags(m_PipelineStateDesc.m_RasterizerStateDesc.m_CullMode);
 	rasterizerCI.frontFace = GetVkFrontFace(m_PipelineStateDesc.m_RasterizerStateDesc.m_FrontFace);
+	rasterizerCI.depthBiasEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthBias;
+	rasterizerCI.depthBiasConstantFactor = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBias;
+	rasterizerCI.depthBiasClamp = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBiasClamp;
+	rasterizerCI.depthBiasSlopeFactor = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBiasSlope;
+	rasterizerCI.depthClampEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthClip;
 	rasterizerCI.lineWidth = 1.0f;
 
 	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{};
@@ -125,6 +125,7 @@ void BvGraphicsPipelineStateVk::Create()
 
 	BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets>
 		blendAttachments(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments.Size(), {});
+	bool anyTargetWithBlendEnabled = false;
 	for (auto i = 0u; i < blendAttachments.Size(); i++)
 	{
 		blendAttachments[i].blendEnable = m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_BlendEnable;
@@ -135,6 +136,11 @@ void BvGraphicsPipelineStateVk::Create()
 		blendAttachments[i].dstAlphaBlendFactor = GetVkBlendFactor(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_DstBlendAlpha);
 		blendAttachments[i].alphaBlendOp = GetVkBlendOp(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_BlendOpAlpha);
 		blendAttachments[i].colorWriteMask = m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_RenderTargetWriteMask;
+
+		if (blendAttachments[i].blendEnable)
+		{
+			anyTargetWithBlendEnabled = true;
+		}
 	}
 
 	VkPipelineColorBlendStateCreateInfo blendCI{};
@@ -154,6 +160,10 @@ void BvGraphicsPipelineStateVk::Create()
 	if (m_PipelineStateDesc.m_DepthStencilDesc.m_StencilTestEnable)
 	{
 		dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+	}
+	if (anyTargetWithBlendEnabled)
+	{
+		dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_BLEND_CONSTANTS);
 	}
 
 	VkPipelineDynamicStateCreateInfo dynamicStateCI{};

@@ -42,6 +42,12 @@
     <ClInclude Include="System\Memory\Allocators\BvStackAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvDefaultAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvPoolAllocator.h" />
+    <ClInclude Include="System\Memory\Utilities\BvBoundsChecker.h" />
+    <ClInclude Include="System\Memory\Utilities\BvMemoryMarker.h" />
+    <ClInclude Include="System\Memory\Utilities\BvMemoryTracker.h" />
+    <ClInclude Include="System\Memory\BvAlloc.h" />
+    <ClInclude Include="System\Memory\Win32\BvAllocWin32.h" />
+    <ClInclude Include="System\Memory\BvMemoryCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Container\BvString.cpp" />
@@ -64,5 +70,12 @@
     <ClCompile Include="System\Memory\Allocators\BvStackAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvDefaultAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvPoolAllocator.cpp" />
+    <ClCompile Include="System\Memory\Utilities\BvBoundsChecker.cpp" />
+    <ClCompile Include="System\Memory\Utilities\BvMemoryMarker.cpp" />
+    <ClCompile Include="System\Memory\Utilities\BvMemoryTracker.cpp" />
+    <ClCompile Include="System\Memory\Win32\BvAllocWin32.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="BvCore.natvis" />
   </ItemGroup>
 </Project>

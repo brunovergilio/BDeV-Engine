@@ -18,8 +18,8 @@ struct SubmitInfo
 {
 	BvCommandBuffer ** ppCommandBuffers = nullptr;
 	BvSemaphore ** ppWaitSemaphores = nullptr;
-	BvSemaphore ** ppSignalSemaphores = nullptr;
 	u64 * pWaitValues = nullptr;
+	BvSemaphore ** ppSignalSemaphores = nullptr;
 	u64 * pSignalValues = nullptr;
 	u32 commandBufferCount = 0;
 	u32 waitSemaphoreCount = 0;

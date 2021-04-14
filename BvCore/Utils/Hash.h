@@ -41,20 +41,20 @@ BV_INLINE u64 FNV1a64(const void * const pBytes, const size_t size)
 }
 
 
-template<typename Type>
-struct Hash
-{
-	u64 operator()(const Type & val)
-	{
-		return FNV1a64(&val, sizeof(Type));
-	}
-};
+//template<typename Type>
+//struct Hash
+//{
+//	u64 operator()(const Type& val)
+//	{
+//		return FNV1a64(&val, sizeof(Type));
+//	}
+//};
 
 
 template <typename Type, typename... Rest>
 void HashCombine(u64 & seed, const Type& v, Rest... rest)
 {
-	seed ^= ::Hash<Type>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	seed ^= ::std::hash<Type>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	(HashCombine(seed, rest), ...);
 }
 

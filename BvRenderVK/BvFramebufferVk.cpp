@@ -23,7 +23,7 @@ void BvFramebufferVk::Create()
 {
 	BvFixedVector<VkFramebufferAttachmentImageInfo, kMaxRenderTargetsWithDepth> framebufferAIIs(m_FramebufferDesc.m_RenderTargetViews.Size()
 		+ (m_FramebufferDesc.m_pDepthStencilView ? 1 : 0), {});
-	BvAssert(framebufferAIIs.Size() > 0);
+	BvAssert(framebufferAIIs.Size() > 0, "No framebuffer attachments");
 	BvFixedVector<VkFormat, kMaxRenderTargetsWithDepth> formats(framebufferAIIs.Size(), {});
 
 	u32 i = 0;
@@ -90,7 +90,7 @@ BvFramebufferManager::~BvFramebufferManager()
 
 BvFramebufferVk * BvFramebufferManager::GetFramebuffer(const BvRenderDeviceVk & device, const FramebufferDesc & desc)
 {
-	auto hash = Hash<FramebufferDesc>()(desc);
+	auto hash = std::hash<FramebufferDesc>()(desc);
 
 	BvScopedLock lock(m_Lock);
 	BvFramebufferVk * pFramebuffer = m_Framebuffers[hash];

@@ -98,7 +98,7 @@ BvEvent::BvEvent()
 BvEvent::BvEvent(const bool manualReset, const bool signaled)
 	: m_hEvent(CreateEvent(nullptr, manualReset, signaled, nullptr))
 {
-	BvAssert(m_hEvent != nullptr);
+	BvAssert(m_hEvent != nullptr, "Invalid event handle");
 }
 
 

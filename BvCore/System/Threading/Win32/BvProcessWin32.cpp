@@ -9,17 +9,18 @@ BvSystemInfo g_SystemInfo = []()
 {
 	BvSystemInfo systemInfo{};
 
-	BvVector<u8> bufferData;
+	void* pBufferData = nullptr;
 	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
 	DWORD bufferSize = 0;
 	DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 	if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 	{
-		bufferData.Resize(bufferSize);
-		pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(bufferData.Data());
+		pBufferData = malloc(bufferSize);
+		pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
 		result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 		if (result == FALSE)
 		{
+			free(pBufferData);
 			BV_WIN32_ERROR();
 			return systemInfo;
 		}
@@ -41,6 +42,8 @@ BvSystemInfo g_SystemInfo = []()
 			systemInfo.m_NumLogicalProcessors += __popcnt(pBuffer[i].ProcessorMask);
 		}
 	}
+
+	free(pBufferData);
 
 	SYSTEM_INFO osInfo;
 	GetSystemInfo(&osInfo);
@@ -72,30 +75,28 @@ public:
 	{
 		SymCleanup(GetCurrentProcess());
 	}
-} g_StackTraceHandler;
+};
 
 
-void GetStackTrace(BvStackTrace& stack, const u32 numFrames)
+void GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u32 numFramesToRecord)
 {
-	stack.frames.Reserve(numFrames);
+	static StackTraceHandler s_StackTraceHandler;
 
-	CONTEXT             context;
-	STACKFRAME64        stackFrame;
-	DWORD64             displacement;
-	HANDLE				process = GetCurrentProcess();
+	stackTrace.frames.Reserve(numFramesToRecord);
+
 	constexpr auto kMaxNameSize = MAX_PATH;
 	u8 dbgHelpSymbolMem[sizeof(IMAGEHLP_SYMBOL64) + kMaxNameSize];
 
+	CONTEXT context;
 	RtlCaptureContext(&context);
-	memset(&stackFrame, 0, sizeof(STACKFRAME64));
 
-	displacement = 0;
-	stackFrame.AddrPC.Offset = context.Rip;
-	stackFrame.AddrPC.Mode = AddrModeFlat;
-	stackFrame.AddrStack.Offset = context.Rsp;
-	stackFrame.AddrStack.Mode = AddrModeFlat;
-	stackFrame.AddrFrame.Offset = context.Rbp;
-	stackFrame.AddrFrame.Mode = AddrModeFlat;
+	STACKFRAME64 frame{};
+	frame.AddrPC.Offset = context.Rip;
+	frame.AddrPC.Mode = AddrModeFlat;
+	frame.AddrStack.Offset = context.Rsp;
+	frame.AddrStack.Mode = AddrModeFlat;
+	frame.AddrFrame.Offset = context.Rbp;
+	frame.AddrFrame.Mode = AddrModeFlat;
 
 	DWORD machine = 0;
 #if defined(_M_X64)
@@ -108,23 +109,42 @@ void GetStackTrace(BvStackTrace& stack, const u32 numFrames)
 #error "platform not supported!"
 #endif
 
-	BOOL result;
-	for (auto i = 0u; i < numFrames; i++)
+	HANDLE process = GetCurrentProcess();
+
+	// Since we don't care about this function, we do an initial StackWalk64 call
+	// and ditch the first result
+	BOOL result = TRUE;
+	for (auto i = 0u; i < numFramesToSkip; i++)
 	{
-		result = StackWalk64(machine, process, GetCurrentThread(), &stackFrame, &context,
+		result = StackWalk64(machine, process, GetCurrentThread(), &frame, &context,
+			nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr);
+		if (!result)
+		{
+			break;
+		}
+	}
+
+	if (!result)
+	{
+		return;
+	}
+
+	for (auto i = 0u; i < numFramesToRecord; i++)
+	{
+		result = StackWalk64(machine, process, GetCurrentThread(), &frame, &context,
 			nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr);
 		if (!result)
 		{
 			break;
 		}
 
-		stack.frames.PushBack({});
-		auto& currFrame = stack.frames.Back();
+		stackTrace.frames.PushBack({});
+		auto& currFrame = stackTrace.frames.Back();
 
-		currFrame.m_Address = stackFrame.AddrPC.Offset;
+		currFrame.m_Address = frame.AddrPC.Offset;
 
-		DWORD moduleBase = SymGetModuleBase64(process, stackFrame.AddrPC.Offset);
-		char moduleBuff[kMaxNameSize];
+		DWORD moduleBase = SymGetModuleBase64(process, frame.AddrPC.Offset);
+		char moduleBuff[kMaxNameSize]{};
 		if (moduleBase && GetModuleFileNameA((HINSTANCE)moduleBase, moduleBuff, kMaxNameSize))
 		{
 			currFrame.m_Module = moduleBuff;
@@ -134,7 +154,7 @@ void GetStackTrace(BvStackTrace& stack, const u32 numFrames)
 		pSymbol->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64) + kMaxNameSize;
 		pSymbol->MaxNameLength = kMaxNameSize - 1;
 
-		if (SymGetSymFromAddr64(process, stackFrame.AddrPC.Offset, nullptr, pSymbol))
+		if (SymGetSymFromAddr64(process, frame.AddrPC.Offset, nullptr, pSymbol))
 		{
 			currFrame.m_Function = pSymbol->Name;
 		}
@@ -143,29 +163,11 @@ void GetStackTrace(BvStackTrace& stack, const u32 numFrames)
 		IMAGEHLP_LINE line;
 		line.SizeOfStruct = sizeof(IMAGEHLP_LINE);
 
-		if (SymGetLineFromAddr64(process, stackFrame.AddrPC.Offset, &offset, &line))
+		if (SymGetLineFromAddr64(process, frame.AddrPC.Offset, &offset, &line))
 		{
 			currFrame.m_File = line.FileName;
 			currFrame.m_Line = line.LineNumber;
 		}
-
-		//SymGetSymFromAddr64(process, (ULONG64)stackFrame.AddrPC.Offset, &displacement, pSymbol);
-		//UnDecorateSymbolName(pSymbol->Name, pSymbol->Name, kDbgSymbolNameSize, UNDNAME_COMPLETE);
-
-		//printf
-		//(
-		//	"Frame %lu:\n"
-		//	"    Symbol name:    %s\n"
-		//	"    PC address:     0x%08llu\n"
-		//	"    Stack address:  0x%08llu\n"
-		//	"    Frame address:  0x%08llu\n"
-		//	"\n",
-		//	frame,
-		//	pSymbol->Name,
-		//	(ULONG64)stackFrame.AddrPC.Offset,
-		//	(ULONG64)stackFrame.AddrStack.Offset,
-		//	(ULONG64)stackFrame.AddrFrame.Offset
-		//);
 	}
 }
 #pragma warning( pop )

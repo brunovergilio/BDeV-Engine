@@ -53,5 +53,4 @@ protected:
 };
 
 
-IBvShaderCompiler* CreateShaderCompiler();
-void DestroyShaderCompiler(IBvShaderCompiler*& pCompiler);
+/*BV_EXTERN_C BV_API */IBvShaderCompiler* GetShaderCompiler();

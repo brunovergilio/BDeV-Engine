@@ -22,7 +22,7 @@ struct FramebufferDesc
 
 
 template<>
-struct Hash<FramebufferDesc>
+struct std::hash<FramebufferDesc>
 {
 	u64 operator()(const FramebufferDesc & val)
 	{
@@ -31,22 +31,22 @@ struct Hash<FramebufferDesc>
 		{
 			decltype(auto) desc = pTarget->GetDesc().m_pTexture->GetDesc();
 			HashCombine(hash,
-				Hash<u32>()((u32)desc.m_UsageFlags),
-				Hash<u32>()(desc.m_UseAsCubeMap ? 1 : 0),
-				Hash<u32>()((u32)desc.m_Size.width),
-				Hash<u32>()((u32)desc.m_Size.height),
-				Hash<u32>()((u32)desc.m_Size.depthOrLayerCount));
+				((u32)desc.m_UsageFlags),
+				(desc.m_UseAsCubeMap ? 1 : 0),
+				((u32)desc.m_Size.width),
+				((u32)desc.m_Size.height),
+				((u32)desc.m_Size.depthOrLayerCount));
 		}
 
 		if (auto pTarget = val.m_pDepthStencilView)
 		{
 			decltype(auto) desc = pTarget->GetDesc().m_pTexture->GetDesc();
 			HashCombine(hash,
-				Hash<u32>()((u32)desc.m_UsageFlags),
-				Hash<u32>()(desc.m_UseAsCubeMap ? 1 : 0),
-				Hash<u32>()((u32)desc.m_Size.width),
-				Hash<u32>()((u32)desc.m_Size.height),
-				Hash<u32>()((u32)desc.m_Size.depthOrLayerCount));
+				((u32)desc.m_UsageFlags),
+				(desc.m_UseAsCubeMap ? 1u : 0u),
+				((u32)desc.m_Size.width),
+				((u32)desc.m_Size.height),
+				((u32)desc.m_Size.depthOrLayerCount));
 		}
 
 		return hash;

@@ -63,8 +63,8 @@ void BvCommandBufferVk::End()
 void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, BvTextureView * const * const pRenderTargets,
 	const ClearColorValue * const pClearColors, BvTextureView * const pDepthStencilTarget, const ClearColorValue & depthClear)
 {
-	BvAssert(pRenderPass != nullptr);
-	BvAssert(pRenderTargets != nullptr || pDepthStencilTarget != nullptr);
+	BvAssert(pRenderPass != nullptr, "Invalid render pass");
+	BvAssert(pRenderTargets != nullptr || pDepthStencilTarget != nullptr, "No render / depth targets");
 	
 	VkExtent2D renderArea{};
 
@@ -100,7 +100,7 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, 
 		{
 			auto pSwapChain = static_cast<BvSwapChainTextureVk *>(pViewVk->GetTexture())->GetSwapChain();
 			auto pSemaphore = pSwapChain->RegisterSignalSemaphore();
-			BvAssert(pSemaphore != nullptr);
+			BvAssert(pSemaphore != nullptr, "Invalid semaphore handle");
 			m_SwapChainSignalSemaphores.EmplaceBack(pSemaphore->GetHandle());
 		}
 
@@ -195,12 +195,16 @@ void BvCommandBufferVk::EndRenderPass()
 void BvCommandBufferVk::SetViewports(const u32 viewportCount, const Viewport * const pViewports)
 {
 	constexpr u32 kMaxViewports = 8;
-	BvAssert(viewportCount <= kMaxViewports);
+	BvAssert(viewportCount <= kMaxViewports, "Viewport count greater than limit");
 	BvFixedVector<VkViewport, kMaxViewports> viewports(viewportCount, {});
 	for (auto i = 0u; i < viewports.Size(); i++)
 	{
 		viewports[i] = { pViewports[i].x, pViewports[i].y, pViewports[i].width, pViewports[i].height,
 			pViewports[i].minDepth, pViewports[i].maxDepth };
+
+		// Reverse viewport
+		viewports[i].y += viewports[i].height;
+		viewports[i].height = -viewports[i].height;
 	}
 	m_Device.GetDeviceFunctions().vkCmdSetViewport(m_CommandBuffer, 0, (u32)viewports.Size(), viewports.Data());
 }
@@ -209,7 +213,7 @@ void BvCommandBufferVk::SetViewports(const u32 viewportCount, const Viewport * c
 void BvCommandBufferVk::SetScissors(const u32 scissorCount, const Rect * const pScissors)
 {
 	constexpr u32 kMaxScissors = 8;
-	BvAssert(scissorCount <= kMaxScissors);
+	BvAssert(scissorCount <= kMaxScissors, "Scissor count greater than limit");
 	BvFixedVector<VkRect2D, kMaxScissors> scissors(scissorCount, {});
 	for (auto i = 0u; i < scissors.Size(); i++)
 	{
@@ -242,7 +246,7 @@ void BvCommandBufferVk::SetPipeline(const BvComputePipelineState * const pPipeli
 void BvCommandBufferVk::SetShaderResourceSets(const u32 setCount, BvShaderResourceSet * const * const ppSets, const u32 firstSet)
 {
 	constexpr u32 kMaxShaderResourceSets = 8;
-	BvAssert(setCount <= kMaxShaderResourceSets);
+	BvAssert(setCount <= kMaxShaderResourceSets, "Shader resource set count greater than limit");
 
 	BvFixedVector<VkDescriptorSet, kMaxShaderResourceSets> sets(setCount);
 	for (auto i = 0u; i < setCount; i++)
@@ -258,7 +262,7 @@ void BvCommandBufferVk::SetVertexBuffers(const u32 vertexBufferCount, const BvBu
 	const u32 firstBinding)
 {
 	constexpr u32 kMaxVertexBuffers = 8;
-	BvAssert(vertexBufferCount <= kMaxVertexBuffers);
+	BvAssert(vertexBufferCount <= kMaxVertexBuffers, "Vertex buffer count greater than limit");
 
 	BvFixedVector<VkBuffer, kMaxVertexBuffers> vertexBuffers(vertexBufferCount, {});
 	BvFixedVector<VkDeviceSize, kMaxVertexBuffers> vertexBufferOffsets(vertexBufferCount, {});
@@ -325,7 +329,7 @@ void BvCommandBufferVk::DispatchIndirect(const BvBuffer * const pBuffer, const u
 
 void BvCommandBufferVk::CopyBuffer(const BvBuffer * const pSrcBuffer, BvBuffer * const pDstBuffer)
 {
-	BvAssert(pDstBuffer->GetDesc().m_Size >= pSrcBuffer->GetDesc().m_Size);
+	BvAssert(pDstBuffer->GetDesc().m_Size >= pSrcBuffer->GetDesc().m_Size, "Dst buffer is too small");
 
 	CopyRegion copyRegion;
 	copyRegion.buffer = { pDstBuffer->GetDesc().m_Size, 0, 0 };
@@ -335,7 +339,7 @@ void BvCommandBufferVk::CopyBuffer(const BvBuffer * const pSrcBuffer, BvBuffer *
 
 void BvCommandBufferVk::CopyBufferRegion(const BvBuffer * const pSrcBuffer, BvBuffer * const pDstBuffer, const CopyRegion & copyRegion)
 {
-	BvAssert(pDstBuffer->GetDesc().m_Size >= pSrcBuffer->GetDesc().m_Size);
+	BvAssert(pDstBuffer->GetDesc().m_Size >= pSrcBuffer->GetDesc().m_Size, "Dst buffer is too small");
 
 	auto pSrc = static_cast<const BvBufferVk * const>(pSrcBuffer);
 	auto pDst = static_cast<BvBufferVk * const>(pDstBuffer);
@@ -353,11 +357,11 @@ void BvCommandBufferVk::CopyTexture(const BvTexture * const pSrcTexture, BvTextu
 	const auto & srcDesc = pSrcTexture->GetDesc();
 	const auto & dstDesc = pDstTexture->GetDesc();
 
-	BvAssert(srcDesc.m_ImageType == dstDesc.m_ImageType);
-	BvAssert(srcDesc.m_Size.width == dstDesc.m_Size.width);
-	BvAssert(srcDesc.m_Size.height == dstDesc.m_Size.height);
-	BvAssert(srcDesc.m_Size.depthOrLayerCount == dstDesc.m_Size.depthOrLayerCount);
-	BvAssert(srcDesc.m_MipLevels >= dstDesc.m_MipLevels);
+	BvAssert(srcDesc.m_ImageType == dstDesc.m_ImageType, "Image types don't match");
+	BvAssert(srcDesc.m_Size.width == dstDesc.m_Size.width, "Image widths don't match");
+	BvAssert(srcDesc.m_Size.height == dstDesc.m_Size.height, "Image heights don't match");
+	BvAssert(srcDesc.m_Size.depthOrLayerCount == dstDesc.m_Size.depthOrLayerCount, "Image depth / layer count don't match");
+	BvAssert(srcDesc.m_MipLevels >= dstDesc.m_MipLevels, "Image mip count don't match");
 
 	CopyRegion copyRegion{};
 	for (auto i = 0u; i < dstDesc.m_MipLevels; i++)
@@ -558,16 +562,13 @@ void BvCommandBufferVk::CopyTextureRegion(const BvTexture * const pSrcTexture, B
 
 void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBarrierDesc * const pBarriers)
 {
-	BvVector<VkMemoryBarrier> memoryBarriers;
-	BvVector<VkBufferMemoryBarrier> bufferBarriers;
-	BvVector<VkImageMemoryBarrier> imageBarriers;
-	
 	VkPipelineStageFlags srcStageFlags = 0, dstStageFlags = 0;
 	for (auto i = 0u; i < barrierCount; i++)
 	{
 		if (pBarriers[i].pBuffer)
 		{
-			VkBufferMemoryBarrier barrier{};
+			m_BufferBarriers.PushBack({});
+			VkBufferMemoryBarrier& barrier = m_BufferBarriers.Back();
 			barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 			//barrier.pNext = nullptr;
 			barrier.buffer = static_cast<BvBufferVk *>(pBarriers[i].pBuffer)->GetHandle();
@@ -593,8 +594,6 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 				barrier.dstQueueFamilyIndex = pDstQueue->GetFamilyIndex();
 			}
 
-			bufferBarriers.PushBack(barrier);
-
 			srcStageFlags |= pBarriers[i].srcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].srcPipelineStage);
 			dstStageFlags |= pBarriers[i].dstPipelineStage == PipelineStage::kAuto ?
@@ -602,7 +601,8 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 		}
 		else if (pBarriers[i].pTexture)
 		{
-			VkImageMemoryBarrier barrier{};
+			m_ImageBarriers.PushBack({});
+			VkImageMemoryBarrier& barrier = m_ImageBarriers.Back();
 			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			//barrier.pNext = nullptr;
 			barrier.image = static_cast<BvTextureVk *>(pBarriers[i].pTexture)->GetHandle();
@@ -651,8 +651,6 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 			}
 			else
 			{
-				imageBarriers.PushBack(barrier);
-
 				srcStageFlags |= pBarriers[i].srcPipelineStage == PipelineStage::kAuto ?
 					GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].srcPipelineStage);
 				dstStageFlags |= pBarriers[i].dstPipelineStage == PipelineStage::kAuto ?
@@ -661,15 +659,14 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 		}
 		else
 		{
-			VkMemoryBarrier barrier{};
+			m_MemoryBarriers.PushBack({});
+			VkMemoryBarrier& barrier = m_MemoryBarriers.Back();
 			barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
 			//barrier.pNext = nullptr;
 			barrier.srcAccessMask = pBarriers[i].srcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].srcLayout) : GetVkAccessFlags(pBarriers[i].srcAccess);
 			barrier.dstAccessMask = pBarriers[i].dstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].dstLayout) : GetVkAccessFlags(pBarriers[i].dstAccess);
-
-			memoryBarriers.PushBack(barrier);
 
 			srcStageFlags |= pBarriers[i].srcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].srcPipelineStage);
@@ -678,13 +675,17 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 		}
 	}
 
-	auto total = memoryBarriers.Size() + bufferBarriers.Size() + imageBarriers.Size();
+	auto total = m_MemoryBarriers.Size() + m_BufferBarriers.Size() + m_ImageBarriers.Size();
 	if (total > 0)
 	{
 		m_Device.GetDeviceFunctions().vkCmdPipelineBarrier(m_CommandBuffer, srcStageFlags, dstStageFlags,
 			VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT,
-			(u32)memoryBarriers.Size(), memoryBarriers.Data(),
-			(u32)bufferBarriers.Size(), bufferBarriers.Data(),
-			(u32)imageBarriers.Size(), imageBarriers.Data());
+			(u32)m_MemoryBarriers.Size(), m_MemoryBarriers.Size() > 0 ? m_MemoryBarriers.Data() : nullptr,
+			(u32)m_BufferBarriers.Size(), m_BufferBarriers.Size() > 0 ? m_BufferBarriers.Data() : nullptr,
+			(u32)m_ImageBarriers.Size(), m_ImageBarriers.Size() > 0 ? m_ImageBarriers.Data() : nullptr);
 	}
+
+	m_MemoryBarriers.Clear();
+	m_BufferBarriers.Clear();
+	m_ImageBarriers.Clear();
 }

@@ -4,12 +4,9 @@
 #include "BvCore/BvCore.h"
 #include "BvCore/Container/BvIterator.h"
 #include "BvCore/Utils/Hash.h"
-#include "BvCore/System/Memory/BvMemory.h"
+#include "BvCore/System/Memory/BvAlloc.h"
 #include <algorithm>
 #include <utility>
-
-
-constexpr size_t kInvalidHashMapIndex = UINT32_MAX;
 
 
 template<typename Key, typename Value>
@@ -189,9 +186,9 @@ inline void BvRobinMap<Key, Value>::ResizeAndRehash(const size_t size)
 
 	m_Capacity = (size & (size - 1)) == 0 ? size : GetNextPowerOf2(size);
 
-	KeyValue * pNewData = reinterpret_cast<KeyValue *>(BvAlloc(sizeof(KeyValue) * m_Capacity, std::max(alignof(Key), alignof(Value))));
+	KeyValue * pNewData = reinterpret_cast<KeyValue *>(BvMAlloc(sizeof(KeyValue) * m_Capacity, std::max(alignof(Key), alignof(Value))));
 	memset(pNewData, 0, sizeof(KeyValue) * m_Capacity);
-	size_t * pNewHashes = reinterpret_cast<size_t *>(BvAlloc(sizeof(size_t) * m_Capacity));
+	size_t * pNewHashes = reinterpret_cast<size_t *>(BvMAlloc(sizeof(size_t) * m_Capacity));
 
 	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 
@@ -400,7 +397,7 @@ template<typename Key, typename Value>
 inline Value & BvRobinMap<Key, Value>::At(const Key & key)
 {
 	auto iter = FindKey(key);
-	BvAssert(iter != cend());
+	BvAssert(iter != cend(), "Key not found");
 
 	return iter->second;
 }
@@ -410,7 +407,7 @@ template<typename Key, typename Value>
 inline const Value & BvRobinMap<Key, Value>::At(const Key & key) const
 {
 	auto iter = FindKey(key);
-	BvAssert(iter != cend());
+	BvAssert(iter != cend(), "Key not found");
 
 	return iter->second;
 }
@@ -478,9 +475,9 @@ const size_t BvRobinMap<Key, Value>::MoveObject(KeyValue * const pKeyValue, size
 		dist++;
 	}
 
-	BvAssert(0);
+	BvAssert(0, "This code should be unreachable");
 
-	return kInvalidHashMapIndex;
+	return kU32Max;
 }
 
 

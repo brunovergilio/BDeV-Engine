@@ -8,9 +8,8 @@
 #include "BvSemaphoreVk.h"
 
 
-BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk & device, BvCommandQueueVk & commandQueue,
-	BvNativeWindow & window, const SwapChainDesc & swapChainParams)
-	: BvSwapChain(window, swapChainParams), m_Device(device), m_CommandQueue(commandQueue),
+BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk & device, BvCommandQueueVk & commandQueue, const SwapChainDesc & swapChainParams)
+	: BvSwapChain(swapChainParams), m_Device(device), m_CommandQueue(commandQueue),
 	m_PresentationQueueIndex(device.GetGPUInfo().m_PresentationQueueIndex),
 	m_SignalSemaphores(kMaxWaitSemaphores)
 {
@@ -28,8 +27,7 @@ BvSwapChainVk::~BvSwapChainVk()
 
 bool BvSwapChainVk::Create()
 {
-	auto width = m_Window.GetWidth();
-	auto height = m_Window.GetHeight();
+	m_SwapChainDesc.m_WindowDesc = m_Window.GetWindowDesc();
 
 	auto device = m_Device.GetHandle();
 	auto physicalDevice = m_Device.GetGPUInfo().m_PhysicalDevice;
@@ -91,7 +89,7 @@ bool BvSwapChainVk::Create()
 	u32 presentModeCount;
 	result = VulkanFunctions::vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
 	BvCheckErrorReturnVk(result, false);
-	BvAssert(presentModeCount > 0);
+	BvAssert(presentModeCount > 0, "No present modes");
 
 	BvVector<VkPresentModeKHR> presentModes(presentModeCount);
 	result = VulkanFunctions::vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModes.Data());
@@ -103,8 +101,8 @@ bool BvSwapChainVk::Create()
 	{
 		// If the surface size is undefined, the size is set to
 		// the size of the images requested.
-		swapchainExtent.width = width;
-		swapchainExtent.height = height;
+		swapchainExtent.width = m_SwapChainDesc.m_WindowDesc.m_Width;
+		swapchainExtent.height = m_SwapChainDesc.m_WindowDesc.m_Height;
 	}
 	else
 	{
@@ -115,8 +113,8 @@ bool BvSwapChainVk::Create()
 		// the latest changes from the window, so force it here
 		if (swapchainExtent.width == 0 || swapchainExtent.height == 0)
 		{
-			swapchainExtent.width = width;
-			swapchainExtent.height = height;
+			swapchainExtent.width = m_SwapChainDesc.m_WindowDesc.m_Width;
+			swapchainExtent.height = m_SwapChainDesc.m_WindowDesc.m_Height;
 		}
 	}
 
@@ -214,7 +212,7 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.compositeAlpha = compositeAlpha;
 
 	TextureDesc textureDesc;
-	textureDesc.m_Size = { width, height, 1 };
+	textureDesc.m_Size = { m_SwapChainDesc.m_WindowDesc.m_Width, m_SwapChainDesc.m_WindowDesc.m_Height, 1 };
 	textureDesc.m_Format = m_SwapChainDesc.m_Format;
 	textureDesc.m_UsageFlags = TextureUsage::kColorTarget;
 
@@ -241,8 +239,8 @@ bool BvSwapChainVk::Create()
 	{
 		for (auto i = 0u; i < m_SwapChainTextures.Size(); i++)
 		{
-			BvDelete(m_SwapChainTextureViews[i]);
-			BvDelete(m_SwapChainTextures[i]);
+			delete m_SwapChainTextureViews[i];
+			delete m_SwapChainTextures[i];
 		}
 		m_Device.GetDeviceFunctions().vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
 	}
@@ -287,13 +285,13 @@ void BvSwapChainVk::Destroy()
 	for (auto && pTextureView : m_SwapChainTextureViews)
 	{
 		auto pResource = static_cast<BvTextureViewVk *>(pTextureView);
-		BvDelete(pResource);
+		delete pResource;
 		pTextureView = nullptr;
 	}
 
 	for (auto && pTexture : m_SwapChainTextures)
 	{
-		BvDelete(pTexture);
+		delete pTexture;
 	}
 
 	m_Device.GetDeviceFunctions().vkDestroySwapchainKHR(m_Device.GetHandle(), m_Swapchain, nullptr);
@@ -444,14 +442,14 @@ void BvSwapChainVk::DestroySynchronizationResources()
 		//m_ImageAcquiredFences[i]->Destroy();
 		//BvDelete(m_ImageAcquiredFences[i]);
 		static_cast<BvSemaphoreVk *>(m_ImageAcquiredSemaphores[i])->Destroy();
-		BvDelete(m_ImageAcquiredSemaphores[i]);
+		delete m_ImageAcquiredSemaphores[i];
 	}
 
 	for (auto && frame : m_SignalSemaphores)
 	{
 		for (auto && semaphore : frame)
 		{
-			BvDelete(semaphore);
+			delete semaphore;
 		}
 		frame.Clear();
 	}

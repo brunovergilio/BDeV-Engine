@@ -43,7 +43,6 @@ void BvFenceVk::Reset()
 bool BvFenceVk::Wait(const u64 timeout)
 {
 	auto result = m_Device.GetDeviceFunctions().vkWaitForFences(m_Device.GetHandle(), 1, &m_Fence, VK_TRUE, timeout);
-	BvAssert(result == VK_SUCCESS || result == VK_TIMEOUT);
 
 	return result == VK_SUCCESS;
 }

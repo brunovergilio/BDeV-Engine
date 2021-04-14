@@ -51,13 +51,13 @@ AsyncFileRequest & AsyncFileRequest::operator =(const AsyncFileRequest & rhs)
 }
 
 
-AsyncFileRequest::AsyncFileRequest(AsyncFileRequest && rhs)
+AsyncFileRequest::AsyncFileRequest(AsyncFileRequest && rhs) noexcept
 {
 	*this = std::move(rhs);
 }
 
 
-AsyncFileRequest & AsyncFileRequest::operator =(AsyncFileRequest && rhs)
+AsyncFileRequest & AsyncFileRequest::operator =(AsyncFileRequest && rhs) noexcept
 {
 	if (this != &rhs)
 	{
@@ -75,7 +75,7 @@ AsyncFileRequest::~AsyncFileRequest()
 	{
 		if (--m_pIOData->m_UseCount == 0)
 		{
-			BvDelete(m_pIOData);
+			delete m_pIOData;
 		}
 	}
 }
@@ -83,7 +83,7 @@ AsyncFileRequest::~AsyncFileRequest()
 
 u32 AsyncFileRequest::GetResult(const bool wait)
 {
-	BvAssert(m_pIOData != nullptr);
+	BvAssert(m_pIOData != nullptr, "Invalid Async IO Data");
 	auto result = 0;
 	if (GetOverlappedResult(m_pIOData->m_hFile, &m_pIOData->m_OverlappedIO, reinterpret_cast<LPDWORD>(&result), wait))
 	{
@@ -104,7 +104,7 @@ u32 AsyncFileRequest::GetResult(const bool wait)
 
 void AsyncFileRequest::Cancel()
 {
-	BvAssert(m_pIOData != nullptr);
+	BvAssert(m_pIOData != nullptr, "Invalid Async IO Data");
 	if (!CancelIoEx(m_pIOData->m_hFile, &m_pIOData->m_OverlappedIO))
 	{
 		// TODO: Handle error
@@ -118,13 +118,13 @@ BvAsyncFile::BvAsyncFile()
 }
 
 
-BvAsyncFile::BvAsyncFile(BvAsyncFile && rhs)
+BvAsyncFile::BvAsyncFile(BvAsyncFile && rhs) noexcept
 {
 	*this = std::move(rhs);
 }
 
 
-BvAsyncFile & BvAsyncFile::operator =(BvAsyncFile && rhs)
+BvAsyncFile & BvAsyncFile::operator =(BvAsyncFile && rhs) noexcept
 {
 	if (this != &rhs)
 	{
@@ -141,18 +141,18 @@ BvAsyncFile::~BvAsyncFile()
 }
 
 
-AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferLength, const u64 position)
+AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, const u64 position)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE);
-	BvAssert(pBuffer != nullptr);
-	BvAssert(bufferLength > 0);
+	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BvAssert(pBuffer != nullptr, "Null buffer");
+	BvAssert(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
 	request.m_pIOData = new AsyncFileData();
 	request.m_pIOData->m_OverlappedIO.Pointer = reinterpret_cast<void *>(position);
 	request.m_pIOData->m_hFile = m_hFile;
 
-	BOOL status = ReadFile(m_hFile, pBuffer, bufferLength, nullptr, &request.m_pIOData->m_OverlappedIO);
+	BOOL status = ReadFile(m_hFile, pBuffer, bufferSize, nullptr, &request.m_pIOData->m_OverlappedIO);
 	if (!status)
 	{
 		auto error = GetLastError();
@@ -166,18 +166,18 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferLength,
 }
 
 
-AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 bufferLength, const u64 position)
+AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 bufferSize, const u64 position)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE);
-	BvAssert(pBuffer != nullptr);
-	BvAssert(bufferLength > 0);
+	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BvAssert(pBuffer != nullptr, "Null buffer");
+	BvAssert(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
 	request.m_pIOData = new AsyncFileData();
 	request.m_pIOData->m_OverlappedIO.Pointer = reinterpret_cast<void *>(position);
 	request.m_pIOData->m_hFile = m_hFile;
 
-	BOOL status = WriteFile(m_hFile, pBuffer, bufferLength, nullptr, &request.m_pIOData->m_OverlappedIO);
+	BOOL status = WriteFile(m_hFile, pBuffer, bufferSize, nullptr, &request.m_pIOData->m_OverlappedIO);
 	if (!status)
 	{
 		auto error = GetLastError();
@@ -193,7 +193,7 @@ AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 buffer
 
 const u64 BvAsyncFile::GetSize() const
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE);
+	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	u64 fileSize;
 	GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));

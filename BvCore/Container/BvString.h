@@ -14,8 +14,8 @@ public:
 	explicit BvString(const u32 size);
 	BvString(const BvString & rhs);
 	BvString & operator =(const BvString & rhs);
-	BvString(BvString && rhs);
-	BvString & operator =(BvString && rhs);
+	BvString(BvString && rhs) noexcept;
+	BvString & operator =(BvString && rhs) noexcept;
 	BvString & operator =(const char * const pStr);
 	BvString & operator =(const char c);
 	~BvString();
@@ -70,11 +70,11 @@ public:
 	const u32 RFind(const char * const pStr) const;
 	const u32 RFind(const char * const pStr, const u32 size) const;
 
+	const u64 Hash() const;
+
 	BV_INLINE const bool Contains(const char c) const { return Find(c) != kInvalidIndex; }
 	BV_INLINE const bool Contains(const BvString & str) const { return Find(str) != kInvalidIndex; }
 	BV_INLINE const bool Contains(const char * const pStr) const { return Find(pStr) != kInvalidIndex; }
-
-	const u32 Hash32() const;
 
 	BvString & operator +=(const BvString & str) { Append(str); return *this; }
 	BvString & operator +=(const char * const pStr) { Append(pStr); return *this; }
@@ -86,11 +86,11 @@ public:
 	friend BvString operator +(const char * const pStr, const BvString & str);
 	friend BvString operator +(const char c, const BvString & str);
 
-	BV_INLINE const char & operator[](const u32 index) const { BvAssertMsg(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
-	BV_INLINE char & operator[](const u32 index) { BvAssertMsg(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
-	BV_INLINE const char At(const u32 index) const { BvAssertMsg(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
-	BV_INLINE const char Front() const { BvAssertMsg(m_Size > 0, "Index out of bounds"); return m_pStr[0]; }
-	BV_INLINE const char Back() const { BvAssertMsg(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
+	BV_INLINE const char & operator[](const u32 index) const { BvAssert(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
+	BV_INLINE char & operator[](const u32 index) { BvAssert(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
+	BV_INLINE const char At(const u32 index) const { BvAssert(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
+	BV_INLINE const char Front() const { BvAssert(m_Size > 0, "Index out of bounds"); return m_pStr[0]; }
+	BV_INLINE const char Back() const { BvAssert(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
 
 	BV_INLINE const char * const CStr() const { return m_pStr; }
 	BV_INLINE const u32 Size() const { return m_Size; }
@@ -121,4 +121,14 @@ protected:
 	char * m_pStr = nullptr;
 	u32 m_Size = 0;
 	u32 m_Capacity = 0;
+};
+
+
+template<>
+struct std::hash<BvString>
+{
+	u64 operator()(const BvString& val)
+	{
+		return val.Hash();
+	}
 };

@@ -173,14 +173,14 @@ struct ViewportStateDesc
 
 struct RasterizerStateDesc
 {
-	float m_DepthBias = 0.0f;
-	float m_DepthBiasClamp = 0.0f;
-	float m_DepthBiasSlope = 0.0f;
 	FillMode m_FillMode = FillMode::kSolid;
 	CullMode m_CullMode = CullMode::kNone;
 	FrontFace m_FrontFace = FrontFace::kClockwise;
+	bool m_EnableDepthBias = false;
+	float m_DepthBias = 0.0f;
+	float m_DepthBiasClamp = 0.0f;
+	float m_DepthBiasSlope = 0.0f;
 	bool m_EnableDepthClip = false;
-	bool m_EnableDepthClamp = false;
 	bool m_EnableConservativeRasterization = false;
 };
 

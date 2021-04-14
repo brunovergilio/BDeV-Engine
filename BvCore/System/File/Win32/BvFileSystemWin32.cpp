@@ -14,7 +14,7 @@ BvFileSystem::~BvFileSystem()
 
 BvFile BvFileSystem::OpenFile(const char * const pFilename, const BvFileAccess mode)
 {
-	BvAssert(pFilename != nullptr);
+	BvAssert(pFilename != nullptr, "Invalid filename");
 
 	DWORD acccessMode = 0;
 	DWORD shareMode = 0;
@@ -50,7 +50,7 @@ BvFile BvFileSystem::OpenFile(const char * const pFilename, const BvFileAccess m
 
 BvAsyncFile BvFileSystem::OpenAsyncFile(const char * const pFilename, const BvFileAccess mode)
 {
-	BvAssert(pFilename != nullptr);
+	BvAssert(pFilename != nullptr, "Invalid filename");
 
 	DWORD acccessMode = 0;
 	DWORD shareMode = 0;
@@ -107,7 +107,7 @@ bool BvFileSystem::FileExists(const char * const pFileName) const
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
 		{
-			BvAssertMsg(error != 0, "Some other error happened");
+			BvAssert(error != 0, "Some other error happened");
 		}
 		return false;
 	}

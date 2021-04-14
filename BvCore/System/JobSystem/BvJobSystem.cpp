@@ -284,7 +284,7 @@ BvJobSystem::~BvJobSystem()
 
 void BvJobSystem::Initialize(const JobSystemDesc desc)
 {
-	BvAssert(m_IsActive == false);
+	BvAssert(m_IsActive == false, "Job System has not been initialized yet");
 	m_IsActive = true;
 
 	m_JobListPool.Resize(desc.m_JobListPoolSize);
@@ -293,7 +293,7 @@ void BvJobSystem::Initialize(const JobSystemDesc desc)
 	auto numThreadsPerCore = 1;
 
 	const auto& sysInfo = GetSystemInfo();
-	BvAssert(desc.m_NumThreads <= sysInfo.m_NumLogicalProcessors);
+	BvAssert(desc.m_NumThreads <= sysInfo.m_NumLogicalProcessors, "Not enough logical processors for the worker threads");
 
 	switch (desc.m_Parallelism)
 	{
@@ -316,7 +316,7 @@ void BvJobSystem::Initialize(const JobSystemDesc desc)
 		return;
 	}
 
-	BvAssertMsg(numWorkerThreads > 0, "There must be at least 1 worker thread on the job system!");
+	BvAssert(numWorkerThreads > 0, "There must be at least 1 worker thread on the job system!");
 	m_Workers.Resize(numWorkerThreads);
 	auto coreIndex = 0;
 	auto coreCountReset = 0;
@@ -344,12 +344,12 @@ void BvJobSystem::Shutdown()
 	{
 		pWorker->Stop();
 
-		BvDelete(pWorker);
+		delete pWorker;
 	}
 
 	for (auto&& pJobList : m_JobListPool)
 	{
-		BvDelete(pJobList);
+		delete pJobList;
 	}
 }
 

@@ -38,7 +38,7 @@ void BvCommandPoolVk::Create()
 	VkCommandPoolCreateInfo commandPoolCI{};
 	commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	//commandPoolCI.pNext = nullptr;
-	//commandPoolCI.flags = 0;
+	commandPoolCI.flags = GetVkCommandPoolCreateFlags(m_CommandPoolDesc.m_Flags);
 	commandPoolCI.queueFamilyIndex = queueFamilyIndex;
 
 	auto result = m_Device.GetDeviceFunctions().vkCreateCommandPool(m_Device.GetHandle(), &commandPoolCI, nullptr, &m_CommandPool);
@@ -47,9 +47,13 @@ void BvCommandPoolVk::Create()
 
 void BvCommandPoolVk::Destroy()
 {
-	for (auto&& pCommandBuffer : m_CommandBuffers)
+	for (auto&& pCommandBuffer : m_UsedCommandBuffers)
 	{
-		BvDelete(pCommandBuffer);
+		delete pCommandBuffer;
+	}
+	for (auto&& pCommandBuffer : m_FreeCommandBuffers)
+	{
+		delete pCommandBuffer;
 	}
 
 	if (m_CommandPool)
@@ -60,8 +64,31 @@ void BvCommandPoolVk::Destroy()
 }
 
 
-void BvCommandPoolVk::AllocateCommandBuffers(const u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers)
+void BvCommandPoolVk::AllocateCommandBuffers(u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers)
 {
+	// Check for free, recycled command buffers
+	if ((m_CommandPoolDesc.m_Flags & CommandPoolFlags::kRecycleCommandBuffers) == CommandPoolFlags::kRecycleCommandBuffers)
+	{
+		u32 i = 0;
+		auto freeCBCount = m_FreeCommandBuffers.Size();
+		for (; i < commandBufferCount && i < freeCBCount; i++)
+		{
+			ppCommandBuffers[i] = m_FreeCommandBuffers.Back();
+			m_FreeCommandBuffers.PopBack();
+		}
+
+		if (i > 0)
+		{
+			commandBufferCount -= i;
+			ppCommandBuffers += i;
+
+			if (commandBufferCount == 0)
+			{
+				return;
+			}
+		}
+	}
+
 	if (commandBufferCount > kMmaxCommandBuffersPerAllocation)
 	{
 		AllocateCommandBuffers(commandBufferCount - kMmaxCommandBuffersPerAllocation, ppCommandBuffers + kMmaxCommandBuffersPerAllocation);
@@ -75,45 +102,68 @@ void BvCommandPoolVk::AllocateCommandBuffers(const u32 commandBufferCount, BvCom
 	allocateInfo.level = GetVkCommandBufferLevel(m_CommandPoolDesc.m_CommandType);
 
 	auto result = m_Device.GetDeviceFunctions().vkAllocateCommandBuffers(m_Device.GetHandle(), &allocateInfo, commandBuffers);
-	for (u32 i = 0; i < allocateInfo.commandBufferCount; i++)
+	for (u32 j = 0; j < allocateInfo.commandBufferCount; j++)
 	{
-		auto pCommandBuffer = new BvCommandBufferVk(m_Device, this, commandBuffers[i]);
-		m_CommandBuffers.EmplaceBack(pCommandBuffer);
-		ppCommandBuffers[i] = pCommandBuffer;
+		auto pCommandBuffer = new BvCommandBufferVk(m_Device, this, commandBuffers[j]);
+		m_UsedCommandBuffers.EmplaceBack(pCommandBuffer);
+		ppCommandBuffers[j] = pCommandBuffer;
 	}
 }
 
 
 void BvCommandPoolVk::FreeCommandBuffers(const u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers)
 {
-	if (commandBufferCount > kMmaxCommandBuffersPerAllocation)
+	if ((m_CommandPoolDesc.m_Flags & CommandPoolFlags::kRecycleCommandBuffers) == CommandPoolFlags::kRecycleCommandBuffers)
 	{
-		FreeCommandBuffers(commandBufferCount - kMmaxCommandBuffersPerAllocation, ppCommandBuffers + kMmaxCommandBuffersPerAllocation);
-	}
-
-	VkCommandBuffer commandBuffers[kMmaxCommandBuffersPerAllocation];
-	u32 count = commandBufferCount > kMmaxCommandBuffersPerAllocation ? kMmaxCommandBuffersPerAllocation : commandBufferCount;
-	for (auto i = 0u; i < count; i++)
-	{
-		auto pCbVk = reinterpret_cast<BvCommandBufferVk *>(ppCommandBuffers[i]);
-		commandBuffers[i] = pCbVk->GetHandle();
-
-		for (auto j = 0u; j < m_CommandBuffers.Size(); j++)
+		for (auto i = 0u; i < commandBufferCount; i++)
 		{
-			if (m_CommandBuffers[j] == pCbVk)
+			auto pCbVk = reinterpret_cast<BvCommandBufferVk*>(ppCommandBuffers[i]);
+			for (auto j = 0u; j < m_UsedCommandBuffers.Size(); j++)
 			{
-				if (j != m_CommandBuffers.Size() - 1)
+				if (m_UsedCommandBuffers[j] == pCbVk)
 				{
-					std::swap(m_CommandBuffers[j], m_CommandBuffers[m_CommandBuffers.Size() - 1]);
+					if (j != m_UsedCommandBuffers.Size() - 1)
+					{
+						std::swap(m_UsedCommandBuffers[j], m_UsedCommandBuffers[m_UsedCommandBuffers.Size() - 1]);
+					}
+					m_UsedCommandBuffers.PopBack();
+					m_FreeCommandBuffers.EmplaceBack(pCbVk);
+					break;
 				}
-				m_CommandBuffers.PopBack();
-				BvDelete(pCbVk);
-				break;
 			}
 		}
 	}
+	else
+	{
+		if (commandBufferCount > kMmaxCommandBuffersPerAllocation)
+		{
+			FreeCommandBuffers(commandBufferCount - kMmaxCommandBuffersPerAllocation, ppCommandBuffers + kMmaxCommandBuffersPerAllocation);
+		}
 
-	m_Device.GetDeviceFunctions().vkFreeCommandBuffers(m_Device.GetHandle(), m_CommandPool, count, commandBuffers);
+		VkCommandBuffer commandBuffers[kMmaxCommandBuffersPerAllocation];
+		u32 count = commandBufferCount > kMmaxCommandBuffersPerAllocation ? kMmaxCommandBuffersPerAllocation : commandBufferCount;
+		for (auto i = 0u; i < count; i++)
+		{
+			auto pCbVk = reinterpret_cast<BvCommandBufferVk *>(ppCommandBuffers[i]);
+			commandBuffers[i] = pCbVk->GetHandle();
+
+			for (auto j = 0u; j < m_UsedCommandBuffers.Size(); j++)
+			{
+				if (m_UsedCommandBuffers[j] == pCbVk)
+				{
+					if (j != m_UsedCommandBuffers.Size() - 1)
+					{
+						std::swap(m_UsedCommandBuffers[j], m_UsedCommandBuffers[m_UsedCommandBuffers.Size() - 1]);
+					}
+					m_UsedCommandBuffers.PopBack();
+					delete pCbVk;
+					break;
+				}
+			}
+		}
+
+		m_Device.GetDeviceFunctions().vkFreeCommandBuffers(m_Device.GetHandle(), m_CommandPool, count, commandBuffers);
+	}
 }
 
 

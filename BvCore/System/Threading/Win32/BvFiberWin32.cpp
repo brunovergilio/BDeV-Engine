@@ -55,17 +55,17 @@ BvFiber::~BvFiber()
 
 void BvFiber::CreateFromThread()
 {
-	BvAssertMsg(m_pFiber == nullptr, "Fiber already converted / created");
+	BvAssert(m_pFiber == nullptr, "Fiber already converted / created");
 	m_pFiber = ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
-	BvAssertMsg(m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
+	BvAssert(m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
 	m_IsFiberFromThread = true;
 }
 
 
 void BvFiber::Create(FiberFunction pFunction, void * const pData, const size_t stackSize)
 {
-	BvAssertMsg(m_pFiber == nullptr, "Fiber already created / converted");
-	BvAssertMsg(pFunction != nullptr, "Fiber's callback routine is nullptr");
+	BvAssert(m_pFiber == nullptr, "Fiber already created / converted");
+	BvAssert(pFunction != nullptr, "Fiber's callback routine is nullptr");
 
 	m_pFunction = pFunction;
 	m_pData = pData;
@@ -85,7 +85,7 @@ void BvFiber::Create(FiberFunction pFunction, void * const pData, const size_t s
 	//	If we need smaller values(16KiB is common in schedulers), then asm fibers should be used instead IMO.
 	m_pFiber = CreateFiberEx(stackSize - 1, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, this);
 
-	BvAssertMsg(m_pFiber != nullptr, "Couldn't create Fiber");
+	BvAssert(m_pFiber != nullptr, "Couldn't create Fiber");
 }
 
 
@@ -96,7 +96,7 @@ void BvFiber::Destroy()
 		if (m_IsFiberFromThread)
 		{
 			BOOL result = ConvertFiberToThread(); result;
-			BvAssertMsg(result, "Couldn't convert Fiber to Thread");
+			BvAssert(result, "Couldn't convert Fiber to Thread");
 			m_IsFiberFromThread = false;
 		}
 		else
@@ -111,7 +111,7 @@ void BvFiber::Destroy()
 
 void BvFiber::Switch(BvFiber & fiber)
 {
-	BvAssertMsg(fiber.m_pFiber != nullptr, "Fiber is nullptr");
+	BvAssert(fiber.m_pFiber != nullptr, "Fiber is nullptr");
 	SwitchToFiber(fiber.m_pFiber);
 }
 

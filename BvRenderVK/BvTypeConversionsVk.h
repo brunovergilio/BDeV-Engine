@@ -7,6 +7,7 @@
 #include "BvRender/BvBuffer.h"
 #include "BvRender/BvSampler.h"
 #include "BvRender/BvPipelineState.h"
+#include "BvRender/BvCommandPool.h"
 
 
 VkImageType GetVkImageType(const TextureType type);
@@ -42,3 +43,5 @@ VkAccessFlags GetVkAccessFlags(const ResourceAccess resourceAccess);
 VkAccessFlags GetVkAccessFlags(const ResourceState resourceState);
 VkPipelineStageFlags GetVkPipelineStageFlags(const VkAccessFlags accessFlags);
 VkPipelineStageFlags GetVkPipelineStageFlags(const PipelineStage pipelineStage);
+VkCommandPoolCreateFlags GetVkCommandPoolCreateFlags(const CommandPoolFlags commandPoolFlags);
+VkDescriptorPoolCreateFlags GetVkDescriptorPoolCreateFlags(const ShaderResourcePoolFlags poolFlags);
