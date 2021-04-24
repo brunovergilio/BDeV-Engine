@@ -119,12 +119,6 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 		}
 	}
 
-	if (std::find(m_GPUInfo.m_SupportedExtensions.cbegin(), m_GPUInfo.m_SupportedExtensions.cend(), VK_EXT_DEBUG_MARKER_EXTENSION_NAME)
-		!= m_GPUInfo.m_SupportedExtensions.cend())
-	{
-		enabledExtensions.PushBack(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-	}
-
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.pQueueCreateInfos = queueInfos.Data();

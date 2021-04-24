@@ -30,8 +30,18 @@ namespace VulkanFunctions
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkGetPhysicalDeviceProperties2);
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkGetPhysicalDeviceFeatures2);
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkGetPhysicalDeviceFormatProperties);
-	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCreateDebugReportCallbackEXT);
-	BV_VK_INSTANCE_LEVEL_FUNCTION(vkDestroyDebugReportCallbackEXT);
+
+	// =============================================================
+	// Debug functions
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCreateDebugUtilsMessengerEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkDestroyDebugUtilsMessengerEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkQueueBeginDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkQueueEndDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCmdBeginDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCmdEndDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCmdInsertDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkSetDebugUtilsObjectNameEXT);
+	// =============================================================
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCreateWin32SurfaceKHR);
@@ -122,8 +132,18 @@ void BvLoaderVk::LoadInstanceFunctions(VkInstance instance)
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkGetPhysicalDeviceProperties2);
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkGetPhysicalDeviceFeatures2);
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkGetPhysicalDeviceFormatProperties);
-	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCreateDebugReportCallbackEXT);
-	BV_VK_INSTANCE_LEVEL_FUNCTION(vkDestroyDebugReportCallbackEXT);
+
+	// =============================================================
+	// Debug functions
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCreateDebugUtilsMessengerEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkDestroyDebugUtilsMessengerEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkQueueBeginDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkQueueEndDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCmdBeginDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCmdEndDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCmdInsertDebugUtilsLabelEXT);
+	BV_VK_INSTANCE_LEVEL_FUNCTION(vkSetDebugUtilsObjectNameEXT);
+	// =============================================================
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
 	BV_VK_INSTANCE_LEVEL_FUNCTION(vkCreateWin32SurfaceKHR);

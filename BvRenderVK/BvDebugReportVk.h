@@ -17,12 +17,10 @@ public:
 	void Destroy();
 
 private:
-	static VkBool32 VKAPI_PTR DebugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType,
-		uint64_t object, size_t location,
-		int32_t messageCode, const char * pLayerPrefix,
-		const char * pMessage, void * pUserData);
+	static VkBool32 VKAPI_PTR DebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,	void* pUserData);
 
 private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
-	VkDebugReportCallbackEXT m_DebugReport = VK_NULL_HANDLE;
+	VkDebugUtilsMessengerEXT m_DebugReport = VK_NULL_HANDLE;
 };

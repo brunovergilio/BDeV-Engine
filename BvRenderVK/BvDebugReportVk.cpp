@@ -16,16 +16,19 @@ BvDebugReportVk::~BvDebugReportVk()
 
 void BvDebugReportVk::Create()
 {
-	VkDebugReportFlagsEXT flags = VK_DEBUG_REPORT_WARNING_BIT_EXT
-		| VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
-		| VK_DEBUG_REPORT_ERROR_BIT_EXT;
-	VkDebugReportCallbackCreateInfoEXT debugInfo{};
-	debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-	debugInfo.pUserData = nullptr;
-	debugInfo.pfnCallback = DebugReportCallback;
-	debugInfo.flags = flags;
 
-	auto result = VulkanFunctions::vkCreateDebugReportCallbackEXT(m_Instance, &debugInfo, nullptr, &m_DebugReport);
+	VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
+	debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	//debugInfo.pNext = nullptr;
+	//debugInfo.flags = 0;
+	debugInfo.messageSeverity = VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+		| VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;;
+	debugInfo.messageType = VkDebugUtilsMessageTypeFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+		| VkDebugUtilsMessageTypeFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+	debugInfo.pfnUserCallback = DebugUtilsMessengerCallbackEXT;
+	//debugInfo.pUserData = nullptr;
+
+	auto result = VulkanFunctions::vkCreateDebugUtilsMessengerEXT(m_Instance, &debugInfo, nullptr, &m_DebugReport);
 }
 
 
@@ -33,40 +36,90 @@ void BvDebugReportVk::Destroy()
 {
 	if (m_DebugReport)
 	{
-		VulkanFunctions::vkDestroyDebugReportCallbackEXT(m_Instance, m_DebugReport, nullptr);
+		VulkanFunctions::vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugReport, nullptr);
 		m_DebugReport = VK_NULL_HANDLE;
 	}
 }
 
 
-VkBool32 VKAPI_PTR BvDebugReportVk::DebugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char * pLayerPrefix, const char * pMessage, void * pUserData)
+VkBool32 VKAPI_PTR BvDebugReportVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
-	// Error that may result in undefined behaviour
-	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
+	char prefix[64]{};
+	char message[2048]{};
+
+	bool triggerAbort = false;
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 	{
-		DPrintF("Error on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
-		abort();
-	};
-	// Warnings may hint at unexpected / non-spec API usage
-	if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
-	{
-		DPrintF("Warning on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
-		abort();
-	};
-	// May indicate sub-optimal usage of the API
-	if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
-	{
-		DPrintF("Performance Warning on [%s] (Code %d):\n%s\n", pLayerPrefix, messageCode, pMessage);
-		abort();
-	};
-	// Informal messages that may become handy during debugging
-	if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)
-	{
+		strcpy_s(prefix, "VERBOSE: ");
 	}
-	// Diagnostic info from the Vulkan loader and layers
-	// Usually not helpful in terms of API usage, but may help to debug layer and loader problems 
-	if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
 	{
+		strcpy_s(prefix, "INFO: ");
+	}
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	{
+		triggerAbort = true;
+		strcpy_s(prefix, "WARNING: ");
+	}
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+	{
+		triggerAbort = true;
+		strcpy_s(prefix, "ERROR: ");
+	}
+
+	if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+	{
+		strcat_s(prefix, "GENERAL");
+	}
+	else
+	{
+		if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+		{
+			strcat_s(prefix, "VALIDATION");
+		}
+		if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+		{
+			if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+			{
+				strcat_s(prefix, " | ");
+			}
+			strcat_s(prefix, "PERFORMANCE");
+		}
+	}
+	sprintf_s(message, "%s - Message ID Number %d, Message ID[%s] String :\n%s", prefix, pCallbackData->messageIdNumber,
+		pCallbackData->pMessageIdName, pCallbackData->pMessage);
+	if (pCallbackData->objectCount > 0)
+	{
+		char tmp_message[500];
+		sprintf_s(tmp_message, "\n Objects - %d\n", pCallbackData->objectCount);
+		strcat_s(message, tmp_message);
+		for (uint32_t object = 0; object < pCallbackData->objectCount; ++object)
+		{
+			sprintf_s(tmp_message, " Object[%d] - Type %d, Value %p, Name \"%s\"\n", object,
+				pCallbackData->pObjects[object].objectType, (void*)(pCallbackData->pObjects[object].objectHandle),
+				pCallbackData->pObjects[object].pObjectName);
+			strcat_s(message, tmp_message);
+		}
+	}
+	if (pCallbackData->cmdBufLabelCount > 0)
+	{
+		char tmp_message[500];
+		sprintf_s(tmp_message, "\n Command Buffer Labels - %d\n",	pCallbackData->cmdBufLabelCount);
+		strcat_s(message, tmp_message);
+		for (uint32_t label = 0; label < pCallbackData->cmdBufLabelCount; ++label)
+		{
+			sprintf_s(tmp_message, " Label[%d] - %s { %f, %f, %f, %f}\n",	label, pCallbackData->pCmdBufLabels[label].pLabelName,
+				pCallbackData->pCmdBufLabels[label].color[0], pCallbackData->pCmdBufLabels[label].color[1],
+				pCallbackData->pCmdBufLabels[label].color[2], pCallbackData->pCmdBufLabels[label].color[3]);
+			strcat_s(message, tmp_message);
+		}
+	}
+
+	DPrintF("%s\n", message);
+	if (triggerAbort)
+	{
+		abort();
 	}
 
 	return VK_FALSE;

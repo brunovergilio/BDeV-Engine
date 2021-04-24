@@ -28,9 +28,9 @@ constexpr const char * const g_EnabledExtensionProperties[] =
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
+	// TODO: Make sure this is available before creating the instance
 #if defined(BV_DEBUG)
 	VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-	VK_EXT_DEBUG_REPORT_EXTENSION_NAME
 #endif
 };
 
