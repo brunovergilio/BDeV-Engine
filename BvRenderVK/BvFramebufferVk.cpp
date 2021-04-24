@@ -4,9 +4,6 @@
 #include "BvTypeConversionsVk.h"
 
 
-BvFramebufferManager g_FramebufferManager;
-
-
 BvFramebufferVk::BvFramebufferVk(const BvRenderDeviceVk & device, const FramebufferDesc & framebufferDesc)
 	: m_FramebufferDesc(framebufferDesc), m_Device(device)
 {
@@ -85,6 +82,10 @@ BvFramebufferManager::BvFramebufferManager()
 
 BvFramebufferManager::~BvFramebufferManager()
 {
+	for (auto&& pFramebuffer : m_Framebuffers)
+	{
+		delete pFramebuffer.second;
+	}
 }
 
 

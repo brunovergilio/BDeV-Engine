@@ -77,15 +77,14 @@ void BvBufferVk::Destroy()
 
 void * const BvBufferVk::Map(const u64 size, const u64 offset)
 {
-	void *pMappedMemory = nullptr;
-	auto result = m_Device.GetDeviceFunctions().vkMapMemory(m_Device.GetHandle(), m_Memory, offset, size, 0, &pMappedMemory);
+	auto result = m_Device.GetDeviceFunctions().vkMapMemory(m_Device.GetHandle(), m_Memory, offset, size, 0, &m_pMapped);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
 		return nullptr;
 	}
 
-	return pMappedMemory;
+	return m_pMapped;
 }
 
 

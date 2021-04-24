@@ -372,10 +372,10 @@ inline Value & BvRobinMap<Key, Value>::operator[](const Key & key)
 	if (iter == end())
 	{
 		auto result = Emplace(key, Value());
-		return result.first->second;
+		return m_pData[result.first.GetIndex()].second;
 	}
 
-	return iter->second;
+	return m_pData[iter.GetIndex()].second;
 }
 
 
@@ -386,10 +386,10 @@ inline Value & BvRobinMap<Key, Value>::operator[](Key && key)
 	if (iter == cend())
 	{
 		auto result = Emplace(std::forward<Key>(key), Value());
-		return result.first->second;
+		return m_pData[result.first.GetIndex()].second;
 	}
 
-	return iter->second;
+	return m_pData[iter.GetIndex()].second;
 }
 
 
@@ -399,7 +399,7 @@ inline Value & BvRobinMap<Key, Value>::At(const Key & key)
 	auto iter = FindKey(key);
 	BvAssert(iter != cend(), "Key not found");
 
-	return iter->second;
+	return m_pData[iter.GetIndex()].second;
 }
 
 
@@ -409,7 +409,7 @@ inline const Value & BvRobinMap<Key, Value>::At(const Key & key) const
 	auto iter = FindKey(key);
 	BvAssert(iter != cend(), "Key not found");
 
-	return iter->second;
+	return m_pData[iter.GetIndex()].second;
 }
 
 

@@ -3,8 +3,10 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RenderTestBase\RenderTestBase.cpp" />
+    <ClCompile Include="DepthVisTest\DepthVisTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderTestBase\RenderTestBase.h" />
+    <ClInclude Include="DepthVisTest\DepthVisTest.h" />
   </ItemGroup>
 </Project>

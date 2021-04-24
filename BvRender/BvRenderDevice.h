@@ -162,14 +162,21 @@ public:
 	Type* Create(Args&&... args)
 	{
 		BvScopedLock lock(m_Lock);
-		auto it = m_ObjPools.Emplace(GetTypeId<Type>(), nullptr);
-		if (it.second)
+		BvRenderObjPool* pObjPool = nullptr;
+		auto typeId = GetTypeId<Type>();
+		auto it = m_ObjPools.FindKey(typeId);
+		if (it == m_ObjPools.cend())
 		{
-			it.first->second = new BvRenderObjPool();
-			it.first->second->Init<Type>();
+			pObjPool = new BvRenderObjPool();
+			pObjPool->Init<Type>();
+			auto pool = m_ObjPools.Emplace(typeId, pObjPool);
+		}
+		else
+		{
+			pObjPool = it->second;
 		}
 
-		return m_ObjPools[GetTypeId<Type>()]->Create<Type>(std::forward<Args>(args)...);
+		return pObjPool->Create<Type>(std::forward<Args>(args)...);
 	}
 
 	template<typename Type>

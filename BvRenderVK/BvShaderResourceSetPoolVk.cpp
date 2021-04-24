@@ -85,7 +85,7 @@ void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceSet ** p
 	const BvShaderResourceLayout * const pLayout, u32 set /*= 0*/)
 {
 	// Check for free, recycled sets
-	if ((m_ShaderResourceSetPoolDesc.m_Flags & ShaderResourcePoolFlags::kFreeDescriptors) == ShaderResourcePoolFlags::kNone)
+	if ((m_ShaderResourceSetPoolDesc.m_Flags & ShaderResourcePoolFlags::kRecycleDescriptors) == ShaderResourcePoolFlags::kRecycleDescriptors)
 	{
 		u32 i = 0;
 		auto& freeSets = m_FreeSets[pLayout];
@@ -136,7 +136,7 @@ void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceSet ** p
 	//allocateInfo.pNext = nullptr;
 	allocateInfo.descriptorSetCount = descriptorCount;
 	allocateInfo.descriptorPool = m_DescriptorPool;
-	allocateInfo.pSetLayouts;
+	allocateInfo.pSetLayouts = descriptorSetLayouts;
 
 	auto result = m_Device.GetDeviceFunctions().vkAllocateDescriptorSets(m_Device.GetHandle(), &allocateInfo, descriptorSets);
 	for (u32 i = 0; i < allocateInfo.descriptorSetCount; i++)
@@ -150,7 +150,7 @@ void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceSet ** p
 
 void BvShaderResourceSetPoolVk::FreeSets(u32 setCount, BvShaderResourceSet ** ppSets)
 {
-	if ((m_ShaderResourceSetPoolDesc.m_Flags & ShaderResourcePoolFlags::kFreeDescriptors) == ShaderResourcePoolFlags::kNone)
+	if ((m_ShaderResourceSetPoolDesc.m_Flags & ShaderResourcePoolFlags::kRecycleDescriptors) == ShaderResourcePoolFlags::kRecycleDescriptors)
 	{
 		for (auto i = 0u; i < setCount; i++)
 		{
@@ -202,7 +202,6 @@ void BvShaderResourceSetPoolVk::FreeSets(u32 setCount, BvShaderResourceSet ** pp
 			}
 		}
 
-		// Maybe shouldn't be freeing them, will cause fragmentation
 		m_Device.GetDeviceFunctions().vkFreeDescriptorSets(m_Device.GetHandle(), m_DescriptorPool, count, descriptorSets);
 	}
 }

@@ -13,7 +13,7 @@ struct Float2
 	};
 
 	Float2() : x(0.0f), y(0.0f) {}
-	explicit Float2(const float x, const float y)
+	Float2(const float x, const float y)
 		: x(x), y(y) {}
 
 	void Set(const float x, const float y)
@@ -34,7 +34,7 @@ struct Float3
 	};
 
 	Float3() : x(0.0f), y(0.0f), z(0.0f) {}
-	explicit Float3(const float x, const float y, const float z)
+	Float3(const float x, const float y, const float z)
 		: x(x), y(y), z(z) {}
 
 	void Set(const float x, const float y, const float z)
@@ -57,7 +57,7 @@ struct Float4
 	};
 
 	Float4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
-	explicit Float4(const float x, const float y, const float z, const float w = 0.0f)
+	Float4(const float x, const float y, const float z, const float w = 0.0f)
 		: x(x), y(y), z(z), w(w) {}
 
 	void Set(const float x, const float y, const float z, const float w)
@@ -84,7 +84,7 @@ struct Float22
 	};
 
 	Float22() {}
-	explicit Float22(const Float2 & r0, const Float2 & r1)
+	Float22(const Float2 & r0, const Float2 & r1)
 	{
 		r[0] = r0;
 		r[1] = r1;
@@ -107,7 +107,7 @@ struct Float33
 	};
 
 	Float33() {}
-	explicit Float33(const Float3 & r0, const Float3 & r1, const Float3 & r2)
+	Float33(const Float3 & r0, const Float3 & r1, const Float3 & r2)
 	{
 		r[0] = r0;
 		r[1] = r1;
@@ -132,7 +132,7 @@ struct Float43
 	};
 
 	Float43() {}
-	explicit Float43(const Float3 & r0, const Float3 & r1, const Float3 & r2, const Float3 & r3)
+	Float43(const Float3 & r0, const Float3 & r1, const Float3 & r2, const Float3 & r3)
 	{
 		r[0] = r0;
 		r[1] = r1;
@@ -158,7 +158,7 @@ struct Float44
 	};
 
 	Float44() {}
-	explicit Float44(const Float4 & r0, const Float4 & r1, const Float4 & r2, const Float4 & r3)
+	Float44(const Float4 & r0, const Float4 & r1, const Float4 & r2, const Float4 & r3)
 	{
 		r[0] = r0;
 		r[1] = r1;
@@ -190,7 +190,7 @@ struct vf32
 	};
 
 	vf32() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {}
-	explicit vf32(const float x, const float y, const float z, const float w = 0.0f)
+	vf32(const float x, const float y, const float z, const float w = 0.0f)
 		: x(x), y(y), z(z), w(w) {}
 
 	void Set(const float x, const float y, const float z, const float w)
@@ -205,7 +205,7 @@ struct vf32
 struct mf32
 {
 	mf32() {}
-	explicit mf32(const vf32 & r0, const vf32 & r1, const vf32 & r2, const vf32 & r3)
+	mf32(const vf32 & r0, const vf32 & r1, const vf32 & r2, const vf32 & r3)
 	{
 		r[0] = r0;
 		r[1] = r1;

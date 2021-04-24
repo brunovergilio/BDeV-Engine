@@ -10,11 +10,13 @@
 #include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
 #include "BvShaderResourceSetPoolVk.h"
+#include "BvRenderVK/BvFramebufferVk.h"
 #include "BvCore/Utils/RTTI.h"
 
 
 BvRenderDeviceVk::BvRenderDeviceVk(VkInstance instance, BvLoaderVk & loader, const BvGPUInfoVk & gpuInfo)
-	: m_Instance(instance), m_Loader(loader), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory())
+	: m_Instance(instance), m_Loader(loader), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory()),
+	m_pFramebufferManager(new BvFramebufferManager())
 {
 }
 
@@ -167,6 +169,7 @@ void BvRenderDeviceVk::Destroy()
 	m_Functions.vkDeviceWaitIdle(m_Device);
 
 	delete m_pFactory;
+	delete m_pFramebufferManager;
 
 	for (auto && pQueue : m_GraphicsQueues)
 	{
@@ -272,7 +275,9 @@ BvShaderResourceLayout * BvRenderDeviceVk::CreateShaderResourceLayout(const Shad
 
 BvShaderResourceSetPool* BvRenderDeviceVk::CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc)
 {
-	return m_pFactory->Create<BvShaderResourceSetPoolVk>(*this, shaderResourceSetPoolDesc);
+	auto pShaderResourceSetPool = m_pFactory->Create<BvShaderResourceSetPoolVk>(*this, shaderResourceSetPoolDesc);
+	pShaderResourceSetPool->Create(shaderResourceSetPoolDesc);
+	return pShaderResourceSetPool;
 }
 
 

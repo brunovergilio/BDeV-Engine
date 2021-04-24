@@ -11,6 +11,7 @@ class BvRenderPass;
 class BvGraphicsPipelineState;
 class BvComputePipelineState;
 class BvBuffer;
+class BvBufferView;
 class BvTexture;
 class BvShaderResourceSet;
 class BvCommandQueue;
@@ -147,11 +148,11 @@ public:
 
 	virtual void SetShaderResourceSets(const u32 setCount, BvShaderResourceSet * const * const ppSets, const u32 firstSet = 0) = 0;
 
-	virtual void SetVertexBuffers(const u32 vertexBufferCount, const BvBuffer * const * const pVertexBuffers,
+	virtual void SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView * const * const pVertexBufferViews,
 		const u32 firstBinding = 0) = 0;
-	void SetVertexBuffer(const BvBuffer * const pVertexBuffer, const u32 firstBinding = 0) { SetVertexBuffers(1, &pVertexBuffer, firstBinding); }
+	void SetVertexBufferView(const BvBufferView * const pVertexBufferView, const u32 firstBinding = 0) { SetVertexBufferViews(1, &pVertexBufferView, firstBinding); }
 
-	virtual void SetIndexBuffer(const BvBuffer * const pIndexBuffer, const IndexFormat indexFormat) = 0;
+	virtual void SetIndexBufferView(const BvBufferView * const pIndexBufferView, const IndexFormat indexFormat) = 0;
 
 	virtual void Draw(const u32 vertexCount, const u32 instanceCount = 1,
 		const u32 firstVertex = 0, const u32 firstInstance = 0) = 0;

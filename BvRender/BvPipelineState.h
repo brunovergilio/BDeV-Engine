@@ -126,8 +126,8 @@ enum class LogicOp : u8
 
 struct ShaderByteCodeDesc
 {
-	size_t m_ByteCodeSize = 0;
 	const u8 * m_pByteCode = nullptr;
+	size_t m_ByteCodeSize = 0;
 	BvString m_EntryPoint{};
 	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
 };

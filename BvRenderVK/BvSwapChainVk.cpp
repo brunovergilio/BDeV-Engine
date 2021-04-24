@@ -10,8 +10,7 @@
 
 BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk & device, BvCommandQueueVk & commandQueue, const SwapChainDesc & swapChainParams)
 	: BvSwapChain(swapChainParams), m_Device(device), m_CommandQueue(commandQueue),
-	m_PresentationQueueIndex(device.GetGPUInfo().m_PresentationQueueIndex),
-	m_SignalSemaphores(kMaxWaitSemaphores)
+	m_PresentationQueueIndex(device.GetGPUInfo().m_PresentationQueueIndex)
 {
 	CreateSurface();
 }
@@ -308,17 +307,9 @@ void BvSwapChainVk::Present(bool vSync)
 	presentInfo.pSwapchains = &m_Swapchain;
 	presentInfo.pImageIndices = &m_CurrImageIndex;
 
-	VkSemaphore semaphores[kMaxWaitSemaphores]{};
-	auto count = m_WaitSemaphoreCount[m_CurrImageIndex].count.load();
-	if (count > 0)
-	{
-		for (auto i = 0u; i < count; i++)
-		{
-			semaphores[i] = m_SignalSemaphores[m_CurrImageIndex][i]->GetHandle();
-		}
-		presentInfo.waitSemaphoreCount = count;
-		presentInfo.pWaitSemaphores = semaphores;
-	}
+	VkSemaphore semaphores[] = { GetCurrentRenderCompleteSemaphore()->GetHandle() };
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = semaphores;
 
 	auto result = VK_SUCCESS;
 	if (vSync == m_SwapChainDesc.m_VSync)
@@ -345,19 +336,6 @@ void BvSwapChainVk::Present(bool vSync)
 	}
 
 	AcquireImage();
-
-	m_WaitSemaphoreCount[m_CurrImageIndex].count = 0;
-}
-
-
-BvSemaphoreVk * BvSwapChainVk::RegisterSignalSemaphore()
-{
-	if (m_WaitSemaphoreCount[m_CurrImageIndex].count == kMaxWaitSemaphores)
-	{
-		return nullptr;
-	}
-
-	return m_SignalSemaphores[m_CurrImageIndex][m_WaitSemaphoreCount[m_CurrImageIndex].count++];
 }
 
 
@@ -397,10 +375,9 @@ void BvSwapChainVk::AcquireImage()
 	if (m_CurrImageIndex != m_CurrSemaphoreIndex)
 	{
 		std::swap(m_ImageAcquiredSemaphores[m_CurrImageIndex], m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]);
+		std::swap(m_RenderCompleteSemaphores[m_CurrImageIndex], m_RenderCompleteSemaphores[m_CurrSemaphoreIndex]);
 	}
 	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % m_SwapChainTextures.Size();
-
-	m_CommandQueue.AddSwapChain(this);
 }
 
 
@@ -410,50 +387,32 @@ void BvSwapChainVk::CreateSynchronizationResources()
 
 	//m_ImageAcquiredFences.Resize(m_SwapChainTextures.Size());
 	m_ImageAcquiredSemaphores.Resize(m_SwapChainTextures.Size());
-
-	for (auto i = 0u; i < m_ImageAcquiredSemaphores.Size(); i++)
+	for (auto&& pSemaphore : m_ImageAcquiredSemaphores)
 	{
-		//m_ImageAcquiredFences[i] = new BvFenceVk(m_Device, BvFence::State::kUnsignaled);
-		//m_ImageAcquiredFences[i]->Create();
-
-		m_ImageAcquiredSemaphores[i] = new BvSemaphoreVk(m_Device);
-		m_ImageAcquiredSemaphores[i]->Create(false);
+		pSemaphore = new BvSemaphoreVk(m_Device);
+		pSemaphore->Create(false);
 	}
 
-	m_SignalSemaphores.Resize(m_SwapChainTextures.Size());
-	for (auto && frame : m_SignalSemaphores)
+	m_RenderCompleteSemaphores.Resize(m_SwapChainTextures.Size());
+	for (auto&& pSemaphore : m_RenderCompleteSemaphores)
 	{
-		frame.Resize(kMaxWaitSemaphores);
-		for (auto && semaphore : frame)
-		{
-			semaphore = new BvSemaphoreVk(m_Device);
-			semaphore->Create(false);
-		}
+		pSemaphore = new BvSemaphoreVk(m_Device);
+		pSemaphore->Create(false);
 	}
-
-	m_WaitSemaphoreCount.Resize(m_SignalSemaphores.Size());
 }
 
 
 void BvSwapChainVk::DestroySynchronizationResources()
 {
-	for (auto i = 0u; i < m_ImageAcquiredSemaphores.Size(); i++)
+	for (auto&& pSemaphore : m_ImageAcquiredSemaphores)
 	{
-		//m_ImageAcquiredFences[i]->Destroy();
-		//BvDelete(m_ImageAcquiredFences[i]);
-		static_cast<BvSemaphoreVk *>(m_ImageAcquiredSemaphores[i])->Destroy();
-		delete m_ImageAcquiredSemaphores[i];
+		delete pSemaphore;
 	}
+	m_ImageAcquiredSemaphores.Clear();
 
-	for (auto && frame : m_SignalSemaphores)
+	for (auto&& pSemaphore : m_RenderCompleteSemaphores)
 	{
-		for (auto && semaphore : frame)
-		{
-			delete semaphore;
-		}
-		frame.Clear();
+		delete pSemaphore;
 	}
-	m_SignalSemaphores.Clear();
-
-	m_WaitSemaphoreCount.Clear();
+	m_RenderCompleteSemaphores.Clear();
 }

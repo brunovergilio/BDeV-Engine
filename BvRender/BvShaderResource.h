@@ -140,11 +140,11 @@ enum class ShaderResourcePoolFlags : u8
 	// No flags
 	kNone = 0,
 
-	// The default pool behaviour is to recycle the sets that are freed, but if
-	// this flag is set, the sets will actually be freed. In Vulkan, this may
-	// be a less efficient path, since it might trigger a different
-	// allocation strategy on some implementations
-	kFreeDescriptors = 1
+	// The default pool behaviour is to free the sets that are returned, but if
+	// this flag is set, the sets will actually be recycled. In Vulkan, this
+	// may be a more efficient path, since it won't trigger a different
+	// allocation strategy (on some implementations).
+	kRecycleDescriptors = 1
 };
 BV_USE_ENUM_CLASS_OPERATORS(ShaderResourcePoolFlags);
 
@@ -173,7 +173,7 @@ public:
 	virtual void AllocateSets(u32 count, BvShaderResourceSet ** ppSets, const BvShaderResourceLayout * const pLayout, u32 set = 0) = 0;
 	virtual void FreeSets(u32 count, BvShaderResourceSet ** ppSets) = 0;
 
-	BvShaderResourceSet * AllocateSet(const BvShaderResourceLayout * const pLayout, const u32 set = 0)
+	BvShaderResourceSet * AllocateSet(const BvShaderResourceLayout * const pLayout, u32 set = 0)
 	{
 		BvShaderResourceSet * pSet = nullptr;
 		AllocateSets(1, &pSet, pLayout, set);

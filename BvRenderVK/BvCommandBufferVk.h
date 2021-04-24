@@ -39,9 +39,9 @@ public:
 
 	void SetShaderResourceSets(const u32 setCount, BvShaderResourceSet * const * const ppSets, const u32 firstSet) override final;
 
-	void SetVertexBuffers(const u32 vertexBufferCount, const BvBuffer * const * const pVertexBuffers,
+	void SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView * const * const pVertexBufferViews,
 		const u32 firstBinding = 0) override final;
-	void SetIndexBuffer(const BvBuffer * const pIndexBuffer, const IndexFormat indexFormat) override final;
+	void SetIndexBufferView(const BvBufferView * const pIndexBufferView, const IndexFormat indexFormat) override final;
 
 	void Draw(const u32 vertexCount, const u32 instanceCount = 1,
 		const u32 firstVertex = 0, const u32 firstInstance = 0) override final;
@@ -65,7 +65,7 @@ public:
 	void ResourceBarrier(const u32 barrierCount, const ResourceBarrierDesc * const pBarriers) override final;
 
 	BV_INLINE const VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
-	BV_INLINE const BvVector<VkSemaphore> & GetSwapChainSignalSemaphores() const { return m_SwapChainSignalSemaphores; }
+	BV_INLINE const BvVector<BvSwapChainVk*>& GetSwapChains() const { return m_SwapChains; }
 	BV_INLINE VkPipelineStageFlags GetWaitStageFlags() const { return m_WaitStageFlags; }
 
 private:
@@ -80,7 +80,7 @@ private:
 	VkPipelineStageFlags m_RenderTargetSrcStageFlags = 0;
 	VkPipelineStageFlags m_RenderTargetDstStageFlags = 0;
 
-	BvVector<VkSemaphore> m_SwapChainSignalSemaphores;
+	BvVector<BvSwapChainVk*> m_SwapChains;
 
 	BvVector<VkMemoryBarrier> m_MemoryBarriers;
 	BvVector<VkBufferMemoryBarrier> m_BufferBarriers;

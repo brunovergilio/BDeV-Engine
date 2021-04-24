@@ -12,6 +12,7 @@
 #include "BvSwapChainVk.h"
 #include "BvSemaphoreVk.h"
 #include "BvBufferVk.h"
+#include "BvBufferViewVk.h"
 
 
 constexpr auto kMaxCopyRegions = 14u; // I'm assuming a region per mip, so 2^14 = 16384 - more than I will ever use
@@ -38,7 +39,7 @@ void BvCommandBufferVk::Reset()
 void BvCommandBufferVk::Begin()
 {
 	m_RenderTargetTransitions.Clear();
-	m_SwapChainSignalSemaphores.Clear();
+	m_SwapChains.Clear();
 
 	VkCommandBufferBeginInfo cmdBI{};
 	cmdBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -99,9 +100,7 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, 
 		if (pViewVk->GetTexture()->GetClassType() == BvTexture::ClassType::kSwapChainTexture)
 		{
 			auto pSwapChain = static_cast<BvSwapChainTextureVk *>(pViewVk->GetTexture())->GetSwapChain();
-			auto pSemaphore = pSwapChain->RegisterSignalSemaphore();
-			BvAssert(pSemaphore != nullptr, "Invalid semaphore handle");
-			m_SwapChainSignalSemaphores.EmplaceBack(pSemaphore->GetHandle());
+			m_SwapChains.EmplaceBack(pSwapChain);
 		}
 
 		// Vulkan guarantees us implicit pre-transition to UNDEFINED layout as long as the image's
@@ -154,7 +153,7 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, 
 	auto renderPass = static_cast<const BvRenderPassVk * const>(pRenderPass)->GetHandle();
 	frameBufferDesc.m_RenderPass = renderPass;
 
-	auto pFramebuffer = g_FramebufferManager.GetFramebuffer(m_Device, frameBufferDesc);
+	auto pFramebuffer = m_Device.GetFramebufferManager()->GetFramebuffer(m_Device, frameBufferDesc);
 
 	VkRenderPassAttachmentBeginInfo attachmentBI{};
 	attachmentBI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO;
@@ -245,7 +244,7 @@ void BvCommandBufferVk::SetPipeline(const BvComputePipelineState * const pPipeli
 
 void BvCommandBufferVk::SetShaderResourceSets(const u32 setCount, BvShaderResourceSet * const * const ppSets, const u32 firstSet)
 {
-	constexpr u32 kMaxShaderResourceSets = 8;
+	constexpr u32 kMaxShaderResourceSets = 16;
 	BvAssert(setCount <= kMaxShaderResourceSets, "Shader resource set count greater than limit");
 
 	BvFixedVector<VkDescriptorSet, kMaxShaderResourceSets> sets(setCount);
@@ -258,7 +257,7 @@ void BvCommandBufferVk::SetShaderResourceSets(const u32 setCount, BvShaderResour
 }
 
 
-void BvCommandBufferVk::SetVertexBuffers(const u32 vertexBufferCount, const BvBuffer * const * const pVertexBuffers,
+void BvCommandBufferVk::SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView * const * const pVertexBufferViews,
 	const u32 firstBinding)
 {
 	constexpr u32 kMaxVertexBuffers = 8;
@@ -268,16 +267,18 @@ void BvCommandBufferVk::SetVertexBuffers(const u32 vertexBufferCount, const BvBu
 	BvFixedVector<VkDeviceSize, kMaxVertexBuffers> vertexBufferOffsets(vertexBufferCount, {});
 	for (auto i = 0u; i < vertexBuffers.Size(); i++)
 	{
-		vertexBuffers[i] = static_cast<const BvBufferVk * const>(pVertexBuffers[i])->GetHandle();
+		vertexBuffers[i] = static_cast<const BvBufferVk * const>(pVertexBufferViews[i]->GetBuffer())->GetHandle();
+		vertexBufferOffsets[i] = pVertexBufferViews[i]->GetDesc().m_Offset;
 	}
 	m_Device.GetDeviceFunctions().vkCmdBindVertexBuffers(m_CommandBuffer, firstBinding, vertexBuffers.Size(), vertexBuffers.Data(), vertexBufferOffsets.Data());
 }
 
 
-void BvCommandBufferVk::SetIndexBuffer(const BvBuffer * const pIndexBuffer, const IndexFormat indexFormat)
+void BvCommandBufferVk::SetIndexBufferView(const BvBufferView * const pIndexBufferView, const IndexFormat indexFormat)
 {
-	auto indexBuffer = static_cast<const BvBufferVk * const>(pIndexBuffer)->GetHandle();
-	m_Device.GetDeviceFunctions().vkCmdBindIndexBuffer(m_CommandBuffer, indexBuffer, 0, GetVkIndexType(indexFormat));
+	auto indexBuffer = static_cast<const BvBufferVk * const>(pIndexBufferView->GetBuffer())->GetHandle();
+	auto offset = pIndexBufferView->GetDesc().m_Offset;
+	m_Device.GetDeviceFunctions().vkCmdBindIndexBuffer(m_CommandBuffer, indexBuffer, offset, GetVkIndexType(indexFormat));
 }
 
 

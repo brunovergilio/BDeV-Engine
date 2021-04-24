@@ -25,11 +25,11 @@ public:
 
 	void Present(bool vSync) override final;
 
-	BvSemaphoreVk * RegisterSignalSemaphore();
 
 	BV_INLINE u32 GetCurrentImageIndex() const override final { return m_CurrImageIndex; }
-	BV_INLINE BvTextureView * GetTextureView(const u32 index) const override final { return m_SwapChainTextureViews[index]; }
-	BV_INLINE BvSemaphoreVk * GetCurrentSemaphore() const { return m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
+	BV_INLINE BvTextureView* GetTextureView(const u32 index) const override final { return m_SwapChainTextureViews[index]; }
+	BV_INLINE BvSemaphoreVk* GetCurrentImageAcquiredSemaphore() const { return m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
+	BV_INLINE BvSemaphoreVk* GetCurrentRenderCompleteSemaphore() const { return m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
 
 private:
 	void CreateSurface();
@@ -40,15 +40,6 @@ private:
 	void DestroySynchronizationResources();
 
 private:
-	struct WaitSemaphoreCount
-	{
-		WaitSemaphoreCount() {}
-		WaitSemaphoreCount(const WaitSemaphoreCount& rhs) : count(rhs.count.load()) {}
-		WaitSemaphoreCount& operator=(const WaitSemaphoreCount& rhs) { count = rhs.count.load(); return *this; }
-		WaitSemaphoreCount(WaitSemaphoreCount&& rhs) noexcept { *this = std::move(rhs); }
-		WaitSemaphoreCount& operator=(WaitSemaphoreCount&& rhs) noexcept { count = rhs.count.load(); return *this; }
-		std::atomic<u32> count;
-	};
 	const BvRenderDeviceVk & m_Device;
 	BvCommandQueueVk & m_CommandQueue;
 
@@ -59,9 +50,7 @@ private:
 	BvVector<BvTextureViewVk *> m_SwapChainTextureViews;
 
 	BvVector<BvSemaphoreVk *> m_ImageAcquiredSemaphores;
-	BvVector<BvVector<BvSemaphoreVk *>> m_SignalSemaphores;
-	// Using atomics in case I want to render to the swap chain from multiple command buffers from separate threads
-	BvVector<WaitSemaphoreCount> m_WaitSemaphoreCount;
+	BvVector<BvSemaphoreVk *> m_RenderCompleteSemaphores;
 	BvVector<BvFenceVk *> m_ImageAcquiredFences;
 	u32 m_CurrSemaphoreIndex = 0;
 

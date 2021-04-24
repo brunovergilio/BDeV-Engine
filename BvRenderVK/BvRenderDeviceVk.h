@@ -7,6 +7,9 @@
 #include "BvLoaderVk.h"
 
 
+class BvFramebufferManager;
+
+
 class BvRenderDeviceVk final : public BvRenderDevice
 {
 public:
@@ -43,6 +46,8 @@ public:
 	BV_INLINE const VkInstance GetInstanceHandle() const { return m_Instance; }
 	BV_INLINE const BvGPUInfoVk & GetGPUInfo() const { return m_GPUInfo; }
 
+	BV_INLINE BvFramebufferManager* GetFramebufferManager() const { return m_pFramebufferManager; }
+
 	BV_INLINE const VulkanFunctions::DeviceFunctions & GetDeviceFunctions() const { return m_Functions; }
 
 private:
@@ -53,6 +58,7 @@ private:
 	BvVector<BvCommandQueueVk*> m_ComputeQueues;
 	BvVector<BvCommandQueueVk*> m_TransferQueues;
 	BvRenderDeviceFactory* m_pFactory = nullptr;
+	BvFramebufferManager* m_pFramebufferManager = nullptr;
 	BvLoaderVk & m_Loader;
 	VulkanFunctions::DeviceFunctions m_Functions{};
 };

@@ -16,7 +16,7 @@ public:
 	};
 
 	virtual void Signal(const u64 value) = 0;
-	virtual WaitStatus Wait(const u64 value, const u64 timeout) = 0;
+	virtual WaitStatus Wait(const u64 value, const u64 timeout = kU64Max) = 0;
 	virtual u64 GetCompletedValue() const = 0;
 	
 	virtual ~BvSemaphore() = 0 {}

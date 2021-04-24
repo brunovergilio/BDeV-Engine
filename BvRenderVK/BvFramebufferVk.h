@@ -86,6 +86,3 @@ private:
 	BvRobinMap<u64, BvFramebufferVk *> m_Framebuffers;
 	BvSpinlock m_Lock;
 };
-
-
-extern BvFramebufferManager g_FramebufferManager;

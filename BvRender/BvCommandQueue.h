@@ -33,6 +33,7 @@ class BvCommandQueue
 
 public:
 	virtual void Submit(const SubmitInfo & submitInfo) = 0;
+	virtual void Execute() = 0;
 	virtual void WaitIdle() = 0;
 	BV_INLINE const QueueFamilyType GetFamilyType() const { return m_QueueFamilyType; }
 
