@@ -3,9 +3,11 @@
   <ItemGroup>
     <ClInclude Include="BvShaderCompiler.h" />
     <ClInclude Include="SPIRV\BvSPIRVCompiler.h" />
+    <ClInclude Include="BvTextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvShaderCompiler.cpp" />
     <ClCompile Include="SPIRV\BvSPIRVCompiler.cpp" />
+    <ClCompile Include="BvTextureLoader.cpp" />
   </ItemGroup>
 </Project>

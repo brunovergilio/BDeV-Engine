@@ -37,7 +37,7 @@ public:
 	void SetPipeline(const BvGraphicsPipelineState * const pPipeline) override final;
 	void SetPipeline(const BvComputePipelineState * const pPipeline) override final;
 
-	void SetShaderResourceSets(const u32 setCount, BvShaderResourceSet * const * const ppSets, const u32 firstSet) override final;
+	void SetShaderResourceParams(const u32 setCount, BvShaderResourceParams * const * const ppSets, const u32 firstSet) override final;
 
 	void SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView * const * const pVertexBufferViews,
 		const u32 firstBinding = 0) override final;
@@ -70,7 +70,6 @@ public:
 
 private:
 	const BvRenderDeviceVk & m_Device;
-	BvCommandPoolVk * m_pCommandPool;
 	VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
 
 	VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;

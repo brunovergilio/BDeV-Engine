@@ -204,7 +204,7 @@ int main()
 			ppCurrCBs[cbIndex]->SetViewport({ 0.0f, 0.0f, (f32)window.GetWidth(), (f32)window.GetHeight(), 0.0f, 1.0f });
 			ppCurrCBs[cbIndex]->SetScissor({ 0, 0, window.GetWidth(), window.GetHeight() });
 			ppCurrCBs[cbIndex]->SetVertexBufferView(pVBView);
-			ppCurrCBs[cbIndex]->SetShaderResourceSets(1, &pSet);
+			ppCurrCBs[cbIndex]->SetShaderResourceParams(1, &pSet);
 			ppCurrCBs[cbIndex]->Draw(3);
 			ppCurrCBs[cbIndex]->EndRenderPass();
 			ppCurrCBs[cbIndex]->End();

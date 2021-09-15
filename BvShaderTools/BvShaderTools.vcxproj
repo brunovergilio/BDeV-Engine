@@ -99,10 +99,12 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BvTextureLoader.h" />
     <ClInclude Include="BvShaderCompiler.h" />
     <ClInclude Include="SPIRV\BvSPIRVCompiler.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BvTextureLoader.cpp" />
     <ClCompile Include="BvShaderCompiler.cpp" />
     <ClCompile Include="SPIRV\BvSPIRVCompiler.cpp" />
   </ItemGroup>

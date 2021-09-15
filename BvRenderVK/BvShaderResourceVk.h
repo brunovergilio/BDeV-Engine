@@ -28,12 +28,12 @@ private:
 };
 
 
-class BvShaderResourceSetVk final : public BvShaderResourceSet
+class BvShaderResourceParamsVk final : public BvShaderResourceParams
 {
 public:
-	BvShaderResourceSetVk(const BvRenderDeviceVk & device, const BvShaderResourceLayoutVk * const pLayout,
+	BvShaderResourceParamsVk(const BvRenderDeviceVk & device, const BvShaderResourceLayoutVk * const pLayout,
 		const VkDescriptorSet set, BvShaderResourceSetPoolVk * const pDescriptorPool, const u32 setIndex);
-	virtual ~BvShaderResourceSetVk();
+	virtual ~BvShaderResourceParamsVk();
 
 	void Create();
 	void Destroy();
@@ -70,7 +70,7 @@ private:
 		u32 m_DirtyResourceInfoCount = 0;
 	} * m_pDescriptorData = nullptr;
 
-	const BvRenderDeviceVk & m_Device;
+	const BvRenderDeviceVk& m_Device;
 	const BvShaderResourceLayoutVk& m_Layout;
 	VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;
 

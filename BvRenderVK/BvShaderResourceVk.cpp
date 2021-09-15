@@ -103,7 +103,7 @@ void BvShaderResourceLayoutVk::Destroy()
 }
 
 
-BvShaderResourceSetVk::BvShaderResourceSetVk(const BvRenderDeviceVk & device, const BvShaderResourceLayoutVk * const pLayout,
+BvShaderResourceParamsVk::BvShaderResourceParamsVk(const BvRenderDeviceVk & device, const BvShaderResourceLayoutVk * const pLayout,
 	const VkDescriptorSet set, BvShaderResourceSetPoolVk * const pDescriptorPool, const u32 setIndex)
 	: m_Device(device), m_Layout(*pLayout),
 	m_DescriptorSet(set), m_SetIndex(setIndex)
@@ -112,13 +112,13 @@ BvShaderResourceSetVk::BvShaderResourceSetVk(const BvRenderDeviceVk & device, co
 }
 
 
-BvShaderResourceSetVk::~BvShaderResourceSetVk()
+BvShaderResourceParamsVk::~BvShaderResourceParamsVk()
 {
 	Destroy();
 }
 
 
-void BvShaderResourceSetVk::Create()
+void BvShaderResourceParamsVk::Create()
 {
 	const auto& shaderResources = m_Layout.GetDesc().GetSetData().At(m_SetIndex).m_ShaderResources;
 	m_pDescriptorData = new DescriptorData;
@@ -148,7 +148,7 @@ void BvShaderResourceSetVk::Create()
 }
 
 
-void BvShaderResourceSetVk::Destroy()
+void BvShaderResourceParamsVk::Destroy()
 {
 	m_DescriptorSet = VK_NULL_HANDLE;
 	
@@ -156,7 +156,7 @@ void BvShaderResourceSetVk::Destroy()
 }
 
 
-void BvShaderResourceSetVk::SetBuffers(const u32 binding, const u32 count, const BvBufferView * const * const ppBuffers)
+void BvShaderResourceParamsVk::SetBuffers(const u32 binding, const u32 count, const BvBufferView * const * const ppBuffers)
 {
 	VkDescriptorType descriptorType;
 	GetDescriptorInfo(binding, descriptorType);
@@ -201,7 +201,7 @@ void BvShaderResourceSetVk::SetBuffers(const u32 binding, const u32 count, const
 }
 
 
-void BvShaderResourceSetVk::SetTextures(const u32 binding, const u32 count, const BvTextureView * const * const ppTextures)
+void BvShaderResourceParamsVk::SetTextures(const u32 binding, const u32 count, const BvTextureView * const * const ppTextures)
 {
 	VkImageLayout layout;
 	VkDescriptorType descriptorType;
@@ -227,7 +227,7 @@ void BvShaderResourceSetVk::SetTextures(const u32 binding, const u32 count, cons
 }
 
 
-void BvShaderResourceSetVk::SetSamplers(const u32 binding, const u32 count, const BvSampler * const * const ppSamplers)
+void BvShaderResourceParamsVk::SetSamplers(const u32 binding, const u32 count, const BvSampler * const * const ppSamplers)
 {
 	VkDescriptorType descriptorType;
 	GetDescriptorInfo(binding, descriptorType);
@@ -252,7 +252,7 @@ void BvShaderResourceSetVk::SetSamplers(const u32 binding, const u32 count, cons
 }
 
 
-void BvShaderResourceSetVk::Update()
+void BvShaderResourceParamsVk::Update()
 {
 	if (m_pDescriptorData->m_DirtyWriteSetCount == 0)
 	{
@@ -267,7 +267,7 @@ void BvShaderResourceSetVk::Update()
 }
 
 
-void BvShaderResourceSetVk::GetDescriptorInfo(const u32 binding, VkDescriptorType & descriptorType, VkImageLayout * pImageLayout)
+void BvShaderResourceParamsVk::GetDescriptorInfo(const u32 binding, VkDescriptorType & descriptorType, VkImageLayout * pImageLayout)
 {
 	const auto& shaderResources = m_Layout.GetDesc().GetSetData().At(m_SetIndex).m_ShaderResources;
 	for (auto && resource : shaderResources)

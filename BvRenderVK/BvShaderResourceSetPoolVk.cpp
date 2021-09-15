@@ -81,7 +81,7 @@ void BvShaderResourceSetPoolVk::Destroy()
 }
 
 
-void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceSet ** ppSets,
+void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceParams ** ppSets,
 	const BvShaderResourceLayout * const pLayout, u32 set /*= 0*/)
 {
 	// Check for free, recycled sets
@@ -141,20 +141,20 @@ void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceSet ** p
 	auto result = m_Device.GetDeviceFunctions().vkAllocateDescriptorSets(m_Device.GetHandle(), &allocateInfo, descriptorSets);
 	for (u32 i = 0; i < allocateInfo.descriptorSetCount; i++)
 	{
-		auto pSet = new BvShaderResourceSetVk(m_Device, pLayoutVk, descriptorSets[i], this, set);
+		auto pSet = new BvShaderResourceParamsVk(m_Device, pLayoutVk, descriptorSets[i], this, set);
 		m_UsedSets[pLayout].EmplaceBack(pSet);
 		ppSets[i] = pSet;
 	}
 }
 
 
-void BvShaderResourceSetPoolVk::FreeSets(u32 setCount, BvShaderResourceSet ** ppSets)
+void BvShaderResourceSetPoolVk::FreeSets(u32 setCount, BvShaderResourceParams ** ppSets)
 {
 	if ((m_ShaderResourceSetPoolDesc.m_Flags & ShaderResourcePoolFlags::kRecycleDescriptors) == ShaderResourcePoolFlags::kRecycleDescriptors)
 	{
 		for (auto i = 0u; i < setCount; i++)
 		{
-			auto pSetVk = reinterpret_cast<BvShaderResourceSetVk*>(ppSets[i]);
+			auto pSetVk = reinterpret_cast<BvShaderResourceParamsVk*>(ppSets[i]);
 			auto& usedSets = m_UsedSets[pSetVk->GetLayout()];
 			auto& freeSets = m_FreeSets[pSetVk->GetLayout()];
 			for (auto j = 0u; j < usedSets.Size(); j++)
@@ -183,7 +183,7 @@ void BvShaderResourceSetPoolVk::FreeSets(u32 setCount, BvShaderResourceSet ** pp
 		u32 count = setCount > kMmaxDescriptorSetsPerAllocation ? kMmaxDescriptorSetsPerAllocation : setCount;
 		for (auto i = 0u; i < count; i++)
 		{
-			auto pDsVk = reinterpret_cast<BvShaderResourceSetVk*>(ppSets[i]);
+			auto pDsVk = reinterpret_cast<BvShaderResourceParamsVk*>(ppSets[i]);
 			auto& usedSets = m_UsedSets[pDsVk->GetLayout()];
 			descriptorSets[i] = pDsVk->GetHandle();
 

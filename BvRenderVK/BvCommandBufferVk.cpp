@@ -19,8 +19,7 @@ constexpr auto kMaxCopyRegions = 14u; // I'm assuming a region per mip, so 2^14 
 
 
 BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk & device, BvCommandPool * pCommandPool, const VkCommandBuffer commandBuffer)
-	: BvCommandBuffer(pCommandPool), m_Device(device),
-	m_pCommandPool(static_cast<BvCommandPoolVk *>(pCommandPool)), m_CommandBuffer(commandBuffer)
+	: BvCommandBuffer(pCommandPool), m_Device(device), m_CommandBuffer(commandBuffer)
 {
 }
 
@@ -242,7 +241,7 @@ void BvCommandBufferVk::SetPipeline(const BvComputePipelineState * const pPipeli
 }
 
 
-void BvCommandBufferVk::SetShaderResourceSets(const u32 setCount, BvShaderResourceSet * const * const ppSets, const u32 firstSet)
+void BvCommandBufferVk::SetShaderResourceParams(const u32 setCount, BvShaderResourceParams * const * const ppSets, const u32 firstSet)
 {
 	constexpr u32 kMaxShaderResourceSets = 16;
 	BvAssert(setCount <= kMaxShaderResourceSets, "Shader resource set count greater than limit");
@@ -250,7 +249,7 @@ void BvCommandBufferVk::SetShaderResourceSets(const u32 setCount, BvShaderResour
 	BvFixedVector<VkDescriptorSet, kMaxShaderResourceSets> sets(setCount);
 	for (auto i = 0u; i < setCount; i++)
 	{
-		sets[i] = static_cast<BvShaderResourceSetVk *>(ppSets[i])->GetHandle();
+		sets[i] = static_cast<BvShaderResourceParamsVk *>(ppSets[i])->GetHandle();
 	}
 
 	m_Device.GetDeviceFunctions().vkCmdBindDescriptorSets(m_CommandBuffer, m_PipelineBindPoint, m_PipelineLayout, firstSet, setCount, sets.Data(), 0, nullptr);

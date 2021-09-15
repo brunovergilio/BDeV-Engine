@@ -13,7 +13,7 @@ class BvComputePipelineState;
 class BvBuffer;
 class BvBufferView;
 class BvTexture;
-class BvShaderResourceSet;
+class BvShaderResourceParams;
 class BvCommandQueue;
 
 
@@ -146,7 +146,7 @@ public:
 	virtual void SetPipeline(const BvGraphicsPipelineState * const pPipeline) = 0;
 	virtual void SetPipeline(const BvComputePipelineState * const pPipeline) = 0;
 
-	virtual void SetShaderResourceSets(const u32 setCount, BvShaderResourceSet * const * const ppSets, const u32 firstSet = 0) = 0;
+	virtual void SetShaderResourceParams(const u32 setCount, BvShaderResourceParams * const * const ppSets, const u32 firstSet = 0) = 0;
 
 	virtual void SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView * const * const pVertexBufferViews,
 		const u32 firstBinding = 0) = 0;

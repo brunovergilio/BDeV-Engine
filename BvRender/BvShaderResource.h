@@ -7,6 +7,7 @@
 #include "BvCore/Utils/BvEnum.h"
 #include "BvCore/Utils/BvUtils.h"
 #include "BvCommon.h"
+#include "BvCore/Container/BvString.h"
 
 
 class BvSampler;
@@ -31,6 +32,7 @@ struct ShaderResourceLayoutDesc
 {
 	struct ConstantDesc
 	{
+		BvString m_Name;
 		u32 m_Size = 0;
 		u32 m_Binding = 0;
 		u32 m_SignatureSlot = 0;
@@ -39,6 +41,7 @@ struct ShaderResourceLayoutDesc
 
 	struct ResourceDesc
 	{
+		BvString m_Name;
 		u32 m_Binding = 0;
 		u32 m_Count = 0;
 		ShaderResourceType m_ShaderResourceType = ShaderResourceType::kConstantBuffer;
@@ -47,6 +50,7 @@ struct ShaderResourceLayoutDesc
 
 	struct StaticSamplerDesc
 	{
+		BvString m_Name;
 		BvVector<BvSampler *> m_Samplers{};
 		u32 m_Binding = 0;
 		ShaderStage m_ShaderStages = ShaderStage::kAll;
@@ -62,15 +66,10 @@ struct ShaderResourceLayoutDesc
 	void AddResource(const ShaderResourceType resourceType, const ShaderStage shaderStages, const u32 binding,
 		const u32 set = 0, const u32 count = 1)
 	{
-		auto result = m_PerSetData.Emplace(set);
-		if (result.second)
-		{
-			result.first->second.m_SignatureIndex = static_cast<u32>(m_PerSetData.Size() + m_PushConstants.Size() - 1);
-		}
-		result.first->second.m_ShaderResources.PushBack({ binding, count, resourceType, shaderStages });
+		AddResource(resourceType, shaderStages, "", binding, set, count);
 	}
 
-	void AddStaticSampler(BvSampler ** ppSamplers, const ShaderStage shaderStages,
+	void AddResource(const ShaderResourceType resourceType, const ShaderStage shaderStages, const char* const pName,
 		const u32 binding, const u32 set = 0, const u32 count = 1)
 	{
 		auto result = m_PerSetData.Emplace(set);
@@ -78,12 +77,34 @@ struct ShaderResourceLayoutDesc
 		{
 			result.first->second.m_SignatureIndex = static_cast<u32>(m_PerSetData.Size() + m_PushConstants.Size() - 1);
 		}
-		result.first->second.m_StaticSamplers.PushBack({ std::move(BvVector<BvSampler *>(ppSamplers, ppSamplers + count)), binding, shaderStages });
+		result.first->second.m_ShaderResources.PushBack({ pName, binding, count, resourceType, shaderStages });
+	}
+
+	void AddStaticSampler(BvSampler** ppSamplers, const ShaderStage shaderStages,
+		const u32 binding, const u32 set = 0, const u32 count = 1)
+	{
+		AddStaticSampler(ppSamplers, shaderStages, "", binding, set, count);
+	}
+
+	void AddStaticSampler(BvSampler ** ppSamplers, const ShaderStage shaderStages, const char* const pName,
+		const u32 binding, const u32 set = 0, const u32 count = 1)
+	{
+		auto result = m_PerSetData.Emplace(set);
+		if (result.second)
+		{
+			result.first->second.m_SignatureIndex = static_cast<u32>(m_PerSetData.Size() + m_PushConstants.Size() - 1);
+		}
+		result.first->second.m_StaticSamplers.PushBack({ pName, std::move(BvVector<BvSampler *>(ppSamplers, ppSamplers + count)), binding, shaderStages });
 	}
 
 	void AddPushConstant(const ShaderStage shaderStages, const u32 size, const u32 binding = 0)
 	{
-		m_PushConstants.PushBack({ size, binding, static_cast<u32>(m_PerSetData.Size() + m_PushConstants.Size()), shaderStages });
+		AddPushConstant(shaderStages, size, "", binding);
+	}
+
+	void AddPushConstant(const ShaderStage shaderStages, const u32 size, const char* const pName, const u32 binding = 0)
+	{
+		m_PushConstants.PushBack({ pName, size, binding, static_cast<u32>(m_PerSetData.Size() + m_PushConstants.Size()), shaderStages });
 	}
 
 	BV_INLINE const BvRobinMap<u32, SetDesc> & GetSetData() const { return m_PerSetData; }
@@ -112,9 +133,9 @@ protected:
 };
 
 
-class BvShaderResourceSet
+class BvShaderResourceParams
 {
-	BV_NOCOPYMOVE(BvShaderResourceSet);
+	BV_NOCOPYMOVE(BvShaderResourceParams);
 
 public:
 	virtual void SetBuffers(const u32 binding, const u32 count, const BvBufferView * const * const ppBuffers) = 0;
@@ -128,8 +149,8 @@ public:
 	virtual void Update() = 0;
 
 protected:
-	BvShaderResourceSet() {}
-	virtual ~BvShaderResourceSet() = 0 {}
+	BvShaderResourceParams() {}
+	virtual ~BvShaderResourceParams() = 0 {}
 
 protected:
 };
@@ -170,18 +191,18 @@ class BvShaderResourceSetPool
 	BV_NOCOPYMOVE(BvShaderResourceSetPool);
 
 public:
-	virtual void AllocateSets(u32 count, BvShaderResourceSet ** ppSets, const BvShaderResourceLayout * const pLayout, u32 set = 0) = 0;
-	virtual void FreeSets(u32 count, BvShaderResourceSet ** ppSets) = 0;
+	virtual void AllocateSets(u32 count, BvShaderResourceParams ** ppSets, const BvShaderResourceLayout * const pLayout, u32 set = 0) = 0;
+	virtual void FreeSets(u32 count, BvShaderResourceParams ** ppSets) = 0;
 
-	BvShaderResourceSet * AllocateSet(const BvShaderResourceLayout * const pLayout, u32 set = 0)
+	BvShaderResourceParams * AllocateSet(const BvShaderResourceLayout * const pLayout, u32 set = 0)
 	{
-		BvShaderResourceSet * pSet = nullptr;
+		BvShaderResourceParams * pSet = nullptr;
 		AllocateSets(1, &pSet, pLayout, set);
 
 		return pSet;
 	}
 
-	void FreeSet(BvShaderResourceSet * & pSet)
+	void FreeSet(BvShaderResourceParams * & pSet)
 	{
 		FreeSets(1, &pSet);
 	}
