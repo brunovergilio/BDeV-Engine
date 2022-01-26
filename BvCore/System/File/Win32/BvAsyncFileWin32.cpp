@@ -2,9 +2,7 @@
 #include "BvCore/Utils/BvDebug.h"
 #include "BvCore/System/Threading/BvSync.h"
 #include "BvCore/Utils/BvUtils.h"
-
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include "BvCore/System/File/Win32/BvFileUtilsWin32.h"
 
 
 struct AsyncFileData
@@ -113,8 +111,21 @@ void AsyncFileRequest::Cancel()
 
 
 BvAsyncFile::BvAsyncFile()
-	: m_hFile(INVALID_HANDLE_VALUE)
 {
+}
+
+
+BvAsyncFile::BvAsyncFile(const char* const pFilename, BvFileAccessMode mode, BvFileAction action)
+{
+	wchar_t widePath[kMaxPathSize]{};
+	Internal::ConvertToWidePathWithPrefix(widePath, pFilename);
+	Open(widePath, mode, action);
+}
+
+
+BvAsyncFile::BvAsyncFile(const wchar_t* const pFilename, BvFileAccessMode mode, BvFileAction action)
+{
+	Open(pFilename, mode, action);
 }
 
 
@@ -138,6 +149,50 @@ BvAsyncFile & BvAsyncFile::operator =(BvAsyncFile && rhs) noexcept
 
 BvAsyncFile::~BvAsyncFile()
 {
+	Close();
+}
+
+
+bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileAction action)
+{
+	wchar_t widePath[kMaxPathSize]{};
+	Internal::ConvertToWidePathWithPrefix(widePath, pFilename);
+
+	return Open(widePath, mode, action);
+}
+
+
+bool BvAsyncFile::Open(const wchar_t* const pFilename, BvFileAccessMode mode, BvFileAction action)
+{
+	BvAssert(pFilename != nullptr, "Invalid filename");
+
+	DWORD acccessMode = 0;
+	DWORD createMode = 0;
+	DWORD createFlags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | FILE_FLAG_NO_BUFFERING;
+
+	switch (mode)
+	{
+	case BvFileAccessMode::kRead: acccessMode = GENERIC_READ; break;
+	case BvFileAccessMode::kWrite: acccessMode = GENERIC_WRITE; break;
+	case BvFileAccessMode::kReadWrite: acccessMode = GENERIC_READ | GENERIC_WRITE; break;
+	}
+
+	switch (action)
+	{
+	case BvFileAction::kOpen: createMode = OPEN_EXISTING; break;
+	case BvFileAction::kCreate: createMode = CREATE_ALWAYS; break;
+	case BvFileAction::kOpenOrCreate: createMode = OPEN_ALWAYS; break;
+	}
+
+	m_hFile = CreateFileW(pFilename, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
+	if (m_hFile == INVALID_HANDLE_VALUE)
+	{
+		// TODO: Handle error
+		
+		return false;
+	}
+
+	return true;
 }
 
 
@@ -196,9 +251,23 @@ const u64 BvAsyncFile::GetSize() const
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	u64 fileSize;
-	GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
+	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
+	if (!status)
+	{
+		// TODO: Handle Error
+	}
 
 	return fileSize;
+}
+
+
+void BvAsyncFile::Close()
+{
+	if (m_hFile != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(m_hFile);
+		m_hFile = INVALID_HANDLE_VALUE;
+	}
 }
 
 
@@ -206,8 +275,3 @@ const bool BvAsyncFile::IsValid() const
 {
 	return m_hFile != INVALID_HANDLE_VALUE;
 }
-
-
-#else
-#error "Platform not yet supported"
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)

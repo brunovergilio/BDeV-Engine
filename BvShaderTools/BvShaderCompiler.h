@@ -15,7 +15,7 @@ enum class ShaderLanguage : u8
 
 struct ShaderDesc
 {
-	BvString entryPoint = "";
+	BvStringT entryPoint = "";
 	ShaderStage shaderStage = ShaderStage::kUnknown;
 	ShaderLanguage shaderLanguage = ShaderLanguage::kGLSL;
 	// Version

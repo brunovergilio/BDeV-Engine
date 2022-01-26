@@ -32,7 +32,7 @@ struct ShaderResourceLayoutDesc
 {
 	struct ConstantDesc
 	{
-		BvString m_Name;
+		BvStringT m_Name;
 		u32 m_Size = 0;
 		u32 m_Binding = 0;
 		u32 m_SignatureSlot = 0;
@@ -41,7 +41,7 @@ struct ShaderResourceLayoutDesc
 
 	struct ResourceDesc
 	{
-		BvString m_Name;
+		BvStringT m_Name;
 		u32 m_Binding = 0;
 		u32 m_Count = 0;
 		ShaderResourceType m_ShaderResourceType = ShaderResourceType::kConstantBuffer;
@@ -50,7 +50,7 @@ struct ShaderResourceLayoutDesc
 
 	struct StaticSamplerDesc
 	{
-		BvString m_Name;
+		BvStringT m_Name;
 		BvVector<BvSampler *> m_Samplers{};
 		u32 m_Binding = 0;
 		ShaderStage m_ShaderStages = ShaderStage::kAll;

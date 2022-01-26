@@ -254,7 +254,7 @@ ShaderByteCodeDesc GetVS()
 		)raw";
 
 	ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
-	BvString errBlob;
+	BvStringT errBlob;
 	g_pVS = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc, &errBlob);
 
 	ShaderByteCodeDesc desc;
@@ -284,7 +284,7 @@ ShaderByteCodeDesc GetPS()
 		)raw";
 
 	ShaderDesc compDesc = { "main", ShaderStage::kPixelOrFragment, ShaderLanguage::kGLSL };
-	BvString errBlob;
+	BvStringT errBlob;
 	g_pPS = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc, &errBlob);
 
 	ShaderByteCodeDesc desc;

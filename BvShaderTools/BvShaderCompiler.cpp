@@ -1,6 +1,5 @@
 #include "BvShaderCompiler.h"
 #include "BvCore/System/File/BvFile.h"
-#include "BvCore/System/File/BvFileSystem.h"
 #include "SPIRV/BvSPIRVCompiler.h"
 #include <vector>
 
@@ -57,8 +56,7 @@ BvShaderCompiler::~BvShaderCompiler()
 IBvShaderBlob* BvShaderCompiler::CompileFromFile(const char * const pFilename, const ShaderDesc& shaderDesc,
 	BvString* const pErrors) const
 {
-	BvFileSystem fileSys;
-	BvFile file = fileSys.OpenFile(pFilename, BvFileAccess::kRead);
+	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
 		return nullptr;

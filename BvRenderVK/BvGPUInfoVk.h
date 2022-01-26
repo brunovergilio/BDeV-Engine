@@ -21,7 +21,7 @@ struct BvGPUInfoVk
 		VkPhysicalDeviceConservativeRasterizationPropertiesEXT convervativeRasterizationProps{};
 	} m_Extensions;
 	BvVector<VkQueueFamilyProperties> m_QueueFamilyProperties;
-	BvVector<BvString> m_SupportedExtensions;
+	BvVector<BvStringT> m_SupportedExtensions;
 	u32 m_GraphicsQueueIndex = UINT32_MAX;
 	u32 m_ComputeQueueIndex = UINT32_MAX;
 	u32 m_TransferQueueIndex = UINT32_MAX;

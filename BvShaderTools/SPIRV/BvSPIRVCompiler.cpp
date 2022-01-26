@@ -150,7 +150,7 @@ TBuiltInResource g_BuiltInResources = []()
 
 
 bool BvSPIRVCompiler::Compile(const u8* const pBlob, const size_t blobSize, const ShaderDesc& shaderDesc,
-	std::vector<u32>& compiledSpirv, BvString* const pErrors)
+	std::vector<u32>& compiledSpirv, BvStringT* const pErrors)
 {
 	auto shaderStage = GetEShShaderStage(shaderDesc.shaderStage);
 	glslang::TShader shader(shaderStage);

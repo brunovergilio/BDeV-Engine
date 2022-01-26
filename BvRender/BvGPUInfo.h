@@ -7,7 +7,7 @@
 
 struct BvGPUInfo
 {
-	BvString m_DeviceName;
+	BvStringT m_DeviceName;
 	u64 m_DeviceMemory = 0;
 	u32 m_DeviceId = 0;
 	u32 m_VendorId = 0;

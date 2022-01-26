@@ -15,6 +15,7 @@
     <ProjectGuid>{31BB09A2-E5C6-4862-8EAF-E1A066ABF79C}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>BvCore</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -61,7 +62,7 @@
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -84,7 +85,7 @@
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -99,6 +100,10 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="System\File\BvFileCommon.h" />
+    <ClInclude Include="System\File\BvMemoryFile.h" />
+    <ClInclude Include="System\File\BvPath.h" />
+    <ClInclude Include="System\File\Win32\BvFileUtilsWin32.h" />
     <ClInclude Include="System\Input\BvKeyboard.h" />
     <ClInclude Include="System\Memory\Allocators\BvDefaultAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvLinearAllocator.h" />
@@ -148,7 +153,9 @@
     <ClInclude Include="Utils\Win32\BvDebugWin32.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Container\BvString.cpp" />
+    <ClCompile Include="System\File\BvMemoryFile.cpp" />
+    <ClCompile Include="System\File\Win32\BvFileUtilsWin32.cpp" />
+    <ClCompile Include="System\File\Win32\BvPathWin32.cpp" />
     <ClCompile Include="System\Input\BvKeyboard.cpp" />
     <ClCompile Include="System\Library\Win32\BvSharedLibWin32.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvDefaultAllocator.cpp" />

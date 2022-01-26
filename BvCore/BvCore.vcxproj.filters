@@ -48,9 +48,12 @@
     <ClInclude Include="System\Memory\BvAlloc.h" />
     <ClInclude Include="System\Memory\Win32\BvAllocWin32.h" />
     <ClInclude Include="System\Memory\BvMemoryCommon.h" />
+    <ClInclude Include="System\File\BvMemoryFile.h" />
+    <ClInclude Include="System\File\BvPath.h" />
+    <ClInclude Include="System\File\BvFileCommon.h" />
+    <ClInclude Include="System\File\Win32\BvFileUtilsWin32.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Container\BvString.cpp" />
     <ClCompile Include="Utils\BvTimer.cpp" />
     <ClCompile Include="System\Memory\BvMemory.cpp" />
     <ClCompile Include="System\File\Win32\BvFileWin32.cpp" />
@@ -74,6 +77,9 @@
     <ClCompile Include="System\Memory\Utilities\BvMemoryMarker.cpp" />
     <ClCompile Include="System\Memory\Utilities\BvMemoryTracker.cpp" />
     <ClCompile Include="System\Memory\Win32\BvAllocWin32.cpp" />
+    <ClCompile Include="System\File\BvMemoryFile.cpp" />
+    <ClCompile Include="System\File\Win32\BvPathWin32.cpp" />
+    <ClCompile Include="System\File\Win32\BvFileUtilsWin32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
