@@ -363,3 +363,4 @@ FodyWeavers.xsd
 
 # Generated in BDeV
 [Ll]ibs/
+TestProjects/RayTracing/
