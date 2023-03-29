@@ -1,5 +1,0 @@
-FOR /d /r . %%d IN (.vs) DO @IF EXIST "%%d" rd /s /q "%%d"
-FOR /d /r . %%d IN (debug) DO @IF EXIST "%%d" rd /s /q "%%d"
-FOR /d /r . %%d IN (release) DO @IF EXIST "%%d" rd /s /q "%%d"
-FOR /d /r . %%d IN (x64) DO @IF EXIST "%%d" rd /s /q "%%d"
-FOR /d /r . %%d IN (Libs) DO @IF EXIST "%%d" rd /s /q "%%d"

@@ -7,6 +7,7 @@
 BvRenderPassVk::BvRenderPassVk(const BvRenderDeviceVk & device, const RenderPassDesc & renderPassDesc)
 	: BvRenderPass(renderPassDesc), m_Device(device), m_RenderPassDesc(renderPassDesc)
 {
+	Create();
 }
 
 
@@ -44,13 +45,13 @@ void BvRenderPassVk::Create()
 	VkRenderPassCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	createInfo.pAttachments = attachmentDescs.Data();
-	createInfo.attachmentCount = static_cast<uint32_t>(attachmentDescs.Size());
+	createInfo.attachmentCount = static_cast<u32>(attachmentDescs.Size());
 	createInfo.subpassCount = 1;
 	createInfo.pSubpasses = &subpassDesc;
 	createInfo.dependencyCount = 2;
 	createInfo.pDependencies = dependencies.Data();
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateRenderPass(m_Device.GetHandle(), &createInfo, nullptr, &m_RenderPass);
+	auto result = vkCreateRenderPass(m_Device.GetHandle(), &createInfo, nullptr, &m_RenderPass);
 }
 
 
@@ -58,7 +59,7 @@ void BvRenderPassVk::Destroy()
 {
 	if (m_RenderPass)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyRenderPass(m_Device.GetHandle(), m_RenderPass, nullptr);
+		vkDestroyRenderPass(m_Device.GetHandle(), m_RenderPass, nullptr);
 		m_RenderPass = VK_NULL_HANDLE;
 	}
 }
@@ -90,7 +91,7 @@ void BvRenderPassVk::SetupAttachments(BvFixedVector<VkAttachmentDescription, kMa
 
 		if (attachmentDescs[i].storeOp == VK_ATTACHMENT_STORE_OP_STORE)
 		{
-			if (rt.m_StateAfter == ResourceState::kUndefined)
+			if (rt.m_StateAfter == ResourceState::kUnknown)
 			{
 				attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			}
@@ -129,7 +130,7 @@ void BvRenderPassVk::SetupAttachments(BvFixedVector<VkAttachmentDescription, kMa
 
 		if (attachmentDescs[i].storeOp == VK_ATTACHMENT_STORE_OP_STORE)
 		{
-			if (rt.m_StateAfter == ResourceState::kUndefined)
+			if (rt.m_StateAfter == ResourceState::kUnknown)
 			{
 				attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			}
@@ -182,7 +183,7 @@ void BvRenderPassVk::SetupDependencies(BvFixedVector<VkSubpassDependency, 2> & d
 	bool hasColor = false;
 	for (auto && rt : m_RenderPassDesc.m_RenderTargets)
 	{
-		if (!rt.m_IsOffscreen)
+		if (rt.m_StateAfter == ResourceState::kPresent)
 		{
 			hasSwapChain = true;
 		}
@@ -194,8 +195,8 @@ void BvRenderPassVk::SetupDependencies(BvFixedVector<VkSubpassDependency, 2> & d
 	VkAccessFlags dstAccessMask = 0;
 	if (m_RenderPassDesc.m_RenderTargets.Size() > 0)
 	{
-		dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dstStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	}
 	if (m_RenderPassDesc.m_HasDepth)
 	{
@@ -205,13 +206,13 @@ void BvRenderPassVk::SetupDependencies(BvFixedVector<VkSubpassDependency, 2> & d
 
 	if (hasSwapChain)
 	{
-		srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		srcStageMask |= VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		srcAccessMask |= VK_ACCESS_MEMORY_READ_BIT;
 	}
 	else
 	{
-		srcStageMask = dstStageMask;
-		srcAccessMask = dstAccessMask;
+		srcStageMask |= dstStageMask;
+		srcAccessMask |= dstAccessMask;
 	}
 
 	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -229,4 +230,45 @@ void BvRenderPassVk::SetupDependencies(BvFixedVector<VkSubpassDependency, 2> & d
 	dependencies[1].srcAccessMask = dstAccessMask;
 	dependencies[1].dstAccessMask = srcAccessMask;
 	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+}
+
+
+BvRenderPassManagerVk::BvRenderPassManagerVk()
+{
+}
+
+
+BvRenderPassManagerVk::~BvRenderPassManagerVk()
+{
+}
+
+
+BvRenderPassVk* BvRenderPassManagerVk::GetRenderPass(const BvRenderDeviceVk& device, const RenderPassDesc& desc)
+{
+	BvScopedLock lock(m_Lock);
+	decltype(auto) pRenderPass = m_RenderPasses[desc];
+
+	if (pRenderPass == nullptr)
+	{
+		pRenderPass = new BvRenderPassVk(device, desc);
+	}
+
+	return pRenderPass;
+}
+
+
+void BvRenderPassManagerVk::Destroy()
+{
+	for (auto&& pRenderPass : m_RenderPasses)
+	{
+		delete pRenderPass.second;
+	}
+	m_RenderPasses.Clear();
+}
+
+
+BvRenderPassManagerVk* GetRenderPassManager()
+{
+	static BvRenderPassManagerVk instance;
+	return &instance;
 }

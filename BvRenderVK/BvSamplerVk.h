@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvRender/BvSampler.h"
+#include "BDeV/Render/BvSampler.h"
 #include "BvCommonVk.h"
 
 

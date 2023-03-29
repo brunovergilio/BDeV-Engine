@@ -1,9 +1,9 @@
 #pragma once
 
 
-#include "BvRender/BvCommandPool.h"
+#include "BDeV/Render/BvCommandPool.h"
 #include "BvRenderVK/BvCommonVk.h"
-#include "BvCore/Container/BvVector.h"
+#include "BDeV/Container/BvVector.h"
 
 
 class BvRenderDeviceVk;
@@ -21,10 +21,10 @@ public:
 	void Create();
 	void Destroy();
 
-	void AllocateCommandBuffers(u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override final;
-	void FreeCommandBuffers(u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override final;
+	void AllocateCommandBuffers(u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override;
+	void FreeCommandBuffers(u32 commandBufferCount, BvCommandBuffer ** ppCommandBuffers) override;
 
-	void Reset() override final;
+	void Reset() override;
 
 private:
 	const BvRenderDeviceVk & m_Device;

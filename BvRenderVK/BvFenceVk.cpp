@@ -2,9 +2,10 @@
 #include "BvRenderDeviceVk.h"
 
 
-BvFenceVk::BvFenceVk(const BvRenderDeviceVk & device, const State initialState)
-	: m_Device(device), m_InitialState(initialState)
+BvFenceVk::BvFenceVk(const BvRenderDeviceVk& device, VkFenceCreateFlags createFlags)
+	: m_Device(device)
 {
+	Create(createFlags);
 }
 
 
@@ -14,13 +15,12 @@ BvFenceVk::~BvFenceVk()
 }
 
 
-void BvFenceVk::Create()
+void BvFenceVk::Create(VkFenceCreateFlags createFlags)
 {
-	VkFenceCreateInfo fenceCI{};
-	fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceCI.flags = m_InitialState == State::kSignaled ? VkFenceCreateFlagBits::VK_FENCE_CREATE_SIGNALED_BIT : 0;
+	VkFenceCreateInfo fenceCI{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	fenceCI.flags = createFlags;
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateFence(m_Device.GetHandle(), &fenceCI, nullptr, &m_Fence);
+	vkCreateFence(m_Device.GetHandle(), &fenceCI, nullptr, &m_Fence);
 }
 
 
@@ -28,21 +28,103 @@ void BvFenceVk::Destroy()
 {
 	if (m_Fence)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyFence(m_Device.GetHandle(), m_Fence, nullptr);
-		m_Fence = VK_NULL_HANDLE;
+		vkDestroyFence(m_Device.GetHandle(), m_Fence, nullptr);
+		m_Fence = nullptr;
 	}
 }
 
 
-void BvFenceVk::Reset()
+VkResult BvFenceVk::Wait(const u64 timeout) const
 {
-	auto result = m_Device.GetDeviceFunctions().vkResetFences(m_Device.GetHandle(), 1, &m_Fence);
+	return vkWaitForFences(m_Device.GetHandle(), 1, &m_Fence, VK_TRUE, timeout);
 }
 
 
-bool BvFenceVk::Wait(const u64 timeout)
+void BvFenceVk::Reset() const
 {
-	auto result = m_Device.GetDeviceFunctions().vkWaitForFences(m_Device.GetHandle(), 1, &m_Fence, VK_TRUE, timeout);
+	vkResetFences(m_Device.GetHandle(), 1, &m_Fence);
+}
 
-	return result == VK_SUCCESS;
+
+VkResult BvFenceVk::GetStatus() const
+{
+	return vkGetFenceStatus(m_Device.GetHandle(), m_Fence);
+}
+
+
+bool BvFenceVk::Acquire()
+{
+	return !m_FenceFlag.test_and_set();
+}
+
+
+void BvFenceVk::IncrementUsageCount(i32 usageCount)
+{
+	m_UsageCount += usageCount;
+}
+
+
+void BvFenceVk::DecrementUsageCount()
+{
+	if (m_UsageCount.fetch_sub(1) == 1)
+	{
+		m_FenceFlag.clear();
+	}
+}
+
+
+
+BvFenceManagerVk::BvFenceManagerVk()
+{
+}
+
+
+BvFenceManagerVk::~BvFenceManagerVk()
+{
+}
+
+
+BvFenceVk* BvFenceManagerVk::GetFence(const BvRenderDeviceVk& device)
+{
+	BvScopedLock lock(m_Lock);
+
+	BvFenceVk* pAcquiredFence = nullptr;
+	for (auto&& pFence : m_Fences)
+	{
+		if (pFence->Acquire())
+		{
+			pAcquiredFence = pFence;
+			if (pAcquiredFence->GetStatus() == VK_SUCCESS)
+			{
+				pAcquiredFence->Wait(kU64Max);
+			}
+			break;
+		}
+	}
+
+	if (pAcquiredFence == nullptr)
+	{
+		pAcquiredFence = m_Fences.EmplaceBack(new BvFenceVk(device));
+		pAcquiredFence->Acquire();
+	}
+	pAcquiredFence->Reset();
+
+	return pAcquiredFence;
+}
+
+
+void BvFenceManagerVk::Destroy()
+{
+	for (auto&& pFence : m_Fences)
+	{
+		delete pFence;
+	}
+	m_Fences.Clear();
+}
+
+
+BvFenceManagerVk* GetFenceManager()
+{
+	static BvFenceManagerVk instance;
+	return &instance;
 }

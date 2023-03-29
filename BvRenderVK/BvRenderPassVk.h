@@ -2,7 +2,10 @@
 
 
 #include "BvRenderVK/BvCommonVk.h"
-#include "BvRender/BvRenderPass.h"
+#include "BDeV/Render/BvRenderPass.h"
+#include "BDeV/Utils/Hash.h"
+#include "BDeV/System/Threading/BvSync.h"
+#include "BDeV/Container/BvRobinMap.h"
 
 
 class BvRenderDeviceVk;
@@ -29,3 +32,41 @@ private:
 	VkRenderPass m_RenderPass = VK_NULL_HANDLE;
 	RenderPassDesc m_RenderPassDesc;
 };
+
+
+template<>
+struct std::hash<RenderPassDesc>
+{
+	size_t operator()(const RenderPassDesc& renderPassDesc)
+	{
+		u64 hash = 0;
+		HashCombine(hash, renderPassDesc.m_RenderTargets.Size());
+		for (const auto& rt : renderPassDesc.m_RenderTargets)
+		{
+			HashCombine(hash, rt.m_Format, rt.m_SampleCount, rt.m_StateAfter);
+		}
+		HashCombine(hash, (u32)renderPassDesc.m_HasDepth);
+		if (renderPassDesc.m_HasDepth)
+		{
+			HashCombine(hash, renderPassDesc.m_DepthStencilTarget.m_Format, renderPassDesc.m_DepthStencilTarget.m_SampleCount, renderPassDesc.m_DepthStencilTarget.m_StateAfter);
+		}
+	}
+};
+
+
+class BvRenderPassManagerVk
+{
+public:
+	BvRenderPassManagerVk();
+	~BvRenderPassManagerVk();
+
+	BvRenderPassVk* GetRenderPass(const BvRenderDeviceVk& device, const RenderPassDesc& desc);
+	void Destroy();
+
+private:
+	BvRobinMap<RenderPassDesc, BvRenderPassVk*> m_RenderPasses;
+	BvSpinlock m_Lock;
+};
+
+
+BvRenderPassManagerVk* GetRenderPassManager();

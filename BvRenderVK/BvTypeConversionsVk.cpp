@@ -1,10 +1,10 @@
 #include "BvTypeConversionsVk.h"
-#include "BvCore/Container/BvRobinMap.h"
+#include "BDeV/Container/BvRobinMap.h"
 
 
 static BvRobinMap<Format, VkFormat> s_FormatToVkFormatMap = 
 {
-	{ Format::kUndefined,			VkFormat::VK_FORMAT_UNDEFINED },
+	{ Format::kUnknown,				VkFormat::VK_FORMAT_UNDEFINED },
 
 	{ Format::kRGBA32_Float,		VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT },
 	{ Format::kRGBA32_UInt,			VkFormat::VK_FORMAT_R32G32B32A32_UINT },
@@ -40,13 +40,13 @@ static BvRobinMap<Format, VkFormat> s_FormatToVkFormatMap =
 	{ Format::kR16_SNorm,			VkFormat::VK_FORMAT_R16_SNORM },
 	{ Format::kR16_SInt,			VkFormat::VK_FORMAT_R16_SINT },
 
-	{ Format::kRGBA8_UNormSRGB,		VkFormat::VK_FORMAT_R8G8B8A8_SRGB },
+	{ Format::kRGBA8_UNorm_SRGB,	VkFormat::VK_FORMAT_R8G8B8A8_SRGB },
 	{ Format::kRGBA8_UNorm,			VkFormat::VK_FORMAT_R8G8B8A8_UNORM },
 	{ Format::kRGBA8_UInt,			VkFormat::VK_FORMAT_R8G8B8A8_UINT },
 	{ Format::kRGBA8_SNorm,			VkFormat::VK_FORMAT_R8G8B8A8_SNORM },
 	{ Format::kRGBA8_SInt,			VkFormat::VK_FORMAT_R8G8B8A8_SINT },
 	
-	{ Format::kBGRA8_UNormSRGB,		VkFormat::VK_FORMAT_B8G8R8A8_SRGB},
+	{ Format::kBGRA8_UNorm_SRGB,	VkFormat::VK_FORMAT_B8G8R8A8_SRGB},
 	{ Format::kBGRA8_UNorm,			VkFormat::VK_FORMAT_B8G8R8A8_UNORM },
 
 	{ Format::kRG8_UNorm,			VkFormat::VK_FORMAT_R8G8_UNORM },
@@ -59,7 +59,7 @@ static BvRobinMap<Format, VkFormat> s_FormatToVkFormatMap =
 	{ Format::kR8_SNorm,			VkFormat::VK_FORMAT_R8_SNORM },
 	{ Format::kR8_SInt,				VkFormat::VK_FORMAT_R8_SINT },
 
-	{ Format::kD32_Float_S8_UInt,	VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT },
+	{ Format::kD32_Float_S8X24_UInt,VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT },
 	{ Format::kD32_Float,			VkFormat::VK_FORMAT_D32_SFLOAT },
 	{ Format::kD24_UNorm_S8_UInt,	VkFormat::VK_FORMAT_D24_UNORM_S8_UINT },
 	{ Format::kD16_UNorm,			VkFormat::VK_FORMAT_D16_UNORM },
@@ -69,25 +69,25 @@ static BvRobinMap<Format, VkFormat> s_FormatToVkFormatMap =
 	{ Format::kRG11B10_Float,		VkFormat::VK_FORMAT_B10G11R11_UFLOAT_PACK32 },
 
 	{ Format::kBC1_UNorm,			VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK },
-	{ Format::kBC1_UNormSRGB,		VkFormat::VK_FORMAT_BC1_RGBA_SRGB_BLOCK },
+	{ Format::kBC1_UNorm_SRGB,		VkFormat::VK_FORMAT_BC1_RGBA_SRGB_BLOCK },
 	{ Format::kBC2_UNorm,			VkFormat::VK_FORMAT_BC2_UNORM_BLOCK },
-	{ Format::kBC2_UNormSRGB,		VkFormat::VK_FORMAT_BC2_SRGB_BLOCK },
+	{ Format::kBC2_UNorm_SRGB,		VkFormat::VK_FORMAT_BC2_SRGB_BLOCK },
 	{ Format::kBC3_UNorm,			VkFormat::VK_FORMAT_BC3_UNORM_BLOCK },
-	{ Format::kBC3_UNormSRGB,		VkFormat::VK_FORMAT_BC3_SRGB_BLOCK },
+	{ Format::kBC3_UNorm_SRGB,		VkFormat::VK_FORMAT_BC3_SRGB_BLOCK },
 	{ Format::kBC4_UNorm,			VkFormat::VK_FORMAT_BC4_UNORM_BLOCK },
 	{ Format::kBC4_SNorm,			VkFormat::VK_FORMAT_BC4_SNORM_BLOCK },
 	{ Format::kBC5_UNorm,			VkFormat::VK_FORMAT_BC5_UNORM_BLOCK },
 	{ Format::kBC5_SNorm,			VkFormat::VK_FORMAT_BC5_SNORM_BLOCK },
-	{ Format::kBC6H_UFloat,			VkFormat::VK_FORMAT_BC6H_UFLOAT_BLOCK },
-	{ Format::kBC6H_SFloat,			VkFormat::VK_FORMAT_BC6H_SFLOAT_BLOCK },
+	{ Format::kBC6H_UF16,			VkFormat::VK_FORMAT_BC6H_UFLOAT_BLOCK },
+	{ Format::kBC6H_SF16,			VkFormat::VK_FORMAT_BC6H_SFLOAT_BLOCK },
 	{ Format::kBC7_UNorm,			VkFormat::VK_FORMAT_BC7_UNORM_BLOCK },
-	{ Format::kBC7_UNormSRGB,		VkFormat::VK_FORMAT_BC7_SRGB_BLOCK },
+	{ Format::kBC7_UNorm_SRGB,		VkFormat::VK_FORMAT_BC7_SRGB_BLOCK },
 };
 
 
 static BvRobinMap<VkFormat, Format> s_VkFormatToFormatMap =
 {
-	{ VkFormat::VK_FORMAT_UNDEFINED,				Format::kUndefined },
+	{ VkFormat::VK_FORMAT_UNDEFINED,				Format::kUnknown },
 
 	{ VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT,		Format::kRGBA32_Float },
 	{ VkFormat::VK_FORMAT_R32G32B32A32_UINT,		Format::kRGBA32_UInt },
@@ -123,13 +123,13 @@ static BvRobinMap<VkFormat, Format> s_VkFormatToFormatMap =
 	{ VkFormat::VK_FORMAT_R16_SNORM,				Format::kR16_SNorm },
 	{ VkFormat::VK_FORMAT_R16_SINT,					Format::kR16_SInt },
 
-	{ VkFormat::VK_FORMAT_R8G8B8A8_SRGB,			Format::kRGBA8_UNormSRGB },
+	{ VkFormat::VK_FORMAT_R8G8B8A8_SRGB,			Format::kRGBA8_UNorm_SRGB },
 	{ VkFormat::VK_FORMAT_R8G8B8A8_UNORM,			Format::kRGBA8_UNorm },
 	{ VkFormat::VK_FORMAT_R8G8B8A8_UINT,			Format::kRGBA8_UInt },
 	{ VkFormat::VK_FORMAT_R8G8B8A8_SNORM,			Format::kRGBA8_SNorm },
 	{ VkFormat::VK_FORMAT_R8G8B8A8_SINT,			Format::kRGBA8_SInt },
 
-	{ VkFormat::VK_FORMAT_B8G8R8A8_SRGB,			Format::kBGRA8_UNormSRGB },
+	{ VkFormat::VK_FORMAT_B8G8R8A8_SRGB,			Format::kBGRA8_UNorm_SRGB },
 	{ VkFormat::VK_FORMAT_B8G8R8A8_UNORM,			Format::kBGRA8_UNorm },
 
 	{ VkFormat::VK_FORMAT_R8G8_UNORM,				Format::kRG8_UNorm },
@@ -142,7 +142,7 @@ static BvRobinMap<VkFormat, Format> s_VkFormatToFormatMap =
 	{ VkFormat::VK_FORMAT_R8_SNORM,					Format::kR8_SNorm },
 	{ VkFormat::VK_FORMAT_R8_SINT,					Format::kR8_SInt },
 
-	{ VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT,		Format::kD32_Float_S8_UInt },
+	{ VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT,		Format::kD32_Float_S8X24_UInt },
 	{ VkFormat::VK_FORMAT_D32_SFLOAT,				Format::kD32_Float },
 	{ VkFormat::VK_FORMAT_D24_UNORM_S8_UINT,		Format::kD24_UNorm_S8_UInt },
 	{ VkFormat::VK_FORMAT_D16_UNORM,				Format::kD16_UNorm },
@@ -152,19 +152,19 @@ static BvRobinMap<VkFormat, Format> s_VkFormatToFormatMap =
 	{ VkFormat::VK_FORMAT_B10G11R11_UFLOAT_PACK32,	Format::kRG11B10_Float },
 
 	{ VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK,		Format::kBC1_UNorm },
-	{ VkFormat::VK_FORMAT_BC1_RGBA_SRGB_BLOCK,		Format::kBC1_UNormSRGB },
+	{ VkFormat::VK_FORMAT_BC1_RGBA_SRGB_BLOCK,		Format::kBC1_UNorm_SRGB },
 	{ VkFormat::VK_FORMAT_BC2_UNORM_BLOCK,			Format::kBC2_UNorm },
-	{ VkFormat::VK_FORMAT_BC2_SRGB_BLOCK,			Format::kBC2_UNormSRGB },
+	{ VkFormat::VK_FORMAT_BC2_SRGB_BLOCK,			Format::kBC2_UNorm_SRGB },
 	{ VkFormat::VK_FORMAT_BC3_UNORM_BLOCK,			Format::kBC3_UNorm },
-	{ VkFormat::VK_FORMAT_BC3_SRGB_BLOCK,			Format::kBC3_UNormSRGB },
+	{ VkFormat::VK_FORMAT_BC3_SRGB_BLOCK,			Format::kBC3_UNorm_SRGB },
 	{ VkFormat::VK_FORMAT_BC4_UNORM_BLOCK,			Format::kBC4_UNorm },
 	{ VkFormat::VK_FORMAT_BC4_SNORM_BLOCK,			Format::kBC4_SNorm },
 	{ VkFormat::VK_FORMAT_BC5_UNORM_BLOCK,			Format::kBC5_UNorm },
 	{ VkFormat::VK_FORMAT_BC5_SNORM_BLOCK,			Format::kBC5_SNorm },
-	{ VkFormat::VK_FORMAT_BC6H_UFLOAT_BLOCK,		Format::kBC6H_UFloat },
-	{ VkFormat::VK_FORMAT_BC6H_SFLOAT_BLOCK,		Format::kBC6H_SFloat },
+	{ VkFormat::VK_FORMAT_BC6H_UFLOAT_BLOCK,		Format::kBC6H_UF16 },
+	{ VkFormat::VK_FORMAT_BC6H_SFLOAT_BLOCK,		Format::kBC6H_SF16 },
 	{ VkFormat::VK_FORMAT_BC7_UNORM_BLOCK,			Format::kBC7_UNorm },
-	{ VkFormat::VK_FORMAT_BC7_SRGB_BLOCK,			Format::kBC7_UNormSRGB },
+	{ VkFormat::VK_FORMAT_BC7_SRGB_BLOCK,			Format::kBC7_UNorm_SRGB },
 };
 
 
@@ -217,7 +217,7 @@ Format GetFormat(const VkFormat format)
 		return it->second;
 	}
 
-	return Format::kUndefined;
+	return Format::kUnknown;
 }
 
 
@@ -645,7 +645,7 @@ VkAccessFlags GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kTransferSrc:		return VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
 	case ResourceState::kTransferDst:		return VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT;
 	case ResourceState::kRenderTarget:		return VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	case ResourceState::kDepthStencilRead:		return VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+	case ResourceState::kDepthStencilRead:	return VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 	case ResourceState::kDepthStencilWrite:	return VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	case ResourceState::kPresent:			return VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT;
 	}
@@ -656,6 +656,11 @@ VkAccessFlags GetVkAccessFlags(const ResourceState resourceState)
 
 VkPipelineStageFlags GetVkPipelineStageFlags(const VkAccessFlags accessFlags)
 {
+	if (accessFlags == 0)
+	{
+		return VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	}
+
 	VkPipelineStageFlags stageFlags = 0;
 	if (accessFlags & VkAccessFlagBits::VK_ACCESS_INDIRECT_COMMAND_READ_BIT)
 	{
@@ -690,6 +695,10 @@ VkPipelineStageFlags GetVkPipelineStageFlags(const VkAccessFlags accessFlags)
 	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT | VkAccessFlagBits::VK_ACCESS_HOST_WRITE_BIT))
 	{
 		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT;
+	}
+	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT))
+	{
+		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 	}
 
 	return stageFlags;

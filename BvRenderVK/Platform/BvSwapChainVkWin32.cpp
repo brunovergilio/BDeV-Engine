@@ -1,5 +1,5 @@
 #include "BvRenderVK/BvSwapchainVk.h"
-#include "BvCore/System/Window/BvNativeWindow.h"
+#include "BDeV/System/Window/Windows/BvWindowWindows.h"
 #include "BvRenderVk/BvUtilsVk.h"
 
 
@@ -11,9 +11,9 @@ void BvSwapChainVk::CreateSurface()
 	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo{};
 	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
-	surfaceCreateInfo.hwnd = m_Window.GetHandle();
+	surfaceCreateInfo.hwnd = ((BvWindowWindows*)m_pWindow)->GetHandle();
 
-	auto result = VulkanFunctions::vkCreateWin32SurfaceKHR(m_Device.GetInstanceHandle(), &surfaceCreateInfo, nullptr, &m_Surface);
+	auto result = vkCreateWin32SurfaceKHR(m_Device.GetInstanceHandle(), &surfaceCreateInfo, nullptr, &m_Surface);
 	BvCheckErrorReturnVk(result, );
 }
 

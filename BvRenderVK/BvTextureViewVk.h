@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvRender/BvTextureView.h"
+#include "BDeV/Render/BvTextureView.h"
 #include "BvTextureVk.h"
 
 
@@ -14,7 +14,7 @@ class BvTextureViewVk final : public BvTextureView
 
 public:
 	BvTextureViewVk(const BvRenderDeviceVk & device, const TextureViewDesc & textureViewDesc);
-	~BvTextureViewVk() override final;
+	~BvTextureViewVk() override;
 
 	bool Create();
 	void Destroy();

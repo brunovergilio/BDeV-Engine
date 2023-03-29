@@ -2,11 +2,13 @@
 #include "BvRenderVk/BvRenderDeviceVk.h"
 #include "BvUtilsVk.h"
 #include "BvTypeConversionsVk.h"
+#include <vma/vk_mem_alloc.h>
 
 
 BvTextureVk::BvTextureVk(const BvRenderDeviceVk & device, const TextureDesc & textureDesc)
 	: BvTexture(textureDesc), m_Device(device)
 {
+	Create();
 }
 
 
@@ -16,7 +18,7 @@ BvTextureVk::~BvTextureVk()
 }
 
 
-bool BvTextureVk::Create()
+void BvTextureVk::Create()
 {
 	VkImageCreateFlags imageCreateFlags = 0;
 	if (m_TextureDesc.m_UseAsCubeMap)
@@ -61,39 +63,35 @@ bool BvTextureVk::Create()
 	imageCreateInfo.pQueueFamilyIndices = nullptr;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
+	auto result = vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
-		return false;
+		return;
 	}
 
-	VkMemoryRequirements reqs{};
-	m_Device.GetDeviceFunctions().vkGetImageMemoryRequirements(device, m_Image, &reqs);
+	auto vma = m_Device.GetAllocator();
+	VmaAllocationCreateInfo vmaACI = {};
+	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_TextureDesc.m_MemoryFlags);
 
-	VkMemoryAllocateInfo allocateInfo{};
-	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocateInfo.allocationSize = reqs.size;
-	allocateInfo.memoryTypeIndex = m_Device.GetMemoryTypeIndex(reqs.memoryTypeBits, GetVkMemoryPropertyFlags(m_TextureDesc.m_MemoryFlags));
-
-	result = m_Device.GetDeviceFunctions().vkAllocateMemory(device, &allocateInfo, nullptr, &m_Memory);
+	VmaAllocationInfo vmaAI;
+	VmaAllocation vmaA;
+	result = vmaAllocateMemoryForImage(vma, m_Image, &vmaACI, &vmaA, &vmaAI);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
-		m_Device.GetDeviceFunctions().vkDestroyImage(device, m_Image, nullptr);
-		return false;
+		vkDestroyImage(device, m_Image, nullptr);
+		return;
 	}
 
-	result = m_Device.GetDeviceFunctions().vkBindImageMemory(device, m_Image, m_Memory, 0);
+	result = vkBindImageMemory(device, m_Image, vmaAI.deviceMemory, vmaAI.offset);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
-		m_Device.GetDeviceFunctions().vkDestroyImage(device, m_Image, nullptr);
-		m_Device.GetDeviceFunctions().vkFreeMemory(device, m_Memory, nullptr);
-		return false;
+		vkDestroyImage(device, m_Image, nullptr);
+		vmaFreeMemory(vma, m_VMAAllocation);
 	}
-
-	return true;
+	m_VMAAllocation = vmaA;
 }
 
 
@@ -101,19 +99,11 @@ void BvTextureVk::Destroy()
 {
 	auto device = m_Device.GetHandle();
 
-	// Because we also account for textures from the swap chain, we do this simple check for the memory first
-	// Swapchain images will have their textures automatically created by vulkan when one is created, so we
-	// check for the device memory first. If there's no memory handle, then we know it's a swapchain
-	// image, so don't bother destroying it
-	if (m_Memory)
+	if (m_Image)
 	{
-		if (m_Image)
-		{
-			m_Device.GetDeviceFunctions().vkDestroyImage(device, m_Image, nullptr);
-		}
-		m_Device.GetDeviceFunctions().vkFreeMemory(device, m_Memory, nullptr);
+		vkDestroyImage(device, m_Image, nullptr);
 	}
-	m_Image = VK_NULL_HANDLE;
+	vmaFreeMemory(m_Device.GetAllocator(), m_VMAAllocation);
 }
 
 

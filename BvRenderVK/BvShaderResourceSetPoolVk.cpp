@@ -47,7 +47,7 @@ void BvShaderResourceSetPoolVk::Create(const ShaderResourceSetPoolDesc & desc)
 	poolCI.poolSizeCount = (u32)poolSizes.Size();
 	poolCI.pPoolSizes = poolSizes.Data();
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateDescriptorPool(m_Device.GetHandle(), &poolCI, nullptr, &m_DescriptorPool);
+	auto result = vkCreateDescriptorPool(m_Device.GetHandle(), &poolCI, nullptr, &m_DescriptorPool);
 }
 
 
@@ -75,7 +75,7 @@ void BvShaderResourceSetPoolVk::Destroy()
 
 	if (m_DescriptorPool)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
+		vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
 		m_DescriptorPool = VK_NULL_HANDLE;
 	}
 }
@@ -138,7 +138,7 @@ void BvShaderResourceSetPoolVk::AllocateSets(u32 count, BvShaderResourceParams *
 	allocateInfo.descriptorPool = m_DescriptorPool;
 	allocateInfo.pSetLayouts = descriptorSetLayouts;
 
-	auto result = m_Device.GetDeviceFunctions().vkAllocateDescriptorSets(m_Device.GetHandle(), &allocateInfo, descriptorSets);
+	auto result = vkAllocateDescriptorSets(m_Device.GetHandle(), &allocateInfo, descriptorSets);
 	for (u32 i = 0; i < allocateInfo.descriptorSetCount; i++)
 	{
 		auto pSet = new BvShaderResourceParamsVk(m_Device, pLayoutVk, descriptorSets[i], this, set);
@@ -202,6 +202,6 @@ void BvShaderResourceSetPoolVk::FreeSets(u32 setCount, BvShaderResourceParams **
 			}
 		}
 
-		m_Device.GetDeviceFunctions().vkFreeDescriptorSets(m_Device.GetHandle(), m_DescriptorPool, count, descriptorSets);
+		vkFreeDescriptorSets(m_Device.GetHandle(), m_DescriptorPool, count, descriptorSets);
 	}
 }

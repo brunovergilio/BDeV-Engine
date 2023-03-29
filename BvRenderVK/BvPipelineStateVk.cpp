@@ -11,6 +11,7 @@ VkShaderModule CreateShaderModule(const BvRenderDeviceVk & device, size_t size, 
 BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(const BvRenderDeviceVk & device, const GraphicsPipelineStateDesc & pipelineStateDesc, const VkPipelineCache pipelineCache)
 	: BvGraphicsPipelineState(pipelineStateDesc), m_Device(device), m_PipelineCache(pipelineCache)
 {
+	Create();
 }
 
 
@@ -79,9 +80,9 @@ void BvGraphicsPipelineStateVk::Create()
 	rasterizerCI.lineWidth = 1.0f;
 
 	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{};
-	if (m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
+	if (m_Device.GetGPUInfo().m_FeaturesSupported.conservativeRasterization && m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
 	{
-		const auto & conservativeRasterProps = m_Device.GetGPUInfo().m_Extensions.convervativeRasterizationProps;
+		const auto & conservativeRasterProps = m_Device.GetGPUInfo().m_ExtendedProperties.convervativeRasterizationProps;
 
 		if (conservativeRasterProps.maxExtraPrimitiveOverestimationSize > 0.0f)
 		{
@@ -119,9 +120,27 @@ void BvGraphicsPipelineStateVk::Create()
 	depthStencilCI.minDepthBounds = 0.0f;
 	depthStencilCI.maxDepthBounds = 1.0f;
 
+	u32 sampleMask[] = { m_PipelineStateDesc.m_SampleMask, 0 };
 	VkPipelineMultisampleStateCreateInfo msCI{};
 	msCI.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	msCI.rasterizationSamples = GetVkSampleCountFlagBits(m_PipelineStateDesc.m_MultisampleStateDesc.m_SampleCount);
+	msCI.pSampleMask = sampleMask;
+
+	BvFixedVector<VkFormat, kMaxRenderTargets> rtvFormats(m_PipelineStateDesc.m_RenderTargetFormats.Size());
+	for (auto i = 0; i < rtvFormats.Size(); i++)
+	{
+		rtvFormats[i] = GetVkFormat(m_PipelineStateDesc.m_RenderTargetFormats[i]);
+	}
+
+	VkPipelineRenderingCreateInfoKHR pipelineRenderingCI{};
+	if (m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering)
+	{
+		pipelineRenderingCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+		pipelineRenderingCI.colorAttachmentCount = m_PipelineStateDesc.m_RenderTargetFormats.Size();
+		pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
+		pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
+		pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
+	}
 
 	BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets>
 		blendAttachments(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments.Size(), {});
@@ -153,7 +172,7 @@ void BvGraphicsPipelineStateVk::Create()
 	blendCI.logicOpEnable = m_PipelineStateDesc.m_BlendStateDesc.m_LogicEnable;
 	blendCI.logicOp = GetVkLogicOp(m_PipelineStateDesc.m_BlendStateDesc.m_LogicOp);
 
-	constexpr u32 kMaxDynamicStates = 3; // Change as needed
+	constexpr u32 kMaxDynamicStates = 4; // Change as needed
 	BvFixedVector<VkDynamicState, kMaxDynamicStates> dynamicStates{};
 	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_VIEWPORT);
 	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_SCISSOR);
@@ -183,7 +202,7 @@ void BvGraphicsPipelineStateVk::Create()
 
 	VkGraphicsPipelineCreateInfo pipelineCI{};
 	pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	//pipelineCI.pNext = nullptr;
+	pipelineCI.pNext = !m_PipelineStateDesc.m_pRenderPass && m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering ? &pipelineRenderingCI : nullptr;
 	//pipelineCI.flags = 0;
 	pipelineCI.stageCount = (u32)m_PipelineStateDesc.m_ShaderStages.Size();
 	pipelineCI.pStages = shaderStages.Data();
@@ -196,17 +215,17 @@ void BvGraphicsPipelineStateVk::Create()
 	pipelineCI.pDepthStencilState = &depthStencilCI;
 	pipelineCI.pColorBlendState = &blendCI;
 	pipelineCI.pDynamicState = &dynamicStateCI;
-	pipelineCI.renderPass = static_cast<BvRenderPassVk *>(m_PipelineStateDesc.m_pRenderPass)->GetHandle();
+	pipelineCI.renderPass = m_PipelineStateDesc.m_pRenderPass ? static_cast<BvRenderPassVk *>(m_PipelineStateDesc.m_pRenderPass)->GetHandle() : VK_NULL_HANDLE;
 	pipelineCI.layout = static_cast<BvShaderResourceLayoutVk *>(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
 	pipelineCI.subpass = 0;
 	pipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineCI.basePipelineIndex = -1;
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateGraphicsPipelines(m_Device.GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
+	auto result = vkCreateGraphicsPipelines(m_Device.GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
 
 	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderStages.Size(); i++)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyShaderModule(m_Device.GetHandle(), shaderStages[i].module, nullptr);
+		vkDestroyShaderModule(m_Device.GetHandle(), shaderStages[i].module, nullptr);
 	}
 }
 
@@ -215,7 +234,7 @@ void BvGraphicsPipelineStateVk::Destroy()
 {
 	if (m_Pipeline)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyPipeline(m_Device.GetHandle(), m_Pipeline, nullptr);
+		vkDestroyPipeline(m_Device.GetHandle(), m_Pipeline, nullptr);
 		m_Pipeline = nullptr;
 		m_PipelineCache = nullptr;
 	}
@@ -226,6 +245,7 @@ BvComputePipelineStateVk::BvComputePipelineStateVk(const BvRenderDeviceVk & devi
 	const VkPipelineCache pipelineCache)
 	: BvComputePipelineState(pipelineStateDesc), m_Device(device), m_PipelineCache(pipelineCache)
 {
+	Create();
 }
 
 
@@ -247,9 +267,9 @@ void BvComputePipelineStateVk::Create()
 	m_PipelineStateDesc.m_ShaderByteCodeDesc.m_pByteCode, pipelineCI.stage.stage);
 	pipelineCI.basePipelineIndex = -1;
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateComputePipelines(m_Device.GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
+	auto result = vkCreateComputePipelines(m_Device.GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
 
-	m_Device.GetDeviceFunctions().vkDestroyShaderModule(m_Device.GetHandle(), pipelineCI.stage.module, nullptr);
+	vkDestroyShaderModule(m_Device.GetHandle(), pipelineCI.stage.module, nullptr);
 }
 
 
@@ -257,7 +277,7 @@ void BvComputePipelineStateVk::Destroy()
 {
 	if (m_Pipeline)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyPipeline(m_Device.GetHandle(), m_Pipeline, nullptr);
+		vkDestroyPipeline(m_Device.GetHandle(), m_Pipeline, nullptr);
 		m_Pipeline = nullptr;
 		m_PipelineCache = nullptr;
 	}
@@ -273,7 +293,7 @@ VkShaderModule CreateShaderModule(const BvRenderDeviceVk & device, size_t size, 
 	shaderCI.codeSize = size;
 
 	VkShaderModule shaderModule = VK_NULL_HANDLE;
-	device.GetDeviceFunctions().vkCreateShaderModule(device.GetHandle(), &shaderCI, nullptr, &shaderModule);
+	vkCreateShaderModule(device.GetHandle(), &shaderCI, nullptr, &shaderModule);
 
 	return shaderModule;
 }

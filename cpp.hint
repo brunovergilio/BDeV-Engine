@@ -9,3 +9,15 @@ public:											  		\
 	className & operator =(const className &) = delete; \
 	className(className &&) = delete;			  		\
 	className & operator =(className &&) = delete;		\
+
+#define BV_DEFAULTCOPYMOVE(className)					\
+public:											  		\
+	className(const className &) = default;			  	\
+	className & operator =(const className &) = default;\
+	className(className &&) = default;			  		\
+	className & operator =(className &&) = default;		\
+
+
+#define BV_RTTI(className, ...)
+#define BV_RTTI_VAR(...)
+#define BV_RTTI_FUNC(...)

@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvRender/BvBufferView.h"
+#include "BDeV/Render/BvBufferView.h"
 #include "BvBufferVk.h"
 
 
@@ -14,7 +14,7 @@ class BvBufferViewVk final : public BvBufferView
 
 public:
 	BvBufferViewVk(const BvRenderDeviceVk & device, const BufferViewDesc & bufferViewDesc);
-	~BvBufferViewVk() override final;
+	~BvBufferViewVk() override;
 
 	void Create();
 	void Destroy();

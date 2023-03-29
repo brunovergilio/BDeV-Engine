@@ -1,10 +1,15 @@
 #include "BvSemaphoreVk.h"
 #include "BvRenderVK/BvRenderDeviceVk.h"
+#include "BvRenderVK/BvFenceVk.h"
 
 
-BvSemaphoreVk::BvSemaphoreVk(const BvRenderDeviceVk & device)
+constexpr u32 kMaxActiveSyncPoints = 8;
+
+
+BvSemaphoreVk::BvSemaphoreVk(const BvRenderDeviceVk & device, bool isTimelineSemaphore, u64 initialValue)
 	: m_Device(device)
 {
+	Create(isTimelineSemaphore, initialValue);
 }
 
 
@@ -14,10 +19,10 @@ BvSemaphoreVk::~BvSemaphoreVk()
 }
 
 
-void BvSemaphoreVk::Create(const bool isTimelineSemaphore, const u64 initialValue)
+void BvSemaphoreVk::Create(bool isTimelineSemaphore, u64 initialValue)
 {
-	VkSemaphoreTypeCreateInfo timelineCreateInfo{};
-	timelineCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+	VkSemaphoreTypeCreateInfoKHR timelineCreateInfo{};
+	timelineCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
 	//timelineCreateInfo.pNext = nullptr;
 	if (isTimelineSemaphore)
 	{
@@ -27,15 +32,14 @@ void BvSemaphoreVk::Create(const bool isTimelineSemaphore, const u64 initialValu
 	else
 	{
 		timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_BINARY;
-		//timelineCreateInfo.initialValue = 0; // Binary semaphores should have this set to 0
+		m_SyncPoints.Reserve(kMaxActiveSyncPoints);
 	}
 
 	VkSemaphoreCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	createInfo.pNext = &timelineCreateInfo;
-	//createInfo.flags = 0;
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateSemaphore(m_Device.GetHandle(), &createInfo, nullptr, &m_Semaphore);
+	auto result = vkCreateSemaphore(m_Device.GetHandle(), &createInfo, nullptr, &m_Semaphore);
 }
 
 
@@ -43,7 +47,7 @@ void BvSemaphoreVk::Destroy()
 {
 	if (m_Semaphore)
 	{
-		m_Device.GetDeviceFunctions().vkDestroySemaphore(m_Device.GetHandle(), m_Semaphore, nullptr);
+		vkDestroySemaphore(m_Device.GetHandle(), m_Semaphore, nullptr);
 		m_Semaphore = VK_NULL_HANDLE;
 	}
 }
@@ -51,35 +55,127 @@ void BvSemaphoreVk::Destroy()
 
 void BvSemaphoreVk::Signal(const u64 value)
 {
-	VkSemaphoreSignalInfo signalInfo{};
-	signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+	BvAssert(IsTimeline(), "Can't set a value in a binary semaphore!");
+
+	VkSemaphoreSignalInfoKHR signalInfo{};
+	signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO_KHR;
 	//signalInfo.pNext = nullptr;
 	signalInfo.semaphore = m_Semaphore;
 	signalInfo.value = value;
 
-	m_Device.GetDeviceFunctions().vkSignalSemaphore(m_Device.GetHandle(), &signalInfo);
+	vkSignalSemaphoreKHR(m_Device.GetHandle(), &signalInfo);
 }
 
 
 BvSemaphore::WaitStatus BvSemaphoreVk::Wait(const u64 value, const u64 timeout)
 {
-	VkSemaphoreWaitInfo waitInfo{};
-	waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-	//waitInfo.pNext = nullptr;
-	//waitInfo.flags = 0;
-	waitInfo.semaphoreCount = 1;
-	waitInfo.pSemaphores = &m_Semaphore;
-	waitInfo.pValues = &value;
+	if (IsTimeline())
+	{
+		VkSemaphoreWaitInfoKHR waitInfo{};
+		waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR;
+		//waitInfo.pNext = nullptr;
+		//waitInfo.flags = 0;
+		waitInfo.semaphoreCount = 1;
+		waitInfo.pSemaphores = &m_Semaphore;
+		waitInfo.pValues = &value;
 
-	auto result = m_Device.GetDeviceFunctions().vkWaitSemaphores(m_Device.GetHandle(), &waitInfo, timeout * 1000000ull);
-	return result == VK_SUCCESS ? WaitStatus::kSuccess : WaitStatus::kTimeout;
+		auto result = vkWaitSemaphoresKHR(m_Device.GetHandle(), &waitInfo, timeout);
+
+		return result == VK_SUCCESS ? WaitStatus::kSuccess : WaitStatus::kTimeout;
+	}
+	else
+	{
+		BvScopedLock lock(m_SyncLock);
+
+		while (!m_SyncPoints.IsEmpty())
+		{
+			auto& syncPoint = m_SyncPoints.Front();
+			if (syncPoint.value > value)
+			{
+				break;
+			}
+
+			if (syncPoint.pFence->GetStatus() == VkResult::VK_NOT_READY)
+			{
+				if (syncPoint.pFence->Wait(timeout) == VkResult::VK_TIMEOUT)
+				{
+					return WaitStatus::kTimeout;
+				}
+			}
+			
+			SetCompletedValue(syncPoint.value);
+			syncPoint.pFence->DecrementUsageCount();
+			m_SyncPoints.PopFront();
+		}
+
+		return WaitStatus::kSuccess;
+	}
 }
 
 
-u64 BvSemaphoreVk::GetCompletedValue() const
+u64 BvSemaphoreVk::GetCompletedValue()
 {
-	u64 value = 0;
-	auto result = m_Device.GetDeviceFunctions().vkGetSemaphoreCounterValue(m_Device.GetHandle(), m_Semaphore, &value);
+	if (IsTimeline())
+	{
+		u64 value{};
+		auto result = vkGetSemaphoreCounterValueKHR(m_Device.GetHandle(), m_Semaphore, &value);
 
-	return value;
+		return value;
+	}
+	else
+	{
+		BvScopedLock lock(m_SyncLock);
+		return GetCompletedValueInternal();
+	}
+}
+
+
+void BvSemaphoreVk::AddSyncPoint(BvFenceVk* pFence, u64 value, u32 queueFamilyIndex, u32 queueIndex)
+{
+	BvAssert(!IsTimeline(), "Timeline semaphores should never call this function");
+
+	BvScopedLock lock(m_SyncLock);
+
+	BvAssert(value > (m_SyncPoints.IsEmpty() ? m_CurrValue.load() : m_SyncPoints.Back().value), "The new signal value must be greater than the last value");
+	if (!m_SyncPoints.IsEmpty())
+	{
+		BvAssert(m_SyncPoints.Back().queueFamilyIndex == queueFamilyIndex && m_SyncPoints.Back().queueIndex == queueIndex,
+			"This binary semaphore is being used in multiple queues, and that may cause a deadlock");
+	}
+
+	if (m_SyncPoints.Size() >= kMaxActiveSyncPoints)
+	{
+		GetCompletedValueInternal();
+	}
+
+	m_SyncPoints.EmplaceBack(pFence, value, queueFamilyIndex, queueIndex);
+}
+
+
+u64 BvSemaphoreVk::GetCompletedValueInternal()
+{
+	while (!m_SyncPoints.IsEmpty())
+	{
+		auto& syncPoint = m_SyncPoints.Front();
+		if (syncPoint.pFence->GetStatus() == VkResult::VK_SUCCESS)
+		{
+			SetCompletedValue(syncPoint.value);
+			syncPoint.pFence->DecrementUsageCount();
+			m_SyncPoints.PopFront();
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	return m_CurrValue;
+}
+
+
+void BvSemaphoreVk::SetCompletedValue(u64 value)
+{
+	BvAssert(!IsTimeline(), "Timeline semaphores should never call this function");
+
+	m_CurrValue = value;
 }

@@ -11,12 +11,10 @@
 #include "BvBufferViewVk.h"
 #include "BvShaderResourceSetPoolVk.h"
 #include "BvRenderVK/BvFramebufferVk.h"
-#include "BvCore/Utils/RTTI.h"
 
 
-BvRenderDeviceVk::BvRenderDeviceVk(VkInstance instance, BvLoaderVk & loader, const BvGPUInfoVk & gpuInfo)
-	: m_Instance(instance), m_Loader(loader), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory()),
-	m_pFramebufferManager(new BvFramebufferManager())
+BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo)
+	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory())
 {
 }
 
@@ -24,6 +22,246 @@ BvRenderDeviceVk::BvRenderDeviceVk(VkInstance instance, BvLoaderVk & loader, con
 BvRenderDeviceVk::~BvRenderDeviceVk()
 {
 	Destroy();
+}
+
+
+void BvRenderDeviceVk::SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo, VkPhysicalDeviceFeatures& enabledFeatures, BvVector<const char*>& enabledExtensions)
+{
+	// ===================================================
+	// Default features
+#define VK_ADD_FEATURE_IF_SUPPORTED(feature) if (m_GPUInfo.m_DeviceFeatures.feature) enabledFeatures.feature = VK_TRUE;
+	//VK_ADD_FEATURE_IF_SUPPORTED(robustBufferAccess);
+	VK_ADD_FEATURE_IF_SUPPORTED(fullDrawIndexUint32);
+	VK_ADD_FEATURE_IF_SUPPORTED(imageCubeArray);
+	//VK_ADD_FEATURE_IF_SUPPORTED(independentBlend);
+	VK_ADD_FEATURE_IF_SUPPORTED(geometryShader);
+	VK_ADD_FEATURE_IF_SUPPORTED(tessellationShader);
+	VK_ADD_FEATURE_IF_SUPPORTED(sampleRateShading);
+	VK_ADD_FEATURE_IF_SUPPORTED(dualSrcBlend);
+	//VK_ADD_FEATURE_IF_SUPPORTED(logicOp);
+	VK_ADD_FEATURE_IF_SUPPORTED(multiDrawIndirect);
+	//VK_ADD_FEATURE_IF_SUPPORTED(drawIndirectFirstInstance);
+	VK_ADD_FEATURE_IF_SUPPORTED(depthClamp);
+	VK_ADD_FEATURE_IF_SUPPORTED(depthBiasClamp);
+	VK_ADD_FEATURE_IF_SUPPORTED(fillModeNonSolid);
+	VK_ADD_FEATURE_IF_SUPPORTED(depthBounds);
+	//VK_ADD_FEATURE_IF_SUPPORTED(wideLines);
+	//VK_ADD_FEATURE_IF_SUPPORTED(largePoints);
+	//VK_ADD_FEATURE_IF_SUPPORTED(alphaToOne);
+	VK_ADD_FEATURE_IF_SUPPORTED(multiViewport);
+	VK_ADD_FEATURE_IF_SUPPORTED(samplerAnisotropy);
+	VK_ADD_FEATURE_IF_SUPPORTED(textureCompressionETC2);
+	VK_ADD_FEATURE_IF_SUPPORTED(textureCompressionASTC_LDR);
+	VK_ADD_FEATURE_IF_SUPPORTED(textureCompressionBC);
+	VK_ADD_FEATURE_IF_SUPPORTED(occlusionQueryPrecise);
+	VK_ADD_FEATURE_IF_SUPPORTED(pipelineStatisticsQuery);
+	VK_ADD_FEATURE_IF_SUPPORTED(vertexPipelineStoresAndAtomics);
+	VK_ADD_FEATURE_IF_SUPPORTED(fragmentStoresAndAtomics);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderTessellationAndGeometryPointSize);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderImageGatherExtended);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageExtendedFormats);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageMultisample);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageReadWithoutFormat);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageWriteWithoutFormat);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderUniformBufferArrayDynamicIndexing);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderSampledImageArrayDynamicIndexing);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageBufferArrayDynamicIndexing);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageArrayDynamicIndexing);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderClipDistance);
+	VK_ADD_FEATURE_IF_SUPPORTED(shaderCullDistance);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderFloat64);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderInt64);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderInt16);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderResourceResidency);
+	//VK_ADD_FEATURE_IF_SUPPORTED(shaderResourceMinLod);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseBinding);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyBuffer);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyImage2D);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyImage3D);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency2Samples);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency4Samples);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency8Samples);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency16Samples);
+	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyAliased);
+	VK_ADD_FEATURE_IF_SUPPORTED(variableMultisampleRate);
+	//VK_ADD_FEATURE_IF_SUPPORTED(inheritedQueries);
+#undef VK_ADD_FEATURE_IF_SUPPORTED
+
+	// ===================================================
+	// Extended features
+	if (m_GPUInfo.m_FeaturesSupported.swapChain)
+	{
+		enabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	}
+
+	if (!m_GPUInfo.m_FeaturesSupported.deviceProperties2)
+	{
+		return;
+	}
+
+	void** pNextFeature = const_cast<void**>(&deviceCreateInfo.pNext);
+	BvGPUInfoVk& gpuInfo = const_cast<BvGPUInfoVk&>(m_GPUInfo);
+
+	if (m_GPUInfo.m_FeaturesSupported.memoryRequirements2)
+	{
+		enabledExtensions.PushBack(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.bindMemory2)
+	{
+		enabledExtensions.PushBack(VK_KHR_BIND_MEMORY_2_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.maintenance1)
+	{
+		enabledExtensions.PushBack(VK_KHR_MAINTENANCE1_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.maintenance2)
+	{
+		enabledExtensions.PushBack(VK_KHR_MAINTENANCE2_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.multiview)
+	{
+		enabledExtensions.PushBack(VK_KHR_MULTIVIEW_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.multiviewFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.multiviewFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.renderpass2)
+	{
+		enabledExtensions.PushBack(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.dynamicRendering)
+	{
+		enabledExtensions.PushBack(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.dynamicRenderingFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.dynamicRenderingFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.fragmentShading)
+	{
+		enabledExtensions.PushBack(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.fragmentShadingRateFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.fragmentShadingRateFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.maintenance3)
+	{
+		enabledExtensions.PushBack(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.descriptorIndexing)
+	{
+		enabledExtensions.PushBack(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.descriptorIndexingFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.descriptorIndexingFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.bufferDeviceAddress)
+	{
+		enabledExtensions.PushBack(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.bufferDeviceAddressFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.bufferDeviceAddressFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.deferredHostOperations)
+	{
+		enabledExtensions.PushBack(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.shaderFloatControls)
+	{
+		enabledExtensions.PushBack(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.spirv1_4)
+	{
+		enabledExtensions.PushBack(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.meshShader)
+	{
+		enabledExtensions.PushBack(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.meshShaderFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.meshShaderFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.accelerationStructure)
+	{
+		enabledExtensions.PushBack(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.accelerationStructureFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.accelerationStructureFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.rayTracingPipeline)
+	{
+		enabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.rayTracingPipelineFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.rayTracingPipelineFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.rayQuery)
+	{
+		enabledExtensions.PushBack(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.rayQueryFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.rayQueryFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.pipelineLibrary)
+	{
+		enabledExtensions.PushBack(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.conservativeRasterization)
+	{
+		enabledExtensions.PushBack(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.customBorderColor)
+	{
+		enabledExtensions.PushBack(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.customBorderColorFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.customBorderColorFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.timelineSemaphore)
+	{
+		enabledExtensions.PushBack(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.timelineSemaphoreFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.timelineSemaphoreFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.imageFormatList)
+	{
+		enabledExtensions.PushBack(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.imagelessFrameBuffer)
+	{
+		enabledExtensions.PushBack(VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.imagelessFrameBufferFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.imagelessFrameBufferFeatures.pNext;
+	}
+
+	if (m_GPUInfo.m_FeaturesSupported.memoryBudget)
+	{
+		enabledExtensions.PushBack(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+	}
 }
 
 
@@ -108,8 +346,6 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 	BvVector<const char *> enabledExtensions;
 	if (deviceCreateDesc.m_GraphicsQueueCount > 0)
 	{
-		enabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
 		// If we have at least one graphics queue, and we still don't have a presentation queue, add one
 		if (!hasPresentationQueue)
 		{
@@ -119,16 +355,16 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 		}
 	}
 
+	VkPhysicalDeviceFeatures enabledFeatures{};
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.pQueueCreateInfos = queueInfos.Data();
 	deviceCreateInfo.queueCreateInfoCount = static_cast<u32>(queueInfos.Size());
+	SetupDeviceFeatures(deviceCreateInfo, enabledFeatures, enabledExtensions);
 	deviceCreateInfo.ppEnabledExtensionNames = enabledExtensions.Data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<u32>(enabledExtensions.Size());
-	//deviceCreateInfo.pEnabledFeatures = &m_GPUInfo.m_DeviceFeatures;
-	deviceCreateInfo.pNext = &m_GPUInfo.m_DeviceFeatures;
 
-	VkResult result = VulkanFunctions::vkCreateDevice(m_GPUInfo.m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
+	VkResult result = vkCreateDevice(m_GPUInfo.m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
 	BvAssert(result == VK_SUCCESS, "Couldn't create a logical device");
 	if (result != VK_SUCCESS)
 	{
@@ -136,7 +372,7 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 		return false;
 	}
 
-	m_Loader.LoadDeviceFunctions(m_Device, m_Functions);
+	volkLoadDevice(m_Device);
 
 	m_GraphicsQueues.Resize(deviceCreateDesc.m_GraphicsQueueCount);
 	m_ComputeQueues.Resize(deviceCreateDesc.m_ComputeQueueCount);
@@ -154,16 +390,21 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 		m_TransferQueues[i] = new BvCommandQueueVk(*this, QueueFamilyType::kTransfer, i);
 	}
 
+	CreateVMA();
+
 	return true;
 }
 
 
 void BvRenderDeviceVk::Destroy()
 {
-	m_Functions.vkDeviceWaitIdle(m_Device);
-
-	delete m_pFactory;
-	delete m_pFramebufferManager;
+	vkDeviceWaitIdle(m_Device);
+	
+	if (m_pFactory)
+	{
+		delete m_pFactory;
+		m_pFactory = nullptr;
+	}
 
 	for (auto && pQueue : m_GraphicsQueues)
 	{
@@ -180,112 +421,84 @@ void BvRenderDeviceVk::Destroy()
 
 	if (m_Device)
 	{
-		m_Functions.vkDestroyDevice(m_Device, nullptr);
+		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
 	}
 }
 
 
-BvSwapChain * BvRenderDeviceVk::CreateSwapChain(const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue)
+BvSwapChain * BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue)
 {
 	auto pQueue = static_cast<BvCommandQueueVk *>(&commandQueue);
 
-	BvSwapChainVk * pSwapChain = nullptr;
-	pSwapChain = m_pFactory->Create<BvSwapChainVk>(*this, *pQueue, swapChainDesc);
-	pSwapChain->Create();
-
-	return pSwapChain;
+	return m_pFactory->Create<BvSwapChainVk>(*this, *pQueue, pWindow, swapChainDesc);
 }
 
 
 BvBuffer* BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc)
 {
-	auto pBuffer = m_pFactory->Create<BvBufferVk>(*this, desc);
-	pBuffer->Create();
-
-	return pBuffer;
+	return m_pFactory->Create<BvBufferVk>(*this, desc);
 }
 
 
 BvBufferView* BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc)
 {
-	auto pView = m_pFactory->Create<BvBufferViewVk>(*this, desc);
-	pView->Create();
-
-	return pView;
+	return m_pFactory->Create<BvBufferViewVk>(*this, desc);
 }
 
 
 BvTexture* BvRenderDeviceVk::CreateTexture(const TextureDesc& desc)
 {
-	auto pTexture = m_pFactory->Create<BvTextureVk>(*this, desc);
-	pTexture->Create();
-
-	return pTexture;
+	return m_pFactory->Create<BvTextureVk>(*this, desc);
 }
 
 
 BvTextureView* BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc)
 {
-	auto pView = m_pFactory->Create<BvTextureViewVk>(*this, desc);
-	pView->Create();
-
-	return pView;
+	return m_pFactory->Create<BvTextureViewVk>(*this, desc);
 }
 
 
 BvSemaphore * BvRenderDeviceVk::CreateSemaphore(const u64 initialValue)
 {
-	auto pSemaphore = m_pFactory->Create<BvSemaphoreVk>(*this);
-	pSemaphore->Create(true, initialValue);
-
-	return pSemaphore;
+	// Always use timeline semaphores when available
+	return m_pFactory->Create<BvSemaphoreVk>(*this, m_GPUInfo.m_FeaturesSupported.timelineSemaphore, initialValue);
 }
 
 
 BvRenderPass * BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc & renderPassDesc)
 {
-	auto pRenderPass = m_pFactory->Create<BvRenderPassVk>(*this, renderPassDesc);
-	pRenderPass->Create();
-	return pRenderPass;
+	return GetRenderPassManager()->GetRenderPass(*this, renderPassDesc);
 }
 
 
 BvCommandPool * BvRenderDeviceVk::CreateCommandPool(const CommandPoolDesc & commandPoolDesc)
 {
-	auto pCommandPool = m_pFactory->Create<BvCommandPoolVk>(*this, commandPoolDesc);
-	pCommandPool->Create();
-	return pCommandPool;
+	return m_pFactory->Create<BvCommandPoolVk>(*this, commandPoolDesc);
 }
 
 
 BvShaderResourceLayout * BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc & shaderResourceLayoutDesc)
 {
-	auto pShaderResourceLayout = m_pFactory->Create<BvShaderResourceLayoutVk>(*this, shaderResourceLayoutDesc);
-	pShaderResourceLayout->Create();
-	return pShaderResourceLayout;
+	return m_pFactory->Create<BvShaderResourceLayoutVk>(*this, shaderResourceLayoutDesc);
 }
 
 
 BvShaderResourceSetPool* BvRenderDeviceVk::CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc)
 {
-	auto pShaderResourceSetPool = m_pFactory->Create<BvShaderResourceSetPoolVk>(*this, shaderResourceSetPoolDesc);
-	pShaderResourceSetPool->Create(shaderResourceSetPoolDesc);
-	return pShaderResourceSetPool;
+	return m_pFactory->Create<BvShaderResourceSetPoolVk>(*this, shaderResourceSetPoolDesc);
 }
 
 
 BvGraphicsPipelineState * BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc)
 {
-	auto pGraphicsPSO = m_pFactory->Create<BvGraphicsPipelineStateVk>(*this, graphicsPipelineStateDesc, VkPipelineCache(VK_NULL_HANDLE));
-	pGraphicsPSO->Create();
-	return pGraphicsPSO;
+	return m_pFactory->Create<BvGraphicsPipelineStateVk>(*this, graphicsPipelineStateDesc, VkPipelineCache(VK_NULL_HANDLE));
 }
 
 
 void BvRenderDeviceVk::WaitIdle() const
 {
-	auto result = m_Functions.vkDeviceWaitIdle(m_Device);
+	auto result = vkDeviceWaitIdle(m_Device);
 }
 
 
@@ -331,7 +544,7 @@ const VkFormat BvRenderDeviceVk::GetBestDepthFormat(const VkFormat format /*= VK
 	VkFormatProperties formatProps;
 	for (auto & depthFormat : depthFormats)
 	{
-		VulkanFunctions::vkGetPhysicalDeviceFormatProperties(m_GPUInfo.m_PhysicalDevice, depthFormat, &formatProps);
+		vkGetPhysicalDeviceFormatProperties(m_GPUInfo.m_PhysicalDevice, depthFormat, &formatProps);
 		// Format must support depth stencil attachment for optimal tiling
 		if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
 		{
@@ -359,7 +572,71 @@ bool BvRenderDeviceVk::QueueFamilySupportsPresent(const QueueFamilyType queueFam
 	}
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	return VulkanFunctions::vkGetPhysicalDeviceWin32PresentationSupportKHR(m_GPUInfo.m_PhysicalDevice, queueFamilyIndex) == VK_TRUE;
+	return vkGetPhysicalDeviceWin32PresentationSupportKHR(m_GPUInfo.m_PhysicalDevice, queueFamilyIndex) == VK_TRUE;
 #else
 #endif
+}
+
+
+void BvRenderDeviceVk::CreateVMA()
+{
+	VmaAllocatorCreateInfo vmaACI{};
+	vmaACI.instance = m_pEngine->GetInstance();
+	vmaACI.device = m_Device;
+	vmaACI.physicalDevice = m_GPUInfo.m_PhysicalDevice;
+	vmaACI.vulkanApiVersion = m_GPUInfo.m_DeviceProperties.apiVersion;
+
+	if (m_GPUInfo.m_FeaturesSupported.bufferDeviceAddress)
+	{
+		vmaACI.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+	}
+	if (m_GPUInfo.m_FeaturesSupported.memoryBudget)
+	{
+		vmaACI.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+	}
+
+	VmaVulkanFunctions functions;
+	functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+	functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+	functions.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;
+	functions.vkGetPhysicalDeviceMemoryProperties = vkGetPhysicalDeviceMemoryProperties;
+	functions.vkAllocateMemory = vkAllocateMemory;
+	functions.vkFreeMemory = vkFreeMemory;
+	functions.vkMapMemory = vkMapMemory;
+	functions.vkUnmapMemory = vkUnmapMemory;
+	functions.vkFlushMappedMemoryRanges = vkFlushMappedMemoryRanges;
+	functions.vkInvalidateMappedMemoryRanges = vkInvalidateMappedMemoryRanges;
+	functions.vkBindBufferMemory = vkBindBufferMemory;
+	functions.vkBindImageMemory = vkBindImageMemory;
+	functions.vkGetBufferMemoryRequirements = vkGetBufferMemoryRequirements;
+	functions.vkGetImageMemoryRequirements = vkGetImageMemoryRequirements;
+	functions.vkCreateBuffer = vkCreateBuffer;
+	functions.vkDestroyBuffer = vkDestroyBuffer;
+	functions.vkCreateImage = vkCreateImage;
+	functions.vkDestroyImage = vkDestroyImage;
+	functions.vkCmdCopyBuffer = vkCmdCopyBuffer;
+#if VMA_DEDICATED_ALLOCATION || VMA_VULKAN_VERSION >= 1001000
+	functions.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2KHR;
+	functions.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR;
+#endif
+#if VMA_BIND_MEMORY2 || VMA_VULKAN_VERSION >= 1001000
+	functions.vkBindBufferMemory2KHR = vkBindBufferMemory2KHR;
+	functions.vkBindImageMemory2KHR = vkBindImageMemory2KHR;
+#endif
+#if VMA_MEMORY_BUDGET || VMA_VULKAN_VERSION >= 1001000
+	functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
+#endif
+#if VMA_VULKAN_VERSION >= 1003000
+	functions.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;
+	functions.vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements;
+#endif
+	vmaACI.pVulkanFunctions = &functions;
+
+	vmaCreateAllocator(&vmaACI, &m_VMA);
+}
+
+
+void BvRenderDeviceVk::DestroyVMA()
+{
+	vmaDestroyAllocator(m_VMA);
 }

@@ -3,23 +3,23 @@
 
 #include "BvRenderVK/BvGPUInfoVk.h"
 #include "BvRenderVk/BvCommandQueueVk.h"
-#include "BvRender/BvRenderEngine.h"
+#include "BvRenderEngineVk.h"
 #include "BvLoaderVk.h"
-
-
-class BvFramebufferManager;
+#include <vma/vk_mem_alloc.h>
 
 
 class BvRenderDeviceVk final : public BvRenderDevice
 {
 public:
-	BvRenderDeviceVk(VkInstance instance, BvLoaderVk & loader, const BvGPUInfoVk & gpuInfo);
+	BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo);
 	~BvRenderDeviceVk();
+
+	void SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo, VkPhysicalDeviceFeatures& enabledFeatures, BvVector<const char*>& enabledExtensions);
 
 	bool Create(const DeviceCreateDesc & deviceCreateDesc);
 	void Destroy();
 
-	BvSwapChain* CreateSwapChain(const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;
+	BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;
 	BvBuffer* CreateBuffer(const BufferDesc& desc) override final;
 	BvBufferView* CreateBufferView(const BufferViewDesc& desc)  override final;
 	BvTexture* CreateTexture(const TextureDesc& desc)  override final;
@@ -43,22 +43,21 @@ public:
 	BV_INLINE BvCommandQueue* GetTransferQueue(const u32 index = 0) const override final { return m_TransferQueues[index]; }
 
 	BV_INLINE const VkDevice GetHandle() const { return m_Device; }
-	BV_INLINE const VkInstance GetInstanceHandle() const { return m_Instance; }
+	BV_INLINE const VkInstance GetInstanceHandle() const { return m_pEngine->GetInstance(); }
 	BV_INLINE const BvGPUInfoVk & GetGPUInfo() const { return m_GPUInfo; }
-
-	BV_INLINE BvFramebufferManager* GetFramebufferManager() const { return m_pFramebufferManager; }
-
-	BV_INLINE const VulkanFunctions::DeviceFunctions & GetDeviceFunctions() const { return m_Functions; }
+	BV_INLINE VmaAllocator GetAllocator() const { return m_VMA; }
 
 private:
-	VkInstance m_Instance = VK_NULL_HANDLE;
+	void CreateVMA();
+	void DestroyVMA();
+
+private:
+	BvRenderEngineVk* m_pEngine = nullptr;
 	VkDevice m_Device = VK_NULL_HANDLE;
 	const BvGPUInfoVk & m_GPUInfo;
 	BvVector<BvCommandQueueVk*> m_GraphicsQueues;
 	BvVector<BvCommandQueueVk*> m_ComputeQueues;
 	BvVector<BvCommandQueueVk*> m_TransferQueues;
 	BvRenderDeviceFactory* m_pFactory = nullptr;
-	BvFramebufferManager* m_pFramebufferManager = nullptr;
-	BvLoaderVk & m_Loader;
-	VulkanFunctions::DeviceFunctions m_Functions{};
+	VmaAllocator m_VMA{};
 };

@@ -4,15 +4,18 @@
 #include "BvTextureVk.h"
 #include "BvTextureViewVk.h"
 #include "BvTypeConversionsVk.h"
-#include "BvFenceVk.h"
 #include "BvSemaphoreVk.h"
+#include "BDeV/System/Window/BvWindow.h"
+#include "BvFramebufferVk.h"
 
 
-BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk & device, BvCommandQueueVk & commandQueue, const SwapChainDesc & swapChainParams)
-	: BvSwapChain(swapChainParams), m_Device(device), m_CommandQueue(commandQueue),
+BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk & device, BvCommandQueueVk & commandQueue, BvWindow* pWindow, const SwapChainDesc & swapChainParams)
+	: BvSwapChain(pWindow, swapChainParams), m_Device(device), m_CommandQueue(commandQueue),
 	m_PresentationQueueIndex(device.GetGPUInfo().m_PresentationQueueIndex)
 {
 	CreateSurface();
+
+	Create();
 }
 
 
@@ -26,13 +29,19 @@ BvSwapChainVk::~BvSwapChainVk()
 
 bool BvSwapChainVk::Create()
 {
-	m_SwapChainDesc.m_WindowDesc = m_Window.GetWindowDesc();
+	for (auto pView : m_SwapChainTextureViews)
+	{
+		GetFramebufferManager()->RemoveFramebuffer(pView);
+	}
+
+	u32 width = m_pWindow->GetWidth();
+	u32 height = m_pWindow->GetHeight();
 
 	auto device = m_Device.GetHandle();
 	auto physicalDevice = m_Device.GetGPUInfo().m_PhysicalDevice;
 
 	VkBool32 presentationSupported = VK_FALSE;
-	auto result = VulkanFunctions::vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, m_Device.GetGPUInfo().m_PresentationQueueIndex, m_Surface, &presentationSupported);
+	auto result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, m_Device.GetGPUInfo().m_PresentationQueueIndex, m_Surface, &presentationSupported);
 	BvCheckErrorReturnVk(result, false);
 	if (!presentationSupported)
 	{
@@ -41,14 +50,14 @@ bool BvSwapChainVk::Create()
 
 	// Get list of supported surface formats
 	u32 formatCount{};
-	result = VulkanFunctions::vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, nullptr);
+	result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, nullptr);
 	BvCheckErrorReturnVk(result, false);
 
 	BvVector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-	result = VulkanFunctions::vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, surfaceFormats.Data());
+	result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, surfaceFormats.Data());
 	BvCheckErrorReturnVk(result, false);
 
-	VkFormat chosenFormat = m_SwapChainDesc.m_Format != Format::kUndefined ?
+	VkFormat chosenFormat = m_SwapChainDesc.m_Format != Format::kUnknown ?
 		GetVkFormat(m_SwapChainDesc.m_Format) : VkFormat::VK_FORMAT_B8G8R8A8_UNORM;
 
 	// If there's one surface format, with type VK_FORMAT_UNDEFINED, we use
@@ -81,17 +90,17 @@ bool BvSwapChainVk::Create()
 
 	// Get physical device surface properties and formats
 	VkSurfaceCapabilitiesKHR surfCaps;
-	result = VulkanFunctions::vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &surfCaps);
+	result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &surfCaps);
 	BvCheckErrorReturnVk(result, false);
 
 	// Get available present modes
 	u32 presentModeCount;
-	result = VulkanFunctions::vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
+	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
 	BvCheckErrorReturnVk(result, false);
 	BvAssert(presentModeCount > 0, "No present modes");
 
 	BvVector<VkPresentModeKHR> presentModes(presentModeCount);
-	result = VulkanFunctions::vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModes.Data());
+	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModes.Data());
 	BvCheckErrorReturnVk(result, false);
 
 	VkExtent2D swapchainExtent = {};
@@ -100,8 +109,8 @@ bool BvSwapChainVk::Create()
 	{
 		// If the surface size is undefined, the size is set to
 		// the size of the images requested.
-		swapchainExtent.width = m_SwapChainDesc.m_WindowDesc.m_Width;
-		swapchainExtent.height = m_SwapChainDesc.m_WindowDesc.m_Height;
+		swapchainExtent.width = width;
+		swapchainExtent.height = height;
 	}
 	else
 	{
@@ -112,8 +121,8 @@ bool BvSwapChainVk::Create()
 		// the latest changes from the window, so force it here
 		if (swapchainExtent.width == 0 || swapchainExtent.height == 0)
 		{
-			swapchainExtent.width = m_SwapChainDesc.m_WindowDesc.m_Width;
-			swapchainExtent.height = m_SwapChainDesc.m_WindowDesc.m_Height;
+			swapchainExtent.width = width;
+			swapchainExtent.height = height;
 		}
 	}
 
@@ -195,7 +204,7 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.minImageCount = m_SwapChainDesc.m_SwapChainImageCount;
 	swapchainCreateInfo.imageFormat = format;
 	swapchainCreateInfo.imageColorSpace = colorSpace;
-	swapchainCreateInfo.imageExtent = { swapchainExtent.width, swapchainExtent.height };
+	swapchainCreateInfo.imageExtent = swapchainExtent;
 	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	swapchainCreateInfo.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
 	swapchainCreateInfo.imageArrayLayers = 1;
@@ -211,7 +220,7 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.compositeAlpha = compositeAlpha;
 
 	TextureDesc textureDesc;
-	textureDesc.m_Size = { m_SwapChainDesc.m_WindowDesc.m_Width, m_SwapChainDesc.m_WindowDesc.m_Height, 1 };
+	textureDesc.m_Size = { swapchainExtent.width, swapchainExtent.height, 1 };
 	textureDesc.m_Format = m_SwapChainDesc.m_Format;
 	textureDesc.m_UsageFlags = TextureUsage::kColorTarget;
 
@@ -229,7 +238,7 @@ bool BvSwapChainVk::Create()
 		textureDesc.m_UsageFlags |= TextureUsage::kTransferDst;
 	}
 
-	result = m_Device.GetDeviceFunctions().vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &m_Swapchain);
+	result = vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &m_Swapchain);
 	BvCheckErrorReturnVk(result, false);
 
 	// If an existing swap chain is re-created, destroy the old swap chain
@@ -241,18 +250,18 @@ bool BvSwapChainVk::Create()
 			delete m_SwapChainTextureViews[i];
 			delete m_SwapChainTextures[i];
 		}
-		m_Device.GetDeviceFunctions().vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
+		vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
 	}
 
 	u32 imageCount = 0;
-	result = m_Device.GetDeviceFunctions().vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, nullptr);
+	result = vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, nullptr);
 	BvCheckErrorReturnVk(result, false);
 
 	// Get the swap chain images
 	m_SwapChainTextures.Resize(imageCount);
 	m_SwapChainTextureViews.Resize(imageCount);
 	BvVector<VkImage> swapChainImages(imageCount);
-	result = m_Device.GetDeviceFunctions().vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, swapChainImages.Data());
+	result = vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, swapChainImages.Data());
 	BvCheckErrorReturnVk(result, false);
 
 	TextureViewDesc textureViewDesc;
@@ -293,7 +302,7 @@ void BvSwapChainVk::Destroy()
 		delete pTexture;
 	}
 
-	m_Device.GetDeviceFunctions().vkDestroySwapchainKHR(m_Device.GetHandle(), m_Swapchain, nullptr);
+	vkDestroySwapchainKHR(m_Device.GetHandle(), m_Swapchain, nullptr);
 	m_Swapchain = VK_NULL_HANDLE;
 }
 
@@ -314,7 +323,7 @@ void BvSwapChainVk::Present(bool vSync)
 	auto result = VK_SUCCESS;
 	if (vSync == m_SwapChainDesc.m_VSync)
 	{
-		result = m_Device.GetDeviceFunctions().vkQueuePresentKHR(m_CommandQueue.GetHandle(), &presentInfo);
+		result = vkQueuePresentKHR(m_CommandQueue.GetHandle(), &presentInfo);
 	}
 	else
 	{
@@ -335,29 +344,34 @@ void BvSwapChainVk::Present(bool vSync)
 		}
 	}
 
+	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % m_SwapChainTextures.Size();
+
 	AcquireImage();
 }
 
 
 void BvSwapChainVk::DestroySurface()
 {
-	VulkanFunctions::vkDestroySurfaceKHR(m_Device.GetInstanceHandle(), m_Surface, nullptr);
+	vkDestroySurfaceKHR(m_Device.GetInstanceHandle(), m_Surface, nullptr);
 	m_Surface = VK_NULL_HANDLE;
 }
 
 
 void BvSwapChainVk::Resize()
 {
+	if (!m_pWindow->IsValid())
+	{
+		return;
+	}
 	m_CommandQueue.WaitIdle();
 
-	DestroySynchronizationResources();
 	Create();
 }
 
 
 void BvSwapChainVk::AcquireImage()
 {
-	auto result = m_Device.GetDeviceFunctions().vkAcquireNextImageKHR(m_Device.GetHandle(), m_Swapchain, UINT64_MAX,
+	auto result = vkAcquireNextImageKHR(m_Device.GetHandle(), m_Swapchain, UINT64_MAX,
 		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]->GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
 	if (result != VkResult::VK_SUCCESS)
 	{
@@ -377,27 +391,23 @@ void BvSwapChainVk::AcquireImage()
 		std::swap(m_ImageAcquiredSemaphores[m_CurrImageIndex], m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]);
 		std::swap(m_RenderCompleteSemaphores[m_CurrImageIndex], m_RenderCompleteSemaphores[m_CurrSemaphoreIndex]);
 	}
-	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % m_SwapChainTextures.Size();
 }
 
 
 void BvSwapChainVk::CreateSynchronizationResources()
 {
-	//DestroySynchronizationResources();
+	DestroySynchronizationResources();
 
-	//m_ImageAcquiredFences.Resize(m_SwapChainTextures.Size());
 	m_ImageAcquiredSemaphores.Resize(m_SwapChainTextures.Size());
 	for (auto&& pSemaphore : m_ImageAcquiredSemaphores)
 	{
-		pSemaphore = new BvSemaphoreVk(m_Device);
-		pSemaphore->Create(false);
+		pSemaphore = new BvSemaphoreVk(m_Device, false);
 	}
 
 	m_RenderCompleteSemaphores.Resize(m_SwapChainTextures.Size());
 	for (auto&& pSemaphore : m_RenderCompleteSemaphores)
 	{
-		pSemaphore = new BvSemaphoreVk(m_Device);
-		pSemaphore->Create(false);
+		pSemaphore = new BvSemaphoreVk(m_Device, false);
 	}
 }
 

@@ -32,31 +32,43 @@ BvCommandBufferVk::~BvCommandBufferVk()
 
 void BvCommandBufferVk::Reset()
 {
+	m_WaitStageFlags = 0;
+	m_SwapChains.Clear();
+	m_CurrentState = CurrentState::kReset;
+	m_RenderTargetTransitions.Clear();
+	m_RenderTargetSrcStageFlags = 0;
+	m_RenderTargetDstStageFlags = 0;
+
+	ClearStateData();
 }
 
 
 void BvCommandBufferVk::Begin()
 {
-	m_RenderTargetTransitions.Clear();
-	m_SwapChains.Clear();
-
 	VkCommandBufferBeginInfo cmdBI{};
 	cmdBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBI.flags = VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	// TODO: Deal with secondary command buffers
-	m_Device.GetDeviceFunctions().vkBeginCommandBuffer(m_CommandBuffer, &cmdBI);
+	vkBeginCommandBuffer(m_CommandBuffer, &cmdBI);
+
+	m_CurrentState = CurrentState::kRecording;
 }
 
 
 void BvCommandBufferVk::End()
 {
+	DecommitRenderTargets();
+
 	if (m_RenderTargetTransitions.Size() > 0)
 	{
-		m_Device.GetDeviceFunctions().vkCmdPipelineBarrier(m_CommandBuffer, m_RenderTargetSrcStageFlags, m_RenderTargetDstStageFlags,
+		vkCmdPipelineBarrier(m_CommandBuffer, m_RenderTargetSrcStageFlags, m_RenderTargetDstStageFlags,
 			VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, m_RenderTargetTransitions.Data());
+		m_RenderTargetTransitions.Clear();
 	}
 
-	m_Device.GetDeviceFunctions().vkEndCommandBuffer(m_CommandBuffer);
+	vkEndCommandBuffer(m_CommandBuffer);
+
+	m_CurrentState = CurrentState::kRecorded;
 }
 
 
@@ -66,6 +78,8 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, 
 	BvAssert(pRenderPass != nullptr, "Invalid render pass");
 	BvAssert(pRenderTargets != nullptr || pDepthStencilTarget != nullptr, "No render / depth targets");
 	
+	DecommitRenderTargets();
+
 	VkExtent2D renderArea{};
 
 	auto & renderPassDesc = pRenderPass->GetRenderTargetDesc();
@@ -152,41 +166,85 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, 
 	auto renderPass = static_cast<const BvRenderPassVk * const>(pRenderPass)->GetHandle();
 	frameBufferDesc.m_RenderPass = renderPass;
 
-	auto pFramebuffer = m_Device.GetFramebufferManager()->GetFramebuffer(m_Device, frameBufferDesc);
+	auto pFramebuffer = GetFramebufferManager()->GetFramebuffer(m_Device, frameBufferDesc);
 
-	VkRenderPassAttachmentBeginInfo attachmentBI{};
-	attachmentBI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO;
-	attachmentBI.attachmentCount = (u32)views.Size();
-	attachmentBI.pAttachments = views.Data();
-
-	VkRenderPassBeginInfo renderPassBI{};
-	renderPassBI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBI.pNext = &attachmentBI;
+	VkRenderPassBeginInfo renderPassBI{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBI.renderPass = renderPass;
 	renderPassBI.framebuffer = pFramebuffer->GetHandle();
-	//renderPassBI.renderArea.offset = { 0, 0 };
-
 	renderPassBI.renderArea.extent = renderArea;
 	renderPassBI.clearValueCount = (u32)clearValues.Size();
 	renderPassBI.pClearValues = clearValues.Data();
 
 	if (m_RenderTargetTransitions.Size() > 0)
 	{
-		m_Device.GetDeviceFunctions().vkCmdPipelineBarrier(m_CommandBuffer, m_RenderTargetSrcStageFlags, m_RenderTargetDstStageFlags,
+		vkCmdPipelineBarrier(m_CommandBuffer, m_RenderTargetSrcStageFlags, m_RenderTargetDstStageFlags,
 			VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, m_RenderTargetTransitions.Data());
+		m_RenderTargetTransitions.Clear();
 	}
 
-	m_Device.GetDeviceFunctions().vkCmdBeginRenderPass(m_CommandBuffer, &renderPassBI, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(m_CommandBuffer, &renderPassBI, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
 
-	m_IsInRenderPass = true;
+	m_CurrentState = CurrentState::kInRenderPass;
 }
 
 
 void BvCommandBufferVk::EndRenderPass()
 {
-	m_Device.GetDeviceFunctions().vkCmdEndRenderPass(m_CommandBuffer);
+	vkCmdEndRenderPass(m_CommandBuffer);
 
-	m_IsInRenderPass = false;
+	m_CurrentState = CurrentState::kRecording;
+}
+
+
+void BvCommandBufferVk::SetRenderTargets(const u32 renderTargetCount, BvTextureView* const* const pRenderTargets,
+	const ClearColorValue* const pClearColors, BvTextureView* const pDepthStencilTarget,
+	const ClearColorValue& depthClear, const ClearFlags clearFlags)
+{
+	DecommitRenderTargets();
+
+	if (!renderTargetCount && !pDepthStencilTarget)
+	{
+		return;
+	}
+
+	m_RenderTargets.Resize(renderTargetCount);
+	m_RenderTargetClearValues.Resize(renderTargetCount);
+	m_RenderTargetLoadOps.Resize(renderTargetCount);
+	for (auto i = 0; i < m_RenderTargets.Size(); i++)
+	{
+		m_RenderTargets[i] = reinterpret_cast<BvTextureViewVk*>(pRenderTargets[i]);
+		if (pClearColors)
+		{
+			m_RenderTargetClearValues[i] = *((VkClearValue*)(&pClearColors[i]));
+			m_RenderTargetLoadOps[i] = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR;
+		}
+	}
+
+	m_pDepthStencilTarget = nullptr;
+	if (pDepthStencilTarget)
+	{
+		m_pDepthStencilTarget = reinterpret_cast<BvTextureViewVk*>(pDepthStencilTarget);
+		m_DepthStencilTargetClearValue = *((VkClearValue*)(&depthClear));
+		m_DepthTargetLoadOp = (clearFlags & ClearFlags::kClearDepth) == ClearFlags::kClearDepth ?
+			VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR : VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_LOAD;
+		m_StencilTargetLoadOp = (clearFlags & ClearFlags::kClearStencil) == ClearFlags::kClearStencil ?
+			VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR : VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_LOAD;
+	}
+
+	m_RenderTargetsBindNeeded = true;
+}
+
+
+void BvCommandBufferVk::ClearRenderTargets(u32 renderTargetCount, const ClearColorValue* const pClearValues, u32 firstRenderTargetIndex)
+{
+	BvAssert(firstRenderTargetIndex < m_RenderTargets.Size(), "Render Target index out of bounds!");
+
+	auto endIndex = std::min(firstRenderTargetIndex + renderTargetCount, renderTargetCount);
+	for (auto i = 0; i < endIndex; i++)
+	{
+		m_RenderTargetClearValues[i + firstRenderTargetIndex] = *((VkClearValue*)(&pClearValues[i]));
+		m_RenderTargetLoadOps[i + firstRenderTargetIndex] = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR;
+	}
 }
 
 
@@ -194,17 +252,23 @@ void BvCommandBufferVk::SetViewports(const u32 viewportCount, const Viewport * c
 {
 	constexpr u32 kMaxViewports = 8;
 	BvAssert(viewportCount <= kMaxViewports, "Viewport count greater than limit");
-	BvFixedVector<VkViewport, kMaxViewports> viewports(viewportCount, {});
-	for (auto i = 0u; i < viewports.Size(); i++)
+	
+	m_Viewports.Resize(viewportCount);
+	for (auto i = 0; i < viewportCount; i++)
 	{
-		viewports[i] = { pViewports[i].x, pViewports[i].y, pViewports[i].width, pViewports[i].height,
-			pViewports[i].minDepth, pViewports[i].maxDepth };
-
-		// Reverse viewport
-		viewports[i].y += viewports[i].height;
-		viewports[i].height = -viewports[i].height;
+		m_Viewports[i] = *((VkViewport*)(&pViewports[i]));
 	}
-	m_Device.GetDeviceFunctions().vkCmdSetViewport(m_CommandBuffer, 0, (u32)viewports.Size(), viewports.Data());
+
+	if (m_Device.GetGPUInfo().m_FeaturesSupported.maintenance1)
+	{
+		for (auto i = 0; i < viewportCount; i++)
+		{
+			m_Viewports[i].y += m_Viewports[i].height;
+			m_Viewports[i].height = -m_Viewports[i].height;
+		}
+	}
+
+	m_ViewportsBindNeeded = true;
 }
 
 
@@ -212,118 +276,129 @@ void BvCommandBufferVk::SetScissors(const u32 scissorCount, const Rect * const p
 {
 	constexpr u32 kMaxScissors = 8;
 	BvAssert(scissorCount <= kMaxScissors, "Scissor count greater than limit");
-	BvFixedVector<VkRect2D, kMaxScissors> scissors(scissorCount, {});
-	for (auto i = 0u; i < scissors.Size(); i++)
+
+	m_Scissors.Resize(scissorCount);
+	for (auto i = 0; i < scissorCount; i++)
 	{
-		scissors[i] = { pScissors[i].x, pScissors[i].y, pScissors[i].width, pScissors[i].height };
+		m_Scissors[i] = *((VkRect2D*)(&pScissors[i]));
 	}
-	m_Device.GetDeviceFunctions().vkCmdSetScissor(m_CommandBuffer, 0, scissors.Size(), scissors.Data());
+
+	m_ScissorsBindNeeded = true;
 }
 
 
 void BvCommandBufferVk::SetPipeline(const BvGraphicsPipelineState * const pPipeline)
 {
-	m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-	m_PipelineLayout = static_cast<BvShaderResourceLayoutVk *>(pPipeline->GetDesc().m_pShaderResourceLayout)->GetPipelineLayoutHandle();
-
-	auto pipeline = static_cast<const BvGraphicsPipelineStateVk * const>(pPipeline)->GetHandle();
-	m_Device.GetDeviceFunctions().vkCmdBindPipeline(m_CommandBuffer, m_PipelineBindPoint, pipeline);
+	auto pPipelineVk = static_cast<const BvGraphicsPipelineStateVk * const>(pPipeline);
+	m_pGraphicsPSO = pPipelineVk;
+	m_GraphicsPSOBindNeeded = true;
 }
 
 
 void BvCommandBufferVk::SetPipeline(const BvComputePipelineState * const pPipeline)
 {
-	m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
-	m_PipelineLayout = static_cast<BvShaderResourceLayoutVk *>(pPipeline->GetDesc().m_pShaderResourceLayout)->GetPipelineLayoutHandle();
-
-	auto pipeline = static_cast<const BvComputePipelineStateVk * const>(pPipeline)->GetHandle();
-	m_Device.GetDeviceFunctions().vkCmdBindPipeline(m_CommandBuffer, m_PipelineBindPoint, pipeline);
+	auto pPipelineVk = static_cast<const BvComputePipelineStateVk * const>(pPipeline);
+	m_pComputePSO = pPipelineVk;
+	m_ComputePSOBindNeeded = true;
 }
 
 
 void BvCommandBufferVk::SetShaderResourceParams(const u32 setCount, BvShaderResourceParams * const * const ppSets, const u32 firstSet)
 {
-	constexpr u32 kMaxShaderResourceSets = 16;
-	BvAssert(setCount <= kMaxShaderResourceSets, "Shader resource set count greater than limit");
-
-	BvFixedVector<VkDescriptorSet, kMaxShaderResourceSets> sets(setCount);
+	m_FirstDescriptorSet = firstSet;
+	m_DescriptorSets.Resize(setCount);
 	for (auto i = 0u; i < setCount; i++)
 	{
-		sets[i] = static_cast<BvShaderResourceParamsVk *>(ppSets[i])->GetHandle();
+		auto pSetVk = static_cast<BvShaderResourceParamsVk*>(ppSets[i]);
+		m_DescriptorSets[i] = pSetVk->GetHandle();
 	}
 
-	m_Device.GetDeviceFunctions().vkCmdBindDescriptorSets(m_CommandBuffer, m_PipelineBindPoint, m_PipelineLayout, firstSet, setCount, sets.Data(), 0, nullptr);
+	m_DescriptorSetBindNeeded = true;
 }
 
 
 void BvCommandBufferVk::SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView * const * const pVertexBufferViews,
 	const u32 firstBinding)
 {
-	constexpr u32 kMaxVertexBuffers = 8;
-	BvAssert(vertexBufferCount <= kMaxVertexBuffers, "Vertex buffer count greater than limit");
-
-	BvFixedVector<VkBuffer, kMaxVertexBuffers> vertexBuffers(vertexBufferCount, {});
-	BvFixedVector<VkDeviceSize, kMaxVertexBuffers> vertexBufferOffsets(vertexBufferCount, {});
-	for (auto i = 0u; i < vertexBuffers.Size(); i++)
+	m_FirstVertexBinding = firstBinding;
+	m_VertexBuffers.Resize(vertexBufferCount);
+	m_VertexBufferOffsets.Resize(vertexBufferCount);
+	for (auto i = 0u; i < vertexBufferCount; i++)
 	{
-		vertexBuffers[i] = static_cast<const BvBufferVk * const>(pVertexBufferViews[i]->GetBuffer())->GetHandle();
-		vertexBufferOffsets[i] = pVertexBufferViews[i]->GetDesc().m_Offset;
+		m_VertexBuffers[i] = static_cast<const BvBufferVk * const>(pVertexBufferViews[i]->GetBuffer())->GetHandle();
+		m_VertexBufferOffsets[i] = pVertexBufferViews[i]->GetDesc().m_Offset;
 	}
-	m_Device.GetDeviceFunctions().vkCmdBindVertexBuffers(m_CommandBuffer, firstBinding, vertexBuffers.Size(), vertexBuffers.Data(), vertexBufferOffsets.Data());
+
+	m_VertexBuffersBindNeeded = true;
 }
 
 
 void BvCommandBufferVk::SetIndexBufferView(const BvBufferView * const pIndexBufferView, const IndexFormat indexFormat)
 {
-	auto indexBuffer = static_cast<const BvBufferVk * const>(pIndexBufferView->GetBuffer())->GetHandle();
-	auto offset = pIndexBufferView->GetDesc().m_Offset;
-	m_Device.GetDeviceFunctions().vkCmdBindIndexBuffer(m_CommandBuffer, indexBuffer, offset, GetVkIndexType(indexFormat));
+	m_pIndexBufferView = static_cast<const BvBufferViewVk* const>(pIndexBufferView);
+	m_IndexFormat = GetVkIndexType(indexFormat);
+	
+	m_IndexBufferBindNeeded = true;
 }
 
 
 void BvCommandBufferVk::Draw(const u32 vertexCount, const u32 instanceCount, const u32 firstVertex, const u32 firstInstance)
 {
+	CommitGraphicsData();
+
 	m_WaitStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	m_Device.GetDeviceFunctions().vkCmdDraw(m_CommandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+	vkCmdDraw(m_CommandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
 
 void BvCommandBufferVk::DrawIndexed(const u32 indexCount, const u32 instanceCount, const u32 firstIndex,
 	const i32 vertexOffset, const u32 firstInstance)
 {
+	CommitGraphicsData();
+
 	m_WaitStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	m_Device.GetDeviceFunctions().vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+	vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
 
 void BvCommandBufferVk::Dispatch(const u32 x, const u32 y, const u32 z)
 {
+	DecommitRenderTargets();
+	CommitComputeData();
+
 	m_WaitStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-	m_Device.GetDeviceFunctions().vkCmdDispatch(m_CommandBuffer, x, y, z);
+	vkCmdDispatch(m_CommandBuffer, x, y, z);
 }
 
 
 void BvCommandBufferVk::DrawIndirect(const BvBuffer * const pBuffer, const u32 drawCount, const u64 offset)
 {
+	CommitGraphicsData();
+
 	m_WaitStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	auto pBufferVk = static_cast<const BvBufferVk * const>(pBuffer)->GetHandle();
-	m_Device.GetDeviceFunctions().vkCmdDrawIndirect(m_CommandBuffer, pBufferVk, offset, drawCount, (u32)sizeof(VkDrawIndexedIndirectCommand));
+	vkCmdDrawIndirect(m_CommandBuffer, pBufferVk, offset, drawCount, (u32)sizeof(VkDrawIndirectCommand));
 }
 
 
 void BvCommandBufferVk::DrawIndexedIndirect(const BvBuffer * const pBuffer, const u32 drawCount, const u64 offset)
 {
+	CommitGraphicsData();
+
 	m_WaitStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	auto pBufferVk = static_cast<const BvBufferVk * const>(pBuffer)->GetHandle();
-	m_Device.GetDeviceFunctions().vkCmdDrawIndexedIndirect(m_CommandBuffer, pBufferVk, offset, drawCount, (u32)sizeof(VkDrawIndirectCommand));
+	vkCmdDrawIndexedIndirect(m_CommandBuffer, pBufferVk, offset, drawCount, (u32)sizeof(VkDrawIndexedIndirectCommand));
 }
 
 
 void BvCommandBufferVk::DispatchIndirect(const BvBuffer * const pBuffer, const u64 offset)
 {
+	DecommitRenderTargets();
+	CommitComputeData();
+
 	m_WaitStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 	auto pBufferVk = static_cast<const BvBufferVk * const>(pBuffer)->GetHandle();
-	m_Device.GetDeviceFunctions().vkCmdDispatchIndirect(m_CommandBuffer, pBufferVk, offset);
+	vkCmdDispatchIndirect(m_CommandBuffer, pBufferVk, offset);
 }
 
 
@@ -348,7 +423,7 @@ void BvCommandBufferVk::CopyBufferRegion(const BvBuffer * const pSrcBuffer, BvBu
 	region.dstOffset = copyRegion.buffer.dstOffset;
 	region.srcOffset = copyRegion.buffer.srcOffset;
 	region.size = copyRegion.buffer.srcSize;
-	m_Device.GetDeviceFunctions().vkCmdCopyBuffer(m_CommandBuffer, pSrc->GetHandle(), pDst->GetHandle(), 1, &region);
+	vkCmdCopyBuffer(m_CommandBuffer, pSrc->GetHandle(), pDst->GetHandle(), 1, &region);
 }
 
 
@@ -440,7 +515,7 @@ void BvCommandBufferVk::CopyTextureRegion(const BvTexture * const pSrcTexture, B
 	imageCopyRegion.dstSubresource.mipLevel = copyRegion.texture.dstMipLevel;
 	imageCopyRegion.dstSubresource.aspectMask = GetVkAspectMaskFlags(GetVkFormat(pDst->GetDesc().m_Format));
 
-	m_Device.GetDeviceFunctions().vkCmdCopyImage(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	vkCmdCopyImage(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		pDst->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		1u, &imageCopyRegion);
 }
@@ -498,7 +573,7 @@ void BvCommandBufferVk::CopyTextureRegion(const BvBuffer * const pSrcBuffer, BvT
 		break;
 	}
 
-	m_Device.GetDeviceFunctions().vkCmdCopyBufferToImage(m_CommandBuffer, pSrc->GetHandle(), pDst->GetHandle(),
+	vkCmdCopyBufferToImage(m_CommandBuffer, pSrc->GetHandle(), pDst->GetHandle(),
 		VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopyRegion);
 }
 
@@ -555,13 +630,15 @@ void BvCommandBufferVk::CopyTextureRegion(const BvTexture * const pSrcTexture, B
 		break;
 	}
 
-	m_Device.GetDeviceFunctions().vkCmdCopyImageToBuffer(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	vkCmdCopyImageToBuffer(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		pDst->GetHandle(), 1, &bufferImageCopyRegion);
 }
 
 
 void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBarrierDesc * const pBarriers)
 {
+	DecommitRenderTargets();
+
 	VkPipelineStageFlags srcStageFlags = 0, dstStageFlags = 0;
 	for (auto i = 0u; i < barrierCount; i++)
 	{
@@ -636,13 +713,14 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 
 			// If we're outside of a render pass and we're trying to transition to render target or depth target,
 			// then I'm assuming these are objects used in the render pass, and if so, they can be filtered out
-			// before the render pass
-			if (!m_IsInRenderPass &&
+			// before the render pass, as long as the load operation is not set to LOAD
+			if (m_CurrentState == CurrentState::kRecording &&
 				(barrier.newLayout == VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 				|| barrier.newLayout == VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 				|| barrier.newLayout == VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL))
 			{
 				m_RenderTargetTransitions.PushBack(barrier);
+				m_ImageBarriers.PopBack();
 
 				m_RenderTargetSrcStageFlags |= pBarriers[i].srcPipelineStage == PipelineStage::kAuto ?
 					GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].srcPipelineStage);
@@ -678,7 +756,7 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 	auto total = m_MemoryBarriers.Size() + m_BufferBarriers.Size() + m_ImageBarriers.Size();
 	if (total > 0)
 	{
-		m_Device.GetDeviceFunctions().vkCmdPipelineBarrier(m_CommandBuffer, srcStageFlags, dstStageFlags,
+		vkCmdPipelineBarrier(m_CommandBuffer, srcStageFlags, dstStageFlags,
 			VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT,
 			(u32)m_MemoryBarriers.Size(), m_MemoryBarriers.Size() > 0 ? m_MemoryBarriers.Data() : nullptr,
 			(u32)m_BufferBarriers.Size(), m_BufferBarriers.Size() > 0 ? m_BufferBarriers.Data() : nullptr,
@@ -688,4 +766,282 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 	m_MemoryBarriers.Clear();
 	m_BufferBarriers.Clear();
 	m_ImageBarriers.Clear();
+}
+
+
+void BvCommandBufferVk::CommitGraphicsData()
+{
+	if (m_RenderTargetsBindNeeded)
+	{
+		CommitRenderTargets();
+		m_RenderTargetsBindNeeded = false;
+	}
+
+	BvShaderResourceLayoutVk* pLayout = nullptr;
+	if (m_GraphicsPSOBindNeeded)
+	{
+		pLayout = static_cast<BvShaderResourceLayoutVk*>(m_pGraphicsPSO->GetDesc().m_pShaderResourceLayout);
+		vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGraphicsPSO->GetHandle());
+		m_GraphicsPSOBindNeeded = false;
+	}
+
+	if (m_ViewportsBindNeeded)
+	{
+		vkCmdSetViewport(m_CommandBuffer, 0, m_Viewports.Size(), m_Viewports.Data());
+		m_ViewportsBindNeeded = false;
+	}
+
+	if (m_ScissorsBindNeeded)
+	{
+		vkCmdSetScissor(m_CommandBuffer, 0, m_Scissors.Size(), m_Scissors.Data());
+		m_ScissorsBindNeeded = false;
+	}
+
+	if (m_VertexBuffersBindNeeded)
+	{
+		vkCmdBindVertexBuffers(m_CommandBuffer, m_FirstVertexBinding, m_VertexBuffers.Size(), m_VertexBuffers.Data(), m_VertexBufferOffsets.Data());
+
+		m_VertexBuffersBindNeeded = false;
+	}
+
+	if (m_IndexBufferBindNeeded)
+	{
+		auto offset = m_pIndexBufferView->GetDesc().m_Offset;
+		vkCmdBindIndexBuffer(m_CommandBuffer, static_cast<BvBufferVk*>(m_pIndexBufferView->GetBuffer())->GetHandle(), offset, m_IndexFormat);
+
+		m_IndexBufferBindNeeded = false;
+	}
+
+	if (m_DescriptorSetBindNeeded)
+	{
+		vkCmdBindDescriptorSets(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, pLayout->GetPipelineLayoutHandle(), m_FirstDescriptorSet,
+			m_DescriptorSets.Size(), m_DescriptorSets.Data(), 0, nullptr);
+		m_DescriptorSetBindNeeded = false;
+	}
+}
+
+
+void BvCommandBufferVk::CommitComputeData()
+{
+	BvShaderResourceLayoutVk* pLayout = nullptr;
+	if (m_ComputePSOBindNeeded)
+	{
+		pLayout = static_cast<BvShaderResourceLayoutVk*>(m_pComputePSO->GetDesc().m_pShaderResourceLayout);
+		vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE, m_pComputePSO->GetHandle());
+		m_ComputePSOBindNeeded = false;
+	}
+
+	if (m_DescriptorSetBindNeeded)
+	{
+		vkCmdBindDescriptorSets(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE, pLayout->GetPipelineLayoutHandle(), m_FirstDescriptorSet,
+			m_DescriptorSets.Size(), m_DescriptorSets.Data(), 0, nullptr);
+		m_DescriptorSetBindNeeded = false;
+	}
+}
+
+
+void BvCommandBufferVk::CommitRenderTargets()
+{
+	if (m_Device.GetGPUInfo().m_FeaturesSupported.dynamicRendering)
+	{
+		VkExtent2D renderArea{};
+
+		VkRenderingAttachmentInfoKHR colorAttachments[kMaxRenderTargets]{};
+		VkRenderingAttachmentInfoKHR depthAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+		VkRenderingAttachmentInfoKHR stencilAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+		u32 numIgnoredBarrierTransitions = 0;
+		u32 layerCount = 0;
+		for (u32 i = 0; i < m_RenderTargets.Size(); i++)
+		{
+			layerCount = std::max(m_RenderTargets[i]->GetDesc().m_SubresourceDesc.layerCount, layerCount);
+			decltype(auto) desc = m_RenderTargets[i]->GetTexture()->GetDesc();
+
+			if (desc.m_Size.width > renderArea.width) { renderArea.width = desc.m_Size.width; }
+			if (desc.m_Size.height > renderArea.height) { renderArea.height = desc.m_Size.height; }
+
+			colorAttachments[i].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+			colorAttachments[i].imageView = m_RenderTargets[i]->GetHandle();
+			colorAttachments[i].imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+			colorAttachments[i].loadOp = m_RenderTargetLoadOps[i];
+			colorAttachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			if (m_RenderTargetLoadOps[i] == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
+			{
+				colorAttachments[i].clearValue.color = m_RenderTargetClearValues[i].color;
+			}
+
+			// If any of the view objects happen to be a swap chain texture, we need to request
+			// a semaphore from the swap chain
+			if (m_RenderTargets[i]->GetTexture()->GetClassType() == BvTexture::ClassType::kSwapChainTexture)
+			{
+				auto pSwapChain = static_cast<BvSwapChainTextureVk*>(m_RenderTargets[i]->GetTexture())->GetSwapChain();
+				m_SwapChains.EmplaceBack(pSwapChain);
+			}
+
+			// Vulkan doesn't perform an implicit pre-transition to UNDEFINED layout if we use dynamic rendering.
+			// What we do instead is check if the target's old layout is set to present mode, and if it is, then
+			// we change it to Undefined, along with the src access mask and the src stage flags
+			for (auto j = 0; j < m_RenderTargetTransitions.Size(); j++)
+			{
+				// For Dynamic Rendering, if our previous layout happens to be a swap chain presentation,
+				// we use undefined instead
+				if (m_RenderTargetTransitions[i].oldLayout == VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+				{
+					// Presentation layout will instead become undefined
+					m_RenderTargetTransitions[i].oldLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+					// There will be no access flags
+					m_RenderTargetTransitions[i].srcAccessMask = 0;
+					// And the stage is top of pipe, not bottom
+					m_RenderTargetSrcStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+					m_RenderTargetSrcStageFlags &= ~VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+				}
+			}
+		}
+
+		bool useSameDepthStencilAttachment = m_DepthTargetLoadOp == m_StencilTargetLoadOp;
+
+		if (m_pDepthStencilTarget)
+		{
+			layerCount = std::max(m_pDepthStencilTarget->GetDesc().m_SubresourceDesc.layerCount, layerCount);
+
+			if (useSameDepthStencilAttachment)
+			{
+				depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+				depthAttachment.imageView = m_pDepthStencilTarget->GetHandle();
+				depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				depthAttachment.loadOp = m_DepthTargetLoadOp;
+				depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				if (m_DepthTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
+				{
+					depthAttachment.clearValue.depthStencil = m_DepthStencilTargetClearValue.depthStencil;
+				}
+			}
+			else
+			{
+				depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+				depthAttachment.imageView = m_pDepthStencilTarget->GetHandle();
+				depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				depthAttachment.loadOp = m_DepthTargetLoadOp;
+				depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				if (m_DepthTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
+				{
+					depthAttachment.clearValue.depthStencil = m_DepthStencilTargetClearValue.depthStencil;
+				}
+
+				stencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+				stencilAttachment.imageView = m_pDepthStencilTarget->GetHandle();
+				stencilAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				stencilAttachment.loadOp = m_StencilTargetLoadOp;
+				stencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				if (m_StencilTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
+				{
+					stencilAttachment.clearValue.depthStencil = m_DepthStencilTargetClearValue.depthStencil;
+				}
+			}
+
+			// We do the same as above, but for depth
+			for (auto i = 0; i < m_RenderTargetTransitions.Size(); i++)
+			{
+				VkImage image = static_cast<BvTextureVk*>(m_pDepthStencilTarget->GetTexture())->GetHandle();
+
+				if (m_RenderTargetTransitions[i].image == image)
+				{
+					std::swap(m_RenderTargetTransitions[i], m_RenderTargetTransitions[m_RenderTargetTransitions.Size() - 1 - numIgnoredBarrierTransitions++]);
+					break;
+				}
+			}
+		}
+
+		m_RenderTargetTransitions.Erase(m_RenderTargetTransitions.begin() + m_RenderTargetTransitions.Size() - numIgnoredBarrierTransitions,
+			m_RenderTargetTransitions.end());
+
+		VkRenderingInfoKHR renderingInfo{};
+		renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+		renderingInfo.renderArea = { 0, 0, renderArea.width, renderArea.height };
+		renderingInfo.layerCount = layerCount;
+		renderingInfo.colorAttachmentCount = m_RenderTargets.Size();
+		renderingInfo.pColorAttachments = colorAttachments;
+		if (m_pDepthStencilTarget)
+		{
+			renderingInfo.pDepthAttachment = &depthAttachment;
+			renderingInfo.pStencilAttachment = useSameDepthStencilAttachment ? &depthAttachment : &stencilAttachment;
+		}
+
+		if (m_RenderTargetTransitions.Size() > 0)
+		{
+			vkCmdPipelineBarrier(m_CommandBuffer, m_RenderTargetSrcStageFlags, m_RenderTargetDstStageFlags,
+				VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, m_RenderTargetTransitions.Data());
+			m_RenderTargetTransitions.Clear();
+		}
+
+		vkCmdBeginRenderingKHR(m_CommandBuffer, &renderingInfo);
+
+		m_CurrentState = CurrentState::kInRender;
+	}
+	else
+	{
+		RenderPassDesc rpd;
+		rpd.m_RenderTargets.Resize(m_RenderTargets.Size());
+		for (auto i = 0; i < rpd.m_RenderTargets.Size(); i++)
+		{
+			rpd.m_RenderTargets[i].m_Format = m_RenderTargets[i]->GetDesc().m_Format;
+			rpd.m_RenderTargets[i].m_SampleCount = m_pGraphicsPSO->GetDesc().m_MultisampleStateDesc.m_SampleCount;
+			rpd.m_RenderTargets[i].m_LoadOp = m_RenderTargetLoadOps[i] == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR ? LoadOp::kClear : LoadOp::kLoad;
+		}
+		if (m_pDepthStencilTarget)
+		{
+			rpd.m_HasDepth = true;
+			rpd.m_DepthStencilTarget.m_Format = m_pDepthStencilTarget->GetDesc().m_Format;
+			rpd.m_DepthStencilTarget.m_SampleCount = m_pGraphicsPSO->GetDesc().m_MultisampleStateDesc.m_SampleCount;
+			rpd.m_DepthStencilTarget.m_LoadOp = m_DepthTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR ? LoadOp::kClear : LoadOp::kLoad;
+		}
+
+		auto pRenderPass = GetRenderPassManager()->GetRenderPass(m_Device, rpd);
+		BvTextureView* rtvs[kMaxRenderTargets];
+		for (auto i = 0u; i < rpd.m_RenderTargets.Size(); i++)
+		{
+			rtvs[i] = m_RenderTargets[i];
+		}
+		BeginRenderPass(pRenderPass, rtvs, *(ClearColorValue**)(&m_RenderTargetClearValues), m_pDepthStencilTarget, *(ClearColorValue*)(&m_DepthStencilTargetClearValue));
+	}
+}
+
+
+void BvCommandBufferVk::DecommitRenderTargets()
+{
+	if (m_CurrentState == CurrentState::kInRenderPass)
+	{
+		EndRenderPass();
+	}
+	else if (m_CurrentState == CurrentState::kInRender)
+	{
+		vkCmdEndRenderingKHR(m_CommandBuffer);
+	}
+
+	m_CurrentState = BvCommandBuffer::CurrentState::kRecording;
+}
+
+
+void BvCommandBufferVk::ClearStateData()
+{
+	m_RenderTargets.Clear();
+	m_RenderTargetClearValues.Clear();
+	m_RenderTargetLoadOps.Clear();
+	m_pDepthStencilTarget = nullptr;
+	m_pGraphicsPSO = nullptr;
+	m_pComputePSO = nullptr;
+	m_Viewports.Clear();
+	m_Scissors.Clear();
+	m_VertexBuffers.Clear();
+	m_VertexBufferOffsets.Clear();
+	m_pIndexBufferView = nullptr;
+	m_DescriptorSets.Clear();
+
+	m_RenderTargetsBindNeeded = false;
+	m_GraphicsPSOBindNeeded = false;
+	m_ComputePSOBindNeeded = false;
+	m_ViewportsBindNeeded = false;
+	m_ScissorsBindNeeded = false;
+	m_VertexBuffersBindNeeded = false;
+	m_IndexBufferBindNeeded = false;
+	m_DescriptorSetBindNeeded = false;
 }

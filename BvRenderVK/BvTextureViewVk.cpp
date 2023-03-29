@@ -7,6 +7,7 @@
 BvTextureViewVk::BvTextureViewVk(const BvRenderDeviceVk & device, const TextureViewDesc & textureViewDesc)
 	: BvTextureView(textureViewDesc), m_Device(device)
 {
+	Create();
 }
 
 
@@ -41,7 +42,7 @@ bool BvTextureViewVk::Create()
 		m_TextureViewDesc.m_SubresourceDesc.layerCount
 	};
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateImageView(m_Device.GetHandle(), &imageViewCreateInfo, nullptr, &m_View);
+	auto result = vkCreateImageView(m_Device.GetHandle(), &imageViewCreateInfo, nullptr, &m_View);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -56,7 +57,7 @@ void BvTextureViewVk::Destroy()
 {
 	if (m_View)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyImageView(m_Device.GetHandle(), m_View, nullptr);
+		vkDestroyImageView(m_Device.GetHandle(), m_View, nullptr);
 		m_View = VK_NULL_HANDLE;
 	}
 }

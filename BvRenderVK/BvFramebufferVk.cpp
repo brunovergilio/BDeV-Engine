@@ -7,6 +7,7 @@
 BvFramebufferVk::BvFramebufferVk(const BvRenderDeviceVk & device, const FramebufferDesc & framebufferDesc)
 	: m_FramebufferDesc(framebufferDesc), m_Device(device)
 {
+	Create();
 }
 
 
@@ -18,50 +19,31 @@ BvFramebufferVk::~BvFramebufferVk()
 
 void BvFramebufferVk::Create()
 {
-	BvFixedVector<VkFramebufferAttachmentImageInfo, kMaxRenderTargetsWithDepth> framebufferAIIs(m_FramebufferDesc.m_RenderTargetViews.Size()
-		+ (m_FramebufferDesc.m_pDepthStencilView ? 1 : 0), {});
-	BvAssert(framebufferAIIs.Size() > 0, "No framebuffer attachments");
-	BvFixedVector<VkFormat, kMaxRenderTargetsWithDepth> formats(framebufferAIIs.Size(), {});
-
-	u32 i = 0;
-	for (; i < framebufferAIIs.Size(); i++)
+	BvFixedVector<VkImageView, kMaxRenderTargetsWithDepth> imageViews(m_FramebufferDesc.m_RenderTargetViews.Size()
+		+ (m_FramebufferDesc.m_pDepthStencilView ? 1 : 0));
+	auto i = 0u;
+	for (; i < m_FramebufferDesc.m_RenderTargetViews.Size(); i++)
 	{
-		decltype(auto) viewDesc = i < m_FramebufferDesc.m_RenderTargetViews.Size() ?
-			m_FramebufferDesc.m_RenderTargetViews[i]->GetDesc() : m_FramebufferDesc.m_pDepthStencilView->GetDesc();
-		decltype(auto) textureDesc = viewDesc.m_pTexture->GetDesc();
-		VkImageCreateFlags flags = 0;
-		if (textureDesc.m_UseAsCubeMap)
-		{
-			flags |= VkImageCreateFlagBits::VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-		}
-		formats[i] = GetVkFormat(textureDesc.m_Format);
-
-		framebufferAIIs[i].sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO;
-		framebufferAIIs[i].flags = flags;
-		framebufferAIIs[i].usage = GetVkImageUsageFlags(textureDesc.m_UsageFlags);
-		framebufferAIIs[i].width = textureDesc.m_Size.width;
-		framebufferAIIs[i].height = textureDesc.m_Size.height;
-		framebufferAIIs[i].layerCount = viewDesc.m_SubresourceDesc.layerCount;
-		framebufferAIIs[i].viewFormatCount = 1;
-		framebufferAIIs[i].pViewFormats = formats.Data();
+		imageViews[i] = m_FramebufferDesc.m_RenderTargetViews[i]->GetHandle();
+	}
+	if (m_FramebufferDesc.m_pDepthStencilView)
+	{
+		imageViews[i] = m_FramebufferDesc.m_pDepthStencilView->GetHandle();
 	}
 
-	VkFramebufferAttachmentsCreateInfo framebufferACI{};
-	framebufferACI.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO;
-	framebufferACI.attachmentImageInfoCount = (u32)framebufferAIIs.Size();
-	framebufferACI.pAttachmentImageInfos = framebufferAIIs.Data();
+	decltype(auto) viewDesc = m_FramebufferDesc.m_RenderTargetViews.Size() > 0 ?
+		m_FramebufferDesc.m_RenderTargetViews[0]->GetDesc() : m_FramebufferDesc.m_pDepthStencilView->GetDesc();
+	decltype(auto) textureDesc = viewDesc.m_pTexture->GetDesc();
 
-	VkFramebufferCreateInfo framebufferCI{};
-	framebufferCI.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	framebufferCI.pNext = &framebufferACI;
-	framebufferCI.flags = VkFramebufferCreateFlagBits::VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
-	framebufferCI.width = framebufferAIIs[0].width;
-	framebufferCI.height = framebufferAIIs[0].height;
-	framebufferCI.layers = framebufferAIIs[0].layerCount;
+	VkFramebufferCreateInfo framebufferCI{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+	framebufferCI.width = textureDesc.m_Size.width;
+	framebufferCI.height = textureDesc.m_Size.height;
+	framebufferCI.layers = textureDesc.m_Size.depthOrLayerCount;
 	framebufferCI.renderPass = m_FramebufferDesc.m_RenderPass;
-	framebufferCI.attachmentCount = (u32)framebufferAIIs.Size();
+	framebufferCI.attachmentCount = (u32)imageViews.Size();
+	framebufferCI.pAttachments = imageViews.Data();
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateFramebuffer(m_Device.GetHandle(), &framebufferCI, nullptr, &m_Framebuffer);
+	auto result = vkCreateFramebuffer(m_Device.GetHandle(), &framebufferCI, nullptr, &m_Framebuffer);
 }
 
 
@@ -69,54 +51,46 @@ void BvFramebufferVk::Destroy()
 {
 	if (m_Framebuffer != VK_NULL_HANDLE)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyFramebuffer(m_Device.GetHandle(), m_Framebuffer, nullptr);
+		vkDestroyFramebuffer(m_Device.GetHandle(), m_Framebuffer, nullptr);
 		m_Framebuffer = VK_NULL_HANDLE;
 	}
 }
 
 
-BvFramebufferManager::BvFramebufferManager()
+BvFramebufferManagerVk::BvFramebufferManagerVk()
 {
 }
 
 
-BvFramebufferManager::~BvFramebufferManager()
+BvFramebufferManagerVk::~BvFramebufferManagerVk()
 {
-	for (auto&& pFramebuffer : m_Framebuffers)
-	{
-		delete pFramebuffer.second;
-	}
+	Destroy();
 }
 
 
-BvFramebufferVk * BvFramebufferManager::GetFramebuffer(const BvRenderDeviceVk & device, const FramebufferDesc & desc)
+BvFramebufferVk * BvFramebufferManagerVk::GetFramebuffer(const BvRenderDeviceVk & device, const FramebufferDesc & desc)
 {
-	auto hash = std::hash<FramebufferDesc>()(desc);
-
 	BvScopedLock lock(m_Lock);
-	BvFramebufferVk * pFramebuffer = m_Framebuffers[hash];
+	decltype(auto) pFramebuffer = m_Framebuffers[desc];
 
 	if (pFramebuffer == nullptr)
 	{
 		pFramebuffer = new BvFramebufferVk(device, desc);
-		pFramebuffer->Create();
-
-		m_Framebuffers[hash] = pFramebuffer;
 	}
 
 	return pFramebuffer;
 }
 
 
-void BvFramebufferManager::RemoveFramebuffer(const BvTextureViewVk * const pTextureView)
+void BvFramebufferManagerVk::RemoveFramebuffer(const BvTextureViewVk * const pTextureView)
 {
 	BvScopedLock lock(m_Lock);
-	for (auto && pFramebuffer : m_Framebuffers)
+	for (const auto& pFramebuffer : m_Framebuffers)
 	{
 		decltype(auto) desc = pFramebuffer.second->GetDesc();
-		for (auto && pRTV : desc.m_RenderTargetViews)
+		for (auto pView : desc.m_RenderTargetViews)
 		{
-			if (pRTV == pTextureView)
+			if (pView == pTextureView)
 			{
 				m_Framebuffers.Erase(pFramebuffer.first);
 				return;
@@ -129,4 +103,20 @@ void BvFramebufferManager::RemoveFramebuffer(const BvTextureViewVk * const pText
 			return;
 		}
 	}
+}
+
+
+void BvFramebufferManagerVk::Destroy()
+{
+	for (auto&& pFramebuffer : m_Framebuffers)
+	{
+		delete pFramebuffer.second;
+	}
+}
+
+
+BvFramebufferManagerVk* GetFramebufferManager()
+{
+	static BvFramebufferManagerVk instance;
+	return &instance;
 }

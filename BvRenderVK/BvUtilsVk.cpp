@@ -1,6 +1,6 @@
 #include "BvRenderVK/BvUtilsVk.h"
-#include "BvCore/Container/BvRobinMap.h"
-#include "BvCore/Container/BvString.h"
+#include "BDeV/Container/BvRobinMap.h"
+#include "BDeV/Container/BvString.h"
 
 
 const char * const VkResultToString(const VkResult result)

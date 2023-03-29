@@ -2,7 +2,7 @@
 
 
 #include "BvCommonVk.h"
-#include "BvRender/BvShaderResource.h"
+#include "BDeV/Render/BvShaderResource.h"
 
 
 class BvRenderDeviceVk;
@@ -19,8 +19,8 @@ public:
 	void Destroy();
 
 	void AllocateSets(u32 count, BvShaderResourceParams ** ppSets,
-		const BvShaderResourceLayout * const pLayout, u32 set = 0) override final;
-	void FreeSets(u32 count, BvShaderResourceParams ** ppSets) override final;
+		const BvShaderResourceLayout * const pLayout, u32 set = 0) override;
+	void FreeSets(u32 count, BvShaderResourceParams ** ppSets) override;
 
 	BV_INLINE VkDescriptorPool GetHandle() const { return m_DescriptorPool; }
 

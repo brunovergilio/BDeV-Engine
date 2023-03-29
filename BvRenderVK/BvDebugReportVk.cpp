@@ -5,6 +5,7 @@
 BvDebugReportVk::BvDebugReportVk(const VkInstance instance)
 	: m_Instance(instance)
 {
+	Create();
 }
 
 
@@ -28,7 +29,7 @@ void BvDebugReportVk::Create()
 	debugInfo.pfnUserCallback = DebugUtilsMessengerCallbackEXT;
 	//debugInfo.pUserData = nullptr;
 
-	auto result = VulkanFunctions::vkCreateDebugUtilsMessengerEXT(m_Instance, &debugInfo, nullptr, &m_DebugReport);
+	auto result = vkCreateDebugUtilsMessengerEXT(m_Instance, &debugInfo, nullptr, &m_DebugReport);
 }
 
 
@@ -36,7 +37,7 @@ void BvDebugReportVk::Destroy()
 {
 	if (m_DebugReport)
 	{
-		VulkanFunctions::vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugReport, nullptr);
+		vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugReport, nullptr);
 		m_DebugReport = VK_NULL_HANDLE;
 	}
 }
@@ -119,7 +120,7 @@ VkBool32 VKAPI_PTR BvDebugReportVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsM
 	DPrintF("%s\n", message);
 	if (triggerAbort)
 	{
-		abort();
+		BV_ERROR(message);
 	}
 
 	return VK_FALSE;

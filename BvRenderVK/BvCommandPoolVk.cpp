@@ -10,6 +10,7 @@ constexpr u32 kMmaxCommandBuffersPerAllocation = 16;
 BvCommandPoolVk::BvCommandPoolVk(const BvRenderDeviceVk & device, const CommandPoolDesc & commandPoolDesc)
 	: BvCommandPool(commandPoolDesc), m_Device(device)
 {
+	Create();
 }
 
 
@@ -41,7 +42,7 @@ void BvCommandPoolVk::Create()
 	commandPoolCI.flags = GetVkCommandPoolCreateFlags(m_CommandPoolDesc.m_Flags);
 	commandPoolCI.queueFamilyIndex = queueFamilyIndex;
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateCommandPool(m_Device.GetHandle(), &commandPoolCI, nullptr, &m_CommandPool);
+	auto result = vkCreateCommandPool(m_Device.GetHandle(), &commandPoolCI, nullptr, &m_CommandPool);
 }
 
 
@@ -58,7 +59,7 @@ void BvCommandPoolVk::Destroy()
 
 	if (m_CommandPool)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyCommandPool(m_Device.GetHandle(), m_CommandPool, nullptr);
+		vkDestroyCommandPool(m_Device.GetHandle(), m_CommandPool, nullptr);
 		m_CommandPool = VK_NULL_HANDLE;
 	}
 }
@@ -101,7 +102,7 @@ void BvCommandPoolVk::AllocateCommandBuffers(u32 commandBufferCount, BvCommandBu
 	allocateInfo.commandPool = m_CommandPool;
 	allocateInfo.level = GetVkCommandBufferLevel(m_CommandPoolDesc.m_CommandType);
 
-	auto result = m_Device.GetDeviceFunctions().vkAllocateCommandBuffers(m_Device.GetHandle(), &allocateInfo, commandBuffers);
+	auto result = vkAllocateCommandBuffers(m_Device.GetHandle(), &allocateInfo, commandBuffers);
 	for (u32 j = 0; j < allocateInfo.commandBufferCount; j++)
 	{
 		auto pCommandBuffer = new BvCommandBufferVk(m_Device, this, commandBuffers[j]);
@@ -162,12 +163,12 @@ void BvCommandPoolVk::FreeCommandBuffers(const u32 commandBufferCount, BvCommand
 			}
 		}
 
-		m_Device.GetDeviceFunctions().vkFreeCommandBuffers(m_Device.GetHandle(), m_CommandPool, count, commandBuffers);
+		vkFreeCommandBuffers(m_Device.GetHandle(), m_CommandPool, count, commandBuffers);
 	}
 }
 
 
 void BvCommandPoolVk::Reset()
 {
-	m_Device.GetDeviceFunctions().vkResetCommandPool(m_Device.GetHandle(), m_CommandPool, 0);
+	vkResetCommandPool(m_Device.GetHandle(), m_CommandPool, 0);
 }

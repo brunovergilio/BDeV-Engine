@@ -1,9 +1,9 @@
 #pragma once
 
 
-#include "BvCore/Utils/BvDebug.h"
+#include "BDeV/System/Debug/BvDebug.h"
 #include "BvRenderVK/BvCommonVk.h"
-#include "BvRender/BvCommon.h"
+#include "BDeV/Render/BvCommon.h"
 
 
 #define BvDebugVkResult(result) DPrintF("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)

@@ -1,8 +1,9 @@
 #pragma once
 
 
-#include "BvRender/BvTexture.h"
+#include "BDeV/Render/BvTexture.h"
 #include "BvCommonVk.h"
+#include <vma/vk_mem_alloc.h>
 
 
 class BvRenderDeviceVk;
@@ -17,16 +18,16 @@ public:
 	BvTextureVk(const BvRenderDeviceVk & device, const TextureDesc & textureDesc);
 	~BvTextureVk();
 
-	bool Create();
+	void Create();
 	void Destroy();
 
 	BV_INLINE VkImage GetHandle() const { return m_Image; }
-	BV_INLINE ClassType GetClassType() const override final { return ClassType::kTexture; }
+	BV_INLINE ClassType GetClassType() const override { return ClassType::kTexture; }
 
 protected:
 	const BvRenderDeviceVk & m_Device;
 	VkImage m_Image = VK_NULL_HANDLE;
-	VkDeviceMemory m_Memory = VK_NULL_HANDLE;
+	VmaAllocation m_VMAAllocation = nullptr;
 };
 
 
@@ -40,7 +41,7 @@ public:
 
 	BV_INLINE BvSwapChainVk * GetSwapChain() const { return m_pSwapChain; }
 	BV_INLINE VkImage GetHandle() const { return m_Image; }
-	BV_INLINE ClassType GetClassType() const override final { return ClassType::kSwapChainTexture; }
+	BV_INLINE ClassType GetClassType() const override { return ClassType::kSwapChainTexture; }
 
 private:
 	BvSwapChainVk * m_pSwapChain = nullptr;

@@ -1,9 +1,10 @@
 #include "BvCommandQueueVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvCommandBufferVk.h"
-#include "BvFenceVk.h"
 #include "BvSemaphoreVk.h"
 #include "BvSwapChainVk.h"
+#include "BvFenceVk.h"
+#include "BDeV/System/Debug/BvDebug.h"
 
 
 BvCommandQueueVk::BvCommandQueueVk(const BvRenderDeviceVk & device, const QueueFamilyType queueFamilyType, const u32 queueIndex)
@@ -22,7 +23,7 @@ BvCommandQueueVk::BvCommandQueueVk(const BvRenderDeviceVk & device, const QueueF
 		break;
 	}
 
-	m_Device.GetDeviceFunctions().vkGetDeviceQueue(device.GetHandle(), m_QueueFamilyIndex, queueIndex, &m_Queue);
+	vkGetDeviceQueue(device.GetHandle(), m_QueueFamilyIndex, queueIndex, &m_Queue);
 }
 
 
@@ -38,18 +39,52 @@ void BvCommandQueueVk::Submit(const SubmitInfo& submitInfo)
 	m_pSubmitInfo->m_TimelineSemaphoreInfos.PushBack({});
 	auto& timelineSI = m_pSubmitInfo->m_TimelineSemaphoreInfos.Back();
 	timelineSI.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-	
+
+	bool timelineSemaphoreSupported = m_Device.GetGPUInfo().m_FeaturesSupported.timelineSemaphore;
+
 	timelineSI.waitSemaphoreValueCount = (u32)submitInfo.waitSemaphoreCount;
 	for (auto i = 0u; i < submitInfo.waitSemaphoreCount; i++)
 	{
-		m_pSubmitInfo->m_WaitSemaphores.EmplaceBack(static_cast<BvSemaphoreVk*>(submitInfo.ppWaitSemaphores[i])->GetHandle());
+		auto pSemVk = static_cast<BvSemaphoreVk*>(submitInfo.ppWaitSemaphores[i]);
+		m_pSubmitInfo->m_WaitSemaphores.EmplaceBack(pSemVk->GetHandle());
 		m_pSubmitInfo->m_WaitSemaphoreValues.EmplaceBack(submitInfo.pWaitValues[i]);
+		if (!timelineSemaphoreSupported)
+		{
+			auto activeSemIndex = m_ActiveSemaphores.Find(pSemVk->GetHandle());
+			if (activeSemIndex != kU64Max)
+			{
+				m_ActiveSemaphores.Erase(activeSemIndex);
+			}
+		}
 	}
-	
+
+	BvFenceVk* pFence = nullptr;
+	if (!timelineSemaphoreSupported && submitInfo.signalSemaphoreCount > 0)
+	{
+		pFence = GetFenceManager()->GetFence(m_Device);
+		pFence->IncrementUsageCount((i32)submitInfo.signalSemaphoreCount);
+		m_pSubmitInfo->m_pFence = pFence;
+	}
 	timelineSI.signalSemaphoreValueCount = (u32)submitInfo.signalSemaphoreCount;
 	for (auto i = 0u; i < submitInfo.signalSemaphoreCount; i++)
 	{
-		m_pSubmitInfo->m_SignalSemaphores.PushBack(static_cast<BvSemaphoreVk*>(submitInfo.ppSignalSemaphores[i])->GetHandle());
+		auto pSemVk = static_cast<BvSemaphoreVk*>(submitInfo.ppSignalSemaphores[i]);
+		if (!timelineSemaphoreSupported)
+		{
+			pSemVk->AddSyncPoint(pFence, submitInfo.pSignalValues[i], m_QueueFamilyIndex, m_QueueIndex);
+			auto activeSemIndex = m_ActiveSemaphores.Find(pSemVk->GetHandle());
+			if (activeSemIndex != kU64Max)
+			{
+				m_pSubmitInfo->m_WaitSemaphores.EmplaceBack(m_ActiveSemaphores[activeSemIndex]);
+				m_pSubmitInfo->m_WaitSemaphoreValues.EmplaceBack(0);
+				timelineSI.waitSemaphoreValueCount++;
+			}
+			else
+			{
+				m_ActiveSemaphores.EmplaceBack(pSemVk->GetHandle());
+			}
+		}
+		m_pSubmitInfo->m_SignalSemaphores.PushBack(pSemVk->GetHandle());
 		m_pSubmitInfo->m_SignalSemaphoreValues.EmplaceBack(submitInfo.pSignalValues[i]);
 	}
 
@@ -95,19 +130,23 @@ void BvCommandQueueVk::Execute()
 	u32 commandBufferIndex = 0;
 	u32 waitSemaphoreIndex = 0;
 	u32 signalSemaphoreIndex = 0;
+	bool timelineSemaphoreSupported = m_Device.GetGPUInfo().m_FeaturesSupported.timelineSemaphore;
 	for (auto i = 0u; i < m_pSubmitInfo->m_SubmitInfos.Size(); i++)
 	{
-		if (m_pSubmitInfo->m_TimelineSemaphoreInfos[i].waitSemaphoreValueCount > 0)
+		if (timelineSemaphoreSupported)
 		{
-			m_pSubmitInfo->m_TimelineSemaphoreInfos[i].pWaitSemaphoreValues = m_pSubmitInfo->m_WaitSemaphoreValues.Data() + waitSemaphoreIndex;
-		}
+			if (m_pSubmitInfo->m_TimelineSemaphoreInfos[i].waitSemaphoreValueCount > 0)
+			{
+				m_pSubmitInfo->m_TimelineSemaphoreInfos[i].pWaitSemaphoreValues = m_pSubmitInfo->m_WaitSemaphoreValues.Data() + waitSemaphoreIndex;
+			}
 
-		if (m_pSubmitInfo->m_TimelineSemaphoreInfos[i].signalSemaphoreValueCount > 0)
-		{
-			m_pSubmitInfo->m_TimelineSemaphoreInfos[i].pSignalSemaphoreValues = m_pSubmitInfo->m_SignalSemaphoreValues.Data() + signalSemaphoreIndex;
+			if (m_pSubmitInfo->m_TimelineSemaphoreInfos[i].signalSemaphoreValueCount > 0)
+			{
+				m_pSubmitInfo->m_TimelineSemaphoreInfos[i].pSignalSemaphoreValues = m_pSubmitInfo->m_SignalSemaphoreValues.Data() + signalSemaphoreIndex;
+			}
 		}
+		m_pSubmitInfo->m_SubmitInfos[i].pNext = timelineSemaphoreSupported ? &m_pSubmitInfo->m_TimelineSemaphoreInfos[i] : nullptr;
 
-		m_pSubmitInfo->m_SubmitInfos[i].pNext = &m_pSubmitInfo->m_TimelineSemaphoreInfos[i];
 		if (m_pSubmitInfo->m_SubmitInfos[i].commandBufferCount > 0)
 		{
 			m_pSubmitInfo->m_SubmitInfos[i].pCommandBuffers = m_pSubmitInfo->m_CommandBuffers.Data() + commandBufferIndex;
@@ -129,9 +168,9 @@ void BvCommandQueueVk::Execute()
 		signalSemaphoreIndex += m_pSubmitInfo->m_SubmitInfos[i].signalSemaphoreCount;
 	}
 
-	auto result = m_Device.GetDeviceFunctions().vkQueueSubmit(m_Queue,
-		(u32)m_pSubmitInfo->m_SubmitInfos.Size(), m_pSubmitInfo->m_SubmitInfos.Data(), VK_NULL_HANDLE);
-	
+	auto result = vkQueueSubmit(m_Queue,
+		(u32)m_pSubmitInfo->m_SubmitInfos.Size(), m_pSubmitInfo->m_SubmitInfos.Data(), m_pSubmitInfo->m_pFence ? m_pSubmitInfo->m_pFence->GetHandle() : nullptr);
+
 	m_pSubmitInfo->m_SubmitInfos.Clear();
 	m_pSubmitInfo->m_TimelineSemaphoreInfos.Clear();
 	m_pSubmitInfo->m_CommandBuffers.Clear();
@@ -140,10 +179,11 @@ void BvCommandQueueVk::Execute()
 	m_pSubmitInfo->m_WaitStageFlags.Clear();
 	m_pSubmitInfo->m_SignalSemaphores.Clear();
 	m_pSubmitInfo->m_SignalSemaphoreValues.Clear();
+	m_pSubmitInfo->m_pFence = nullptr;
 }
 
 
 void BvCommandQueueVk::WaitIdle()
 {
-	auto result = m_Device.GetDeviceFunctions().vkQueueWaitIdle(m_Queue);
+	auto result = vkQueueWaitIdle(m_Queue);
 }

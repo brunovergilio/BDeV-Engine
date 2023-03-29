@@ -1,20 +1,78 @@
-#include "BvCore/Container/BvFixedVector.h"
-#include "BvCore/Container/BvVector.h"
-#include "BvCore/Container/BvRobinMap.h"
-#include "BvCore/System/File/BvAsyncFile.h"
-#include "BvCore/System/File/BvFileSystem.h"
-#include "BvCore/Utils/BvUtils.h"
-#include "BvCore/System/JobSystem/BvJobSystem.h"
+#include "BDeV/Container/BvFixedVector.h"
+#include "BDeV/Container/BvVector.h"
+#include "BDeV/Container/BvRobinMap.h"
+#include "BDeV/System/File/BvAsyncFile.h"
+#include "BDeV/System/File/BvFileSystem.h"
+#include "BDeV/Utils/BvUtils.h"
+#include "BDeV/Engine/TBJobSystem/BvTBJobSystem.h"
 #include <functional>
-#include "BvCore/System/Memory/BvMemory.h"
-#include "BvCore/Utils/Hash.h"
-#include "BvCore/BvCore.h"
+#include "BDeV/System/Memory/BvMemory.h"
+#include "BDeV/Utils/Hash.h"
+#include "BDeV/BvCore.h"
+#include "BDeV/Reflection/BvObjectInfo.h"
+#include <Windows.h>
+#include "BDeV/System/File/BvPath.h"
+#include "BDeV/System/Window/BvMonitor.h"
+#include "BDeV/Reflection/RTTI.h"
+#include "BDeV/System/Debug/BvDebug.h"
 
 
 char stack[1024];
 char stack2[1024];
 char stack3[1024];
 char stack4[100];
+
+
+struct WE
+{
+	int f();
+	int ff() {}
+	int a = int(0);
+	int (*A)();
+};
+
+
+BV_RSTRUCT() struct TestStruct
+{
+	BV_RMETHOD() TestStruct() {}
+	BV_RMETHOD() void afsgg(int sedf, char b = '\\');
+	BV_RMETHOD() void abc(int sedf);
+	BV_RMETHOD() virtual float ff() {}
+	BV_RMETHOD() int cc()
+	{
+		return 0;
+	}
+	BV_RMETHOD() int (*pfn(int, int))() { return nullptr; }
+
+	BV_RVAR() int a = 0;
+	BV_RVAR() int *b = nullptr;
+	BV_RVAR() int (*c);
+	BV_RVAR() int (*d)(int);
+	BV_RVAR() int* (*e)(int);
+	BV_RVAR() int (f) = 0;
+	BV_RVAR() int g[2];
+	BV_RVAR() int (h[2]);
+	BV_RVAR() int i[2][3];
+};
+
+
+BV_RSTRUCT() class TestStruct2 : public TestStruct
+{
+	int d()
+	{
+		return 0;
+	}
+	int e;
+	int f;
+};
+
+
+BV_RENUM() enum abc
+{
+	kConst1,
+	kConst2
+};
+
 
 struct bcd
 {
@@ -24,39 +82,52 @@ void bcdf1(bcd& b) { b.p1 = BV_FUNCTION; }
 void bcdf2(bcd& b) { b.p1 = BV_FUNCTION; }
 
 
+struct A
+{
+	A() {}
+	A(const A& a) : b(a.b) {} /*
+							  test comm */
+	BvRobinMap<int, int> b;
+};
+
+
 int main()
 {
-	BvPath paths[3];
-	paths[0] = BvPath::FromCurrentDirectory();
-	auto list = paths[0].GetFileList(L"*.*");
-	paths[1] = BvPath(LR"(C:\Programming\C++\Graphics\Vulkan\Vulkan.sln)");
-	paths[2] = BvPath(LR"(main.cpp)");
+	//const BvVector<BvMonitor*>& monitors = GetMonitors();
+	PrintF(ConsoleColor::kLightGreen, "Test\n");
+	//auto pMonitor = GetMonitorFromPoint(-10, 30);
 
-	for (auto&& path : paths)
-	{
-		auto name = path.GetName();
-		auto ext = path.GetExt();
-		auto nameAndExt = path.GetNameAndExt();
-		auto root = path.GetRoot();
-		auto relativeRoot = path.GetRelativeName();
-		auto relative = path.GetRelativeName(LR"(C:\Programming)");
-		auto relative2 = path.GetRelativeName(LR"(C:\Programming\Git\BDeV-Engine\TestProjects\CoreTests\CoreTests.vcxproj)");
-		auto absolute = path.GetAbsoluteName();
-		printf("Name: %ls\n", name.CStr());
-		printf("Ext: %ls\n", ext.CStr());
-		printf("NameAndExt: %ls\n", nameAndExt.CStr());
-		printf("Relative Path (With Root): %ls\n", relativeRoot.CStr());
-		printf("Relative Path (With C:\\Programming): %ls\n", relative.CStr());
-		printf("Relative Path2 : %ls\n", relative2.CStr());
-		printf("Absolute Path: %ls\n", absolute.CStr());
-		printf("Root: %ls\n", root.CStr());
+	//BvPath paths[3];
+	//paths[0] = BvPath::FromCurrentDirectory();
+	//auto list = paths[0].GetFileList(L"*");
+	//paths[1] = BvPath(LR"(C:\Programming\C++\Graphics\Vulkan\Vulkan.sln)");
+	//paths[2] = BvPath(LR"(main.cpp)");
 
-		printf("\n");
-	}
+	//for (auto&& path : paths)
+	//{
+	//	auto name = path.GetName();
+	//	auto ext = path.GetExt();
+	//	auto nameAndExt = path.GetNameAndExt();
+	//	auto root = path.GetRoot();
+	//	auto relativeRoot = path.GetRelativeName();
+	//	auto relative = path.GetRelativeName(LR"(C:\Programming)");
+	//	auto relative2 = path.GetRelativeName(LR"(C:\Programming\Git\BDeV-Engine\TestProjects\CoreTests\CoreTests.vcxproj)");
+	//	auto absolute = path.GetAbsoluteName();
+	//	printf("Name: %ls\n", name.CStr());
+	//	printf("Ext: %ls\n", ext.CStr());
+	//	printf("NameAndExt: %ls\n", nameAndExt.CStr());
+	//	printf("Relative Path (With Root): %ls\n", relativeRoot.CStr());
+	//	printf("Relative Path (With C:\\Programming): %ls\n", relative.CStr());
+	//	printf("Relative Path2 : %ls\n", relative2.CStr());
+	//	printf("Absolute Path: %ls\n", absolute.CStr());
+	//	printf("Root: %ls\n", root.CStr());
 
-	//BvFileSystem::DeleteDirectory(LR"(C:\Programming\C++\MiscTests\x64)");
+	//	printf("\n");
+	//}
 
-	return 0;
+	////BvFileSystem::DeleteDirectory(LR"(C:\Programming\C++\MiscTests\x64)");
+
+	//return 0;
 
 
 
@@ -69,11 +140,15 @@ int main()
 	//BvStackTrace st;
 	//GetStackTrace(st);
 	//for (auto&& f : st.frames) { printf("0x%llX: %s(%u) in %s(%s)\n", f.m_Address, f.m_Function.CStr(), f.m_Line, f.m_Module.CStr(), f.m_File.CStr()); }
-	//BvHeapAllocator alloc(stack, stack + 1024);
 
-	//auto p1 = alloc.Allocate(100, 32); printf("Size: %llu\n", alloc.GetAllocationSize(p1));//alloc.Debug();
-	//auto p2 = alloc.Allocate(200, 16); printf("Size: %llu\n", alloc.GetAllocationSize(p2));//alloc.Debug();
-	//auto p3 = alloc.Allocate(300, 64); printf("Size: %llu\n", alloc.GetAllocationSize(p3));//alloc.Debug();
+	void* p1 = nullptr;
+	void* p2 = nullptr;
+	void* p3 = nullptr;
+
+	//BvHeapAllocator alloc(stack, stack + 1024);
+	//p1 = alloc.Allocate(100, 32); printf("Size: %llu\n", alloc.GetAllocationSize(p1));//alloc.Debug();
+	//p2 = alloc.Allocate(200, 16); printf("Size: %llu\n", alloc.GetAllocationSize(p2));//alloc.Debug();
+	//p3 = alloc.Allocate(300, 64); printf("Size: %llu\n", alloc.GetAllocationSize(p3));//alloc.Debug();
 	//alloc.Debug();
 	////auto p4 = alloc.Allocate(400, 16);
 	////alloc.Debug();
@@ -94,12 +169,12 @@ int main()
 	//salloc.Free(p2);
 	//salloc.Free(p1);
 
-	//BvLinearAllocator lalloc(stack2, stack2 + 1024);
-	//p1 = lalloc.Allocate(100, 32);
-	//p2 = lalloc.Allocate(200, 16);
-	//p3 = lalloc.Allocate(300, 64);
+	BvLinearAllocator lalloc(stack2, stack2 + 1024);
+	p1 = lalloc.Allocate(100, 32);
+	p2 = lalloc.Allocate(200, 16);
+	p3 = lalloc.Allocate(300, 64);
 
-	//lalloc.Debug();
+	lalloc.Debug();
 
 	//void* p4 = nullptr;
 	//BvPoolAllocator palloc(stack3, stack3 + 100, 32, 32);
@@ -112,6 +187,9 @@ int main()
 	//palloc.Free(p1);
 	//palloc.Free(p2);
 	//palloc.Debug();
+
+	//p1 = BvMAlloc(1024, 32, 4);
+	//BvFree(p1);
 
 	//JobTests();
 	//RobinMapTests();

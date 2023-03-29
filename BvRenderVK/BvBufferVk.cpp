@@ -2,11 +2,13 @@
 #include "BvRenderVk/BvRenderDeviceVk.h"
 #include "BvUtilsVk.h"
 #include "BvTypeConversionsVk.h"
+#include <vma/vk_mem_alloc.h>
 
 
 BvBufferVk::BvBufferVk(const BvRenderDeviceVk & device, const BufferDesc & bufferDesc)
 	: BvBuffer(bufferDesc), m_Device(device)
 {
+	Create();
 }
 
 
@@ -28,36 +30,34 @@ void BvBufferVk::Create()
 	//bufferCreateInfo.queueFamilyIndexCount = 0;
 	//bufferCreateInfo.pQueueFamilyIndices = nullptr;
 
-
 	auto device = m_Device.GetHandle();
-	auto result = m_Device.GetDeviceFunctions().vkCreateBuffer(device, &bufferCreateInfo, nullptr, &m_Buffer);
+	auto result = vkCreateBuffer(device, &bufferCreateInfo, nullptr, &m_Buffer);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
 	}
 
-	VkMemoryRequirements reqs{};
-	m_Device.GetDeviceFunctions().vkGetBufferMemoryRequirements(device, m_Buffer, &reqs);
+	auto vma = m_Device.GetAllocator();
+	VmaAllocationCreateInfo vmaACI = {};
+	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_BufferDesc.m_MemoryFlags);
 
-	VkMemoryAllocateInfo allocateInfo{};
-	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocateInfo.allocationSize = reqs.size;
-	allocateInfo.memoryTypeIndex = m_Device.GetMemoryTypeIndex(reqs.memoryTypeBits, GetVkMemoryPropertyFlags(m_BufferDesc.m_MemoryFlags));
-
-	result = m_Device.GetDeviceFunctions().vkAllocateMemory(device, &allocateInfo, nullptr, &m_Memory);
+	VmaAllocationInfo vmaAI;
+	VmaAllocation vmaA;
+	result = vmaAllocateMemoryForBuffer(vma, m_Buffer, &vmaACI, &vmaA, &vmaAI);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
-		m_Device.GetDeviceFunctions().vkDestroyBuffer(device, m_Buffer, nullptr);
+		vkDestroyBuffer(device, m_Buffer, nullptr);
+		return;
 	}
 
-	result = m_Device.GetDeviceFunctions().vkBindBufferMemory(device, m_Buffer, m_Memory, 0);
+	result = vkBindBufferMemory(device, m_Buffer, vmaAI.deviceMemory, vmaAI.offset);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
-		m_Device.GetDeviceFunctions().vkDestroyBuffer(device, m_Buffer, nullptr);
-		m_Device.GetDeviceFunctions().vkFreeMemory(device, m_Memory, nullptr);
+		vmaFreeMemory(vma, m_VMAAllocation);
 	}
+	m_VMAAllocation = vmaA;
 }
 
 
@@ -66,18 +66,16 @@ void BvBufferVk::Destroy()
 	auto device = m_Device.GetHandle();
 	if (m_Buffer)
 	{
-		m_Device.GetDeviceFunctions().vkDestroyBuffer(device, m_Buffer, nullptr);
+		vkDestroyBuffer(device, m_Buffer, nullptr);
 	}
-	if (m_Memory)
-	{
-		m_Device.GetDeviceFunctions().vkFreeMemory(device, m_Memory, nullptr);
-	}
+	vmaFreeMemory(m_Device.GetAllocator(), m_VMAAllocation);
 }
 
 
 void * const BvBufferVk::Map(const u64 size, const u64 offset)
 {
-	auto result = m_Device.GetDeviceFunctions().vkMapMemory(m_Device.GetHandle(), m_Memory, offset, size, 0, &m_pMapped);
+	auto vma = m_Device.GetAllocator();
+	auto result = vmaMapMemory(vma, m_VMAAllocation, &m_pMapped);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -90,18 +88,25 @@ void * const BvBufferVk::Map(const u64 size, const u64 offset)
 
 void BvBufferVk::Unmap()
 {
-	m_Device.GetDeviceFunctions().vkUnmapMemory(m_Device.GetHandle(), m_Memory);
+	auto vma = m_Device.GetAllocator();
+	vmaUnmapMemory(vma, m_VMAAllocation);
+
+	m_pMapped = nullptr;
 }
 
 
 void BvBufferVk::Flush(const u64 size, const u64 offset) const
 {
+	auto vma = m_Device.GetAllocator();
+	VmaAllocationInfo vmaAI;
+	vmaGetAllocationInfo(vma, m_VMAAllocation, &vmaAI);
+
 	VkMappedMemoryRange mappedRange = {};
 	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	mappedRange.memory = m_Memory;
-	mappedRange.offset = offset;
+	mappedRange.memory = vmaAI.deviceMemory;
+	mappedRange.offset = vmaAI.offset + offset;
 	mappedRange.size = size;
-	auto result = m_Device.GetDeviceFunctions().vkFlushMappedMemoryRanges(m_Device.GetHandle(), 1, &mappedRange);
+	auto result = vkFlushMappedMemoryRanges(m_Device.GetHandle(), 1, &mappedRange);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -112,12 +117,16 @@ void BvBufferVk::Flush(const u64 size, const u64 offset) const
 
 void BvBufferVk::Invalidate(const u64 size, const u64 offset) const
 {
+	auto vma = m_Device.GetAllocator();
+	VmaAllocationInfo vmaAI;
+	vmaGetAllocationInfo(vma, m_VMAAllocation, &vmaAI);
+
 	VkMappedMemoryRange mappedRange = {};
 	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	mappedRange.memory = m_Memory;
+	mappedRange.memory = vmaAI.deviceMemory;
 	mappedRange.offset = offset;
 	mappedRange.size = size;
-	auto result = m_Device.GetDeviceFunctions().vkInvalidateMappedMemoryRanges(m_Device.GetHandle(), 1, &mappedRange);
+	auto result = vkInvalidateMappedMemoryRanges(m_Device.GetHandle(), 1, &mappedRange);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);

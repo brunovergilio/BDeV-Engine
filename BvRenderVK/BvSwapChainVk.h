@@ -1,15 +1,15 @@
 #pragma once
 
 
-#include "BvRender/BvSwapChain.h"
+#include "BDeV/Render/BvSwapChain.h"
 #include "BvRenderDeviceVk.h"
 #include "BvTextureViewVk.h"
-#include "BvCore/System/Threading/BvSync.h"
+#include "BDeV/System/Threading/BvSync.h"
 
 
 class BvTextureVk;
 class BvSwapChainTextureVk;
-class BvFenceVk;
+class BvSyncObjectVk;
 class BvSemaphoreVk;
 class BvCommandQueueVk;
 
@@ -17,7 +17,7 @@ class BvCommandQueueVk;
 class BvSwapChainVk final : public BvSwapChain
 {
 public:
-	BvSwapChainVk(const BvRenderDeviceVk & renderDevice, BvCommandQueueVk & commandQueue, const SwapChainDesc & swapChainParams);
+	BvSwapChainVk(const BvRenderDeviceVk & renderDevice, BvCommandQueueVk & commandQueue, BvWindow* pWindow, const SwapChainDesc & swapChainParams);
 	~BvSwapChainVk();
 
 	bool Create();
@@ -25,11 +25,10 @@ public:
 
 	void Present(bool vSync) override final;
 
-
 	BV_INLINE u32 GetCurrentImageIndex() const override final { return m_CurrImageIndex; }
 	BV_INLINE BvTextureView* GetTextureView(const u32 index) const override final { return m_SwapChainTextureViews[index]; }
 	BV_INLINE BvSemaphoreVk* GetCurrentImageAcquiredSemaphore() const { return m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
-	BV_INLINE BvSemaphoreVk* GetCurrentRenderCompleteSemaphore() const { return m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
+	BV_INLINE BvSemaphoreVk* GetCurrentRenderCompleteSemaphore() const { return m_RenderCompleteSemaphores[m_CurrImageIndex]; }
 
 private:
 	void CreateSurface();
@@ -51,7 +50,6 @@ private:
 
 	BvVector<BvSemaphoreVk *> m_ImageAcquiredSemaphores;
 	BvVector<BvSemaphoreVk *> m_RenderCompleteSemaphores;
-	BvVector<BvFenceVk *> m_ImageAcquiredFences;
 	u32 m_CurrSemaphoreIndex = 0;
 
 	u32 m_PresentationQueueIndex = 0;

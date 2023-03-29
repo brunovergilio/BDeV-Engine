@@ -1,14 +1,15 @@
 #pragma once
 
 
-#include "BvRender/BvBuffer.h"
+#include "BDeV/Render/BvBuffer.h"
 #include "BvCommonVk.h"
+#include <vma/vk_mem_alloc.h>
 
 
 class BvRenderDeviceVk;
 
 
-class BvBufferVk : public BvBuffer
+class BvBufferVk final : public BvBuffer
 {
 	BV_NOCOPYMOVE(BvBufferVk);
 
@@ -19,15 +20,15 @@ public:
 	void Create();
 	void Destroy();
 
-	void * const Map(const u64 size, const u64 offset) override final;
-	void Unmap() override final;
-	void Flush(const u64 size, const u64 offset) const override final;
-	void Invalidate(const u64 size, const u64 offset) const override final;
+	void * const Map(const u64 size, const u64 offset) override;
+	void Unmap() override;
+	void Flush(const u64 size, const u64 offset) const override;
+	void Invalidate(const u64 size, const u64 offset) const override;
 
 	BV_INLINE VkBuffer GetHandle() const { return m_Buffer; }
 
 private:
 	const BvRenderDeviceVk & m_Device;
 	VkBuffer m_Buffer = VK_NULL_HANDLE;
-	VkDeviceMemory m_Memory = VK_NULL_HANDLE;
+	VmaAllocation m_VMAAllocation = nullptr;
 };

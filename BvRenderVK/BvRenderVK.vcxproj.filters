@@ -20,10 +20,11 @@
     <ClCompile Include="BvPipelineStateVk.cpp" />
     <ClCompile Include="BvShaderResourceVk.cpp" />
     <ClCompile Include="BvFramebufferVk.cpp" />
-    <ClCompile Include="BvFenceVk.cpp" />
     <ClCompile Include="BvDebugReportVk.cpp" />
     <ClCompile Include="BvShaderResourceSetPoolVk.cpp" />
     <ClCompile Include="BvLoaderVk.cpp" />
+    <ClCompile Include="BvCommonVk.cpp" />
+    <ClCompile Include="BvFenceVk.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BvRenderEngineVk.h" />
@@ -46,9 +47,9 @@
     <ClInclude Include="BvPipelineStateVk.h" />
     <ClInclude Include="BvShaderResourceVk.h" />
     <ClInclude Include="BvFramebufferVk.h" />
-    <ClInclude Include="BvFenceVk.h" />
     <ClInclude Include="BvDebugReportVk.h" />
     <ClInclude Include="BvShaderResourceSetPoolVk.h" />
     <ClInclude Include="BvLoaderVk.h" />
+    <ClInclude Include="BvFenceVk.h" />
   </ItemGroup>
 </Project>

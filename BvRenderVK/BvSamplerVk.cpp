@@ -7,6 +7,7 @@
 BvSamplerVk::BvSamplerVk(const BvRenderDeviceVk & device, const SamplerDesc & samplerDesc)
 	: BvSampler(samplerDesc), m_Device(device)
 {
+	Create();
 }
 
 
@@ -38,7 +39,7 @@ void BvSamplerVk::Create()
 	//samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
-	auto result = m_Device.GetDeviceFunctions().vkCreateSampler(m_Device.GetHandle(), &samplerCreateInfo, nullptr, &m_Sampler);
+	auto result = vkCreateSampler(m_Device.GetHandle(), &samplerCreateInfo, nullptr, &m_Sampler);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -50,7 +51,7 @@ void BvSamplerVk::Destroy()
 {
 	if (m_Sampler)
 	{
-		m_Device.GetDeviceFunctions().vkDestroySampler(m_Device.GetHandle(), m_Sampler, nullptr);
+		vkDestroySampler(m_Device.GetHandle(), m_Sampler, nullptr);
 		m_Sampler = VK_NULL_HANDLE;
 	}
 }

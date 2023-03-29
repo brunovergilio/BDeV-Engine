@@ -1,19 +1,20 @@
 #pragma once
 
-#include "BvCore/BvCore.h"
+
+#include "BDeV/BvCore.h"
+#include "BDeV/System/Debug/BvDebug.h"
 
 // Platform-dependent stuff
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-
-#define VK_USE_PLATFORM_WIN32_KHR
-
-
+	#define VK_USE_PLATFORM_WIN32_KHR
 #else
-
-// Other platforms
-
+	// Other platforms
 #endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 
 
-#include "BvCore/Utils/BvDebug.h"
-#include "vulkan/vulkan.h"
+// Defines for the Vulkan Memory Allocator so it uses functions loaded from Volk
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+
+
+#include "Volk/volk.h"
