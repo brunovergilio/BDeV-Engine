@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/Render/BvRenderEngine.h"
+#include "BDeV/RenderAPI/BvRenderEngine.h"
 #include "BvRenderVk/BvGPUInfoVk.h"
 #include "BvLoaderVk.h"
 
@@ -17,12 +17,8 @@ public:
 	BvRenderEngineVk();
 	~BvRenderEngineVk();
 
-	bool Create();
-	void Destroy();
-
 	void GetGPUInfo(const u32 index, BvGPUInfo & info) const override final;
-	BvRenderDevice * const CreateRenderDevice(const DeviceCreateDesc& deviceDesc, const u32 gpuIndex) override final;
-	void DestroyRenderDevice(const u32 gpuIndex) override final;
+	BvRenderDevice * const CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex) override final;
 	
 	BV_INLINE const char * const GetEngineName() const override final { return "BvRenderVk"; }
 	BV_INLINE u32 GetInstanceVersion() const { return m_InstanceVersion; }
@@ -34,10 +30,14 @@ public:
 	bool IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* const pPhysicalDeviceExtension);
 
 private:
+	void Create();
+	void Destroy();
+
 	bool CreateInstance();
 	bool EnumerateGPUs();
 	void SetupDevicePropertiesAndFeatures(u32 gpuIndex);
 	u32 GetQueueFamilyIndex(const VkQueueFlags queueFlags, const u32 gpuIndex) const;
+	u32 AutoSelectGPU();
 
 private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
@@ -54,8 +54,17 @@ private:
 
 namespace BvRenderVk
 {
+#if defined (BV_STATIC_LIB)
+	BV_PLUGIN_API BvRenderEngine* GetRenderEngine();
+#else
 #if defined(BV_PLUGIN_DLL_EXPORT)
 	BV_EXTERN_C
 #endif
-	BV_PLUGIN_API BvRenderEngine* GetRenderEngine();
+	BV_PLUGIN_API BvRenderEngine* CreateRenderEngine();
+
+#if defined(BV_PLUGIN_DLL_EXPORT)
+	BV_EXTERN_C
+#endif
+	BV_PLUGIN_API void DestroyRenderEngine();
+#endif
 }

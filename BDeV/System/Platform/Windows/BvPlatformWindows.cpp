@@ -1,9 +1,12 @@
-#include "BvPlatformWindows.h"
-#include "BDeV/System/Window/Windows/BvWindowWindows.h"
+#include "BDeV/System/Platform/BvPlatform.h"
+#include "BDeV/System/Window/BvWindow.h"
+#include "BDeV/System/HID/BvKeyboard.h"
+#include "BDeV/System/HID/BvMouse.h"
+#include "BDeV/Container/BvRobinMap.h"
 
 
-BvRobinMap<HWND, BvWindowWindows*> g_Windows;
-BvVector<BvWindowWindows*> g_WindowsToDelete;
+BvRobinMap<HWND, BvWindow*> g_Windows;
+BvVector<BvWindow*> g_WindowsToDelete;
 
 
 void BvPlatform::Initialize()
@@ -12,7 +15,7 @@ void BvPlatform::Initialize()
 	WNDCLASSEXA wndClass = {};
 	wndClass.cbSize = sizeof(WNDCLASSEXA);
 	wndClass.style = CS_HREDRAW | CS_VREDRAW;
-	wndClass.lpfnWndProc = BvPlatformWindows::WndProc;
+	wndClass.lpfnWndProc = BvPlatform::WndProc;
 	//wndClass.cbClsExtra = 0;
 	//wndClass.cbWndExtra = 0;
 #if defined(BV_STATIC_LIB)
@@ -24,40 +27,40 @@ void BvPlatform::Initialize()
 	wndClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wndClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 	//wndClass.lpszMenuName = nullptr;
-	wndClass.lpszClassName = BvWindowWindows::s_WindowClassName;
+	wndClass.lpszClassName = BvPlatform::s_WindowClassName;
 	//wndClass.hIconSm = LoadIcon(nullptr, IDI_WINLOGO);
 
 	RegisterClassExA(&wndClass);
 
-	//RAWINPUTDEVICE rawInputDevices[2]{};
-	//rawInputDevices[0].usUsagePage = 0x1;
-	//rawInputDevices[0].usUsage = 0x6;
-	//rawInputDevices[0].dwFlags = 0; // RIDEV_NOLEGACY; // do not generate legacy messages such as WM_KEYDOWN
-	//rawInputDevices[0].hwndTarget = nullptr; // If no HWND is specified, WM_INPUT is triggered on the foreground window
-	//
-	//rawInputDevices[1].usUsagePage = 0x1;
-	//rawInputDevices[1].usUsage = 0x2;
-	//rawInputDevices[1].dwFlags = 0;
-	//rawInputDevices[1].hwndTarget = nullptr; // If no HWND is specified, WM_INPUT is triggered on the foreground window
-	//
-	//RegisterRawInputDevices(rawInputDevices, 2, sizeof(RAWINPUTDEVICE));
+	RAWINPUTDEVICE rawInputDevices[2]{};
+	rawInputDevices[0].usUsagePage = 0x1;
+	rawInputDevices[0].usUsage = 0x6;
+	rawInputDevices[0].dwFlags = 0; // RIDEV_NOLEGACY; // do not generate legacy messages such as WM_KEYDOWN
+	rawInputDevices[0].hwndTarget = nullptr; // If no HWND is specified, WM_INPUT is triggered on the foreground window
+	
+	rawInputDevices[1].usUsagePage = 0x1;
+	rawInputDevices[1].usUsage = 0x2;
+	rawInputDevices[1].dwFlags = 0;
+	rawInputDevices[1].hwndTarget = nullptr; // If no HWND is specified, WM_INPUT is triggered on the foreground window
+	
+	RegisterRawInputDevices(rawInputDevices, 2, sizeof(RAWINPUTDEVICE));
 }
 
 
 void BvPlatform::Shutdown()
 {
-	//RAWINPUTDEVICE rawInputDevices[2]{};
-	//rawInputDevices[0].usUsagePage = 0x1;
-	//rawInputDevices[0].usUsage = 0x6;
-	//rawInputDevices[0].dwFlags = RIDEV_REMOVE;
-	//rawInputDevices[0].hwndTarget = nullptr;
-	//
-	//rawInputDevices[1].usUsagePage = 0x1;
-	//rawInputDevices[1].usUsage = 0x2;
-	//rawInputDevices[1].dwFlags = RIDEV_REMOVE;
-	//rawInputDevices[1].hwndTarget = nullptr;
-	//
-	//RegisterRawInputDevices(rawInputDevices, 2, sizeof(RAWINPUTDEVICE));
+	RAWINPUTDEVICE rawInputDevices[2]{};
+	rawInputDevices[0].usUsagePage = 0x1;
+	rawInputDevices[0].usUsage = 0x6;
+	rawInputDevices[0].dwFlags = RIDEV_REMOVE;
+	rawInputDevices[0].hwndTarget = nullptr;
+	
+	rawInputDevices[1].usUsagePage = 0x1;
+	rawInputDevices[1].usUsage = 0x2;
+	rawInputDevices[1].dwFlags = RIDEV_REMOVE;
+	rawInputDevices[1].hwndTarget = nullptr;
+	
+	RegisterRawInputDevices(rawInputDevices, 2, sizeof(RAWINPUTDEVICE));
 
 	if (g_WindowsToDelete.Size() > 0)
 	{
@@ -75,11 +78,11 @@ void BvPlatform::Shutdown()
 	GetModuleHandleA("BDeV.dll");
 #endif
 
-	UnregisterClassA(BvWindowWindows::s_WindowClassName, hModule);
+	UnregisterClassA(BvPlatform::s_WindowClassName, hModule);
 }
 
 
-void BvPlatform::Update()
+void BvPlatform::ProcessOSEvents()
 {
 	if (g_WindowsToDelete.Size() > 0)
 	{
@@ -99,41 +102,146 @@ void BvPlatform::Update()
 }
 
 
-class BvWindow* BvPlatform::CreateWindow(const WindowDesc& windowDesc)
+BvWindow* BvPlatform::CreateWindow(const WindowDesc& windowDesc)
 {
-	auto pWindowWindows = new BvWindowWindows(windowDesc, BvPlatformWindows::WndProc);
+	auto pWindowWindows = new BvWindow(windowDesc);
 	g_Windows.Emplace(pWindowWindows->GetHandle(), pWindowWindows);
 
-	return pWindowWindows;
+	return reinterpret_cast<BvWindow*>(pWindowWindows);
 }
 
 
 void BvPlatform::DestroyWindow(BvWindow* pWindow)
 {
-	auto pWindowWindows = reinterpret_cast<BvWindowWindows*>(pWindow);
+	auto pWindowWindows = reinterpret_cast<BvWindow*>(pWindow);
 	g_WindowsToDelete.PushBack(pWindowWindows);
 	g_Windows.Erase(pWindowWindows->GetHandle());
 }
 
 
-LRESULT BvPlatformWindows::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT BvPlatform::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	BvWindowWindows* pWindow = nullptr;
+	BvWindow* pWindow = nullptr;
 	if (uMsg == WM_NCCREATE)
 	{
-		pWindow = reinterpret_cast<BvWindowWindows*>((reinterpret_cast<LPCREATESTRUCT>(lParam))->lpCreateParams);
-		SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pWindow));
-		//pWindow->m_hWnd = hwnd;
+		pWindow = reinterpret_cast<BvWindow*>((reinterpret_cast<LPCREATESTRUCT>(lParam))->lpCreateParams);
+		SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pWindow));
+		pWindow->m_hWnd = hWnd;
 
 		return TRUE;
 	}
-	else if (uMsg == WM_DESTROY)
+	
+	pWindow = reinterpret_cast<BvWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+
+	WindowEventData data;
+	switch (uMsg)
 	{
+	case WM_ACTIVATE:
+		data.type = WindowEventType::kActivate;
+		data.active = LOWORD(wParam) != WA_INACTIVE;
+		pWindow->OnWindowEvent(data);
+
+		return 0;
+
+	case WM_SETFOCUS:
+		if (!pWindow->HasFocus())
+		{
+			data.type = WindowEventType::kGotFocus;
+			pWindow->OnWindowEvent(data);
+		}
+
+		return 0;
+
+	case WM_KILLFOCUS:
+		if (pWindow->HasFocus())
+		{
+			data.type = WindowEventType::kLostFocus;
+			pWindow->OnWindowEvent(data);
+		}
+
+		return 0;
+
+	case WM_SIZE:
+	{
+		data.type = WindowEventType::kResize;
+		data.resizeData.width = LOWORD(lParam);
+		data.resizeData.height = HIWORD(lParam);
+
+		if (wParam == SIZE_MINIMIZED)
+		{
+			data.resizeData.state = WindowState::kMinimized;
+		}
+		else if (wParam == SIZE_MAXIMIZED)
+		{
+			data.resizeData.state = WindowState::kMaximized;
+		}
+		else if (wParam == SIZE_RESTORED)
+		{
+			data.resizeData.state = WindowState::kRestored;
+		}
+
+		pWindow->OnWindowEvent(data);
+	}
+	return 0;
+
+	case WM_INPUT:
+	{
+		RAWINPUT raw{};
+		{
+			u32 size = sizeof(RAWINPUT);
+			GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, &raw, &size, sizeof(RAWINPUTHEADER));
+		}
+
+		// extract keyboard raw input data
+		if (raw.header.dwType == RIM_TYPEKEYBOARD)
+		{
+			Input::GetKeyboard()->ProcessRawInputKeyboardMessage(raw.data.keyboard);
+		}
+		// extract mouse raw input data
+		else if (raw.header.dwType == RIM_TYPEMOUSE)
+		{
+			Input::GetMouse()->ProcessRawInputMouseMessage(raw.data.mouse);
+		}
 		return 0;
 	}
-	else
+
+	case WM_ENTERSIZEMOVE:
+		data.type = WindowEventType::kSizeMoveBegin;
+		pWindow->OnWindowEvent(data);
+
+		return 0;
+
+	case WM_EXITSIZEMOVE:
+		data.type = WindowEventType::kSizeMoveEnd;
+		pWindow->OnWindowEvent(data);
+
+		return 0;
+
+	case WM_MOVE:
 	{
-		pWindow = reinterpret_cast<BvWindowWindows*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-		return pWindow->WndProc(hwnd, uMsg, wParam, lParam);
+		data.type = WindowEventType::kMove;
+		data.moveData.x = (i32)LOWORD(lParam);
+		data.moveData.y = (i32)HIWORD(lParam);
+		pWindow->OnWindowEvent(data);
+
+		return 0;
+	}
+
+	case WM_GETMINMAXINFO:
+		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
+		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
+		return 0;
+
+	case WM_CLOSE:
+		data.type = WindowEventType::kClose;
+		pWindow->OnWindowEvent(data);
+
+		return 0;
+
+	case WM_DESTROY:
+		return 0;
+
+	default:
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 }

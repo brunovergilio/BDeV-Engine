@@ -3,6 +3,7 @@
 
 #include "BDeV/BvCore.h"
 #include "BDeV/System/Debug/BvDebug.h"
+#include "BDeV/BvObject.h"
 
 // Platform-dependent stuff
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)

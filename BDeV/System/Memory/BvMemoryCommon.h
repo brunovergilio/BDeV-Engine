@@ -16,53 +16,9 @@ union MemType
 };
 
 
-BV_INLINE void* BvAlignMemory(void* pAddress, size_t alignment)
-{
-	BvAssert(pAddress != nullptr, "Address has to be valid");
-	BvAssert((alignment & (alignment - 1)) == 0, "Alignment has to be a power of 2");
-
-	const size_t mask = alignment - 1;
-	return reinterpret_cast<void*>((reinterpret_cast<size_t>(pAddress) + mask) & (~mask));
-}
-
-
-BV_INLINE void* BvMAlloc(size_t size, size_t alignment = kDefaultAlignmentSize, size_t alignmentOffset = 0)
-{
-	// We adjust the alignment to the minimum required (if needed)
-	alignment = std::max(alignment, kDefaultAlignmentSize);
-
-	// Allocate memory using malloc - the total size will be the requested size, plus
-	// the alignment and alignment offset, and we also add another kPointerSize bytes
-	// in order to store the pointer back to the original address when freeing it
-	MemType mem{ malloc(size + alignment + alignmentOffset + kPointerSize) };
-
-	// We align the memory with the added offset and kPointerSize
-	MemType alignedMem{ BvAlignMemory(mem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
-
-	// We move back the offset bytes
-	alignedMem.pAsCharPtr -= alignmentOffset;
-	// And right before that, we set the originally allocated memory address
-	alignedMem.pAsSizeTPtr[-1] = mem.asSizeT;
-
-	// return the memory containing the offset bytes
-	return alignedMem.pAsVoidPtr;
-}
-
-
-BV_INLINE void BvFree(void* pAddress)
-{
-	if (pAddress)
-	{
-		// We take the returned address and move back size_t* bytes,
-		// since that's where we stored our original pointer
-		MemType mem{ pAddress };
-
-		// We free the address that was stored as a size_t value,
-		// so we need to cast it back to void*
-		free(reinterpret_cast<void*>(mem.pAsSizeTPtr[-1]));
-	}
-}
-
+BV_API void* BvAlignMemory(void* pAddress, size_t alignment);
+BV_API void* BvMAlloc(size_t size, size_t alignment = kDefaultAlignmentSize, size_t alignmentOffset = 0);
+BV_API void BvFree(void* pAddress);
 
 
 namespace Internal
@@ -132,10 +88,10 @@ namespace Internal
 }
 
 
-class BV_API BvIMemoryAllocator
+class BV_API IBvMemoryAllocator
 {
 public:
-	virtual ~BvIMemoryAllocator() {}
+	virtual ~IBvMemoryAllocator() {}
 	virtual void* Allocate(size_t size, size_t alignment, size_t alignmentOffset, const BvSourceInfo& sourceInfo) = 0;
 	virtual void Free(void* pMem, const BvSourceInfo& sourceInfo) = 0;
 };
@@ -143,7 +99,7 @@ public:
 
 template<typename AllocatorType, typename LockType, typename BoundsCheckingType,
 	typename MemoryMarkingType, typename MemoryTrackingType>
-class BV_API BvMemoryAllocator final : public BvIMemoryAllocator
+class BV_API BvMemoryAllocator final : public IBvMemoryAllocator
 {
 public:
 	BvMemoryAllocator() {}
@@ -177,6 +133,11 @@ public:
 
 	void Free(void* pMem, const BvSourceInfo& sourceInfo) override
 	{
+		if (!pMem)
+		{
+			return;
+		}
+
 		MemType mem{ pMem };
 		mem.pAsCharPtr -= BoundsCheckingType::kFrontGuardSize;
 
@@ -204,6 +165,10 @@ private:
 	MemoryMarkingType m_MemoryMarking;
 	MemoryTrackingType m_MemoryTracking;
 };
+
+
+BV_API void SetDefaultAllocator(IBvMemoryAllocator* defaultAllocator);
+BV_API IBvMemoryAllocator* GetDefaultAllocator();
 
 
 #define BvNew(Type) BvNewA(Type, GetDefaultAllocator())

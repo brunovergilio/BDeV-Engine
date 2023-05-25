@@ -112,6 +112,7 @@ void BvFramebufferManagerVk::Destroy()
 	{
 		delete pFramebuffer.second;
 	}
+	m_Framebuffers.Clear();
 }
 
 

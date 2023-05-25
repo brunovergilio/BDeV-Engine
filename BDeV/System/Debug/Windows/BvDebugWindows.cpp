@@ -11,11 +11,11 @@ ConsoleColor g_CurrentBackgroundColor = kDefaultBackgroundColor;
 
 
 // Forward declarations
-int VDPrintF(const char* format, va_list argList);
+i32 VDPrintF(const char* format, va_list argList);
 void SetColor(ConsoleColor textColor, ConsoleColor backgroundColor);
 
 
-BV_API int PrintF(const char* pFormat, ...)
+i32 PrintF(const char* pFormat, ...)
 {
 	SetColor(kDefaultTextColor, kDefaultBackgroundColor);
 	va_list argList;
@@ -27,7 +27,7 @@ BV_API int PrintF(const char* pFormat, ...)
 }
 
 
-int PrintF(ConsoleColor textColor, const char* pFormat, ...)
+i32 PrintF(ConsoleColor textColor, const char* pFormat, ...)
 {
 	SetColor(textColor, kDefaultBackgroundColor);
 	va_list argList;
@@ -39,7 +39,7 @@ int PrintF(ConsoleColor textColor, const char* pFormat, ...)
 }
 
 
-int PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFormat, ...)
+i32 PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFormat, ...)
 {
 	SetColor(textColor, backGroundColor);
 	va_list argList;
@@ -51,7 +51,7 @@ int PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFo
 }
 
 
-int DPrintF(const char* pFormat, ...)
+i32 DPrintF(const char* pFormat, ...)
 {
 	va_list argList;
 	va_start(argList, pFormat);
@@ -71,7 +71,7 @@ void RaiseError(const char* pMessage, const char* pTitle)
 	}
 	if (result == IDRETRY)
 	{
-		BvDebugBreak();
+		__debugbreak();
 		return;
 	}
 	if (result == IDIGNORE)
@@ -81,29 +81,36 @@ void RaiseError(const char* pMessage, const char* pTitle)
 }
 
 
-u32 GetOSError(char* pErrorMessage, u32 bufferSize)
+thread_local char g_OSErrorMessage[BvDebugConstants::kMaxDebugMsgLen];
+
+
+u32 GetOSErrorCode()
 {
 	auto errorCode = GetLastError();
-	if (pErrorMessage)
-	{
-		FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, errorCode, 0, pErrorMessage, bufferSize, nullptr);
-	}
+	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, errorCode, 0, g_OSErrorMessage, BvDebugConstants::kMaxDebugMsgLen, nullptr);
 
 	return errorCode;
 }
 
 
-void MakeDebugBreak()
+const char* GetOSErrorMessage()
 {
-	__debugbreak();
+	return g_OSErrorMessage;
 }
 
 
-int VDPrintF(const char* format, va_list argList)
+void DbgBreak()
 {
-	static char buffer[kDebugMsgLen];
-	int charsWritten = vsnprintf(buffer, kDebugMsgLen, format, argList);
-	OutputDebugStringA(buffer);
+#if BV_DEBUG
+	__debugbreak();
+#endif
+}
+
+
+i32 VDPrintF(const char* format, va_list argList)
+{
+	int charsWritten = vsnprintf(BvDebugConstants::s_ErrorMessage, BvDebugConstants::kMaxDebugMsgLen, format, argList);
+	OutputDebugStringA(BvDebugConstants::s_ErrorMessage);
 	return charsWritten;
 }
 

@@ -3,10 +3,10 @@
 
 #include "BvRenderVK/BvCommonVk.h"
 #include "BDeV/Utils/BvUtils.h"
-#include "BDeV/Render/BvSemaphore.h"
+#include "BDeV/RenderAPI/BvSemaphore.h"
 #include "BDeV/Container/BvVector.h"
 #include "BDeV/Container/BvQueue.h"
-#include "BDeV/System/Threading/Windows/BvSyncWindows.h"
+#include "BDeV/System/Threading/BvSync.h"
 
 
 class BvRenderDeviceVk;

@@ -2,7 +2,8 @@
 #include "BDeV/System/Debug/BvDebug.h"
 #include "BDeV/System/Threading/BvSync.h"
 #include "BDeV/Utils/BvUtils.h"
-#include "BDeV/System/File/BvFileUtils.h"
+#include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
+#include <Windows.h>
 
 
 struct AsyncFileData
@@ -117,9 +118,7 @@ BvAsyncFile::BvAsyncFile()
 
 BvAsyncFile::BvAsyncFile(const char* const pFilename, BvFileAccessMode mode, BvFileAction action)
 {
-	wchar_t widePath[kMaxPathSize]{};
-	ConvertToWidePathWithPrefix(widePath, pFilename);
-	Open(widePath, mode, action);
+	Open(pFilename, mode, action);
 }
 
 
@@ -155,10 +154,35 @@ BvAsyncFile::~BvAsyncFile()
 
 bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileAction action)
 {
-	wchar_t widePath[kMaxPathSize]{};
-	ConvertToWidePathWithPrefix(widePath, pFilename);
+	BvAssert(pFilename != nullptr, "Invalid filename");
 
-	return Open(widePath, mode, action);
+	DWORD acccessMode = 0;
+	DWORD createMode = 0;
+	DWORD createFlags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | FILE_FLAG_NO_BUFFERING;
+
+	switch (mode)
+	{
+	case BvFileAccessMode::kRead: acccessMode = GENERIC_READ; break;
+	case BvFileAccessMode::kWrite: acccessMode = GENERIC_WRITE; break;
+	case BvFileAccessMode::kReadWrite: acccessMode = GENERIC_READ | GENERIC_WRITE; break;
+	}
+
+	switch (action)
+	{
+	case BvFileAction::kOpen: createMode = OPEN_EXISTING; break;
+	case BvFileAction::kCreate: createMode = CREATE_ALWAYS; break;
+	case BvFileAction::kOpenOrCreate: createMode = OPEN_ALWAYS; break;
+	}
+
+	m_hFile = CreateFileA(pFilename, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
+	if (m_hFile == INVALID_HANDLE_VALUE)
+	{
+		// TODO: Handle error
+
+		return false;
+	}
+
+	return true;
 }
 
 

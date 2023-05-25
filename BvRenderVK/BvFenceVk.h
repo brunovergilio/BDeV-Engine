@@ -5,7 +5,7 @@
 #include "BDeV/Utils/BvUtils.h"
 #include <atomic>
 #include "BDeV/Container/BvVector.h"
-#include "BDeV/System/Threading/Windows/BvSyncWindows.h"
+#include "BDeV/System/Threading/BvSync.h"
 
 
 class BvRenderDeviceVk;

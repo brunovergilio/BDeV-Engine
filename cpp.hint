@@ -18,6 +18,16 @@ public:											  		\
 	className & operator =(className &&) = default;		\
 
 
-#define BV_RTTI(className, ...)
-#define BV_RTTI_VAR(...)
-#define BV_RTTI_FUNC(...)
+#define BV_RTTI(className)							\
+public:												\
+static u64 GetTypeId()								\
+{													\
+	return GetTypeIdT<className>();					\
+}													\
+static constexpr const char * const GetTypeName()	\
+{													\
+	return #className;								\
+}													\
+private:											\
+
+#define BV_INIT_TEST_UNIT_SYSTEM() Internal::TestUnitSystem g_TestUnitSystem;

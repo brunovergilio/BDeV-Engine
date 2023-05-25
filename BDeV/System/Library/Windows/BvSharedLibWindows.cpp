@@ -1,4 +1,5 @@
-#include "BDeV/System/Library/Windows/BvSharedLibWindows.h"
+#include "BDeV/System/Library/BvSharedLib.h"
+#include <Windows.h>
 
 
 BvSharedLib::BvSharedLib()
@@ -6,7 +7,7 @@ BvSharedLib::BvSharedLib()
 }
 
 
-BvSharedLib::BvSharedLib(const char * const pFilename)
+BvSharedLib::BvSharedLib(const char * pFilename)
 {
 	m_hLib = LoadLibraryA(pFilename);
 }
@@ -22,9 +23,7 @@ BvSharedLib & BvSharedLib::operator=(BvSharedLib && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		auto hDll = m_hLib;
-		m_hLib = rhs.m_hLib;
-		rhs.m_hLib = hDll;
+		std::swap(m_hLib, rhs.m_hLib);
 	}
 
 	return *this;
@@ -33,11 +32,11 @@ BvSharedLib & BvSharedLib::operator=(BvSharedLib && rhs) noexcept
 
 BvSharedLib::~BvSharedLib()
 {
-	FreeLibrary(m_hLib);
+	FreeLibrary((HMODULE)m_hLib);
 }
 
 
-void * BvSharedLib::GetProcAddressInternal(const char * const pFunctionName) const
+void * BvSharedLib::GetProcAddress(const char * const pFunctionName) const
 {
-	return ::GetProcAddress(m_hLib, pFunctionName);
+	return ::GetProcAddress((HMODULE)m_hLib, pFunctionName);
 }

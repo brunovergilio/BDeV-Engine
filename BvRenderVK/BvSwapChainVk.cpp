@@ -31,7 +31,7 @@ bool BvSwapChainVk::Create()
 {
 	for (auto pView : m_SwapChainTextureViews)
 	{
-		GetFramebufferManager()->RemoveFramebuffer(pView);
+		m_Device.GetFramebufferManager()->RemoveFramebuffer(pView);
 	}
 
 	u32 width = m_pWindow->GetWidth();
@@ -273,7 +273,6 @@ bool BvSwapChainVk::Create()
 
 		textureViewDesc.m_pTexture = m_SwapChainTextures[i];
 		m_SwapChainTextureViews[i] = new BvTextureViewVk(m_Device, textureViewDesc);
-		m_SwapChainTextureViews[i]->Create();
 	}
 
 	CreateSynchronizationResources();
@@ -344,7 +343,7 @@ void BvSwapChainVk::Present(bool vSync)
 		}
 	}
 
-	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % m_SwapChainTextures.Size();
+	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % (u32)m_SwapChainTextures.Size();
 
 	AcquireImage();
 }

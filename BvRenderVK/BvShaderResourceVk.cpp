@@ -27,7 +27,7 @@ BvShaderResourceLayoutVk::~BvShaderResourceLayoutVk()
 
 void BvShaderResourceLayoutVk::Create()
 {
-	decltype(auto) resources = m_ShaderResourceLayoutDesc.GetSetData();
+	auto& resources = m_ShaderResourceLayoutDesc.m_PerSetData;
 	BvVector<VkDescriptorSetLayout> layouts(m_Layouts.Size());
 	for (decltype(auto) it : resources)
 	{
@@ -61,7 +61,7 @@ void BvShaderResourceLayoutVk::Create()
 		layouts.PushBack(layout);
 	}
 
-	decltype(auto) pushConstantResources = m_ShaderResourceLayoutDesc.GetPushConstants();
+	auto& pushConstantResources = m_ShaderResourceLayoutDesc.m_PushConstants;
 	BvVector<VkPushConstantRange> pushConstants(pushConstantResources.Size());
 	for (auto i = 0u; i < pushConstants.Size(); i++)
 	{
@@ -121,7 +121,7 @@ BvShaderResourceParamsVk::~BvShaderResourceParamsVk()
 
 void BvShaderResourceParamsVk::Create()
 {
-	const auto& shaderResources = m_Layout.GetDesc().GetSetData().At(m_SetIndex).m_ShaderResources;
+	const auto& shaderResources = m_Layout.GetDesc().m_PerSetData.At(m_SetIndex).m_ShaderResources;
 	m_WriteSets.Reserve(shaderResources.Size());
 
 	// Count resources
@@ -233,7 +233,7 @@ VkWriteDescriptorSet& BvShaderResourceParamsVk::GetWriteSet(const u32 binding)
 
 void BvShaderResourceParamsVk::GetDescriptorInfo(const u32 binding, VkDescriptorType & descriptorType, VkImageLayout * pImageLayout)
 {
-	const auto& shaderResources = m_Layout.GetDesc().GetSetData().At(m_SetIndex).m_ShaderResources;
+	const auto& shaderResources = m_Layout.GetDesc().m_PerSetData.At(m_SetIndex).m_ShaderResources;
 	for (auto && resource : shaderResources)
 	{
 		if (resource.m_Binding == binding)

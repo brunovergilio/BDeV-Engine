@@ -1,11 +1,11 @@
-#include "BvMonitorWindows.h"
+#include "BDeV/System/Window/BvMonitor.h"
 
 
-BvMonitorWindows::BvMonitorWindows(HMONITOR hMonitor)
+BvMonitor::BvMonitor(HMONITOR hMonitor)
 	: m_hMonitor(hMonitor)
 {
 	MONITORINFOEXA monitorInfo{ sizeof(MONITORINFOEXA) };
-	GetMonitorInfoA(hMonitor, &monitorInfo);
+	GetMonitorInfoA(m_hMonitor, &monitorInfo);
 
 	m_FullscreenArea.m_Left = monitorInfo.rcMonitor.left;
 	m_FullscreenArea.m_Top = monitorInfo.rcMonitor.top;
@@ -38,18 +38,9 @@ BvMonitorWindows::BvMonitorWindows(HMONITOR hMonitor)
 }
 
 
-BvMonitorWindows::~BvMonitorWindows()
+BvMonitor::~BvMonitor()
 {
 }
-
-
-BOOL CALLBACK EnumMonitorCallback(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM lParam)
-{
-	BvVector<HMONITOR>* hMonitors = (BvVector<HMONITOR>*)lParam;
-	hMonitors->PushBack(hMonitor);
-
-	return TRUE;
-};
 
 
 class BvMonitorStartUp
@@ -64,7 +55,7 @@ public:
 
 		for (auto hMonitor : hMonitors)
 		{
-			m_MonitorInfos.PushBack(new BvMonitorWindows(hMonitor));
+			m_MonitorInfos.PushBack(new BvMonitor(hMonitor));
 		}
 	}
 
@@ -76,6 +67,14 @@ public:
 		}
 		m_MonitorInfos.Clear();
 	}
+
+	static BOOL CALLBACK EnumMonitorCallback(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM lParam)
+	{
+		BvVector<HMONITOR>* hMonitors = (BvVector<HMONITOR>*)lParam;
+		hMonitors->PushBack(hMonitor);
+
+		return TRUE;
+	};
 
 public:
 	BvVector<BvMonitor*> m_MonitorInfos;
@@ -96,7 +95,7 @@ BvMonitor* GetMonitorFromPoint(i32 x, i32 y)
 	{
 		for (auto pMonitor : GetMonitors())
 		{
-			auto pWinMonitor = reinterpret_cast<BvMonitorWindows*>(pMonitor);
+			auto pWinMonitor = reinterpret_cast<BvMonitor*>(pMonitor);
 			if (pWinMonitor->GetHandle() == hMonitor)
 			{
 				return pMonitor;

@@ -1,6 +1,7 @@
-#include "BvFiberWindows.h"
+#include "BDeV/System/Threading/BvFiber.h"
 #include "BDeV/System/Debug/BvDebug.h"
 #include <utility>
+#include <Windows.h>
 
 
 BvFiber::BvFiber()
@@ -18,13 +19,9 @@ BvFiber & BvFiber::operator =(BvFiber && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		m_pFiber = rhs.m_pFiber;
-		m_pFunction = rhs.m_pFunction;
-		m_pData = rhs.m_pData;
-
-		rhs.m_pFiber = nullptr;
-		rhs.m_pFunction = nullptr;
-		rhs.m_pData = nullptr;
+		std::swap(m_pFiber, rhs.m_pFiber);
+		std::swap(m_pFunction, rhs.m_pFunction);
+		std::swap(m_pData, rhs.m_pData);
 	}
 
 	return *this;

@@ -166,7 +166,7 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, 
 	auto renderPass = static_cast<const BvRenderPassVk * const>(pRenderPass)->GetHandle();
 	frameBufferDesc.m_RenderPass = renderPass;
 
-	auto pFramebuffer = GetFramebufferManager()->GetFramebuffer(m_Device, frameBufferDesc);
+	auto pFramebuffer = m_Device.GetFramebufferManager()->GetFramebuffer(m_Device, frameBufferDesc);
 
 	VkRenderPassBeginInfo renderPassBI{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	renderPassBI.renderPass = renderPass;
@@ -995,7 +995,7 @@ void BvCommandBufferVk::CommitRenderTargets()
 			rpd.m_DepthStencilTarget.m_LoadOp = m_DepthTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR ? LoadOp::kClear : LoadOp::kLoad;
 		}
 
-		auto pRenderPass = GetRenderPassManager()->GetRenderPass(m_Device, rpd);
+		auto pRenderPass = m_Device.GetRenderPassManager()->GetRenderPass(m_Device, rpd);
 		BvTextureView* rtvs[kMaxRenderTargets];
 		for (auto i = 0u; i < rpd.m_RenderTargets.Size(); i++)
 		{

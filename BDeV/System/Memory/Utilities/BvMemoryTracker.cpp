@@ -42,9 +42,7 @@ BvExtendedMemoryTracker::~BvExtendedMemoryTracker()
 void BvExtendedMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const BvSourceInfo& sourceInfo)
 {
 	auto& trackingData = m_Allocations[pMem];
-
 	trackingData.m_SourceInfo = sourceInfo;
-
 	trackingData.m_Size = size;
 	trackingData.m_Alignment = alignment;
 }
@@ -62,7 +60,6 @@ void BvExtendedMemoryTracker::GetTrackingInfo(void* pMem, TrackingInfo& tracking
 	if (iter != m_Allocations.cend())
 	{
 		trackingInfo.m_SourceInfo = iter->second.m_SourceInfo;
-
 		trackingInfo.m_Size = iter->second.m_Size;
 		trackingInfo.m_Alignment = iter->second.m_Alignment;
 	}
@@ -85,9 +82,7 @@ BvFullMemoryTracker::~BvFullMemoryTracker()
 void BvFullMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const BvSourceInfo& sourceInfo)
 {
 	auto& trackingData = m_Allocations[pMem];
-
 	trackingData.m_SourceInfo = sourceInfo;
-
 	trackingData.m_Size = size;
 	trackingData.m_Alignment = alignment;
 

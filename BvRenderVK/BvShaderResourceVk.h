@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/Render/BvShaderResource.h"
+#include "BDeV/RenderAPI/BvShaderResource.h"
 #include "BvCommonVk.h"
 
 

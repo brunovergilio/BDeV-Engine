@@ -8,10 +8,14 @@
 #include <vma/vk_mem_alloc.h>
 
 
+class BvFramebufferManagerVk;
+class BvRenderPassManagerVk;
+
+
 class BvRenderDeviceVk final : public BvRenderDevice
 {
 public:
-	BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo);
+	BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo, const DeviceCreateDesc& deviceDesc);
 	~BvRenderDeviceVk();
 
 	void SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo, VkPhysicalDeviceFeatures& enabledFeatures, BvVector<const char*>& enabledExtensions);
@@ -46,6 +50,8 @@ public:
 	BV_INLINE const VkInstance GetInstanceHandle() const { return m_pEngine->GetInstance(); }
 	BV_INLINE const BvGPUInfoVk & GetGPUInfo() const { return m_GPUInfo; }
 	BV_INLINE VmaAllocator GetAllocator() const { return m_VMA; }
+	BV_INLINE BvRenderPassManagerVk* GetRenderPassManager() const { return m_pRenderPassManager; }
+	BV_INLINE BvFramebufferManagerVk* GetFramebufferManager() const { return m_pFramebufferManager; }
 
 private:
 	void CreateVMA();
@@ -58,6 +64,8 @@ private:
 	BvVector<BvCommandQueueVk*> m_GraphicsQueues;
 	BvVector<BvCommandQueueVk*> m_ComputeQueues;
 	BvVector<BvCommandQueueVk*> m_TransferQueues;
+	BvRenderPassManagerVk* m_pRenderPassManager;
+	BvFramebufferManagerVk* m_pFramebufferManager;
 	BvRenderDeviceFactory* m_pFactory = nullptr;
 	VmaAllocator m_VMA{};
 };

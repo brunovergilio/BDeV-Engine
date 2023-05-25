@@ -1,6 +1,8 @@
 #pragma once
 
 
+#include "BDeV/System/Memory/BvMemoryCommon.h"
+
 #include "BDeV/System/Memory/BvAlloc.h"
 
 #include "BDeV/System/Memory/Allocators/BvDefaultAllocator.h"
@@ -12,7 +14,3 @@
 #include "BDeV/System/Memory/Utilities/BvBoundsChecker.h"
 #include "BDeV/System/Memory/Utilities/BvMemoryMarker.h"
 #include "BDeV/System/Memory/Utilities/BvMemoryTracker.h"
-
-
-BV_API void SetDefaultAllocator(BvIMemoryAllocator& defaultAllocator);
-BV_API BvIMemoryAllocator& GetDefaultAllocator();

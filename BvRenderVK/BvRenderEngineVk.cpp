@@ -24,7 +24,6 @@ constexpr const char * const g_ExtensionProperties[] =
 	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 	VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-	// TODO: Make sure this is available before creating the instance
 #if defined(BV_DEBUG)
 	VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 #endif
@@ -49,19 +48,18 @@ BvRenderEngineVk::~BvRenderEngineVk()
 }
 
 
-bool BvRenderEngineVk::Create()
+void BvRenderEngineVk::Create()
 {
 	if (!CreateInstance())
 	{
 		Destroy();
-		return false;
+		return;
 	}
-
 
 	if (!EnumerateGPUs())
 	{
 		Destroy();
-		return false;
+		return;
 	}
 
 	m_Devices.Resize(m_GPUs.Size());
@@ -70,11 +68,8 @@ bool BvRenderEngineVk::Create()
 	if (IsInstanceExtensionEnabled(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
 	{
 		m_pDebugReport = new BvDebugReportVk(m_Instance);
-		m_pDebugReport->Create();
 	}
 #endif
-
-	return true;
 }
 
 
@@ -82,8 +77,11 @@ void BvRenderEngineVk::Destroy()
 {
 	for (auto pDevice : m_Devices)
 	{
-		auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(pDevice);
-		delete pDeviceVk;
+		if (pDevice)
+		{
+			auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(pDevice);
+			delete pDeviceVk;
+		}
 	}
 	m_Devices.Clear();
 
@@ -136,33 +134,37 @@ void BvRenderEngineVk::GetGPUInfo(const u32 index, BvGPUInfo & gpuInfo) const
 }
 
 
-BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, const u32 gpuIndex)
+BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex)
 {
+	if (gpuIndex >= m_GPUs.Size())
+	{
+		gpuIndex = AutoSelectGPU();
+	}
+
 	BvAssert(m_Devices[gpuIndex] == nullptr, "Render device already created");
 	if (m_Devices[gpuIndex] != nullptr)
 	{
 		return GetRenderDevice(gpuIndex);
 	}
 
-	auto pDevice = new BvRenderDeviceVk(this, m_GPUs[gpuIndex]);
-	if (!pDevice->Create(deviceDesc))
+	// We'll choose the best GPU we have
+	if (gpuIndex == kAutoSelectGPU)
 	{
-		delete pDevice;
-		return nullptr;
+		for (auto i = 0u; i < m_GPUs.Size(); i++)
+		{
+			// We want a discrete gpu if we can
+			if (m_GPUs[i].m_DeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			{
+				gpuIndex = i;
+				break;
+			}
+		}
 	}
+
+	auto pDevice = new BvRenderDeviceVk(this, m_GPUs[gpuIndex], deviceDesc);
 	m_Devices[gpuIndex] = pDevice;
 
 	return pDevice;
-}
-
-
-void BvRenderEngineVk::DestroyRenderDevice(const u32 gpuIndex)
-{
-	BvAssert(m_Devices[gpuIndex] != nullptr, "Invalid render device");
-
-	auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(m_Devices[gpuIndex]);
-	delete pDeviceVk;
-	m_Devices[gpuIndex] = nullptr;
 }
 
 
@@ -600,11 +602,60 @@ u32 BvRenderEngineVk::GetQueueFamilyIndex(const VkQueueFlags queueFlags, const u
 }
 
 
+u32 BvRenderEngineVk::AutoSelectGPU()
+{
+	VkDeviceSize currMaxHeapSize = 0;
+	u32 chosenGPUIndex = 0;
+	
+	for (auto i = 0u; i < m_GPUs.Size(); i++)
+	{
+		if (m_GPUs[i].m_DeviceProperties.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+		{
+			VkDeviceSize gpuSize = 0;
+			for (auto j = 0; j < m_GPUs[i].m_DeviceMemoryProperties.memoryHeapCount; j++)
+			{
+				if (m_GPUs[j].m_DeviceMemoryProperties.memoryHeaps[j].flags & VkMemoryHeapFlagBits::VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+				{
+					gpuSize += m_GPUs[j].m_DeviceMemoryProperties.memoryHeaps[j].size;
+				}
+			}
+
+			if (gpuSize > currMaxHeapSize)
+			{
+				currMaxHeapSize = gpuSize;
+				chosenGPUIndex = i;
+			}
+		}
+	}
+
+	return 0;
+}
+
+
 namespace BvRenderVk
 {
+#if defined (BV_STATIC_LIB)
 	BvRenderEngine* GetRenderEngine()
 	{
 		static BvRenderEngineVk s_Engine;
 		return &s_Engine;
 	}
+#else
+	static BvRenderEngineVk* s_pRenderEngineVk = nullptr;
+
+	BvRenderEngine* CreateRenderEngine()
+	{
+		if (!s_pRenderEngineVk)
+		{
+			s_pRenderEngineVk = new BvRenderEngineVk();
+		}
+		return s_pRenderEngineVk;
+	}
+
+	void DestroyRenderEngine()
+	{
+		delete s_pRenderEngineVk;
+		s_pRenderEngineVk = nullptr;
+	}
+#endif
 }

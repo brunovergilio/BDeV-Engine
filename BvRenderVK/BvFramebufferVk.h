@@ -1,11 +1,11 @@
 #pragma once
 
 
-#include "BDeV/Render/BvCommon.h"
+#include "BDeV/RenderAPI/BvCommon.h"
 #include "BvRenderVk/BvCommonVk.h"
 #include "BDeV/Container/BvFixedVector.h"
 #include "BvTextureViewVk.h"
-#include "BDeV/Utils/Hash.h"
+#include "BDeV/Utils/BvHash.h"
 #include "BDeV/Container/BvRobinMap.h"
 #include "BDeV/System/Threading/BvSync.h"
 #include "BvRenderPassVk.h"
@@ -108,4 +108,4 @@ private:
 };
 
 
-BvFramebufferManagerVk* GetFramebufferManager();
+//BvFramebufferManagerVk* GetFramebufferManager();

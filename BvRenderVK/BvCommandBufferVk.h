@@ -3,8 +3,8 @@
 
 #include "BvRenderVK/BvCommonVk.h"
 #include "BDeV/Container/BvVector.h"
-#include "BDeV/Render/BvCommandBuffer.h"
-#include "BDeV/Render/BvCommon.h"
+#include "BDeV/RenderAPI/BvCommandBuffer.h"
+#include "BDeV/RenderAPI/BvCommon.h"
 #include "BDeV/Container/BvFixedVector.h"
 
 

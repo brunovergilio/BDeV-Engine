@@ -2,8 +2,8 @@
 
 
 #include "BvRenderVK/BvCommonVk.h"
-#include "BDeV/Render/BvRenderPass.h"
-#include "BDeV/Utils/Hash.h"
+#include "BDeV/RenderAPI/BvRenderPass.h"
+#include "BDeV/Utils/BvHash.h"
 #include "BDeV/System/Threading/BvSync.h"
 #include "BDeV/Container/BvRobinMap.h"
 
@@ -69,4 +69,4 @@ private:
 };
 
 
-BvRenderPassManagerVk* GetRenderPassManager();
+//BvRenderPassManagerVk* GetRenderPassManager();

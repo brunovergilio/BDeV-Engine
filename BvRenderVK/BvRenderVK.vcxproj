@@ -47,13 +47,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -128,7 +128,7 @@
     <ClCompile Include="BvRenderEngineVk.cpp" />
     <ClCompile Include="BvRenderPassVk.cpp" />
     <ClCompile Include="BvCommonVk.cpp" />
-    <ClCompile Include="Platform\BvSwapChainVkWin32.cpp" />
+    <ClCompile Include="Windows\BvSwapChainVkWindows.cpp" />
     <ClCompile Include="BvTextureVk.cpp" />
     <ClCompile Include="BvUtilsVk.cpp" />
   </ItemGroup>

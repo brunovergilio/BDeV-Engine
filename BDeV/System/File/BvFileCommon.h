@@ -7,7 +7,6 @@
 
 // 2 kb should be enough for a file path (can always increase it if needed)
 constexpr size_t kMaxPathSize = 2048;
-constexpr size_t kMaxFilenameSize = 64;
 
 
 enum class BvFileAccessMode : u8

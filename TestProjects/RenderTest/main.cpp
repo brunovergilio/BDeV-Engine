@@ -1,17 +1,16 @@
-#include "BDeV/Render/BvRenderEngine.h"
+#include "BDeV/RenderAPI/BvRenderEngine.h"
 #include "BDeV/System/Window/BvWindow.h"
-#include "BDeV/Render/BvSwapChain.h"
-#include "BDeV/Render/BvShaderResource.h"
+#include "BDeV/RenderAPI/BvSwapChain.h"
+#include "BDeV/RenderAPI/BvShaderResource.h"
 #include "BDeV/System/File/BvFile.h"
-#include "BDeV/Render/BvRenderPass.h"
-#include "BDeV/Render/BvTextureView.h"
-#include "BDeV/Render/BvSemaphore.h"
-#include "BDeV/Render/BvCommandBuffer.h"
+#include "BDeV/RenderAPI/BvRenderPass.h"
+#include "BDeV/RenderAPI/BvTextureView.h"
+#include "BDeV/RenderAPI/BvSemaphore.h"
+#include "BDeV/RenderAPI/BvCommandBuffer.h"
 #include "BDeV/System/File/BvFileSystem.h"
 #include "BvRenderTools/BvShaderCompiler.h"
-#include "BDeV/System/Input/BvKeyboard.h"
+#include "BDeV/System/HID/BvKeyboard.h"
 #include "BDeV/Math/BvMath.h"
-#include "BDeV/System/Input/BvInput.h"
 #include "BDeV/System/Platform/BvPlatform.h"
 #include "BDeV/System/Library/BvSharedLib.h"
 
@@ -32,35 +31,35 @@ ShaderByteCodeDesc GetPS();
 BvBuffer* CreateVB(BvRenderDevice* pDevice);
 BvBuffer* CreateUB(BvRenderDevice* pDevice);
 
+
 int main()
 {
 	BvPlatform::Initialize();
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
 	typedef IBvShaderCompiler* (*pFNGetShaderCompiler)();
-	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddress<pFNGetShaderCompiler>("GetShaderCompiler");
+	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("GetShaderCompiler");
 	BvSharedLib renderVkLib("BvRenderVk.dll");
-	typedef BvRenderEngine* (*pFNGetRenderEngine)();
-	pFNGetRenderEngine renderEngineFn = renderVkLib.GetProcAddress<pFNGetRenderEngine>("GetRenderEngine");
+	typedef BvRenderEngine* (*pFNCreateRenderEngine)();
+	typedef void(*pFNDestroyRenderEngine)();
+	pFNCreateRenderEngine createRenderEngineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
+	pFNDestroyRenderEngine destroyRenderEngineFn = renderVkLib.GetProcAddressT<pFNDestroyRenderEngine>("DestroyRenderEngine");
 
 	g_pCompiler = compilerFn();
 
-	auto pEngine = renderEngineFn();
+	auto pEngine = createRenderEngineFn();
 	auto pDevice = pEngine->CreateRenderDevice();
 
 	//BufferDesc bufferDesc;
 	//bufferDesc.m_UsageFlags = BufferUsage::kVertexBuffer | BufferUsage::kTransferDst;
 	//auto pBuffer = pDevice->CreateBuffer(bufferDesc);
 
-	auto pInput = Input::GetInput();
-	auto pKeyboard = pInput->GetKeyboard();
+	auto pKeyboard = Input::GetKeyboard();
 
 	WindowDesc windowDesc;
 	windowDesc.m_X += 100;
 	windowDesc.m_Y += 100;
 	auto pWindow = BvPlatform::CreateWindow(windowDesc);
-	auto width = pWindow->GetWidth();
-	auto height = pWindow->GetHeight();
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_pName = "Test";
@@ -101,10 +100,6 @@ int main()
 	ubViewDesc.m_Stride = sizeof(Float44);
 	ubViewDesc.m_ElementCount = 1;
 	auto pUBView = pDevice->CreateBufferView(ubViewDesc);
-
-	Store44(MatrixLookAtLH(VectorSet(0.0f, 0.0f, -5.0f, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f)) *
-		MatrixPerspectiveLH_DX(0.1f, 100.0f, float(pWindow->GetWidth()) / float(pWindow->GetHeight()), kPiDiv4),
-		pUB->GetMappedDataAsT<float>());
 
 	pSet->SetBuffer(0, pUBView);
 	pSet->Update();
@@ -150,9 +145,14 @@ int main()
 	while (true)
 	{
 		frame++;
-		CPrintF(ConsoleColor::kLightGreen, "Frame %d:\n", frame);
-		CPrintF(ConsoleColor::kAqua, "Image index aquired: %d\n", pSwapChain->GetCurrentImageIndex());
-		BvPlatform::Update();
+		//PrintF(ConsoleColor::kLightGreen, "Frame %d:\n", frame);
+		//PrintF(ConsoleColor::kAqua, "Image index aquired: %d\n", pSwapChain->GetCurrentImageIndex());
+		BvPlatform::ProcessOSEvents();
+		if (!pWindow->IsValid())
+		{
+			break;
+		}
+
 		if (pKeyboard->KeyWentDown(BvKey::kReturn))
 		{
 			break;
@@ -191,6 +191,13 @@ int main()
 		currIndex = pSwapChain->GetCurrentImageIndex();
 		renderSemaphores[currIndex]->Wait(renderSemaphoreValues[currIndex]++);
 		commandPools[currIndex]->Reset();
+
+		auto width = pWindow->GetWidth();
+		auto height = pWindow->GetHeight();
+
+		Store44(MatrixLookAtLH(VectorSet(0.0f, 0.0f, -5.0f, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f)) *
+			MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4),
+			pUB->GetMappedDataAsT<float>());
 
 		//float f = fmodf((float)GetTickCount64(), 360.0f) / 360.0f;
 		BvTextureView *pRenderTargets[] = { pSwapChain->GetCurrentTextureView() };
@@ -233,6 +240,8 @@ int main()
 		pGraphicsQueue->Execute();
 		pSwapChain->Present(false);
 	}
+
+	destroyRenderEngineFn();
 
 	BvPlatform::Shutdown();
 

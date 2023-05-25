@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/Render/BvTexture.h"
+#include "BDeV/RenderAPI/BvTexture.h"
 #include "BvCommonVk.h"
 #include <vma/vk_mem_alloc.h>
 

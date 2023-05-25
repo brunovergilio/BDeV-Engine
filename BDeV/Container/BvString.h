@@ -3,7 +3,7 @@
 
 #include "BDeV/System/Debug/BvDebug.h"
 #include "BDeV/Utils/BvUtils.h"
-#include "BDeV/Utils/Hash.h"
+#include "BDeV/Utils/BvHash.h"
 #include "BDeV/Container/BvVector.h"
 #include <cstdarg>
 #include <string>
@@ -13,17 +13,18 @@ template<typename CharT>
 class CharHelper
 {
 public:
-#define BV_CHAR_TYPE_PREFIX(c)												\
-	if constexpr (std::is_same_v<CharT, char>) { return c; }				\
-	else if constexpr (std::is_same_v<CharT, wchar_t>) { return L##c; }		\
-	else if constexpr (std::is_same_v<CharT, char8_t>) { return u8##c; }	\
-	else if constexpr (std::is_same_v<CharT, char16_t>) { return u##c; }	\
-	else if constexpr (std::is_same_v<CharT, char32_t>) { return U##c; }	\
+#define BV_CHAR_TYPE_PREFIX(ch)												\
+	if constexpr (std::is_same_v<CharT, char>) { return ch; }				\
+	else if constexpr (std::is_same_v<CharT, wchar_t>) { return L##ch; }	\
 	else { return 0; }														\
+	//else if constexpr (std::is_same_v<CharT, char8_t>) { return u8##ch; }	\
+	//else if constexpr (std::is_same_v<CharT, char16_t>) { return u##ch; }	\
+	//else if constexpr (std::is_same_v<CharT, char32_t>) { return U##ch; }	\
 
 	static constexpr CharT NewLine() { BV_CHAR_TYPE_PREFIX('\n') }
 	static constexpr CharT Tab() { BV_CHAR_TYPE_PREFIX('\t') }
-	static constexpr CharT CarriageReturn() { BV_CHAR_TYPE_PREFIX('\n') }
+	static constexpr CharT CarriageReturn() { BV_CHAR_TYPE_PREFIX('\r') }
+	static constexpr CharT NullTerminator() { BV_CHAR_TYPE_PREFIX('\0') }
 #undef BV_CHAR_TYPE_PREFIX
 };
 
@@ -32,22 +33,30 @@ template<typename CharT>
 class BvStringT
 {
 public:
+	BvCompilerAssert((std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>), "Currently BvStringT only supports char and wchar_t as types!");
+
 	static constexpr u32 kInvalidIndex = kU32Max;
 
 	BvStringT();
-	explicit BvStringT(const u32 size, const CharT c = 0);
+	BvStringT(IBvMemoryAllocator* pAllocator);
+	explicit BvStringT(const u32 size, const CharT c = 0, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
+	explicit BvStringT(const BvStringT & str, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
+	BvStringT(const CharT * const pStr, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
+	explicit BvStringT(const CharT * const pStr, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
+	BvStringT(const CharT c, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
 	BvStringT(const BvStringT & rhs);
-	BvStringT & operator =(const BvStringT & rhs);
 	BvStringT(BvStringT && rhs) noexcept;
-	BvStringT & operator =(BvStringT && rhs) noexcept;
-	BvStringT & operator =(const CharT * const pStr);
-	BvStringT & operator =(const CharT c);
+
+	BvStringT& operator =(const BvStringT & rhs);
+	BvStringT& operator =(BvStringT && rhs) noexcept;
+	BvStringT& operator =(const CharT * const pStr);
+	BvStringT& operator =(const CharT c);
+
 	~BvStringT();
 
-	explicit BvStringT(const BvStringT & str, const u32 start, const u32 count);
-	BvStringT(const CharT * const pStr);
-	explicit BvStringT(const CharT * const pStr, const u32 start, const u32 count);
-	BvStringT(const CharT c);
+	// Allocator
+	IBvMemoryAllocator* GetAllocator() const;
+	void SetAllocator(IBvMemoryAllocator* pAllocator);
 
 	void Assign(const BvStringT & str);
 	void Assign(const CharT * const pStr);
@@ -78,10 +87,9 @@ public:
 
 	void Erase(const u32 start, const u32 count);
 
-	void Resize(const u32 size, const CharT c = 0);
+	void Resize(u32 size, CharT c = 0);
 	void Clear();
 
-	void Swap(BvStringT & str);
 	void Copy(BvStringT & str) const;
 	void Copy(BvStringT & str, const u32 start, const u32 count) const;
 	BvStringT Substr(const u32 start, const u32 count) const;
@@ -94,41 +102,49 @@ public:
 	bool StartsWith(const CharT* const pStr, const u32 offset = 0) const;
 	bool StartsWith(const CharT* const pStr, const u32 offset, const u32 size) const;
 
-	const u32 Find(const CharT c, const u32 offset = 0) const;
-	const u32 Find(const BvStringT & str, const u32 offset = 0) const;
-	const u32 Find(const CharT * const pStr, const u32 offset = 0) const;
-	const u32 Find(const CharT * const pStr, const u32 offset, const u32 size) const;
+	u32 Find(const CharT c, const u32 offset = 0) const;
+	u32 Find(const BvStringT & str, const u32 offset = 0) const;
+	u32 Find(const CharT * const pStr, const u32 offset = 0) const;
+	u32 Find(const CharT * const pStr, const u32 offset, const u32 size) const;
 
-	const u32 RFind(const CharT c, const u32 offset = kInvalidIndex) const;
-	const u32 RFind(const BvStringT & str, const u32 offset = kInvalidIndex) const;
-	const u32 RFind(const CharT * const pStr, const u32 offset = kInvalidIndex) const;
-	const u32 RFind(const CharT * const pStr, const u32 size, const u32 offset) const;
+	u32 RFind(const CharT c, const u32 offset = kInvalidIndex) const;
+	u32 RFind(const BvStringT & str, const u32 offset = kInvalidIndex) const;
+	u32 RFind(const CharT * const pStr, const u32 offset = kInvalidIndex) const;
+	u32 RFind(const CharT * const pStr, const u32 size, const u32 offset) const;
 
-	const u32 FindFirstOf(const CharT c, const u32 offset = 0) const;
-	const u32 FindFirstOf(const BvStringT& str, const u32 offset = 0) const;
-	const u32 FindFirstOf(const CharT* const pStr, const u32 offset = 0) const;
-	const u32 FindFirstOf(const CharT* const pStr, const u32 offset, const u32 size) const;
+	u32 FindFirstOf(const CharT c, const u32 offset = 0) const;
+	u32 FindFirstOf(const BvStringT& str, const u32 offset = 0) const;
+	u32 FindFirstOf(const CharT* const pStr, const u32 offset = 0) const;
+	u32 FindFirstOf(const CharT* const pStr, const u32 offset, const u32 size) const;
 
-	const u32 FindFirstNotOf(const CharT c, const u32 offset = 0) const;
-	const u32 FindFirstNotOf(const BvStringT& str, const u32 offset = 0) const;
-	const u32 FindFirstNotOf(const CharT* const pStr, const u32 offset = 0) const;
-	const u32 FindFirstNotOf(const CharT* const pStr, const u32 offset, const u32 size) const;
+	u32 FindFirstNotOf(const CharT c, const u32 offset = 0) const;
+	u32 FindFirstNotOf(const BvStringT& str, const u32 offset = 0) const;
+	u32 FindFirstNotOf(const CharT* const pStr, const u32 offset = 0) const;
+	u32 FindFirstNotOf(const CharT* const pStr, const u32 offset, const u32 size) const;
 
-	const u32 FindLastOf(const CharT c, const u32 offset = kInvalidIndex) const;
-	const u32 FindLastOf(const BvStringT& str, const u32 offset = kInvalidIndex) const;
-	const u32 FindLastOf(const CharT* const pStr, const u32 offset = kInvalidIndex) const;
-	const u32 FindLastOf(const CharT* const pStr, const u32 offset, const u32 size) const;
+	u32 FindLastOf(const CharT c, const u32 offset = kInvalidIndex) const;
+	u32 FindLastOf(const BvStringT& str, const u32 offset = kInvalidIndex) const;
+	u32 FindLastOf(const CharT* const pStr, const u32 offset = kInvalidIndex) const;
+	u32 FindLastOf(const CharT* const pStr, const u32 offset, const u32 size) const;
 
-	const u32 FindLastNotOf(const CharT c, const u32 offset = kInvalidIndex) const;
-	const u32 FindLastNotOf(const BvStringT& str, const u32 offset = kInvalidIndex) const;
-	const u32 FindLastNotOf(const CharT* const pStr, const u32 offset = kInvalidIndex) const;
-	const u32 FindLastNotOf(const CharT* const pStr, const u32 offset, const u32 size) const;
+	u32 FindLastNotOf(const CharT c, const u32 offset = kInvalidIndex) const;
+	u32 FindLastNotOf(const BvStringT& str, const u32 offset = kInvalidIndex) const;
+	u32 FindLastNotOf(const CharT* const pStr, const u32 offset = kInvalidIndex) const;
+	u32 FindLastNotOf(const CharT* const pStr, const u32 offset, const u32 size) const;
 
-	const u64 Hash() const;
+	bool StartsWith(CharT c) const;
+	bool StartsWith(const BvStringT& str) const;
+	bool StartsWith(const CharT* pStr) const;
 
-	BV_INLINE const bool Contains(const CharT c) const { return Find(c) != kInvalidIndex; }
-	BV_INLINE const bool Contains(const BvStringT & str) const { return Find(str) != kInvalidIndex; }
-	BV_INLINE const bool Contains(const CharT * const pStr) const { return Find(pStr) != kInvalidIndex; }
+	bool EndsWith(CharT c) const;
+	bool EndsWith(const BvStringT& str) const;
+	bool EndsWith(const CharT* pStr) const;
+
+	u64 Hash() const;
+
+	BV_INLINE bool Contains(const CharT c) const { return Find(c) != kInvalidIndex; }
+	BV_INLINE bool Contains(const BvStringT & str) const { return Find(str) != kInvalidIndex; }
+	BV_INLINE bool Contains(const CharT * const pStr) const { return Find(pStr) != kInvalidIndex; }
 
 	BvStringT & operator +=(const BvStringT & str) { Append(str); return *this; }
 	BvStringT & operator +=(const CharT * const pStr) { Append(pStr); return *this; }
@@ -147,42 +163,44 @@ public:
 	BV_INLINE const CharT Back() const { BvAssert(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
 
 	BV_INLINE const CharT * const CStr() const { return m_pStr; }
-	BV_INLINE const u32 Size() const { return m_Size; }
-	BV_INLINE const u32 Capacity() const { return m_Capacity; }
-	BV_INLINE const bool Empty() const { return m_Size == 0; }
+	BV_INLINE u32 Size() const { return m_Size; }
+	BV_INLINE u32 Capacity() const { return m_Capacity; }
+	BV_INLINE bool Empty() const { return m_Size == 0; }
 	BV_INLINE CharT GetFirstChar() const { return m_Size > 0 ? m_pStr[0] : 0; }
 	BV_INLINE CharT GetLastChar() const { return m_Size > 0 ? m_pStr[m_Size - 1] : 0; }
 
 	BV_INLINE operator const CharT * const() { return m_pStr; }
 
-	const i32 Compare(const BvStringT & str) const { return Compare(str.m_pStr, str.m_Size); }
-	const i32 Compare(const CharT* const pStr, size_t size) const;
-
-	const bool operator ==(CharT c) const { return m_Size == 1 && c == m_pStr[0]; }
-	const bool operator ==(const BvStringT & str) const { return Compare(str) == 0; }
-	const bool operator ==(const CharT * const pStr) const { return Compare(pStr) == 0; }
-
-	const bool operator !=(CharT c) const { return !(*this == c); }
-	const bool operator !=(const BvStringT& str) const { return Compare(str) != 0; }
-	const bool operator !=(const CharT* const pStr) const { return Compare(pStr) != 0; }
-
-	const bool operator <(const BvStringT & str) const { return Compare(str) < 0; }
-	const bool operator <(const CharT * const pStr) const { return Compare(pStr) < 0; }
-
-	const bool operator <=(const BvStringT & str) const { return Compare(str) <= 0; }
-	const bool operator <=(const CharT * const pStr) const { return Compare(pStr) <= 0; }
-
-	const bool operator >(const BvStringT & str) const { return Compare(str) > 0; }
-	const bool operator >(const CharT * const pStr) const { return Compare(pStr) > 0; }
-
-	const bool operator >=(const BvStringT & str) const { return Compare(str) >= 0; }
-	const bool operator >=(const CharT * const pStr) const { return Compare(pStr) >= 0; }
+	BV_INLINE i32 Compare(const BvStringT & str) const { return Compare(str.m_pStr, str.m_Size); }
+	BV_INLINE i32 Compare(const CharT* const pStr, size_t size) const;
+	 
+	BV_INLINE bool operator ==(CharT c) const { return m_Size == 1 && c == m_pStr[0]; }
+	BV_INLINE bool operator ==(const BvStringT & str) const { return Compare(str) == 0; }
+	BV_INLINE bool operator ==(const CharT * const pStr) const { return Compare(pStr) == 0; }
+	 
+	BV_INLINE bool operator !=(CharT c) const { return !(*this == c); }
+	BV_INLINE bool operator !=(const BvStringT& str) const { return Compare(str) != 0; }
+	BV_INLINE bool operator !=(const CharT* const pStr) const { return Compare(pStr) != 0; }
+	 
+	BV_INLINE bool operator <(const BvStringT & str) const { return Compare(str) < 0; }
+	BV_INLINE bool operator <(const CharT * const pStr) const { return Compare(pStr) < 0; }
+	 
+	BV_INLINE bool operator <=(const BvStringT & str) const { return Compare(str) <= 0; }
+	BV_INLINE bool operator <=(const CharT * const pStr) const { return Compare(pStr) <= 0; }
+	 
+	BV_INLINE bool operator >(const BvStringT & str) const { return Compare(str) > 0; }
+	BV_INLINE bool operator >(const CharT * const pStr) const { return Compare(pStr) > 0; }
+	 
+	BV_INLINE bool operator >=(const BvStringT & str) const { return Compare(str) >= 0; }
+	BV_INLINE bool operator >=(const CharT * const pStr) const { return Compare(pStr) >= 0; }
 
 private:
+	void Grow(u32 size);
 	void Destroy();
 
 protected:
 	CharT * m_pStr = nullptr;
+	IBvMemoryAllocator* m_pAllocator = GetDefaultAllocator();
 	u32 m_Size = 0;
 	u32 m_Capacity = 0;
 };
@@ -200,21 +218,70 @@ struct std::hash<BvStringT<CharT>>
 
 template<typename CharT>
 BvStringT<CharT>::BvStringT()
+	: m_pAllocator(GetDefaultAllocator())
 {
 }
 
 
 template<typename CharT>
-BvStringT<CharT>::BvStringT(const u32 size, const CharT c)
+inline BvStringT<CharT>::BvStringT(IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
+{
+}
+
+
+template<typename CharT>
+BvStringT<CharT>::BvStringT(const u32 size, const CharT c, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
 {
 	Resize(size, c);
 }
 
 
 template<typename CharT>
+BvStringT<CharT>::BvStringT(const BvStringT& str, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
+{
+	Assign(str, start, count);
+}
+
+
+template<typename CharT>
+BvStringT<CharT>::BvStringT(const CharT* const pStr, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
+{
+	Assign(pStr);
+}
+
+
+template<typename CharT>
+BvStringT<CharT>::BvStringT(const CharT* const pStr, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
+{
+	Assign(pStr, start, count);
+}
+
+
+template<typename CharT>
+BvStringT<CharT>::BvStringT(const CharT c, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
+{
+	Assign(c);
+}
+
+
+template<typename CharT>
 BvStringT<CharT>::BvStringT(const BvStringT<CharT>& rhs)
+	: m_pAllocator(rhs.m_pAllocator)
 {
 	Assign(rhs);
+}
+
+
+template<typename CharT>
+BvStringT<CharT>::BvStringT(BvStringT&& rhs) noexcept
+{
+	*this = std::move(rhs);
 }
 
 
@@ -233,26 +300,13 @@ BvStringT<CharT>& BvStringT<CharT>::operator=(const BvStringT& rhs)
 
 
 template<typename CharT>
-BvStringT<CharT>::BvStringT(BvStringT&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-template<typename CharT>
 BvStringT<CharT>& BvStringT<CharT>::operator=(BvStringT&& rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		Destroy();
-
-		m_pStr = rhs.m_pStr;
-		m_Size = rhs.m_Size;
-		m_Capacity = rhs.m_Capacity;
-
-		rhs.m_pStr = nullptr;
-		rhs.m_Size = 0;
-		rhs.m_Capacity = 0;
+		std::swap(m_pStr, rhs.m_pStr);
+		std::swap(m_Size, rhs.m_Size);
+		std::swap(m_Capacity, rhs.m_Capacity);
 	}
 
 	return *this;
@@ -291,30 +345,33 @@ BvStringT<CharT>::~BvStringT()
 
 
 template<typename CharT>
-BvStringT<CharT>::BvStringT(const BvStringT& str, const u32 start, const u32 count)
+IBvMemoryAllocator* BvStringT<CharT>::GetAllocator() const
 {
-	Assign(str, start, count);
+	return m_pAllocator;
 }
 
 
 template<typename CharT>
-BvStringT<CharT>::BvStringT(const CharT* const pStr)
+void BvStringT<CharT>::SetAllocator(IBvMemoryAllocator* pAllocator)
 {
-	Assign(pStr);
-}
+	if (m_pAllocator == pAllocator)
+	{
+		return;
+	}
 
+	if (m_Capacity > 0)
+	{
+		CharT* pNewStr = reinterpret_cast<CharT*>(m_pAllocator->Allocate(m_Capacity * sizeof(CharT), alignof(CharT), 0, BV_SOURCE_INFO));
+		if (m_Size > 0)
+		{
+			std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
+			pNewStr[m_Size] = 0;
+		}
+		m_pAllocator->Free(m_pStr, BV_SOURCE_INFO);
+		m_pStr = pNewStr;
+	}
 
-template<typename CharT>
-BvStringT<CharT>::BvStringT(const CharT* const pStr, const u32 start, const u32 count)
-{
-	Assign(pStr, start, count);
-}
-
-
-template<typename CharT>
-BvStringT<CharT>::BvStringT(const CharT c)
-{
-	Assign(c);
+	m_pAllocator = pAllocator;
 }
 
 
@@ -358,7 +415,7 @@ void BvStringT<CharT>::Assign(const CharT* const pStr, const u32 start, const u3
 
 	if (m_Capacity <= count)
 	{
-		Resize(GetNextPowerOf2(count));
+		Resize(count);
 	}
 
 	std::char_traits<CharT>::copy(m_pStr, pStr + start, count);
@@ -408,7 +465,7 @@ void BvStringT<CharT>::Insert(const CharT* const pStr, const u32 start, const u3
 	u32 newSize = count + m_Size;
 	if (m_Capacity <= newSize)
 	{
-		Resize(GetNextPowerOf2(newSize));
+		Resize(newSize);
 	}
 	m_pStr[newSize] = 0;
 
@@ -453,25 +510,7 @@ void BvStringT<CharT>::Replace(const CharT* const pSrcStr, const u32 srcSize, co
 template<typename CharT>
 const u32 BvStringT<CharT>::ReadLine(BvStringT& dstStr, const u32 offset) const
 {
-	dstStr.Clear();
-	if (offset >= m_Size)
-	{
-		return kInvalidIndex;
-	}
-
-	u32 i = offset;
-	while (i < m_Size && m_pStr[i] != CharHelper<CharT>::NewLine())
-	{
-		i++;
-	}
-
-	u32 count = i - offset;
-	if (count > 0)
-	{
-		dstStr.Assign(m_pStr, offset, count);
-	}
-
-	return offset + count + 1;
+	return Read(dstStr.m_pStr, CharHelper<CharT>::NewLine(), offset);
 }
 
 
@@ -537,7 +576,7 @@ void BvStringT<CharT>::Format(const CharT* const format, ...)
 
 	if (size >= m_Capacity)
 	{
-		Resize(GetNextPowerOf2(size));
+		Resize(size);
 	}
 
 	va_list args;
@@ -552,7 +591,7 @@ void BvStringT<CharT>::Format(const CharT* const format, ...)
 template<typename CharT>
 void BvStringT<CharT>::Erase(const u32 start, const u32 count)
 {
-	BvAssert(start < m_Size&& count > 0, "Erasing past the string's size");
+	BvAssert(start < m_Size && count > 0, "Erasing past the string's size");
 	u32 end = start + count;
 
 	u32 removed = count;
@@ -569,39 +608,32 @@ void BvStringT<CharT>::Erase(const u32 start, const u32 count)
 	m_pStr[m_Size] = 0;
 }
 
+
 #if (BV_PLATFORM == BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
 #pragma warning(push)
 #pragma warning(disable:6386) // Buffer overrun
 #endif
 
 template<typename CharT>
-void BvStringT<CharT>::Resize(const u32 size, const CharT c)
+void BvStringT<CharT>::Resize(u32 size, CharT c)
 {
-	BvAssert(size > 0, "String resizing needs a valid size");
-	if (size <= m_Size)
+	if (size > m_Size)
 	{
-		return;
-	}
+		Grow(size);
 
-	if (size >= m_Capacity)
-	{
-		CharT* pNewStr = new CharT[size + 1];
-		if (m_Size > 0)
+		for (auto i = m_Size; i < size; i++)
 		{
-			std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
+			m_pStr[i] = c;
 		}
-		pNewStr[m_Size] = 0;
-		delete[] m_pStr;
-		m_pStr = pNewStr;
-		m_Capacity = size + 1;
-	}
+		m_pStr[size] = 0;
 
-	for (auto i = m_Size; i < size; i++)
-	{
-		m_pStr[i] = c;
+		m_Size = size;
 	}
-	m_pStr[size] = 0;
-	m_Size = size;
+	else if (size < m_Size)
+	{
+		m_pStr[size] = 0;
+		m_Size = size;
+	}
 }
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
@@ -612,61 +644,8 @@ void BvStringT<CharT>::Resize(const u32 size, const CharT c)
 template<typename CharT>
 void BvStringT<CharT>::Clear()
 {
-	std::char_traits<CharT>::assign(m_pStr, m_Size, 0);
+	m_pStr[0] = CharHelper<CharT>::NullTerminator();
 	m_Size = 0;
-}
-
-
-template<typename CharT>
-void BvStringT<CharT>::Swap(BvStringT& str)
-{
-	if (m_Size >= str.m_Capacity)
-	{
-		str.Resize(m_Capacity);
-	}
-	if (str.m_Size >= m_Capacity)
-	{
-		Resize(str.m_Capacity);
-	}
-
-	CharT* pDst, * pSrc;
-	u32 min, max;
-	if (m_Size > str.m_Size)
-	{
-		pDst = str.m_pStr;
-		pSrc = m_pStr;
-		min = str.m_Size;
-		max = m_Size;
-	}
-	else
-	{
-		pSrc = str.m_pStr;
-		pDst = m_pStr;
-		min = m_Size;
-		max = str.m_Size;
-	}
-
-	CharT tmp;
-	u32 i = 0;
-	for (; i < min; i++)
-	{
-		tmp = m_pStr[i];
-		m_pStr[i] = str.m_pStr[i];
-		str.m_pStr[i] = tmp;
-	}
-
-	for (; i < max; i++)
-	{
-		pDst[i] = pSrc[i];
-	}
-	pDst[i] = 0;
-	pSrc[min] = 0;
-
-	{
-		u32 tmpSize = m_Size;
-		m_Size = str.m_Size;
-		str.m_Size = tmpSize;
-	}
 }
 
 
@@ -785,329 +764,255 @@ bool BvStringT<CharT>::StartsWith(const CharT* const pStr, const u32 offset, con
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::Find(const CharT c, const u32 offset) const
+u32 BvStringT<CharT>::Find(const CharT c, const u32 offset) const
 {
 	return Find(&c, offset, 1);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::Find(const BvStringT& str, const u32 offset) const
+u32 BvStringT<CharT>::Find(const BvStringT& str, const u32 offset) const
 {
 	return Find(str.m_pStr, offset, str.m_Size);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::Find(const CharT* const pStr, const u32 offset) const
+u32 BvStringT<CharT>::Find(const CharT* const pStr, const u32 offset) const
 {
 	return Find(pStr, offset, static_cast<u32>(std::char_traits<CharT>::length(pStr)));
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::Find(const CharT* const pStr, const u32 offset, const u32 size) const
+u32 BvStringT<CharT>::Find(const CharT* const pStr, const u32 offset, const u32 size) const
 {
-	if (size > m_Size || offset >= m_Size || m_Size - offset < size)
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	auto index = view.find(pStr, offset, size);
+	if (index == std::basic_string_view<CharT>::npos)
 	{
 		return kInvalidIndex;
 	}
-
-	u32 j;
-	bool found;
-	for (u32 i = offset; m_Size - i >= size; i++)
-	{
-		found = true;
-		for (j = 0; j < size; j++)
-		{
-			if (m_pStr[j + i] != pStr[j])
-			{
-				found = false;
-				break;
-			}
-		}
-
-		if (found)
-		{
-			return i;
-		}
-	}
-
-	return kInvalidIndex;
+	return u32(index);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::RFind(const CharT c, const u32 offset) const
+u32 BvStringT<CharT>::RFind(const CharT c, const u32 offset) const
 {
 	return RFind(&c, offset, 1);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::RFind(const BvStringT& str, const u32 offset) const
+u32 BvStringT<CharT>::RFind(const BvStringT& str, const u32 offset) const
 {
 	return RFind(str.m_pStr, offset, str.m_Size);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::RFind(const CharT* const pStr, const u32 offset) const
+u32 BvStringT<CharT>::RFind(const CharT* const pStr, const u32 offset) const
 {
 	return RFind(pStr, offset, static_cast<u32>(std::char_traits<CharT>::length(pStr)));
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::RFind(const CharT* const pStr, const u32 offset, const u32 size) const
+u32 BvStringT<CharT>::RFind(const CharT* const pStr, const u32 offset, const u32 size) const
 {
-	if (m_Size == 0)
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	auto index = view.rfind(pStr, offset, size);
+	if (index == std::basic_string_view<CharT>::npos)
 	{
 		return kInvalidIndex;
 	}
-
-	const u32 endOffset = (offset == kInvalidIndex || offset >= m_Size) ? m_Size - 1 : offset;
-	if (size > m_Size || (m_Size - endOffset < size))
-	{
-		return kInvalidIndex;
-	}
-	
-	u32 j;
-	bool found;
-	for (u32 i = endOffset + 2 - size; i > 0; i--)
-	{
-		found = true;
-		for (j = 0; j < size; j++)
-		{
-			if (m_pStr[j + i - 1] != pStr[j])
-			{
-				found = false;
-				break;
-			}
-		}
-
-		if (found)
-		{
-			return i - 1;
-		}
-	}
-
-	return kInvalidIndex;
+	return u32(index);
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstOf(const CharT c, const u32 offset) const
+u32 BvStringT<CharT>::FindFirstOf(const CharT c, const u32 offset) const
 {
 	return FindFirstOf(&c, offset, 1);
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstOf(const BvStringT& str, const u32 offset) const
+u32 BvStringT<CharT>::FindFirstOf(const BvStringT& str, const u32 offset) const
 {
 	return FindFirstOf(str.m_pStr, offset, str.m_Size);
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstOf(const CharT* const pStr, const u32 offset) const
+u32 BvStringT<CharT>::FindFirstOf(const CharT* const pStr, const u32 offset) const
 {
 	return FindFirstOf(pStr, offset, static_cast<u32>(std::char_traits<CharT>::length(pStr)));
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstOf(const CharT* const pStr, const u32 offset, const u32 size) const
+u32 BvStringT<CharT>::FindFirstOf(const CharT* const pStr, const u32 offset, const u32 size) const
 {
-	if (offset >= m_Size)
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	auto index = view.find_first_of(pStr, offset, size);
+	if (index == std::basic_string_view<CharT>::npos)
 	{
 		return kInvalidIndex;
 	}
-
-	u32 j;
-	for (u32 i = offset; i < m_Size; i++)
-	{
-		for (j = 0; j < size; j++)
-		{
-			if (m_pStr[i] == pStr[j])
-			{
-				return i;
-			}
-		}
-	}
-
-	return kInvalidIndex;
+	return u32(index);
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstNotOf(const CharT c, const u32 offset) const
+u32 BvStringT<CharT>::FindFirstNotOf(const CharT c, const u32 offset) const
 {
 	return FindFirstNotOf(&c, offset, 1);
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstNotOf(const BvStringT& str, const u32 offset) const
+u32 BvStringT<CharT>::FindFirstNotOf(const BvStringT& str, const u32 offset) const
 {
 	return FindFirstNotOf(str.m_pStr, offset, str.m_Size);
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstNotOf(const CharT* const pStr, const u32 offset) const
+u32 BvStringT<CharT>::FindFirstNotOf(const CharT* const pStr, const u32 offset) const
 {
 	return FindFirstNotOf(pStr, offset, static_cast<u32>(std::char_traits<CharT>::length(pStr)));
 }
 
 
 template<typename CharT>
-inline const u32 BvStringT<CharT>::FindFirstNotOf(const CharT* const pStr, const u32 offset, const u32 size) const
+u32 BvStringT<CharT>::FindFirstNotOf(const CharT* const pStr, const u32 offset, const u32 size) const
 {
-	if (m_Size == 0 || offset >= m_Size)
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	auto index = view.find_first_not_of(pStr, offset, size);
+	if (index == std::basic_string_view<CharT>::npos)
 	{
 		return kInvalidIndex;
 	}
-
-	u32 j;
-	bool found;
-	for (u32 i = offset; i < m_Size; i++)
-	{
-		found = false;
-		for (j = 0; j < size; j++)
-		{
-			if (m_pStr[i] == pStr[j])
-			{
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-		{
-			return i;
-		}
-	}
-
-	return kInvalidIndex;
+	return u32(index);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastOf(const CharT c, const u32 offset) const
+u32 BvStringT<CharT>::FindLastOf(const CharT c, const u32 offset) const
 {
 	return FindLastOf(&c, offset, 1);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastOf(const BvStringT& str, const u32 offset) const
+u32 BvStringT<CharT>::FindLastOf(const BvStringT& str, const u32 offset) const
 {
 	return FindLastOf(str.m_pStr, offset, str.m_Size);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastOf(const CharT* const pStr, const u32 offset) const
+u32 BvStringT<CharT>::FindLastOf(const CharT* const pStr, const u32 offset) const
 {
 	return FindLastOf(pStr, offset, static_cast<u32>(std::char_traits<CharT>::length(pStr)));
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastOf(const CharT* const pStr, const u32 offset, const u32 size) const
+u32 BvStringT<CharT>::FindLastOf(const CharT* const pStr, const u32 offset, const u32 size) const
 {
-	if (m_Size == 0)
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	auto index = view.find_last_of(pStr, offset, size);
+	if (index == std::basic_string_view<CharT>::npos)
 	{
 		return kInvalidIndex;
 	}
-
-	const u32 endOffset = (offset == kInvalidIndex || offset >= m_Size) ? m_Size - 1 : offset;
-
-	bool found = true;
-	u32 j;
-	for (u32 i = endOffset + 1; i > size - 1; i--)
-	{
-		found = true;
-		for (j = size; j > 0; j--)
-		{
-			if (m_pStr[i - 1] != pStr[j - 1])
-			{
-				found = false;
-				break;
-			}
-		}
-
-		if (found)
-		{
-			return i - 1;
-		}
-	}
-
-	return kInvalidIndex;
+	return u32(index);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastNotOf(const CharT c, const u32 offset) const
+u32 BvStringT<CharT>::FindLastNotOf(const CharT c, const u32 offset) const
 {
 	return FindLastNotOf(&c, offset, 1);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastNotOf(const BvStringT& str, const u32 offset) const
+u32 BvStringT<CharT>::FindLastNotOf(const BvStringT& str, const u32 offset) const
 {
 	return FindLastNotOf(str.m_pStr, offset, str.m_Size);
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastNotOf(const CharT* const pStr, const u32 offset) const
+u32 BvStringT<CharT>::FindLastNotOf(const CharT* const pStr, const u32 offset) const
 {
 	return FindLastNotOf(pStr, offset, static_cast<u32>(std::char_traits<CharT>::length(pStr)));
 }
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::FindLastNotOf(const CharT* const pStr, const u32 offset, const u32 size) const
+u32 BvStringT<CharT>::FindLastNotOf(const CharT* const pStr, const u32 offset, const u32 size) const
 {
-	if (m_Size == 0)
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	auto index = view.find_last_not_of(pStr, offset, size);
+	if (index == std::basic_string_view<CharT>::npos)
 	{
 		return kInvalidIndex;
 	}
+	return u32(index);
+}
 
-	const u32 endOffset = (offset == kInvalidIndex || offset >= m_Size) ? m_Size - 1 : offset;
+template<typename CharT>
+bool BvStringT<CharT>::StartsWith(CharT c) const
+{
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	return view.starts_with(c);
+}
 
-	u32 j;
-	bool found;
-	for (u32 i = endOffset + 1; i > 0; i--)
-	{
-		found = false;
-		for (j = 0; j < size; j++)
-		{
-			if (m_pStr[i - 1] == pStr[j])
-			{
-				found = true;
-				break;
-			}
-		}
+template<typename CharT>
+bool BvStringT<CharT>::StartsWith(const BvStringT& str) const
+{
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	return view.starts_with(str.m_pStr);
+}
 
-		if (!found)
-		{
-			return i - 1;
-		}
-	}
+template<typename CharT>
+bool BvStringT<CharT>::StartsWith(const CharT* pStr) const
+{
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	return view.starts_with(pStr);
+}
 
-	return kInvalidIndex;
+template<typename CharT>
+bool BvStringT<CharT>::EndsWith(CharT c) const
+{
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	return view.ends_with(c);
+}
+
+template<typename CharT>
+bool BvStringT<CharT>::EndsWith(const BvStringT& str) const
+{
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	return view.ends_with(str.m_pStr);
+}
+
+template<typename CharT>
+inline bool BvStringT<CharT>::EndsWith(const CharT* pStr) const
+{
+	std::basic_string_view<CharT> view(m_pStr, m_Size);
+	return view.ends_with(pStr);
 }
 
 
 template<typename CharT>
-const u64 BvStringT<CharT>::Hash() const
+u64 BvStringT<CharT>::Hash() const
 {
-	return FNV1a64(m_pStr, m_Size);
+	return m_Size > 0 ? MurmurHash64A(m_pStr, m_Size) : 0;
 }
 
 
@@ -1162,7 +1067,7 @@ BvStringT<CharT> operator+(const CharT c, const BvStringT<CharT>& str)
 
 
 template<typename CharT>
-const i32 BvStringT<CharT>::Compare(const CharT* const pStr, size_t size) const
+i32 BvStringT<CharT>::Compare(const CharT* const pStr, size_t size) const
 {
 	std::basic_string_view view1(m_pStr, m_Size), view2(pStr, size);
 
@@ -1171,21 +1076,43 @@ const i32 BvStringT<CharT>::Compare(const CharT* const pStr, size_t size) const
 
 
 template<typename CharT>
+inline void BvStringT<CharT>::Grow(u32 size)
+{
+	// Need to account for the null-terminating character (so not <=)
+	if (size < m_Capacity)
+	{
+		return;
+	}
+
+	CharT* pNewStr = reinterpret_cast<CharT*>(m_pAllocator->Allocate(((u64)size + 1) * sizeof(CharT), alignof(CharT), 0, BV_SOURCE_INFO));
+	if (m_Size > 0)
+	{
+		std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
+	}
+	pNewStr[m_Size] = 0;
+	m_Capacity = size + 1;
+	if (m_pStr)
+	{
+		m_pAllocator->Free(m_pStr, BV_SOURCE_INFO);
+	}
+	m_pStr = pNewStr;
+}
+
+
+template<typename CharT>
 inline void BvStringT<CharT>::Destroy()
 {
 	if (m_pStr)
 	{
-		delete[] m_pStr;
+		m_pAllocator->Free(m_pStr, BV_SOURCE_INFO);
 		m_pStr = nullptr;
-		m_Size = 0;
-		m_Capacity = 0;
 	}
+
+	m_Size = 0;
+	m_Capacity = 0;
 }
 
 
 // Typedefs for convenience
 using BvString = BvStringT<char>;
 using BvWString = BvStringT<wchar_t>;
-using BvString8 = BvStringT<char8_t>;
-using BvString16 = BvStringT<char16_t>;
-using BvString32 = BvStringT<char32_t>;

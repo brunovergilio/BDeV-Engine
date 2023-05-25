@@ -3,8 +3,10 @@
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="BvReflector.cpp" />
+    <ClCompile Include="BvLexer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BvReflector.h" />
+    <ClInclude Include="BvLexer.h" />
   </ItemGroup>
 </Project>

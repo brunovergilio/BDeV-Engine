@@ -434,3 +434,8 @@ void BvReflector::ParseEnum(const BvVector<BvString>& symbols, u32& symbolIndex)
 		symbolIndex++;
 	}
 }
+
+
+void BvReflector::GenerateMetadata()
+{
+}

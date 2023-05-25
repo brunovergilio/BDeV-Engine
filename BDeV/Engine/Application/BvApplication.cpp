@@ -31,7 +31,7 @@ void BvApplication::Shutdown()
 
 void BvApplication::ProcessFrame()
 {
-	BvPlatform::Update();
+	BvPlatform::ProcessOSEvents();
 
 	PreUpdate();
 	Update();

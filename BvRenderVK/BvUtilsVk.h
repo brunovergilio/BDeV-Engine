@@ -3,7 +3,7 @@
 
 #include "BDeV/System/Debug/BvDebug.h"
 #include "BvRenderVK/BvCommonVk.h"
-#include "BDeV/Render/BvCommon.h"
+#include "BDeV/RenderAPI/BvCommon.h"
 
 
 #define BvDebugVkResult(result) DPrintF("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)

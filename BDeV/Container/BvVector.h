@@ -23,17 +23,22 @@ public:
 	using ConstReverseIterator = RandomReverseIterator<const Type>;
 
 	BvVector(); // Default
-	explicit BvVector(const size_t size, const Type & val = Type()); // Fill
-	explicit BvVector(Iterator start, Iterator end); // Range
+	BvVector(IBvMemoryAllocator* pAllocator); // Allocator
+	explicit BvVector(const size_t size, const Type & val = Type(), IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Fill
+	explicit BvVector(Iterator start, Iterator end, IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Range
+	BvVector(std::initializer_list<Type> list, IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Initializer List
 	BvVector(const BvVector & rhs); // Copy
 	BvVector(BvVector && rhs) noexcept; // Move
-	BvVector(std::initializer_list<Type> list); // Initializer List
 
 	BvVector& operator =(const BvVector & rhs); // Copy Assignment
 	BvVector& operator =(BvVector && rhs) noexcept; // Move Assignment
 	BvVector& operator =(std::initializer_list<Type> list); // Copy Assignment
 
 	~BvVector();
+
+	// Allocator
+	IBvMemoryAllocator* GetAllocator() const;
+	void SetAllocator(IBvMemoryAllocator* pAllocator);
 
 	// Iterator
 	Iterator begin() { return Iterator(m_pData); }
@@ -96,38 +101,59 @@ public:
 	size_t Find(const Type& value) const;
 
 private:
-	void Grow(const size_t size, const bool forceSize = false);
+	void Grow(const size_t size);
 	void Destroy();
 
 private:
-	Type * m_pData = nullptr;
+	Type* m_pData = nullptr;
+	IBvMemoryAllocator* m_pAllocator = GetDefaultAllocator();
 	size_t m_Size = 0;
 	size_t m_Capacity = 0;
 };
 
+
 template<class Type>
 inline BvVector<Type>::BvVector()
+	: m_pAllocator(GetDefaultAllocator())
 {
 }
 
 
 template<class Type>
-inline BvVector<Type>::BvVector(const size_t size, const Type & val)
+inline BvVector<Type>::BvVector(IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
+{
+}
+
+
+template<class Type>
+inline BvVector<Type>::BvVector(const size_t size, const Type & val, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
 {
 	Assign(size, val);
 }
 
+
 template<class Type>
-inline BvVector<Type>::BvVector(Iterator start, Iterator end)
+inline BvVector<Type>::BvVector(Iterator start, Iterator end, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
 {
 	Assign(start, end);
 }
 
+
+template<class Type>
+inline BvVector<Type>::BvVector(std::initializer_list<Type> list, IBvMemoryAllocator* pAllocator)
+	: m_pAllocator(pAllocator)
+{
+	Assign(list);
+}
+
+
 template<class Type>
 inline BvVector<Type>::BvVector(const BvVector & rhs)
+	: m_pAllocator(rhs.m_pAllocator)
 {
-	Clear();
-
 	Grow(rhs.m_Size);
 
 	m_Size = rhs.m_Size;
@@ -137,25 +163,21 @@ inline BvVector<Type>::BvVector(const BvVector & rhs)
 	}
 }
 
+
 template<class Type>
 inline BvVector<Type>::BvVector(BvVector && rhs) noexcept
 {
 	*this = std::move(rhs);
 }
 
-template<class Type>
-inline BvVector<Type>::BvVector(std::initializer_list<Type> list)
-{
-	Assign(list);
-}
 
 template<class Type>
 inline BvVector<Type>& BvVector<Type>::operator=(const BvVector & rhs)
 {
 	if (this != &rhs)
 	{
-		Clear();
-
+		Destroy();
+		SetAllocator(rhs.m_pAllocator);
 		Grow(rhs.m_Size);
 
 		m_Size = rhs.m_Size;
@@ -168,18 +190,21 @@ inline BvVector<Type>& BvVector<Type>::operator=(const BvVector & rhs)
 	return *this;
 }
 
+
 template<class Type>
 inline BvVector<Type>& BvVector<Type>::operator=(BvVector && rhs) noexcept
 {
 	if (this != &rhs)
 	{
 		std::swap(m_pData, rhs.m_pData);
+		std::swap(m_pAllocator, rhs.m_pAllocator);
 		std::swap(m_Size, rhs.m_Size);
 		std::swap(m_Capacity, rhs.m_Capacity);
 	}
 
 	return *this;
 }
+
 
 template<class Type>
 inline BvVector<Type>& BvVector<Type>::operator=(std::initializer_list<Type> list)
@@ -198,11 +223,45 @@ inline BvVector<Type>& BvVector<Type>::operator=(std::initializer_list<Type> lis
 	return *this;
 }
 
+
 template<class Type>
 inline BvVector<Type>::~BvVector()
 {
 	Destroy();
 }
+
+
+template<class Type>
+inline IBvMemoryAllocator* BvVector<Type>::GetAllocator() const
+{
+	return m_pAllocator;
+}
+
+
+template<class Type>
+inline void BvVector<Type>::SetAllocator(IBvMemoryAllocator* pAllocator)
+{
+	if (m_pAllocator == pAllocator)
+	{
+		return;
+	}
+
+	if (m_Capacity > 0)
+	{
+		Type* pNewData = reinterpret_cast<Type*>(pAllocator->Allocate(m_Capacity * sizeof(Type), alignof(Type), 0, BV_SOURCE_INFO));
+		for (auto i = 0u; i < m_Size; i++)
+		{
+			new (&pNewData[i]) Type(std::move(m_pData[i]));
+		}
+
+		Clear();
+		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pData = pNewData;
+	}
+
+	m_pAllocator = pAllocator;
+}
+
 
 template<class Type>
 inline const size_t BvVector<Type>::Size() const
@@ -227,15 +286,14 @@ inline void BvVector<Type>::Resize(const size_t size, const Type & value)
 {
 	if (size > m_Size)
 	{
-		auto prevSize = m_Size;
+		Grow(size);
 
-		Grow(size, true);
-
-		m_Size = size;
-		for (auto i = prevSize; i < m_Size; i++)
+		for (auto i = m_Size; i < size; i++)
 		{
 			new (&m_pData[i]) Type(value);
 		}
+
+		m_Size = size;
 	}
 	else if (size < m_Size)
 	{
@@ -251,7 +309,7 @@ inline void BvVector<Type>::Resize(const size_t size, const Type & value)
 template<class Type>
 inline void BvVector<Type>::Reserve(const size_t size)
 {
-	Grow(size, true);
+	Grow(size);
 }
 
 template<class Type>
@@ -652,7 +710,7 @@ inline typename BvVector<Type>::Iterator BvVector<Type>::Emplace(ConstIterator p
 
 	if (m_Size == m_Capacity)
 	{
-		Grow(m_Capacity + 1);
+		Grow(CalculateNewContainerSize(m_Capacity));
 	}
 
 	if (pos < m_Size)
@@ -675,7 +733,7 @@ inline Type& BvVector<Type>::EmplaceBack(Args&& ...args)
 {
 	if (m_Size == m_Capacity)
 	{
-		Grow(m_Capacity + 1);
+		Grow(CalculateNewContainerSize(m_Capacity));
 	}
 
 	new (&m_pData[m_Size]) Type(std::forward<Args>(args)...);
@@ -698,45 +756,26 @@ size_t BvVector<Type>::Find(const Type& value) const
 }
 
 template<class Type>
-inline void BvVector<Type>::Grow(const size_t size, const bool forceSize)
+inline void BvVector<Type>::Grow(const size_t size)
 {
 	if (size <= m_Capacity)
 	{
 		return;
 	}
 
-	if (forceSize)
+	Type* pNewData = reinterpret_cast<Type*>(m_pAllocator->Allocate(size * sizeof(Type), alignof(Type), 0, BV_SOURCE_INFO));
+	for (auto i = 0u; i < m_Size; i++)
 	{
-		m_Capacity = size;
-	}
-	else
-	{
-		if (size == 0)
-		{
-			return;
-		}
-		else if (size == 1)
-		{
-			m_Capacity = size << 1;
-		}
-		else
-		{
-			m_Capacity = size + (size >> 1);
-		}
+		new (&pNewData[i]) Type(std::move(m_pData[i]));
+		m_pData[i].~Type();
 	}
 
-	void * pNewData = BvMAlloc(sizeof(Type) * m_Capacity, alignof(Type));
-	if (m_Size > 0)
+	m_Capacity = size;
+	if (m_pData)
 	{
-		Type * pObjs = reinterpret_cast<Type *>(pNewData);
-		for (auto i = 0U; i < m_Size; i++)
-		{
-			new (&pObjs[i]) Type(std::move(m_pData[i]));
-		}
+		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
 	}
-	BvFree(m_pData);
-
-	m_pData = reinterpret_cast<Type *>(pNewData);
+	m_pData = pNewData;
 }
 
 template<class Type>
@@ -746,7 +785,7 @@ inline void BvVector<Type>::Destroy()
 
 	if (m_pData)
 	{
-		BvFree(m_pData);
+		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
 		m_pData = nullptr;
 	}
 

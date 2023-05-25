@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/Render/BvBuffer.h"
+#include "BDeV/RenderAPI/BvBuffer.h"
 #include "BvCommonVk.h"
 #include <vma/vk_mem_alloc.h>
 

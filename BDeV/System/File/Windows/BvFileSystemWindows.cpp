@@ -1,6 +1,7 @@
-#include "BDeV/System/File/Windows/BvFileSystemWindows.h"
-#include <winioctl.h>
+#include "BDeV/System/File/BvFileSystem.h"
 #include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
+#include <Windows.h>
+#include <winioctl.h>
 
 
 bool BvFileSystem::FileExists(const char * pFileName)
@@ -20,7 +21,7 @@ bool BvFileSystem::FileExists(const char * pFileName)
 }
 
 
-bool BvFileSystem::DeleteFile(const char* const pFileName)
+bool BvFileSystem::DelFile(const char* const pFileName)
 {
 	if (!DeleteFileA(pFileName))
 	{
@@ -52,7 +53,7 @@ bool BvFileSystem::FileExists(const wchar_t* const pFileName)
 }
 
 
-bool BvFileSystem::DeleteFile(const wchar_t* const pFileName)
+bool BvFileSystem::DelFile(const wchar_t* const pFileName)
 {
 	if (!DeleteFileW(pFileName))
 	{
@@ -67,7 +68,7 @@ bool BvFileSystem::DeleteFile(const wchar_t* const pFileName)
 }
 
 
-bool BvFileSystem::DirectoryExists(const char * const pDirName)
+bool BvFileSystem::DirExists(const char * const pDirName)
 {
 	auto attrib = GetFileAttributesA(pDirName);
 	if (attrib == INVALID_FILE_ATTRIBUTES)
@@ -84,7 +85,7 @@ bool BvFileSystem::DirectoryExists(const char * const pDirName)
 }
 
 
-bool BvFileSystem::CreateDirectory(const char* const pDirName)
+bool BvFileSystem::MakeDir(const char* const pDirName)
 {
 	if (!CreateDirectoryA(pDirName, nullptr))
 	{
@@ -98,7 +99,7 @@ bool BvFileSystem::CreateDirectory(const char* const pDirName)
 }
 
 
-bool BvFileSystem::DeleteDirectory(const char* const pDirName, bool recurse)
+bool BvFileSystem::DelDir(const char* const pDirName, bool recurse)
 {
 	if (recurse)
 	{
@@ -141,12 +142,12 @@ bool BvFileSystem::DeleteDirectory(const char* const pDirName, bool recurse)
 				isFile = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 				if (isFile)
 				{
-					DeleteFile(filename.CStr());
+					DeleteFileA(filename.CStr());
 				}
 				else
 				{
 					filename.Append(R"(\)");
-					DeleteDirectory(filename.CStr(), recurse);
+					DelDir(filename.CStr(), recurse);
 				}
 			}
 		} while (FindNextFileA(hFind, &findData) != FALSE);
@@ -176,7 +177,7 @@ bool BvFileSystem::DeleteDirectory(const char* const pDirName, bool recurse)
 }
 
 
-bool BvFileSystem::DirectoryExists(const wchar_t* const pDirName)
+bool BvFileSystem::DirExists(const wchar_t* const pDirName)
 {
 	auto attrib = GetFileAttributesW(pDirName);
 	if (attrib == INVALID_FILE_ATTRIBUTES)
@@ -193,7 +194,7 @@ bool BvFileSystem::DirectoryExists(const wchar_t* const pDirName)
 }
 
 
-bool BvFileSystem::CreateDirectory(const wchar_t* const pDirName)
+bool BvFileSystem::MakeDir(const wchar_t* const pDirName)
 {
 	if (!CreateDirectoryW(pDirName, nullptr))
 	{
@@ -207,7 +208,7 @@ bool BvFileSystem::CreateDirectory(const wchar_t* const pDirName)
 }
 
 
-bool BvFileSystem::DeleteDirectory(const wchar_t* const pDirName, bool recurse)
+bool BvFileSystem::DelDir(const wchar_t* const pDirName, bool recurse)
 {
 	if (recurse)
 	{
@@ -250,12 +251,12 @@ bool BvFileSystem::DeleteDirectory(const wchar_t* const pDirName, bool recurse)
 				isFile = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 				if (isFile)
 				{
-					DeleteFile(filename.CStr());
+					DeleteFileW(filename.CStr());
 				}
 				else
 				{
 					filename.Append(LR"(\)");
-					DeleteDirectory(filename.CStr(), recurse);
+					DelDir(filename.CStr(), recurse);
 				}
 			}
 		} while (FindNextFileW(hFind, &findData) != FALSE);

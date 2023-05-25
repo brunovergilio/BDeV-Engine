@@ -13,9 +13,10 @@
 #include "BvRenderVK/BvFramebufferVk.h"
 
 
-BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo)
+BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo, const DeviceCreateDesc& deviceDesc)
 	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory())
 {
+	Create(deviceDesc);
 }
 
 
@@ -392,6 +393,9 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 
 	CreateVMA();
 
+	m_pRenderPassManager = new BvRenderPassManagerVk();
+	m_pFramebufferManager = new BvFramebufferManagerVk();
+
 	return true;
 }
 
@@ -399,25 +403,42 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 void BvRenderDeviceVk::Destroy()
 {
 	vkDeviceWaitIdle(m_Device);
-	
+
+	//m_pFactory->DestroyAllOfType<BvGraphicsPipelineStateVk>();
+	//m_pFactory->DestroyAllOfType<BvShaderResourceSetPoolVk>();
+	//m_pFactory->DestroyAllOfType<BvShaderResourceLayoutVk>();
+	//m_pFactory->DestroyAllOfType<BvCommandPoolVk>();
+	//m_pFactory->DestroyAllOfType<BvRenderPassVk>();
+	//m_pFactory->DestroyAllOfType<BvSemaphoreVk>();
+	//m_pFactory->DestroyAllOfType<BvTextureViewVk>();
+	//m_pFactory->DestroyAllOfType<BvTextureVk>();
+	//m_pFactory->DestroyAllOfType<BvBufferViewVk>();
+	//m_pFactory->DestroyAllOfType<BvBufferVk>();
+	//m_pFactory->DestroyAllOfType<BvSwapChainVk>();
+
 	if (m_pFactory)
 	{
 		delete m_pFactory;
 		m_pFactory = nullptr;
 	}
 
-	for (auto && pQueue : m_GraphicsQueues)
+	delete m_pFramebufferManager;
+	delete m_pRenderPassManager;
+
+	for (auto&& pQueue : m_GraphicsQueues)
 	{
 		delete pQueue;
 	}
-	for (auto && pQueue : m_ComputeQueues)
+	for (auto&& pQueue : m_ComputeQueues)
 	{
 		delete pQueue;
 	}
-	for (auto && pQueue : m_TransferQueues)
+	for (auto&& pQueue : m_TransferQueues)
 	{
 		delete pQueue;
 	}
+
+	DestroyVMA();
 
 	if (m_Device)
 	{
@@ -468,7 +489,7 @@ BvSemaphore * BvRenderDeviceVk::CreateSemaphore(const u64 initialValue)
 
 BvRenderPass * BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc & renderPassDesc)
 {
-	return GetRenderPassManager()->GetRenderPass(*this, renderPassDesc);
+	return m_pRenderPassManager->GetRenderPass(*this, renderPassDesc);
 }
 
 
@@ -595,7 +616,7 @@ void BvRenderDeviceVk::CreateVMA()
 		vmaACI.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 	}
 
-	VmaVulkanFunctions functions;
+	VmaVulkanFunctions functions{};
 	functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 	functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 	functions.vkGetPhysicalDeviceProperties = vkGetPhysicalDeviceProperties;

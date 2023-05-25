@@ -7,14 +7,15 @@
 #include "BDeV/Engine/TBJobSystem/BvTBJobSystem.h"
 #include <functional>
 #include "BDeV/System/Memory/BvMemory.h"
-#include "BDeV/Utils/Hash.h"
+#include "BDeV/Utils/BvHash.h"
 #include "BDeV/BvCore.h"
 #include "BDeV/Reflection/BvObjectInfo.h"
-#include <Windows.h>
 #include "BDeV/System/File/BvPath.h"
 #include "BDeV/System/Window/BvMonitor.h"
-#include "BDeV/Reflection/RTTI.h"
+#include "BDeV/Reflection/BvRTTI.h"
 #include "BDeV/System/Debug/BvDebug.h"
+#include "BDeV/Utils/BvTestUnit.h"
+#include "BDeV/System/Memory/BvMemory.h"
 
 
 char stack[1024];
@@ -23,8 +24,29 @@ char stack3[1024];
 char stack4[100];
 
 
+BV_INIT_TEST_UNIT_SYSTEM();
+
+BV_TEST_UNIT(abc)
+{
+	BV_TEST(1 == 3);
+	BV_TEST(2 == 2);
+	BV_TEST(0.0f == 0.0f);
+	BV_TEST(true == 1);
+}
+
+
+BV_TEST_UNIT(def)
+{
+	BV_TEST(1 == 3);
+	BV_TEST(2 == 2);
+	BV_TEST(0.0f == 0.0f);
+	BV_TEST(true == 1);
+}
+
+
 struct WE
 {
+	BV_RTTI(WE);									
 	int f();
 	int ff() {}
 	int a = int(0);
@@ -32,7 +54,7 @@ struct WE
 };
 
 
-BV_RSTRUCT() struct TestStruct
+BV_ROBJECT() struct TestStruct
 {
 	BV_RMETHOD() TestStruct() {}
 	BV_RMETHOD() void afsgg(int sedf, char b = '\\');
@@ -56,7 +78,7 @@ BV_RSTRUCT() struct TestStruct
 };
 
 
-BV_RSTRUCT() class TestStruct2 : public TestStruct
+BV_ROBJECT() class TestStruct2 : public TestStruct
 {
 	int d()
 	{
@@ -93,6 +115,21 @@ struct A
 
 int main()
 {
+	BvRobinMap<int, char> mm;
+	mm.Emplace(1, 'c');
+	mm.Emplace(4, 'd');
+	mm.Emplace(6, 'e');
+	mm.Emplace(12, 'f');
+
+	const auto i = mm.FindKey(1);
+
+	mm.Erase(1);
+	mm.Erase(4);
+
+
+	BV_RUN_TEST_UNITS();
+
+	BvVector<int> a(10, 3);
 	//const BvVector<BvMonitor*>& monitors = GetMonitors();
 	PrintF(ConsoleColor::kLightGreen, "Test\n");
 	//auto pMonitor = GetMonitorFromPoint(-10, 30);

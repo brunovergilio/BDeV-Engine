@@ -47,12 +47,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\</IntDir>
+    <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -107,14 +107,23 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\External\glslang\glslang\Include\glslang_c_interface.h" />
+    <ClInclude Include="..\External\glslang\glslang\Public\ResourceLimits.h" />
+    <ClInclude Include="..\External\glslang\glslang\Public\resource_limits_c.h" />
+    <ClInclude Include="..\External\SPIRV-Reflect\spirv_reflect.h" />
     <ClInclude Include="BvTextureLoader.h" />
     <ClInclude Include="BvShaderCompiler.h" />
     <ClInclude Include="SPIRV\BvSPIRVCompiler.h" />
+    <ClInclude Include="SPIRV\BvSPIRVReflector.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\External\glslang\glslang\ResourceLimits\ResourceLimits.cpp" />
+    <ClCompile Include="..\External\glslang\glslang\ResourceLimits\resource_limits_c.cpp" />
+    <ClCompile Include="..\External\SPIRV-Reflect\spirv_reflect.c" />
     <ClCompile Include="BvTextureLoader.cpp" />
     <ClCompile Include="BvShaderCompiler.cpp" />
     <ClCompile Include="SPIRV\BvSPIRVCompiler.cpp" />
+    <ClCompile Include="SPIRV\BvSPIRVReflector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BDeV\BDeV.vcxproj">

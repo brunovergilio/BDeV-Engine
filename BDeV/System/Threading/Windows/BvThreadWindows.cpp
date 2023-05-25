@@ -1,8 +1,9 @@
-#include "BvThreadWindows.h"
-#include "BDeV/System/Threading/Windows/BvFiberWindows.h"
+#include "BDeV/System/Threading/BvThread.h"
+#include "BDeV/System/Threading/BvFiber.h"
 #include "BDeV/System/Debug/BvDebug.h"
 #include <utility>
 #include <process.h>
+#include <Windows.h>
 
 
 BvFiber& GetThreadFiberInternal();
@@ -26,13 +27,9 @@ BvThread & BvThread::operator =(BvThread && rhs) noexcept
 	{
 		Destroy();
 
-		m_ThreadId = rhs.m_ThreadId;
-		m_hThread = rhs.m_hThread;
-		m_pDelegate = rhs.m_pDelegate;
-
-		rhs.m_ThreadId = 0;
-		rhs.m_hThread = nullptr;
-		rhs.m_pDelegate = nullptr;
+		std::swap(m_ThreadId, rhs.m_ThreadId);
+		std::swap(m_hThread, rhs.m_hThread);
+		std::swap(m_pDelegate, rhs.m_pDelegate);
 	}
 
 	return *this;
@@ -61,13 +58,30 @@ void BvThread::SetAffinity(const u32 affinityMask) const
 }
 
 
+void BvThread::SetName(const char* pThreadName) const
+{
+	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
+
+	constexpr u32 kMaxThreadNameLength = 32;
+	wchar_t threadName[32];
+	mbstate_t state{};
+	mbsrtowcs(threadName, &pThreadName, kMaxThreadNameLength - 1, &state);
+
+	auto hr = SetThreadDescription(m_hThread, threadName);
+	if (FAILED(hr))
+	{
+		// TODO: Handle error
+	}
+}
+
+
 void BvThread::Sleep(const u32 miliseconds)
 {
 	::Sleep(miliseconds);
 }
 
 
-void BvThread::Yield()
+void BvThread::YieldExecution()
 {
 	SwitchToThread();
 }

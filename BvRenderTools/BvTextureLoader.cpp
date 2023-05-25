@@ -1,6 +1,5 @@
 #include "BvTextureLoader.h"
 #include "BDeV/System/File/BvFile.h"
-#include "BDeV/System/File/BvFileUtils.h"
 
 
 #ifdef __clang__
@@ -1654,7 +1653,9 @@ LoaderResult LoadDDSTextureFromFileEx(
 	bool* isCubeMap)
 {
 	wchar_t widePath[kMaxPathSize]{};
-	ConvertToWidePathWithPrefix(widePath, szFileName);
+	wcscat(widePath, L"\\\\\?\\");
+	mbstate_t mbState{};
+	mbsrtowcs(widePath + 4, &szFileName, kMaxPathSize - 5, &mbState);
 
 	return LoadDDSTextureFromFileEx(
 		widePath,

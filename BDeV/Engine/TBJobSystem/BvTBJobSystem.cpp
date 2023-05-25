@@ -151,7 +151,7 @@ void BvTBJobSystemWorker::Process()
 		{
 			if (lastSkippedJobListIndex == jobListIndex)
 			{
-				BvThread::Yield();
+				BvThread::YieldExecution();
 			}
 			lastSkippedJobListIndex = jobListIndex;
 		}

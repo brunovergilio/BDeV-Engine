@@ -240,6 +240,7 @@ BvRenderPassManagerVk::BvRenderPassManagerVk()
 
 BvRenderPassManagerVk::~BvRenderPassManagerVk()
 {
+	Destroy();
 }
 
 

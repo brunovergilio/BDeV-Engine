@@ -1,26 +1,23 @@
-#include "BvWindowWindows.h"
-#include "BDeV/System/Input/Windows/BvInputWindows.h"
-#include "BDeV/System/Input/Windows/BvKeyboardWindows.h"
-#include "BDeV/System/Input/Windows/BvMouseWindows.h"
-#include "BDeV/System/Platform/Windows/BvPlatformWindows.h"
+#include "BDeV/System/Window/BvWindow.h"
+#include "BDeV/System/Platform/BvPlatform.h"
 #include "BDeV/System/Debug/BvDebug.h"
 
 
-BvWindowWindows::BvWindowWindows(const WindowDesc& windowDesc, WNDPROC wndProc)
-	: BvWindow(), m_X(windowDesc.m_X), m_Y(windowDesc.m_Y), m_Width(windowDesc.m_Width),
+BvWindow::BvWindow(const WindowDesc& windowDesc)
+	: m_X(windowDesc.m_X), m_Y(windowDesc.m_Y), m_Width(windowDesc.m_Width),
 	m_Height(windowDesc.m_Height), m_IsVisible(windowDesc.m_IsVisible)
 {
-	Create(windowDesc, wndProc);
+	Create(windowDesc);
 }
 
 
-BvWindowWindows::~BvWindowWindows()
+BvWindow::~BvWindow()
 {
 	Destroy();
 }
 
 
-void BvWindowWindows::Resize(u32 width, u32 height)
+void BvWindow::Resize(u32 width, u32 height)
 {
 	const LONG windowStyle = ::GetWindowLong(m_hWnd, GWL_STYLE);
 	if (windowStyle & WS_OVERLAPPED)
@@ -41,7 +38,7 @@ void BvWindowWindows::Resize(u32 width, u32 height)
 }
 
 
-void BvWindowWindows::Move(i32 x, i32 y)
+void BvWindow::Move(i32 x, i32 y)
 {
 	const LONG windowStyle = ::GetWindowLong(m_hWnd, GWL_STYLE);
 	if (windowStyle & WS_OVERLAPPED)
@@ -62,32 +59,7 @@ void BvWindowWindows::Move(i32 x, i32 y)
 }
 
 
-void BvWindowWindows::MoveAndResize(i32 x, i32 y, u32 width, u32 height)
-{
-	const LONG windowStyle = ::GetWindowLong(m_hWnd, GWL_STYLE);
-	if (windowStyle & WS_OVERLAPPED)
-	{
-		const LONG style = ::GetWindowLong(m_hWnd, GWL_STYLE);
-		const LONG exStyle = ::GetWindowLong(m_hWnd, GWL_EXSTYLE);
-
-		// This adjusts a zero rect to give us the size of the border
-		RECT BorderRect{};
-		::AdjustWindowRectEx(&BorderRect, style, false, exStyle);
-
-		// Border rect size is negative - see MoveWindowTo
-		x += BorderRect.left;
-		y += BorderRect.top;
-
-		// Inflate the window size by the OS border
-		width += BorderRect.right - BorderRect.left;
-		height += BorderRect.bottom - BorderRect.top;
-	}
-
-	::SetWindowPos(m_hWnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
-}
-
-
-void BvWindowWindows::Minimize()
+void BvWindow::Minimize()
 {
 	if (!m_IsMinimized)
 	{
@@ -96,7 +68,7 @@ void BvWindowWindows::Minimize()
 }
 
 
-void BvWindowWindows::Maximize()
+void BvWindow::Maximize()
 {
 	if (!m_IsMaximized)
 	{
@@ -105,7 +77,7 @@ void BvWindowWindows::Maximize()
 }
 
 
-void BvWindowWindows::Restore()
+void BvWindow::Restore()
 {
 	if (m_IsMaximized || m_IsMinimized)
 	{
@@ -114,7 +86,7 @@ void BvWindowWindows::Restore()
 }
 
 
-void BvWindowWindows::Show()
+void BvWindow::Show()
 {
 	if (!m_IsVisible)
 	{
@@ -124,7 +96,7 @@ void BvWindowWindows::Show()
 }
 
 
-void BvWindowWindows::Hide()
+void BvWindow::Hide()
 {
 	if (m_IsVisible)
 	{
@@ -134,7 +106,7 @@ void BvWindowWindows::Hide()
 }
 
 
-void BvWindowWindows::SetFocus()
+void BvWindow::SetFocus()
 {
 	if (!m_HasFocus)
 	{
@@ -144,204 +116,55 @@ void BvWindowWindows::SetFocus()
 }
 
 
-void BvWindowWindows::Flash()
+void BvWindow::Flash()
 {
 	::FlashWindow(m_hWnd, FALSE);
 }
 
 
-void BvWindowWindows::DestroyOnClose(bool value)
+void BvWindow::DestroyOnClose(bool value)
 {
 	m_DestroyOnClose = value;
 }
 
 
-bool BvWindowWindows::IsMinimized() const
+bool BvWindow::IsMinimized() const
 {
 	return m_IsMinimized;
 }
 
 
-bool BvWindowWindows::IsMaximized() const
+bool BvWindow::IsMaximized() const
 {
 	return m_IsMaximized;
 }
 
 
-bool BvWindowWindows::IsVisible() const
+bool BvWindow::IsVisible() const
 {
 	return m_IsVisible;
 }
 
 
-bool BvWindowWindows::HasFocus() const
+bool BvWindow::HasFocus() const
 {
 	return m_HasFocus;
 }
 
 
-bool BvWindowWindows::IsValid() const
+bool BvWindow::IsValid() const
 {
 	return m_hWnd != nullptr;
 }
 
 
-bool BvWindowWindows::DestroyOnClose() const
+bool BvWindow::DestroyOnClose() const
 {
 	return m_DestroyOnClose;
 }
 
 
-LRESULT BvWindowWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-	switch (uMsg)
-	{
-	case WM_ACTIVATE:
-		m_IsActive = LOWORD(wParam) != WA_INACTIVE;
-		return 0;
-
-	case WM_SETFOCUS:
-		if (!m_HasFocus)
-		{
-			m_HasFocus = true;
-			OnFocus(true);
-		}
-		return 0;
-
-	case WM_KILLFOCUS:
-		if (m_HasFocus)
-		{
-			m_HasFocus = false;
-			OnFocus(false);
-		}
-		return 0;
-
-	case WM_SIZE:
-	{
-		m_Width = LOWORD(lParam);
-		m_Height = HIWORD(lParam);
-
-		m_IsMoving = false;
-		if (wParam == SIZE_MINIMIZED)
-		{
-			m_IsResizing = false;
-			m_IsMinimized = true;
-			m_IsMaximized = false;
-			m_IsVisible = false;
-
-			OnMinimize();
-		}
-		else if (wParam == SIZE_MAXIMIZED)
-		{
-			m_IsResizing = false;
-			m_IsMinimized = false;
-			m_IsMaximized = true;
-			m_IsVisible = true;
-
-			OnMaximize(m_Width, m_Height);
-		}
-		else if (wParam == SIZE_RESTORED)
-		{
-			m_IsVisible = true;
-			if (m_IsMinimized)
-			{
-				m_IsResizing = false;
-				m_IsMinimized = false;
-			}
-			else if (m_IsMaximized)
-			{
-				m_IsResizing = false;
-				m_IsMaximized = false;
-			}
-			else
-			{
-				if (!m_IsResizing)
-				{
-					OnRestore(m_Width, m_Height);
-				}
-				else
-				{
-					OnResizing(m_Width, m_Height);
-				}
-			}
-		}
-	}
-	return 0;
-
-	case WM_INPUT:
-	{
-		RAWINPUT raw{};
-		{
-			u32 size = sizeof(RAWINPUT);
-			GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, &raw, &size, sizeof(RAWINPUTHEADER));
-		}
-
-		// extract keyboard raw input data
-		if (raw.header.dwType == RIM_TYPEKEYBOARD)
-		{
-			auto pKeyboard = reinterpret_cast<BvKeyboardWindows*>(Input::GetInput()->GetKeyboard());
-			pKeyboard->ProcessRawInputKeyboardMessage(raw.data.keyboard);
-		}
-		// extract mouse raw input data
-		else if (raw.header.dwType == RIM_TYPEMOUSE)
-		{
-			auto pMouse = reinterpret_cast<BvMouseWindows*>(Input::GetInput()->GetMouse());
-			pMouse->ProcessRawInputMouseMessage(raw.data.mouse);
-		}
-		return 0;
-	}
-
-	case WM_ENTERSIZEMOVE:
-		m_IsResizing = true;
-		m_IsMoving = true;
-		return 0;
-
-	case WM_EXITSIZEMOVE:
-		m_IsResizing = false;
-		m_IsMoving = false;
-		OnResize(m_Width, m_Height);
-
-		return 0;
-
-	case WM_MOVE:
-	{
-		m_IsResizing = false;
-		m_IsMoving = true;
-		m_X = (i32)LOWORD(lParam);
-		m_Y = (i32)HIWORD(lParam);
-
-		OnMoving(m_X, m_Y);
-
-		return 0;
-	}
-
-	case WM_GETMINMAXINFO:
-		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
-		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
-		return 0;
-
-	case WM_CLOSE:
-		OnClose();
-
-		if (m_DestroyOnClose)
-		{
-			m_IsVisible = false;
-			Destroy();
-		}
-		else
-		{
-			Hide();
-		}
-
-		return 0;
-
-	default:
-		return DefWindowProc(hWnd, uMsg, wParam, lParam);
-	}
-}
-
-
-void BvWindowWindows::Create(const WindowDesc& windowDesc, WNDPROC wndProc)
+void BvWindow::Create(const WindowDesc& windowDesc)
 {
 	i32 x = m_X;
 	i32 y = m_Y;
@@ -390,7 +213,7 @@ void BvWindowWindows::Create(const WindowDesc& windowDesc, WNDPROC wndProc)
 		height += adjustedRect.bottom - adjustedRect.top;
 	}
 
-	m_hModule = 
+	auto hModule = 
 #if defined(BV_STATIC_LIB)
 	GetModuleHandleA(nullptr);
 #else
@@ -400,8 +223,8 @@ void BvWindowWindows::Create(const WindowDesc& windowDesc, WNDPROC wndProc)
 	m_X = x;
 	m_Y = y;
 
-	m_hWnd = CreateWindowExA(exStyle, s_WindowClassName, windowDesc.m_Name ? windowDesc.m_Name : s_DefaultWindowName, style,
-		x, y, width, height, nullptr, nullptr, m_hModule, this);
+	m_hWnd = CreateWindowExA(exStyle, BvPlatform::s_WindowClassName, windowDesc.m_Name ? windowDesc.m_Name : s_DefaultWindowName, style,
+		x, y, width, height, nullptr, nullptr, hModule, this);
 	if (!m_hWnd)
 	{
 		BV_OS_ERROR();
@@ -419,11 +242,70 @@ void BvWindowWindows::Create(const WindowDesc& windowDesc, WNDPROC wndProc)
 }
 
 
-void BvWindowWindows::Destroy()
+void BvWindow::Destroy()
 {
 	if (m_hWnd)
 	{
 		::DestroyWindow(m_hWnd);
 		m_hWnd = nullptr;
+		m_IsVisible = false;
+	}
+}
+
+
+void BvWindow::OnWindowEvent(const WindowEventData& eventData)
+{
+	switch (eventData.type)
+	{
+	case WindowEventType::kActivate:
+		OnActivate(eventData.active);
+		break;
+	case WindowEventType::kSizeMoveBegin:
+		OnSizeMoveBegin();
+		break;
+	case WindowEventType::kResize:
+		m_Width = eventData.resizeData.width;
+		m_Height = eventData.resizeData.height;
+		m_CurrentState = eventData.resizeData.state;
+		OnResize(m_Width, m_Height, m_CurrentState);
+		break;
+	case WindowEventType::kMove:
+		m_X = eventData.moveData.x;
+		m_Y = eventData.moveData.y;
+		OnMove(m_X, m_Y);
+		break;
+	case WindowEventType::kSizeMoveEnd:
+		OnSizeMoveEnd();
+		break;
+	case WindowEventType::kShow:
+		m_IsVisible = true;
+		OnShow();
+		break;
+	case WindowEventType::kHide:
+		m_IsVisible = false;
+		OnHide();
+		break;
+	case WindowEventType::kGotFocus:
+		m_HasFocus = true;
+		OnFocus(true);
+		break;
+	case WindowEventType::kLostFocus:
+		m_HasFocus = false;
+		OnFocus(false);
+		break;
+	case WindowEventType::kClose:
+		OnClose();
+		if (m_DestroyOnClose)
+		{
+			Destroy();
+			BvPlatform::DestroyWindow(reinterpret_cast<BvWindow*>(this));
+		}
+		else
+		{
+			Hide();
+		}
+		break;
+	default:
+		break;
 	}
 }

@@ -4,6 +4,10 @@
 #include "BDeV/Container/BvVector.h"
 #include <BDeV/Container/BvString.h>
 
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include <Windows.h>
+#endif
+
 
 struct BV_API VideoMode
 {
@@ -19,6 +23,8 @@ class BV_API BvMonitor
 	BV_NOCOPYMOVE(BvMonitor);
 
 public:
+	friend class BvMonitorStartUp;
+
 	struct Rect
 	{
 		i32 m_Left = 0;
@@ -26,9 +32,6 @@ public:
 		i32 m_Right = 0;
 		i32 m_Bottom = 0;
 	};
-
-	BvMonitor() {}
-	virtual ~BvMonitor() {}
 
 	BV_INLINE const BvVector<VideoMode>& GetVideoModes() const { return m_VideoModes; }
 	BV_INLINE const VideoMode& GetDesktopVideoMode() const { return m_DesktopVideoMode; }
@@ -38,7 +41,20 @@ public:
 	BV_INLINE const BvString& GetName() const { return m_Name; }
 	BV_INLINE f32 GetDPIScaleFactor() const { return m_DPIScaleFactor; }
 
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	BV_INLINE HMONITOR GetHandle() const { return m_hMonitor; }
+#endif
+
+private:
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	BvMonitor(HMONITOR hMonitor);
+#endif
+	~BvMonitor();
+
 protected:
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	HMONITOR m_hMonitor = nullptr;
+#endif
 	Rect m_FullscreenArea;
 	Rect m_MaximizedArea;
 	f32 m_DPIScaleFactor = 1.0f;

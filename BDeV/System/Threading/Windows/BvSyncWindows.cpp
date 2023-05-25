@@ -1,4 +1,4 @@
-#include "BvSyncWindows.h"
+#include "BDeV/System/Threading/BvSync.h"
 
 
 BvMutex::BvMutex()
@@ -23,9 +23,7 @@ BvMutex & BvMutex::operator =(BvMutex && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		DeleteCriticalSection(&m_Mutex);
-		m_Mutex = rhs.m_Mutex;
-		rhs.m_Mutex = {};
+		std::swap(m_Mutex, rhs.m_Mutex);
 	}
 
 	return *this;
@@ -118,9 +116,7 @@ BvSignal & BvSignal::operator =(BvSignal && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		Destroy();
-		m_hEvent = rhs.m_hEvent;
-		rhs.m_hEvent = nullptr;
+		std::swap(m_hEvent, rhs.m_hEvent);
 	}
 
 	return *this;

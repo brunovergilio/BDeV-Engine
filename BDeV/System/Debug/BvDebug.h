@@ -5,6 +5,13 @@
 #include <cassert>
 
 
+namespace BvDebugConstants
+{
+	constexpr u32 kMaxDebugMsgLen = 2048;
+	static thread_local char s_ErrorMessage[kMaxDebugMsgLen];
+}
+
+
 enum ConsoleColor : u16
 {
 	kBlack,
@@ -26,46 +33,46 @@ enum ConsoleColor : u16
 };
 
 
-constexpr u32 kDebugMsgLen = 2048;
-
-
 // ================
 // PrintF functions
 
 // Default white text and black background printf
-BV_API int PrintF(const char* pFormat, ...);
+BV_API i32 PrintF(const char* pFormat, ...);
 // Custom color text and black background printf
-BV_API int PrintF(ConsoleColor textColor, const char* pFormat, ...);
+BV_API i32 PrintF(ConsoleColor textColor, const char* pFormat, ...);
 // Custom color text and custom background printf
-BV_API int PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFormat, ...);
+BV_API i32 PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFormat, ...);
 // Same as printf but to the debug window (if one exists)
-BV_API int DPrintF(const char* pFormat, ...);
+BV_API i32 DPrintF(const char* pFormat, ...);
 // ================
 
 BV_API void RaiseError(const char* pMessage, const char* pTitle = "BDeV Error");
-BV_API u32 GetOSError(char* pErrorMessage = nullptr, u32 bufferSize = 0);
-BV_API void MakeDebugBreak();
+BV_API u32 GetOSErrorCode();
+BV_API const char* GetOSErrorMessage();
+BV_API void DbgBreak();
 
 
 #if BV_DEBUG
 
+#define BV_ERROR(format, ...)											\
+{																		\
+	sprintf(BvDebugConstants::s_ErrorMessage, format, ## __VA_ARGS__);	\
+	RaiseError(BvDebugConstants::s_ErrorMessage);						\
+}
+
+#define BV_OS_ERROR()															\
+{																				\
+	BV_ERROR("OS error [(0x%X)]: %s", GetOSErrorCode(), GetOSErrorMessage());	\
+}
+
+#if BV_PLATFORM == BV_PLATFORM_WIN32
+#define BvAssert(cond, msg) if (!(cond)) { BV_ERROR("Error: %s\nCondition: %s\nFile: %s\nLine: %d\nFunction: %s", msg, #cond, BV_FILE, BV_LINE, BV_FUNCTION); }
+#else
 #define BvAssert(cond, msg) assert((cond) && msg)
-#define BvCompilerAssert(cond, msg) static_assert(cond, msg)
-#define BvDebugBreak() MakeDebugBreak()
+#endif
 
-#define BV_ERROR(format, ...)								\
-{															\
-	static thread_local char errorMessage[kDebugMsgLen]{};	\
-	sprintf_s(errorMessage, format, ## __VA_ARGS__);		\
-	RaiseError(errorMessage);								\
-}
-
-#define BV_OS_ERROR()												\
-{																	\
-	static thread_local char osErrorMessage[kDebugMsgLen]{};		\
-	u32 errorCode = GetOSError(osErrorMessage, kDebugMsgLen);		\
-	BV_ERROR("OS error [(0x%X)]: %s", errorCode, osErrorMessage);	\
-}
+#define BvCompilerAssert(cond, msg) static_assert((cond), msg)
+#define BvDebugBreak() DbgBreak()
 
 #else
 

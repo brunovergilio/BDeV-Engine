@@ -2,6 +2,7 @@
 #include <BDeV/System/File/BvFile.h>
 #include <BDeV/System/File/BvPath.h>
 #include "BvReflector.h"
+#include <BvReflector/BvLexer.h>
 
 
 bool GetNextStruct(const BvVector<BvString>& symbols, u32& objectNameIndex, u32& first, u32& last, u32 startFrom = 0)

@@ -22,3 +22,15 @@ void BvDefaultAllocator::Free(void* ptr)
 {
 	BvFree(ptr);
 }
+
+
+size_t BvDefaultAllocator::GetAllocationSize(void* pMem)
+{
+	BvAssert(pMem != nullptr, "Memory pointer can't be nullptr!");
+
+#if BV_PLATFORM == BV_PLATFORM_WIN32
+	return _msize(reinterpret_cast<void*>(reinterpret_cast<size_t*>(pMem)[-1]));
+#else
+#error "Platform not yet supported"
+#endif
+}

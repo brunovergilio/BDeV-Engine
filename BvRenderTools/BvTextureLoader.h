@@ -3,7 +3,7 @@
 
 #include "BDeV/BvCore.h"
 #include "BDeV/Container/BvVector.h"
-#include "BDeV/Render/BvTexture.h"
+#include "BDeV/RenderAPI/BvTexture.h"
 
 
 struct TextureDataDesc

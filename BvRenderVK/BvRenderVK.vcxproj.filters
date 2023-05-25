@@ -5,7 +5,7 @@
     <ClCompile Include="BvRenderDeviceVk.cpp" />
     <ClCompile Include="BvCommandQueueVk.cpp" />
     <ClCompile Include="BvSwapChainVk.cpp" />
-    <ClCompile Include="Platform\BvSwapChainVkWin32.cpp" />
+    <ClCompile Include="Windows\BvSwapChainVkWindows.cpp" />
     <ClCompile Include="BvTextureVk.cpp" />
     <ClCompile Include="BvTypeConversionsVk.cpp" />
     <ClCompile Include="BvTextureViewVk.cpp" />

@@ -2,12 +2,12 @@
 
 
 #include "BvCommonVk.h"
-#include "BDeV/Render/BvTexture.h"
-#include "BDeV/Render/BvTextureView.h"
-#include "BDeV/Render/BvBuffer.h"
-#include "BDeV/Render/BvSampler.h"
-#include "BDeV/Render/BvPipelineState.h"
-#include "BDeV/Render/BvCommandPool.h"
+#include "BDeV/RenderAPI/BvTexture.h"
+#include "BDeV/RenderAPI/BvTextureView.h"
+#include "BDeV/RenderAPI/BvBuffer.h"
+#include "BDeV/RenderAPI/BvSampler.h"
+#include "BDeV/RenderAPI/BvPipelineState.h"
+#include "BDeV/RenderAPI/BvCommandPool.h"
 
 
 VkImageType GetVkImageType(const TextureType type);

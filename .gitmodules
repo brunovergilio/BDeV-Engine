@@ -1,3 +1,30 @@
 [submodule "External/assimp"]
 	path = External/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "External/SPIRV-Cross"]
+	path = External/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git
+[submodule "External/SPIRV-Headers"]
+	path = External/SPIRV-Headers
+	url = https://github.com/KhronosGroup/SPIRV-Headers.git
+[submodule "External/SPIRV-Tools"]
+	path = External/SPIRV-Tools
+	url = https://github.com/KhronosGroup/SPIRV-Tools.git
+[submodule "External/glslang"]
+	path = External/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "External/volk"]
+	path = External/volk
+	url = https://github.com/zeux/volk.git
+[submodule "External/Vulkan-Headers"]
+	path = External/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "External/SPIRV-Reflect"]
+	path = External/SPIRV-Reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
+[submodule "External/VulkanMemoryAllocator"]
+	path = External/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "External/shaderc"]
+	path = External/shaderc
+	url = https://github.com/google/shaderc.git

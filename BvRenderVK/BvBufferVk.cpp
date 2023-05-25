@@ -64,6 +64,11 @@ void BvBufferVk::Create()
 void BvBufferVk::Destroy()
 {
 	auto device = m_Device.GetHandle();
+	auto vma = m_Device.GetAllocator();
+	if (m_pMapped)
+	{
+		vmaUnmapMemory(vma, m_VMAAllocation);
+	}
 	if (m_Buffer)
 	{
 		vkDestroyBuffer(device, m_Buffer, nullptr);

@@ -1,6 +1,7 @@
-#include "BDeV/System/File/Windows/BvFileWindows.h"
+#include "BDeV/System/File/BvFile.h"
 #include "BDeV/System/Debug/BvDebug.h"
 #include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
+#include <Windows.h>
 
 
 BvFile::BvFile()
@@ -10,9 +11,7 @@ BvFile::BvFile()
 
 BvFile::BvFile(const char* const pFilename, BvFileAccessMode mode, BvFileAction action)
 {
-	wchar_t widePath[kMaxPathSize]{};
-	ConvertToWidePathWithPrefix(widePath, pFilename);
-	Open(widePath, mode, action);
+	Open(pFilename, mode, action);
 }
 
 
@@ -32,9 +31,7 @@ BvFile & BvFile::operator =(BvFile && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		auto hTmp = m_hFile;
-		m_hFile = rhs.m_hFile;
-		rhs.m_hFile = hTmp;
+		std::swap(m_hFile, rhs.m_hFile);
 	}
 
 	return *this;
@@ -49,10 +46,34 @@ BvFile::~BvFile()
 
 bool BvFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileAction action)
 {
-	wchar_t widePath[kMaxPathSize]{};
-	ConvertToWidePathWithPrefix(widePath, pFilename);
+	BvAssert(pFilename != nullptr, "Invalid filename");
 
-	return Open(widePath, mode, action);
+	DWORD acccessMode = 0;
+	DWORD createMode = 0;
+	DWORD createFlags = FILE_ATTRIBUTE_NORMAL;
+
+	switch (mode)
+	{
+	case BvFileAccessMode::kRead: acccessMode = GENERIC_READ; break;
+	case BvFileAccessMode::kWrite: acccessMode = GENERIC_WRITE; break;
+	case BvFileAccessMode::kReadWrite: acccessMode = GENERIC_READ | GENERIC_WRITE; break;
+	}
+
+	switch (action)
+	{
+	case BvFileAction::kOpen: createMode = OPEN_EXISTING; break;
+	case BvFileAction::kCreate: createMode = CREATE_ALWAYS; break;
+	case BvFileAction::kOpenOrCreate: createMode = OPEN_ALWAYS; break;
+	}
+
+	m_hFile = CreateFileA(pFilename, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
+	if (m_hFile == INVALID_HANDLE_VALUE)
+	{
+		// TODO: Handle error
+		return false;
+	}
+
+	return true;
 }
 
 

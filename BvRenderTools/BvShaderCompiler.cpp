@@ -1,6 +1,7 @@
 #include "BvShaderCompiler.h"
 #include "BDeV/System/File/BvFile.h"
 #include "SPIRV/BvSPIRVCompiler.h"
+#include "SPIRV/BvSPIRVReflector.h"
 #include <vector>
 
 
@@ -35,9 +36,12 @@ public:
 	~BvShaderCompiler();
 
 	IBvShaderBlob* CompileFromFile(const char* const pFilename, const ShaderDesc& shaderDesc) override;
-	IBvShaderBlob* CompileFromMemory(const u8* const pBlob, const size_t blobSize, const ShaderDesc& shaderDesc) override;
+	IBvShaderBlob* CompileFromMemory(const u8* const pBlob, u32 blobSize, const ShaderDesc& shaderDesc) override;
+	IBvShaderReflectionData* ReflectShader(const u8* pBlob, const u32 blobSize, ShaderLanguage shaderLanguage) override;
+
 	void DestroyShader(IBvShaderBlob*& pCompiledShader) override;
 	void DestroyAllShaders() override;
+
 
 private:
 	BvVector<BvShaderBlob*> m_ShaderBlobs;
@@ -75,7 +79,7 @@ IBvShaderBlob* BvShaderCompiler::CompileFromFile(const char * const pFilename, c
 }
 
 
-IBvShaderBlob* BvShaderCompiler::CompileFromMemory(const u8* const pBlob, const size_t blobSize, const ShaderDesc& shaderDesc)
+IBvShaderBlob* BvShaderCompiler::CompileFromMemory(const u8* const pBlob, u32 blobSize, const ShaderDesc& shaderDesc)
 {
 	BvShaderBlob* pCompiledShader = nullptr;
 	switch (shaderDesc.shaderLanguage)
@@ -91,9 +95,27 @@ IBvShaderBlob* BvShaderCompiler::CompileFromMemory(const u8* const pBlob, const 
 		m_ShaderBlobs.PushBack(pCompiledShader);
 		break;
 	}
+	case ShaderLanguage::kHLSL:
+	{
+		// TODO: Implement FXC / DXC code
+	}
 	}
 
 	return pCompiledShader;
+}
+
+
+IBvShaderReflectionData* BvShaderCompiler::ReflectShader(const u8* pBlob, const u32 blobSize, ShaderLanguage shaderLanguage)
+{
+	switch (shaderLanguage)
+	{
+	case ShaderLanguage::kGLSL:
+		BvSPIRVReflector reflector;
+		reflector.Reflect(pBlob, blobSize, shaderLanguage);
+		break;
+	}
+
+	return nullptr;
 }
 
 

@@ -15,7 +15,7 @@ public:
 	void* Allocate(size_t size, size_t alignment = kDefaultAlignmentSize, size_t alignmentOffset = 0);
 	void Free(void* ptr);
 
-	BV_INLINE static size_t GetAllocationSize(void* pMem) { return 0; }
+	size_t GetAllocationSize(void* pMem);
 
 private:
 };

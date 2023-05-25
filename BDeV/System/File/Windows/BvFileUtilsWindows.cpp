@@ -1,4 +1,4 @@
-#include "BvFileUtilsWindows.h"
+#include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
 #include "BDeV/System/File/BvFileCommon.h"
 
 
@@ -11,7 +11,7 @@ void ConvertToWidePath(wchar_t* pWidePath, const char* pPath)
 
 // The reason I'm using wchar_t for paths is because on Windows the maximum
 // path size for multibyte paths is MAX_PATH (260), but on wchar_t it's
-// 32767 if you prepend "\\?\" with it
+// 32767 if you prepend "\\?\" to it
 void ConvertToWidePathWithPrefix(wchar_t* pWidePath, const char* pPath)
 {
 	wcsncat_s(pWidePath, kMaxPathSize, kWideFilePrefix, kWideFilePrefixSize);

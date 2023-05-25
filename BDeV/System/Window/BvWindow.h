@@ -2,113 +2,62 @@
 
 
 #include "BDeV/BvCore.h"
-#include "BDeV/Utils/BvUtils.h"
-#include "BDeV/Utils/BvEvent.h"
+#include "BDeV\System\Window\BvWindowCommon.h"
+#include "BDeV\Utils\BvEvent.h"
+
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include <Windows.h>
+#endif
 
 
-enum class WindowMode : u8
-
+class BV_API BvWindow final
 {
-	kWindowed,
-	kWindowedFullscreen,
-	kFullscreen
-};
+public:
+	static constexpr const char* const s_DefaultWindowName = "BDeV Window";
 
+	friend class BvPlatform;
 
-struct WindowDesc
-{
-	const char* m_Name = nullptr;
-	u32 m_Width = 800;
-	u32 m_Height = 640;
-	i32 m_X = 0;
-	i32 m_Y = 0;
-	i32 m_MonitorIndex = 0;
-	bool m_CanMinimize = true;
-	bool m_CanMaximize = true;
-	bool m_CanClose = true;
-	bool m_CanResize = true;
-	bool m_HasBorder = true;
-	bool m_IsVisible = true;
-	WindowMode m_WindowMode = WindowMode::kWindowed;
-};
+	explicit BvWindow(const WindowDesc& windowDesc);
+	~BvWindow();
 
+	void Resize(u32 width, u32 height);
+	void Move(i32 x, i32 y);
+	void Minimize();
+	void Maximize();
+	void Restore();
+	void Show();
+	void Hide();
+	void SetFocus();
+	void Flash();
+	void DestroyOnClose(bool value);
 
-enum class WindowState : u8
-{
-	Restored,
-	Minimized,
-	Maximized,
-};
+	bool IsMinimized() const;
+	bool IsMaximized() const;
+	bool IsVisible() const;
+	bool HasFocus() const;
+	bool IsValid() const;
+	bool DestroyOnClose() const;
 
+	i32 GetX() const { return m_X; }
+	i32 GetY() const { return m_Y; }
+	u32 GetWidth() const { return m_Width; }
+	u32 GetHeight() const { return m_Height; }
 
-struct WindowEventData
-{
-	enum class Type : u8
-	{
-		kResize,
-		kMove,
-		kResizing,
-		kMoving,
-		kStateChanged,
-		kShow,
-		kHide,
-		kGotFocus,
-		kLostFocus,
-		kClose,
-	};
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	HWND GetHandle() { return m_hWnd; }
+#endif
 
-	Type type;
-	union
-	{
-		struct
-		{
-			u32 w, h;
-		} m_ResizeData;
-		struct
-		{
-			i32 x, y;
-		} m_MoveData;
-	};
-};
+private:
+	void Create(const WindowDesc& windowDesc);
+	void Destroy();
 
-
-class BV_API BvWindow
-{
-	BV_NOCOPYMOVE(BvWindow);
-
-protected:
-	BvWindow() {}
-	virtual ~BvWindow() {}
+	void OnWindowEvent(const WindowEventData& eventData);
 
 public:
-	virtual void Resize(u32 width, u32 height) {}
-	virtual void Move(i32 x, i32 y) {}
-	virtual void MoveAndResize(i32 x, i32 y, u32 width, u32 height) {}
-	virtual void Minimize() {}
-	virtual void Maximize() {}
-	virtual void Restore() {}
-	virtual void Show() {}
-	virtual void Hide() {}
-	virtual void SetFocus() {}
-	virtual void Flash() {}
-	virtual void DestroyOnClose(bool value) {}
-
-	virtual bool IsMinimized() const { return false; }
-	virtual bool IsMaximized() const { return false; }
-	virtual bool IsVisible() const { return false; }
-	virtual bool HasFocus() const { return false; }
-	virtual bool IsValid() const { return false; }
-	virtual bool DestroyOnClose() const { return true; }
-
-	virtual i32 GetX() const { return 0; }
-	virtual i32 GetY() const { return 0; }
-	virtual u32 GetWidth() const { return 0; }
-	virtual u32 GetHeight() const { return 0; }
-
-public:
-	BvEvent<u32, u32> OnResizing;
-	BvEvent<u32, u32> OnResize;
-	BvEvent<i32, i32> OnMoving;
+	BvEvent<bool> OnActivate;
+	BvEvent<> OnSizeMoveBegin;
+	BvEvent<> OnSizeMoveEnd;
+	BvEvent<u32, u32, WindowState> OnResize;
 	BvEvent<i32, i32> OnMove;
 	BvEvent<> OnMinimize;
 	BvEvent<u32, u32> OnMaximize;
@@ -117,4 +66,22 @@ public:
 	BvEvent<> OnShow;
 	BvEvent<> OnHide;
 	BvEvent<bool> OnFocus;
+
+private:
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	HWND m_hWnd = nullptr;
+#endif
+	u32 m_Width = 800;
+	u32 m_Height = 640;
+	i32 m_X = 0;
+	i32 m_Y = 0;
+	bool m_HasFocus = false;
+	bool m_IsActive = false;
+	bool m_IsResizing = false;
+	bool m_IsMoving = false;
+	bool m_IsMinimized = false;
+	bool m_IsMaximized = false;
+	bool m_DestroyOnClose = true;
+	bool m_IsVisible = true;
+	WindowState m_CurrentState = WindowState::kRestored;
 };

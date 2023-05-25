@@ -284,7 +284,7 @@ BvFile BvPath::AsFile(BvFileAccessMode mode) const
 
 BvVector<BvPath> BvPath::GetFileList(const char* const pFilter) const
 {
-	wchar_t filter[kMaxFilenameSize];
+	wchar_t filter[kMaxPathSize];
 	ConvertToWidePath(filter, pFilter);
 	return GetFileList(filter);
 }

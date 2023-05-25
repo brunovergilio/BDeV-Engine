@@ -1,17 +1,16 @@
 #include "BvSPIRVCompiler.h"
 
-#if !defined(BV_STATIC_LIB)
-	#define GLSLANG_IS_SHARED_LIBRARY
-#endif
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
 #pragma warning(push)
 #pragma warning(disable:26451 26495)
 #endif
 
-#include "glslang/Public/ShaderLang.h"
-#include "glslang/SPIRV/GlslangToSpv.h"
-#include "spirv-tools/optimizer.hpp"
+
+#include "External/glslang/glslang/Include/glslang_c_interface.h"
+#include "External/glslang/glslang/Public/ResourceLimits.h"
+#include "External/glslang/glslang/Public/resource_limits_c.h"
+
 
 
 class GlslangControl
@@ -19,194 +18,128 @@ class GlslangControl
 public:
 	GlslangControl()
 	{
-		glslang::InitializeProcess();
+		glslang_initialize_process();
 	}
 
 	~GlslangControl()
 	{
-		glslang::FinalizeProcess();
+		glslang_finalize_process();
 	}
-};
+} g_GlslangControl;
 
 
-EShLanguage GetEShShaderStage(const ShaderStage stage)
+glslang_stage_t GetShaderStage(ShaderStage stage)
 {
 	switch (stage)
 	{
-	case ShaderStage::kVertex:				return EShLanguage::EShLangVertex;
-	case ShaderStage::kHullOrControl:		return EShLanguage::EShLangTessControl;
-	case ShaderStage::kDomainOrEvaluation:	return EShLanguage::EShLangTessEvaluation;
-	case ShaderStage::kGeometry:			return EShLanguage::EShLangGeometry;
-	case ShaderStage::kPixelOrFragment:		return EShLanguage::EShLangFragment;
-	case ShaderStage::kMesh:				return EShLanguage::EShLangMeshNV;
-	case ShaderStage::kAmplificationOrTask:	return EShLanguage::EShLangTaskNV;
-	case ShaderStage::kCompute:				return EShLanguage::EShLangCompute;
+	case ShaderStage::kVertex:				return glslang_stage_t::GLSLANG_STAGE_VERTEX;
+	case ShaderStage::kHullOrControl:		return glslang_stage_t::GLSLANG_STAGE_TESSCONTROL;
+	case ShaderStage::kDomainOrEvaluation:	return glslang_stage_t::GLSLANG_STAGE_TESSEVALUATION;
+	case ShaderStage::kGeometry:			return glslang_stage_t::GLSLANG_STAGE_GEOMETRY;
+	case ShaderStage::kPixelOrFragment:		return glslang_stage_t::GLSLANG_STAGE_FRAGMENT;
+	case ShaderStage::kMesh:				return glslang_stage_t::GLSLANG_STAGE_MESH;
+	case ShaderStage::kAmplificationOrTask:	return glslang_stage_t::GLSLANG_STAGE_TASK;
+	case ShaderStage::kCompute:				return glslang_stage_t::GLSLANG_STAGE_COMPUTE;
 	default:
 		BvAssert(0, "This code should be unreachable");
-		return EShLanguage::EShLangCount;
+		return glslang_stage_t::GLSLANG_STAGE_COUNT;
 	}
 }
 
 
-TBuiltInResource g_BuiltInResources = []()
+glslang_target_client_version_t GetAPIVersion(ShaderAPIVersion apiVersion)
 {
-	TBuiltInResource resources{};
-	resources.maxLights = 32;
-	resources.maxClipPlanes = 6;
-	resources.maxTextureUnits = 32;
-	resources.maxTextureCoords = 32;
-	resources.maxVertexAttribs = 64;
-	resources.maxVertexUniformComponents = 4096;
-	resources.maxVaryingFloats = 64;
-	resources.maxVertexTextureImageUnits = 32;
-	resources.maxCombinedTextureImageUnits = 80;
-	resources.maxTextureImageUnits = 32;
-	resources.maxFragmentUniformComponents = 4096;
-	resources.maxDrawBuffers = 32;
-	resources.maxVertexUniformVectors = 128;
-	resources.maxVaryingVectors = 8;
-	resources.maxFragmentUniformVectors = 16;
-	resources.maxVertexOutputVectors = 16;
-	resources.maxFragmentInputVectors = 15;
-	resources.minProgramTexelOffset = -8;
-	resources.maxProgramTexelOffset = 7;
-	resources.maxClipDistances = 8;
-	resources.maxComputeWorkGroupCountX = 65535;
-	resources.maxComputeWorkGroupCountY = 65535;
-	resources.maxComputeWorkGroupCountZ = 65535;
-	resources.maxComputeWorkGroupSizeX = 1024;
-	resources.maxComputeWorkGroupSizeY = 1024;
-	resources.maxComputeWorkGroupSizeZ = 64;
-	resources.maxComputeUniformComponents = 1024;
-	resources.maxComputeTextureImageUnits = 16;
-	resources.maxComputeImageUniforms = 8;
-	resources.maxComputeAtomicCounters = 8;
-	resources.maxComputeAtomicCounterBuffers = 1;
-	resources.maxVaryingComponents = 60;
-	resources.maxVertexOutputComponents = 64;
-	resources.maxGeometryInputComponents = 64;
-	resources.maxGeometryOutputComponents = 128;
-	resources.maxFragmentInputComponents = 128;
-	resources.maxImageUnits = 8;
-	resources.maxCombinedImageUnitsAndFragmentOutputs = 8;
-	resources.maxCombinedShaderOutputResources = 8;
-	resources.maxImageSamples = 0;
-	resources.maxVertexImageUniforms = 0;
-	resources.maxTessControlImageUniforms = 0;
-	resources.maxTessEvaluationImageUniforms = 0;
-	resources.maxGeometryImageUniforms = 0;
-	resources.maxFragmentImageUniforms = 8;
-	resources.maxCombinedImageUniforms = 8;
-	resources.maxGeometryTextureImageUnits = 16;
-	resources.maxGeometryOutputVertices = 256;
-	resources.maxGeometryTotalOutputComponents = 1024;
-	resources.maxGeometryUniformComponents = 1024;
-	resources.maxGeometryVaryingComponents = 64;
-	resources.maxTessControlInputComponents = 128;
-	resources.maxTessControlOutputComponents = 128;
-	resources.maxTessControlTextureImageUnits = 16;
-	resources.maxTessControlUniformComponents = 1024;
-	resources.maxTessControlTotalOutputComponents = 4096;
-	resources.maxTessEvaluationInputComponents = 128;
-	resources.maxTessEvaluationOutputComponents = 128;
-	resources.maxTessEvaluationTextureImageUnits = 16;
-	resources.maxTessEvaluationUniformComponents = 1024;
-	resources.maxTessPatchComponents = 120;
-	resources.maxPatchVertices = 32;
-	resources.maxTessGenLevel = 64;
-	resources.maxViewports = 16;
-	resources.maxVertexAtomicCounters = 0;
-	resources.maxTessControlAtomicCounters = 0;
-	resources.maxTessEvaluationAtomicCounters = 0;
-	resources.maxGeometryAtomicCounters = 0;
-	resources.maxFragmentAtomicCounters = 8;
-	resources.maxCombinedAtomicCounters = 8;
-	resources.maxAtomicCounterBindings = 1;
-	resources.maxVertexAtomicCounterBuffers = 0;
-	resources.maxTessControlAtomicCounterBuffers = 0;
-	resources.maxTessEvaluationAtomicCounterBuffers = 0;
-	resources.maxGeometryAtomicCounterBuffers = 0;
-	resources.maxFragmentAtomicCounterBuffers = 1;
-	resources.maxCombinedAtomicCounterBuffers = 1;
-	resources.maxAtomicCounterBufferSize = 16384;
-	resources.maxTransformFeedbackBuffers = 4;
-	resources.maxTransformFeedbackInterleavedComponents = 64;
-	resources.maxCullDistances = 8;
-	resources.maxCombinedClipAndCullDistances = 8;
-	resources.maxSamples = 4;
-	resources.maxMeshOutputVerticesNV = 256;
-	resources.maxMeshOutputPrimitivesNV = 512;
-	resources.maxMeshWorkGroupSizeX_NV = 32;
-	resources.maxMeshWorkGroupSizeY_NV = 1;
-	resources.maxMeshWorkGroupSizeZ_NV = 1;
-	resources.maxTaskWorkGroupSizeX_NV = 32;
-	resources.maxTaskWorkGroupSizeY_NV = 1;
-	resources.maxTaskWorkGroupSizeZ_NV = 1;
-	resources.maxMeshViewCountNV = 4;
-	resources.limits.nonInductiveForLoops = 1;
-	resources.limits.whileLoops = 1;
-	resources.limits.doWhileLoops = 1;
-	resources.limits.generalUniformIndexing = 1;
-	resources.limits.generalAttributeMatrixVectorIndexing = 1;
-	resources.limits.generalVaryingIndexing = 1;
-	resources.limits.generalSamplerIndexing = 1;
-	resources.limits.generalVariableIndexing = 1;
-	resources.limits.generalConstantMatrixVectorIndexing = 1;
-
-	return resources;
-}();
+	switch (apiVersion)
+	{
+	//case ShaderAPIVersion::kOpenGL_4_5:	return glslang_target_client_version_t::GLSLANG_TARGET_OPENGL_450;
+	case ShaderAPIVersion::kVulkan_1_0:	return glslang_target_client_version_t::GLSLANG_TARGET_VULKAN_1_0;
+	case ShaderAPIVersion::kVulkan_1_1:	return glslang_target_client_version_t::GLSLANG_TARGET_VULKAN_1_1;
+	case ShaderAPIVersion::kVulkan_1_2:	return glslang_target_client_version_t::GLSLANG_TARGET_VULKAN_1_2;
+	case ShaderAPIVersion::kVulkan_1_3:	return glslang_target_client_version_t::GLSLANG_TARGET_VULKAN_1_3;
+	default:
+		BvAssert(0, "This code should be unreachable");
+		return glslang_target_client_version_t::GLSLANG_TARGET_CLIENT_VERSION_COUNT;
+	}
+}
 
 
+glslang_target_language_version_t GetShaderTarget(ShaderLanguageTarget target)
+{
+	switch (target)
+	{
+	case ShaderLanguageTarget::kSPIRV_1_0: return glslang_target_language_version_t::GLSLANG_TARGET_SPV_1_0;
+	case ShaderLanguageTarget::kSPIRV_1_1: return glslang_target_language_version_t::GLSLANG_TARGET_SPV_1_1;
+	case ShaderLanguageTarget::kSPIRV_1_2: return glslang_target_language_version_t::GLSLANG_TARGET_SPV_1_2;
+	case ShaderLanguageTarget::kSPIRV_1_3: return glslang_target_language_version_t::GLSLANG_TARGET_SPV_1_3;
+	case ShaderLanguageTarget::kSPIRV_1_4: return glslang_target_language_version_t::GLSLANG_TARGET_SPV_1_4;
+	case ShaderLanguageTarget::kSPIRV_1_5: return glslang_target_language_version_t::GLSLANG_TARGET_SPV_1_5;
+	case ShaderLanguageTarget::kSPIRV_1_6: return glslang_target_language_version_t::GLSLANG_TARGET_SPV_1_6;
+	default:
+		BvAssert(0, "This code should be unreachable");
+		return glslang_target_language_version_t::GLSLANG_TARGET_LANGUAGE_VERSION_COUNT;
+	}
+}
 
 
 void BvSPIRVCompiler::Compile(const u8* const pBlob, const size_t blobSize, const ShaderDesc& shaderDesc,
 	BvVector<u8>& compiledShaderBlob, BvString& errorString)
 {
-	static GlslangControl g_GlslangControl;
-
-	auto shaderStage = GetEShShaderStage(shaderDesc.shaderStage);
-	glslang::TShader shader(shaderStage);
-	shader.setEnvInput(glslang::EShSource::EShSourceGlsl, shaderStage, glslang::EShClient::EShClientVulkan, 100);
-	shader.setEnvClient(glslang::EShClient::EShClientVulkan, glslang::EShTargetClientVersion::EShTargetVulkan_1_2);
-	shader.setEnvTarget(glslang::EShTargetLanguage::EShTargetSpv, glslang::EShTargetLanguageVersion::EShTargetSpv_1_5);
-	shader.setEntryPoint(shaderDesc.entryPoint.CStr());
-
-	const char* shaderStrings[] = { reinterpret_cast<const char*>(pBlob) };
-	i32 lenghts[] = { static_cast<i32>(blobSize) };
-	shader.setStringsWithLengths(shaderStrings, lenghts, 1);
-	//shader.setAutoMapBindings(true);
-
-	EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
-	if (!shader.parse(&g_BuiltInResources, 100, false, messages))
+	auto stage = GetShaderStage(shaderDesc.shaderStage);
+	const glslang_input_t input =
 	{
-		errorString.Append(shader.getInfoLog());
-		
+		.language = GLSLANG_SOURCE_GLSL,
+		.stage = stage,
+		.client = GLSLANG_CLIENT_VULKAN,
+		.client_version = GetAPIVersion(shaderDesc.apiVersion),
+		.target_language = GLSLANG_TARGET_SPV,
+		.target_language_version = GetShaderTarget(shaderDesc.shaderTarget),
+		.code = reinterpret_cast<const char*>(pBlob),
+		.default_version = 100,
+		.default_profile = GLSLANG_NO_PROFILE,
+		.force_default_version_and_profile = false,
+		.forward_compatible = false,
+		.messages = GLSLANG_MSG_DEFAULT_BIT,
+		.resource = glslang_default_resource(),
+	};
+
+
+	glslang_shader_t* pShader = glslang_shader_create(&input);
+	if (!glslang_shader_preprocess(pShader, &input))
+	{
+		printf("%s\n", glslang_shader_get_info_log(pShader));
+		printf("%s\n", glslang_shader_get_info_debug_log(pShader));
+		printf("%s\n", input.code);
+		glslang_shader_delete(pShader);
 		return;
 	}
 
-	glslang::TProgram program;
-	program.addShader(&shader);
-	if (!program.link(messages) || !program.mapIO())
+	if (!glslang_shader_parse(pShader, &input))
 	{
-		errorString.Append(program.getInfoLog());
-		
+		printf("%s\n", glslang_shader_get_info_log(pShader));
+		printf("%s\n", glslang_shader_get_info_debug_log(pShader));
+		printf("%s\n", glslang_shader_get_preprocessed_code(pShader));
+		glslang_shader_delete(pShader);
 		return;
 	}
 
-	std::vector<u32> spv;
-	glslang::GlslangToSpv(*program.getIntermediate(shader.getStage()), spv);
+	glslang_program_t* pProgram = glslang_program_create();
+	glslang_program_add_shader(pProgram, pShader);
 
-	spvtools::Optimizer optimizer(spv_target_env::SPV_ENV_VULKAN_1_2);
-	optimizer.RegisterPerformancePasses();
-	std::vector<unsigned int> compiledSpirv;
-	if (!optimizer.Run(spv.data(), spv.size(), &compiledSpirv))
+	if (!glslang_program_link(pProgram, GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT))
 	{
-		errorString.Append("Error optimizing spirv binary.");
+		printf("%s\n", glslang_program_get_info_log(pProgram));
+		printf("%s\n", glslang_program_get_info_debug_log(pProgram));
+		glslang_program_delete(pProgram);
+		glslang_shader_delete(pShader);
+		return;
 	}
 
-	compiledShaderBlob.Resize(compiledSpirv.size() * sizeof(unsigned int));
-	memcpy(compiledShaderBlob.Data(), compiledSpirv.data(), compiledShaderBlob.Size());
+	glslang_program_SPIRV_generate(pProgram, stage);
+
+	compiledShaderBlob.Resize(glslang_program_SPIRV_get_size(pProgram) * sizeof(u32));
+	glslang_program_SPIRV_get(pProgram, (u32*)compiledShaderBlob.Data());
 }
+
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
 #pragma warning(pop)

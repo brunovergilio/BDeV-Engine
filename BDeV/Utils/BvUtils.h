@@ -66,3 +66,10 @@ Type GetNextPowerOf2(const Type value)
 
 	return 0;
 }
+
+
+template<typename Type>
+Type CalculateNewContainerSize(Type value)
+{
+	return value + (value >> 1) + Type(value <= 2);
+}
