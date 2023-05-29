@@ -20,7 +20,7 @@ public:
 
 	void SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo, VkPhysicalDeviceFeatures& enabledFeatures, BvVector<const char*>& enabledExtensions);
 
-	bool Create(const DeviceCreateDesc & deviceCreateDesc);
+	void Create(const DeviceCreateDesc & deviceCreateDesc);
 	void Destroy();
 
 	BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;

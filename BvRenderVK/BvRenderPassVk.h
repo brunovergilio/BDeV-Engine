@@ -30,12 +30,11 @@ private:
 private:
 	const BvRenderDeviceVk & m_Device;
 	VkRenderPass m_RenderPass = VK_NULL_HANDLE;
-	RenderPassDesc m_RenderPassDesc;
 };
 
 
 template<>
-struct std::hash<RenderPassDesc>
+struct BvHash<RenderPassDesc>
 {
 	size_t operator()(const RenderPassDesc& renderPassDesc)
 	{
@@ -67,6 +66,3 @@ private:
 	BvRobinMap<RenderPassDesc, BvRenderPassVk*> m_RenderPasses;
 	BvSpinlock m_Lock;
 };
-
-
-//BvRenderPassManagerVk* GetRenderPassManager();

@@ -9,16 +9,6 @@
 #include <utility>
 
 
-template<typename Type>
-struct BvHash
-{
-	size_t operator()(const Type& value)
-	{
-		return MurmurHash64A(&value, sizeof(Type));
-	}
-};
-
-
 template<typename Key, typename Value, typename Hash = BvHash<Key>, typename Comparer = std::equal_to<Key>>
 class BvRobinMap
 {
@@ -60,6 +50,8 @@ public:
 	template<typename ...Args>
 	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> Emplace(const Key & key, Args &&... args);
 	template<typename ...Args>
+	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> EmplaceOrAssign(Key&& key, Args &&... args);
+	template<typename ...Args>
 	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> EmplaceOrAssign(const Key & key, Args &&... args);
 	bool Erase(const Key & key);
 
@@ -80,7 +72,7 @@ public:
 
 private:
 	template<typename KeyType, typename ...Args>
-	size_t EmplaceInternal(KeyValue* const pData, size_t* const pHashes, KeyType&& key, Args &&... args);
+	size_t EmplaceInternal(KeyValue* const pData, size_t* const pHashes, KeyType&& key, Args&&... args);
 	void Destroy();
 	BV_INLINE const size_t HashPos(const u32 hash) const { return hash % m_Capacity; };
 	BV_INLINE const size_t Hash(const Key & key) const;
@@ -318,6 +310,31 @@ inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool
 	}
 
 	auto index = EmplaceInternal(m_pData, m_pHashes, key, std::forward<Args>(args)...);
+	++m_Size;
+
+	return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), true);
+}
+
+
+template<typename Key, typename Value, typename Hash, typename Comparer>
+template<typename ...Args>
+inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, Hash, Comparer>::EmplaceOrAssign(Key&& key, Args &&... args)
+{
+	auto iter = FindKey(key);
+	if (iter != cend())
+	{
+		auto index = iter.GetIndex();
+		m_pData[index].second.~Value();
+		new (&m_pData[index].second) Value(std::forward<Args>(args)...);
+		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
+	}
+
+	if (m_Size == m_Capacity)
+	{
+		ResizeAndRehash(CalculateNewContainerSize(m_Capacity));
+	}
+
+	auto index = EmplaceInternal(m_pData, m_pHashes, std::forward<Key>(key), std::forward<Args>(args)...);
 	++m_Size;
 
 	return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), true);

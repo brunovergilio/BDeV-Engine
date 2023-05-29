@@ -45,6 +45,7 @@ public:
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 	HWND GetHandle() { return m_hWnd; }
+	HDC GetDC();
 #endif
 
 private:
@@ -70,6 +71,7 @@ public:
 private:
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 	HWND m_hWnd = nullptr;
+	HDC m_hDC = nullptr;
 #endif
 	u32 m_Width = 800;
 	u32 m_Height = 640;

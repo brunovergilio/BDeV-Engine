@@ -4,7 +4,7 @@
 #include "BDeV/RenderAPI/BvRenderEngine.h"
 
 
-class BvContextGl;
+class BvDebugReportGl;
 
 
 class BvRenderEngineGl final : public BvRenderEngine
@@ -27,10 +27,10 @@ private:
 	void Destroy();
 
 private:
-	BvContextGl* m_pContext = nullptr;
-//#if defined(BV_DEBUG)
-//	BvDebugReportGl* m_pDebugReport = nullptr;
-//#endif
+	BvRenderDevice* m_pDevice = nullptr;
+#if defined(BV_DEBUG)
+	BvDebugReportGl* m_pDebugReport = nullptr;
+#endif
 };
 
 

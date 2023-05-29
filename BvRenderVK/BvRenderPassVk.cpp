@@ -5,7 +5,7 @@
 
 
 BvRenderPassVk::BvRenderPassVk(const BvRenderDeviceVk & device, const RenderPassDesc & renderPassDesc)
-	: BvRenderPass(renderPassDesc), m_Device(device), m_RenderPassDesc(renderPassDesc)
+	: BvRenderPass(renderPassDesc), m_Device(device)
 {
 	Create();
 }

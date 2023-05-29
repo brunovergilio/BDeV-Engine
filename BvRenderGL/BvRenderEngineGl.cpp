@@ -1,5 +1,7 @@
 #include "BvRenderEngineGl.h"
 #include "BvContextGl.h"
+#include "BvRenderDeviceGl.h"
+#include "BvDebugReportGl.h"
 
 
 BvRenderEngineGl::BvRenderEngineGl()
@@ -16,31 +18,48 @@ BvRenderEngineGl::~BvRenderEngineGl()
 
 void BvRenderEngineGl::GetGPUInfo(const u32 index, BvGPUInfo& info) const
 {
-
 }
 
 
 BvRenderDevice* const BvRenderEngineGl::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex)
 {
+	if (!m_pDevice)
+	{
+		m_pDevice = new BvRenderDeviceGl(deviceDesc);
+	}
 
+	return m_pDevice;
 }
 
 
 bool BvRenderEngineGl::IsExtensionSupported(const char* const pExtension)
 {
-
+	return false;
 }
 
 
 void BvRenderEngineGl::Create()
 {
-	m_pContext = BvRenderGl::CreateGLContext();
+	if (!InitializeOpenGL())
+	{
+		BV_ERROR("Couldn't initialize OpenGL!");
+	}
+
+#if defined(BV_DEBUG)
+	m_pDebugReport = new BvDebugReportGl();
+#endif
 }
 
 
 void BvRenderEngineGl::Destroy()
 {
-	BvRenderGl::DestroyGLContext();
+#if defined(BV_DEBUG)
+	if (m_pDebugReport)
+	{
+		delete m_pDebugReport;
+		m_pDebugReport = nullptr;
+	}
+#endif
 }
 
 

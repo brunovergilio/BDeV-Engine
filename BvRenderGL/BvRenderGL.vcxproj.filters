@@ -3,10 +3,47 @@
   <ItemGroup>
     <ClInclude Include="BvRenderEngineGl.h" />
     <ClInclude Include="BvContextGl.h" />
-    <ClInclude Include="Windows\BvContextGlWindows.h" />
+    <ClInclude Include="..\External\glew\include\GL\glew.h" />
+    <ClInclude Include="..\External\glew\include\GL\wglew.h" />
+    <ClInclude Include="BvCommonGl.h" />
+    <ClInclude Include="BvRenderDeviceGl.h" />
+    <ClInclude Include="BvSwapChainGl.h" />
+    <ClInclude Include="BvBufferGl.h" />
+    <ClInclude Include="BvTypeConversionsGl.h" />
+    <ClInclude Include="BvBufferViewGl.h" />
+    <ClInclude Include="BvTextureGl.h" />
+    <ClInclude Include="BvTextureViewGl.h" />
+    <ClInclude Include="BvSamplerGl.h" />
+    <ClInclude Include="BvCommandQueueGl.h" />
+    <ClInclude Include="BvCommandPoolGl.h" />
+    <ClInclude Include="BvCommandBufferGl.h" />
+    <ClInclude Include="BvPipelineStateGl.h" />
+    <ClInclude Include="BvRenderPassGl.h" />
+    <ClInclude Include="BvShaderResourceSetPoolGl.h" />
+    <ClInclude Include="BvShaderResourceGl.h" />
+    <ClInclude Include="BvDebugReportGl.h" />
+    <ClInclude Include="BvSemaphoreGl.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvRenderEngineGl.cpp" />
     <ClCompile Include="Windows\BvContextGlWindows.cpp" />
+    <ClCompile Include="..\External\glew\src\glew.c" />
+    <ClCompile Include="BvRenderDeviceGl.cpp" />
+    <ClCompile Include="BvSwapChainGl.cpp" />
+    <ClCompile Include="BvBufferGl.cpp" />
+    <ClCompile Include="BvTypeConversionsGl.cpp" />
+    <ClCompile Include="BvBufferViewGl.cpp" />
+    <ClCompile Include="BvTextureGl.cpp" />
+    <ClCompile Include="BvTextureViewGl.cpp" />
+    <ClCompile Include="BvSamplerGl.cpp" />
+    <ClCompile Include="BvCommandQueueGl.cpp" />
+    <ClCompile Include="BvCommandPoolGl.cpp" />
+    <ClCompile Include="BvCommandBufferGl.cpp" />
+    <ClCompile Include="BvPipelineStateGl.cpp" />
+    <ClCompile Include="BvRenderPassGl.cpp" />
+    <ClCompile Include="BvShaderResourceSetPoolGl.cpp" />
+    <ClCompile Include="BvShaderResourceGl.cpp" />
+    <ClCompile Include="BvDebugReportGl.cpp" />
+    <ClCompile Include="BvSemaphoreGl.cpp" />
   </ItemGroup>
 </Project>

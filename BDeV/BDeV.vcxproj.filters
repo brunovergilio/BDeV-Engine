@@ -82,6 +82,7 @@
     <ClInclude Include="Utils\BvTestUnit.h" />
     <ClInclude Include="Container\BvStringId.h" />
     <ClInclude Include="System\Window\BvWindowCommon.h" />
+    <ClInclude Include="Container\BvRobinSet.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />

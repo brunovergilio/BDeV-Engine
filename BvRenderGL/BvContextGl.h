@@ -1,21 +1,32 @@
 #pragma once
 
 
-#include "BDeV/Utils/BvUtils.h"
+#include "BvCommonGl.h"
+
+
+class BvWindow;
 
 
 class BvContextGl
 {
 	BV_NOCOPYMOVE(BvContextGl);
 
-protected:
-	BvContextGl() {}
-	virtual ~BvContextGl() = 0 {}
+public:
+	BvContextGl(BvWindow* pWindow);
+	~BvContextGl();
+	void SwapBuffers(i32 swapInterval);
+
+private:
+	void Create();
+	void Destroy();
+
+private:
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	HDC m_hDC = nullptr;
+	HGLRC m_hRC = nullptr;
+#endif
+	bool m_SupportsVSync = false;
 };
 
 
-namespace BvRenderGl
-{
-	BvContextGl* CreateGLContext();
-	void DestroyGLContext();
-}
+bool InitializeOpenGL();

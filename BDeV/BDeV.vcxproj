@@ -153,6 +153,7 @@
     <ClInclude Include="Container\BvIterator.h" />
     <ClInclude Include="Container\BvQueue.h" />
     <ClInclude Include="Container\BvRobinMap.h" />
+    <ClInclude Include="Container\BvRobinSet.h" />
     <ClInclude Include="Container\BvString.h" />
     <ClInclude Include="Container\BvStringId.h" />
     <ClInclude Include="Container\BvVector.h" />

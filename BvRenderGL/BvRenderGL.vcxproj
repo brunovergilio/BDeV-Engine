@@ -120,15 +120,16 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External/glew/include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -137,9 +138,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External/glew/include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -148,12 +149,32 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\External\glew\include\GL\glew.h" />
+    <ClInclude Include="..\External\glew\include\GL\wglew.h" />
+    <ClInclude Include="BvBufferGl.h" />
+    <ClInclude Include="BvBufferViewGl.h" />
+    <ClInclude Include="BvCommandBufferGl.h" />
+    <ClInclude Include="BvCommandPoolGl.h" />
+    <ClInclude Include="BvCommandQueueGl.h" />
+    <ClInclude Include="BvCommonGl.h" />
     <ClInclude Include="BvContextGl.h" />
+    <ClInclude Include="BvDebugReportGl.h" />
+    <ClInclude Include="BvPipelineStateGl.h" />
+    <ClInclude Include="BvRenderDeviceGl.h" />
     <ClInclude Include="BvRenderEngineGl.h" />
-    <ClInclude Include="Windows\BvContextGlWindows.h" />
+    <ClInclude Include="BvRenderPassGl.h" />
+    <ClInclude Include="BvSamplerGl.h" />
+    <ClInclude Include="BvSemaphoreGl.h" />
+    <ClInclude Include="BvShaderResourceGl.h" />
+    <ClInclude Include="BvShaderResourceSetPoolGl.h" />
+    <ClInclude Include="BvSwapChainGl.h" />
+    <ClInclude Include="BvTextureGl.h" />
+    <ClInclude Include="BvTextureViewGl.h" />
+    <ClInclude Include="BvTypeConversionsGl.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BDeV\BDeV.vcxproj">
@@ -161,7 +182,25 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\External\glew\src\glew.c" />
+    <ClCompile Include="BvBufferGl.cpp" />
+    <ClCompile Include="BvBufferViewGl.cpp" />
+    <ClCompile Include="BvCommandBufferGl.cpp" />
+    <ClCompile Include="BvCommandPoolGl.cpp" />
+    <ClCompile Include="BvCommandQueueGl.cpp" />
+    <ClCompile Include="BvDebugReportGl.cpp" />
+    <ClCompile Include="BvPipelineStateGl.cpp" />
+    <ClCompile Include="BvRenderDeviceGl.cpp" />
     <ClCompile Include="BvRenderEngineGl.cpp" />
+    <ClCompile Include="BvRenderPassGl.cpp" />
+    <ClCompile Include="BvSamplerGl.cpp" />
+    <ClCompile Include="BvSemaphoreGl.cpp" />
+    <ClCompile Include="BvShaderResourceGl.cpp" />
+    <ClCompile Include="BvShaderResourceSetPoolGl.cpp" />
+    <ClCompile Include="BvSwapChainGl.cpp" />
+    <ClCompile Include="BvTextureGl.cpp" />
+    <ClCompile Include="BvTextureViewGl.cpp" />
+    <ClCompile Include="BvTypeConversionsGl.cpp" />
     <ClCompile Include="Windows\BvContextGlWindows.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

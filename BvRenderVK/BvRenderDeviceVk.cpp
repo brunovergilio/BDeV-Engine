@@ -266,7 +266,7 @@ void BvRenderDeviceVk::SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo,
 }
 
 
-bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
+void BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 {
 	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
 		"No device queues");
@@ -370,7 +370,7 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
-		return false;
+		return;
 	}
 
 	volkLoadDevice(m_Device);
@@ -395,8 +395,6 @@ bool BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
 
 	m_pRenderPassManager = new BvRenderPassManagerVk();
 	m_pFramebufferManager = new BvFramebufferManagerVk();
-
-	return true;
 }
 
 

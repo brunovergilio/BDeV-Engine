@@ -13,6 +13,7 @@
 #include "BDeV/Math/BvMath.h"
 #include "BDeV/System/Platform/BvPlatform.h"
 #include "BDeV/System/Library/BvSharedLib.h"
+#include "BDeV/Container/BvRobinSet.h"
 
 
 struct PosColorVertex

@@ -164,6 +164,17 @@ bool BvWindow::DestroyOnClose() const
 }
 
 
+HDC BvWindow::GetDC()
+{
+	if (!m_hDC)
+	{
+		m_hDC = ::GetDC(m_hWnd);
+	}
+
+	return m_hDC;
+}
+
+
 void BvWindow::Create(const WindowDesc& windowDesc)
 {
 	i32 x = m_X;

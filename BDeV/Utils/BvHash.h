@@ -145,3 +145,13 @@ constexpr size_t ConstexprStringLength(const char * pBytes)
 
 #define ConstexprFNV1a64(pBytes) BV_SUPRESS_HASH_WARNING Internal::ConstexprFNV1a64Helper<u64, ConstexprStringLength(pBytes), 0>(pBytes, 14695981039346656037ull, 1099511628211ull)
 #define ConstexprMurmurHash64A(pBytes) Internal::ConstexprMurmurHash64AHelper(pBytes, ConstexprStringLength(pBytes), 0)
+
+
+template<typename Type>
+struct BvHash
+{
+	size_t operator()(const Type& value)
+	{
+		return MurmurHash64A(&value, sizeof(Type));
+	}
+};

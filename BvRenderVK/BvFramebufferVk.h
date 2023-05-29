@@ -51,7 +51,7 @@ struct FramebufferDesc
 
 
 template<>
-struct std::hash<FramebufferDesc>
+struct BvHash<FramebufferDesc>
 {
 	u64 operator()(const FramebufferDesc & val)
 	{
@@ -106,6 +106,3 @@ private:
 	BvRobinMap<FramebufferDesc, BvFramebufferVk *> m_Framebuffers;
 	BvSpinlock m_Lock;
 };
-
-
-//BvFramebufferManagerVk* GetFramebufferManager();
