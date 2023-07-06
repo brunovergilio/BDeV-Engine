@@ -1,6 +1,7 @@
 #include "BvRenderVK/BvUtilsVk.h"
 #include "BDeV/Container/BvRobinMap.h"
 #include "BDeV/Container/BvString.h"
+#include "BvTypeConversionsVk.h"
 
 
 const char * const VkResultToString(const VkResult result)
@@ -41,72 +42,32 @@ const char * const VkResultToString(const VkResult result)
 		VkStringifyCase(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT	);
 		VkStringifyCase(VK_ERROR_NOT_PERMITTED_EXT								);
 		VkStringifyCase(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT			);
+		VkStringifyCase(VK_THREAD_IDLE_KHR										);
+		VkStringifyCase(VK_THREAD_DONE_KHR										);
+		VkStringifyCase(VK_OPERATION_DEFERRED_KHR								);
+		VkStringifyCase(VK_OPERATION_NOT_DEFERRED_KHR							);
+		VkStringifyCase(VK_ERROR_COMPRESSION_EXHAUSTED_EXT						);
+		VkStringifyCase(VK_ERROR_PIPELINE_COMPILE_REQUIRED_EXT					);
 	}
 #undef VkStringifyCase
 
-	return "VK_RESULT_MAX_ENUM";
+	return "Unknown Vulkan error";
 }
 
 
-static const BvRobinMap<VkFormat, std::pair<bool, bool>> s_DepthStencilFormats =
+bool IsDepthFormat(Format format)
 {
-	{ VK_FORMAT_D16_UNORM, std::make_pair(true, false) },
-	{ VK_FORMAT_X8_D24_UNORM_PACK32, std::make_pair(true, false) },
-	{ VK_FORMAT_D32_SFLOAT, std::make_pair(true, false) },
-	{ VK_FORMAT_S8_UINT, std::make_pair(false, true) },
-	{ VK_FORMAT_D16_UNORM_S8_UINT, std::make_pair(true, true) },
-	{ VK_FORMAT_D24_UNORM_S8_UINT, std::make_pair(true, true) },
-	{ VK_FORMAT_D32_SFLOAT_S8_UINT, std::make_pair(true, true) },
-};
-
-
-bool IsDepthFormat(const VkFormat format)
-{
-	auto it = s_DepthStencilFormats.FindKey(format);
-	if (it != s_DepthStencilFormats.cend())
-	{
-		return it->second.first;
-	}
-
-	return false;
+	return GetVkFormatMap(format).aspectFlags == VK_IMAGE_ASPECT_DEPTH_BIT;
 }
 
 
-bool IsStencilFormat(const VkFormat format)
+bool IsStencilFormat(Format format)
 {
-	auto it = s_DepthStencilFormats.FindKey(format);
-	if (it != s_DepthStencilFormats.cend())
-	{
-		return it->second.second;
-	}
-
-	return false;
+	return GetVkFormatMap(format).aspectFlags == VK_IMAGE_ASPECT_STENCIL_BIT;
 }
 
 
-bool IsDepthStencilFormat(const VkFormat format)
+bool IsDepthStencilFormat(Format format)
 {
-	auto it = s_DepthStencilFormats.FindKey(format);
-	if (it != s_DepthStencilFormats.cend())
-	{
-		return true;
-	}
-
-	return false;
-}
-
-
-VkImageAspectFlags GetVkAspectMaskFlags(const VkFormat format)
-{
-	VkImageAspectFlags aspectMask = 0;
-	if (IsDepthFormat(format))
-	{
-		aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-	}
-	if (IsStencilFormat(format))
-	{
-		aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-	}
-
-	return aspectMask == 0 ? VK_IMAGE_ASPECT_COLOR_BIT : aspectMask;
+	return GetVkFormatMap(format).aspectFlags == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 }

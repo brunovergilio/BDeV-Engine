@@ -4,13 +4,14 @@
 #include "BDeV/RenderAPI/BvSwapChain.h"
 
 
+class BvRenderDeviceGl;
 class BvContextGl;
 
 
 class BvSwapChainGl final : public BvSwapChain
 {
 public:
-	BvSwapChainGl(BvWindow* pWindow, const SwapChainDesc& swapChainParams);
+	BvSwapChainGl(const BvRenderDeviceGl& device, BvWindow* pWindow, const SwapChainDesc& swapChainParams);
 	~BvSwapChainGl();
 
 	void Create();
@@ -22,5 +23,6 @@ public:
 	BV_INLINE BvTextureView* GetTextureView(const u32 index) const override final { return nullptr; }
 
 private:
+	const BvRenderDeviceGl& m_Device;
 	BvContextGl* m_pContext = nullptr;
 };

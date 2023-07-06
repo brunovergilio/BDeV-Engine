@@ -8,11 +8,6 @@
 #include "BDeV/Container/BvString.h"
 
 
-constexpr u32 kMaxShaderStages = 5;
-constexpr u32 kMaxVertexAttributes = 16;
-constexpr u32 kMaxVertexBindings = 16;
-
-
 enum class InputRate : u8
 {
 	kPerVertex,
@@ -77,15 +72,17 @@ enum class BlendFactor : u8
 	kOne,
 	kSrcColor,
 	kInvSrcColor,
+	kDstColor,
+	kInvDstColor,
 	kSrcAlpha,
 	kInvkSrcAlpha,
 	kDstAlpha,
 	kInvDstAlpha,
-	kDstColor,
-	kInvDstColor,
-	kSrcAlphaSat,
 	kBlendFactor,
 	kInvBlendFactor,
+	kAlphaFactor,
+	kInvAlphaFactor,
+	kSrcAlphaSat,
 	kSrc1Color,
 	kInvSrc1Color,
 	kSrc1Alpha,
@@ -124,6 +121,17 @@ enum class LogicOp : u8
 };
 
 
+enum class ColorMask : u8
+{
+	kNone = 0,
+	kRed = BvBit(0),
+	kGreen = BvBit(1),
+	kBlue = BvBit(2),
+	kAlpha = BvBit(3),
+	kAll = kRed | kGreen | kBlue | kAlpha
+};
+
+
 struct ShaderByteCodeDesc
 {
 	const u8 * m_pByteCode = nullptr;
@@ -133,21 +141,33 @@ struct ShaderByteCodeDesc
 };
 
 
-struct VertexAttributeDesc
+struct VertexInputDesc
 {
-	u32		m_Location = 0;
-	u32		m_Binding = 0;
-	u32		m_Offset = 0;
-	Format	m_Format = Format::kUnknown;
-};
-
-
-struct VertexBindingDesc
-{
+	// Index of the input attribute (In Vulkan and OpenGL, this maps to the location index that an input variable is.
+	// In D3D this is only used if there are multiple elements with the same semantic.
+	u32			m_Location = 0;
+	// Buffer slot this attribute refers to
 	u32			m_Binding = 0;
+	// The stride of the variable or struct used to represent this element
 	u32			m_Stride = 0;
+	// The offset of this variable in the struct
+	u32			m_Offset = 0;
+	// The instance rate / step, which determines how many instances will be drawn with the same per-instance
+	// data before moving to the next one - this should be 0 if the input rate is InputRate::kPerVertex
 	u32			m_InstanceRate = 0;
+	// The input rate, can be per vertex or per instance
 	InputRate	m_InputRate = InputRate::kPerVertex;
+	// Variable format
+	Format		m_Format = Format::kUnknown;
+	// Determines whether the variable data is normalized ([-1, 1] for signed types, [0, 1] for unsigned types)
+	bool		m_Normalized = false;
+
+	bool operator==(const VertexInputDesc& rhs) const
+	{
+		return m_Location == rhs.m_Location && m_Binding == rhs.m_Binding && m_Stride == rhs.m_Stride
+			&& m_Offset == rhs.m_Offset && m_InputRate == rhs.m_InputRate && m_InstanceRate == rhs.m_InstanceRate
+			&& m_Format == rhs.m_Format && m_Normalized == rhs.m_Normalized;
+	}
 };
 
 
@@ -155,6 +175,7 @@ struct InputAssemblyStateDesc
 {
 	Topology	m_Topology = Topology::kTriangleList;
 	bool		m_PrimitiveRestart = false;
+	IndexFormat m_IndexFormatForPrimitiveRestart = IndexFormat::kU16;
 };
 
 
@@ -222,7 +243,7 @@ struct BlendAttachmentStateDesc
 	BlendOp m_BlendOp = BlendOp::kAdd;
 	BlendFactor m_SrcBlendAlpha = BlendFactor::kZero;
 	BlendFactor m_DstBlendAlpha = BlendFactor::kZero;
-	BlendOp m_BlendOpAlpha = BlendOp::kAdd;
+	BlendOp m_AlphaBlendOp = BlendOp::kAdd;
 	u8 m_RenderTargetWriteMask = 0xF;
 };
 
@@ -238,8 +259,7 @@ struct BlendStateDesc
 
 struct GraphicsPipelineStateDesc
 {
-	BvFixedVector<VertexBindingDesc, kMaxVertexBindings>		m_VertexBindingDesc;
-	BvFixedVector<VertexAttributeDesc, kMaxVertexAttributes>	m_VertexAttributeDesc;
+	BvFixedVector<VertexInputDesc, kMaxVertexAttributes>		m_VertexInputDesc;
 	BvFixedVector<ShaderByteCodeDesc, kMaxShaderStages>			m_ShaderStages;
 	InputAssemblyStateDesc										m_InputAssemblyStateDesc;
 	TessellationStateDesc										m_TessellationStateDesc;

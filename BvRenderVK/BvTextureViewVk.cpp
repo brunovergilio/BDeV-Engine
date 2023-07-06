@@ -21,7 +21,9 @@ bool BvTextureViewVk::Create()
 {
 	BvAssert(m_TextureViewDesc.m_pTexture != nullptr, "Invalid texture handle");
 
-	decltype(auto) textureDesc = m_TextureViewDesc.m_pTexture->GetDesc();
+	decltype(auto) textureViewDesc = m_TextureViewDesc.m_pTexture->GetDesc();
+	decltype(auto) vkFormatMap = GetVkFormatMap(m_TextureViewDesc.m_Format);
+	BvAssert(vkFormatMap.format != VK_FORMAT_UNDEFINED, "Format not supported in Vulkan");
 
 	VkImageViewCreateInfo imageViewCreateInfo{};
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -31,11 +33,11 @@ bool BvTextureViewVk::Create()
 		reinterpret_cast<BvTextureVk*>(m_TextureViewDesc.m_pTexture)->GetHandle() :
 		reinterpret_cast<BvSwapChainTextureVk*>(m_TextureViewDesc.m_pTexture)->GetHandle();
 	imageViewCreateInfo.viewType = GetVkImageViewType(m_TextureViewDesc.m_ViewType);
-	imageViewCreateInfo.format = GetVkFormat(textureDesc.m_Format);
-	imageViewCreateInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+	imageViewCreateInfo.format = vkFormatMap.format;
+	imageViewCreateInfo.components = vkFormatMap.componentMapping;
 	imageViewCreateInfo.subresourceRange =
 	{
-		GetVkAspectMaskFlags(imageViewCreateInfo.format),
+		vkFormatMap.aspectFlags,
 		m_TextureViewDesc.m_SubresourceDesc.firstMip,
 		m_TextureViewDesc.m_SubresourceDesc.mipCount,
 		m_TextureViewDesc.m_SubresourceDesc.firstLayer,

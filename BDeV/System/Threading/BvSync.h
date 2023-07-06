@@ -2,12 +2,8 @@
 
 
 #include "BDeV/Utils/BvUtils.h"
+#include <mutex>
 #include <atomic>
-
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include <Windows.h>
-#endif
 
 
 class BV_API BvMutex
@@ -26,9 +22,7 @@ public:
 	void Unlock();
 
 private:
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	CRITICAL_SECTION m_Mutex{};
-#endif
+	std::mutex m_Mutex{};
 };
 
 

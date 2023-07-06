@@ -31,7 +31,7 @@ vf32 VectorReplicateX(vf32 v);
 vf32 VectorReplicateY(vf32 v);
 vf32 VectorReplicateZ(vf32 v);
 vf32 VectorReplicateW(vf32 v);
-template<unsigned int x, unsigned int y, unsigned int z, unsigned int w> vf32 VectorPermute(vf32 v);
+template<unsigned int X, unsigned int Y, unsigned int Z, unsigned int W> vf32 VectorPermute(vf32 v);
 
 vf32 VectorMax(vf32 v1, vf32 v2);
 vf32 VectorMin(vf32 v1, vf32 v2);
@@ -202,10 +202,10 @@ inline vf32 VectorReplicateW(vf32 v)
 	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(3, 3, 3, 3));
 }
 
-template<unsigned int x, unsigned int y, unsigned int z, unsigned int w>
+template<unsigned int X, unsigned int Y, unsigned int Z, unsigned int W>
 inline vf32 VectorPermute(vf32 v)
 {
-	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(w, z, y, x));
+	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(W, Z, Y, X));
 }
 
 inline vf32 VectorMax(vf32 v1, vf32 v2)

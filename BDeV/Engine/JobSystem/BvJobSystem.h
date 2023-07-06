@@ -5,50 +5,59 @@
 
 namespace JS
 {
-	struct JobCounterHandle
-	{
-		friend class BvJobSystem;
-
-		const bool IsDone() const;
-
-	private:
-		i32 m_CounterIndex = 0;
-		i32 m_Version = 0;
-	};
-
+	using JobFunction = void(*)(void*);
 
 	struct Job
 	{
 		enum class Priority : u8
 		{
-			kNormal,
 			kLow,
+			kNormal,
 			kHigh,
 			kCritical
 		};
 
-		void(*m_Function)(void*) = nullptr;
+		JobFunction m_pFunction = nullptr;
 		void* m_pData = nullptr;
 		Priority m_Priority = Priority::kNormal;
 	};
 
+	struct JobCounter
+	{
+		friend class BvJobSystem;
 
-#define JobFunction(jobName) void jobName(void* pData)
-#define GetJobData(dataType) reinterpret_cast<dataType>(pData)
+		JobCounter() = default;
+		JobCounter(i32 index, i32 version);
+		bool IsDone() const;
 
+	private:
+		i32 m_Index = -1;
+		i32 m_Version = 0;
+	};
+
+
+#define BV_JOB_DECL(jobName) void jobName(void* pData)
+#define BV_JOB_DECL_STATIC(jobName) static void jobName(void* pData) // For class methods
+#define BV_JOB_FUNCTION(jobName) void jobName(void* pData)
+#define BV_JOB_DATA(dataType) reinterpret_cast<dataType>(pData)
 
 	struct JobSystemDesc
 	{
-		size_t m_FiberStackSize = 0;
-		u32 m_CounterPoolCount = 0;
-		u16 m_WorkerThreadCount = 0;
-		u16 m_FiberPoolCount = 0;
+		static constexpr size_t kDefaultFiberStackSize = 128 * 1024;
+		static constexpr u32 kDefaultJobPoolSize = 250;
+		static constexpr u32 kDefaultNumWorkerThreads = 2;
+		static constexpr u32 kDefaultFiberPoolSize = 128;
+
+		size_t m_FiberStackSize = kDefaultFiberStackSize;
+		u32 m_JobPoolSize = kDefaultJobPoolSize;
+		u32 m_NumWorkerThreads = kDefaultNumWorkerThreads;
+		u32 m_FiberPoolSize = kDefaultFiberPoolSize;
 	};
 
-	void Initialize(const JobSystemDesc& jobSystemDesc = JobSystemDesc());
-	void Shutdown();
+	BV_API void Initialize(const JobSystemDesc& jobSystemDesc = JobSystemDesc());
+	BV_API void Shutdown();
 
-	JobCounterHandle RunJob(const Job& job);
-	JobCounterHandle RunJobs(u32 count, const Job* const pJobs);
-	void WaitForCounter(const JobCounterHandle& jobCounter);
+	BV_API JobCounter RunJob(const Job& job);
+	BV_API JobCounter RunJobs(u32 count, const Job* const pJobs);
+	BV_API void WaitForCounter(const JobCounter& jobCounter);
 };

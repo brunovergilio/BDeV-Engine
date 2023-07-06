@@ -16,20 +16,14 @@ public:
 		return m_ShaderResourceLayoutDesc;
 	}
 
-	const BvVector<VertexAttributeDesc>& GetVertexAttributes() const override
+	const BvVector<VertexInputDesc>& GetVertexAttributes() const override
 	{
 		return m_VertexAttributes;
 	}
 
-	const BvVector<VertexBindingDesc>& GetVertexBindings() const override
-	{
-		return m_VertexBindings;
-	}
-
 private:
 	ShaderResourceLayoutDesc m_ShaderResourceLayoutDesc;
-	BvVector<VertexAttributeDesc> m_VertexAttributes;
-	BvVector<VertexBindingDesc> m_VertexBindings;
+	BvVector<VertexInputDesc> m_VertexAttributes;
 };
 
 

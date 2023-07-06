@@ -57,27 +57,31 @@ bool BvSwapChainVk::Create()
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, surfaceFormats.Data());
 	BvCheckErrorReturnVk(result, false);
 
-	VkFormat chosenFormat = m_SwapChainDesc.m_Format != Format::kUnknown ?
-		GetVkFormat(m_SwapChainDesc.m_Format) : VkFormat::VK_FORMAT_B8G8R8A8_UNORM;
+	// 
+	VkFormat requestedFormat = GetVkFormat(m_SwapChainDesc.m_Format);
+	if (requestedFormat == VkFormat::VK_FORMAT_UNDEFINED)
+	{
+		// We default to VkFormat::VK_FORMAT_B8G8R8A8_UNORM since it's one of
+		// the most commonly accepted formats for a swap chain
+		requestedFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	}
 
-	// If there's one surface format, with type VK_FORMAT_UNDEFINED, we use
-	// whatever was specified in the SwapChainDesc
 	VkFormat format = VkFormat::VK_FORMAT_UNDEFINED;
 	VkColorSpaceKHR colorSpace = VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
 	if ((formatCount == 1) && (surfaceFormats[0].format == VK_FORMAT_UNDEFINED))
 	{
-		format = chosenFormat;
+		// If there's one surface format, with type VK_FORMAT_UNDEFINED, we use
+		// whatever was specified in the SwapChainDesc
+		format = requestedFormat;
 		colorSpace = surfaceFormats[0].colorSpace;
 	}
-	// Otherwise, we look for the chosen format or whatever we find first
 	else
 	{
-		// Default to the first one
-		format = surfaceFormats[0].format;
-		colorSpace = surfaceFormats[0].colorSpace;
-		for (auto & surfaceFormat : surfaceFormats)
+		// Otherwise, we look for the requested format
+		for (const auto& surfaceFormat : surfaceFormats)
 		{
-			if (surfaceFormat.format == chosenFormat)
+			if (surfaceFormat.format == requestedFormat)
 			{
 				format = surfaceFormat.format;
 				colorSpace = surfaceFormat.colorSpace;
@@ -85,8 +89,40 @@ bool BvSwapChainVk::Create()
 			}
 		}
 
-		m_SwapChainDesc.m_Format = GetFormat(format);
+		// If the requested format is not available, we can try to look for a replacement
+		if (format == VkFormat::VK_FORMAT_UNDEFINED)
+		{
+			// We can try looking for RGBA formats if BGRA are not available and vice versa
+			switch (requestedFormat)
+			{
+			case VkFormat::VK_FORMAT_R8G8B8A8_UNORM: requestedFormat = VkFormat::VK_FORMAT_B8G8R8A8_UNORM;	break;
+			case VkFormat::VK_FORMAT_B8G8R8A8_UNORM: requestedFormat = VkFormat::VK_FORMAT_R8G8B8A8_UNORM;	break;
+			case VkFormat::VK_FORMAT_R8G8B8A8_SRGB: requestedFormat = VkFormat::VK_FORMAT_B8G8R8A8_SRGB;	break;
+			case VkFormat::VK_FORMAT_B8G8R8A8_SRGB: requestedFormat = VkFormat::VK_FORMAT_R8G8B8A8_SRGB;	break;
+			}
+
+			for (const auto& surfaceFormat : surfaceFormats)
+			{
+				if (surfaceFormat.format == requestedFormat)
+				{
+					format = surfaceFormat.format;
+					colorSpace = surfaceFormat.colorSpace;
+					break;
+				}
+			}
+
+			// If we still couldn't find anything, then throw an error
+			if (format == VkFormat::VK_FORMAT_UNDEFINED)
+			{
+				BV_ERROR("Couldn't find a format for Vulkan's SwapChain");
+				return false;
+			}
+		}
 	}
+
+	// Update the SwapChain's format in case it changed - if it ends up being Format::Unknown,
+	// then that means it's using a format not on the list, but nevertheless supported
+	m_SwapChainDesc.m_Format = GetFormat(format);
 
 	// Get physical device surface properties and formats
 	VkSurfaceCapabilitiesKHR surfCaps;

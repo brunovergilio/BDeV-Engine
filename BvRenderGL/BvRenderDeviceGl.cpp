@@ -3,15 +3,14 @@
 #include "BvSwapChainGl.h"
 
 
-BvRenderDeviceGl::BvRenderDeviceGl(const DeviceCreateDesc& deviceDesc)
+BvRenderDeviceGl::BvRenderDeviceGl(const DeviceCreateDesc& deviceDesc, const BvGPUInfoGl& gpuInfo)
+	: m_GPUInfo(gpuInfo)
 {
-
 }
 
 
 BvRenderDeviceGl::~BvRenderDeviceGl()
 {
-
 }
 
 
@@ -27,7 +26,7 @@ void BvRenderDeviceGl::Destroy()
 
 BvSwapChain* BvRenderDeviceGl::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandQueue& commandQueue)
 {
-	return new BvSwapChainGl(pWindow, swapChainDesc);
+	return new BvSwapChainGl(*this, pWindow, swapChainDesc);
 }
 
 

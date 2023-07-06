@@ -53,7 +53,7 @@ struct FramebufferDesc
 template<>
 struct BvHash<FramebufferDesc>
 {
-	u64 operator()(const FramebufferDesc & val)
+	u64 operator()(const FramebufferDesc & val) const
 	{
 		u64 hash = 0;
 		HashCombine(hash, val.m_RenderTargetViews.Size());
@@ -62,7 +62,6 @@ struct BvHash<FramebufferDesc>
 			HashCombine(hash, pTarget);
 		}
 
-		HashCombine(hash, val.m_pDepthStencilView != nullptr ? 1 : 0);
 		if (val.m_pDepthStencilView)
 		{
 			HashCombine(hash, val.m_pDepthStencilView);

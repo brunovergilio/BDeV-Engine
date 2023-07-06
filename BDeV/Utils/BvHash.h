@@ -150,7 +150,7 @@ constexpr size_t ConstexprStringLength(const char * pBytes)
 template<typename Type>
 struct BvHash
 {
-	size_t operator()(const Type& value)
+	size_t operator()(const Type& value) const
 	{
 		return MurmurHash64A(&value, sizeof(Type));
 	}

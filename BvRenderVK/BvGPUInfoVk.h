@@ -28,6 +28,8 @@ struct BvGPUInfoVk
 		VkPhysicalDeviceConservativeRasterizationPropertiesEXT convervativeRasterizationProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT };
 		VkPhysicalDeviceCustomBorderColorPropertiesEXT customBorderColorProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT };
 		VkPhysicalDeviceTimelineSemaphorePropertiesKHR timelineSemaphoreProps{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR };
+		VkFormatProperties2KHR formatProperties2{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR };
+		VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT vertexAttributeDivisorProperties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT };
 	} m_ExtendedProperties;
 	struct
 	{
@@ -43,6 +45,7 @@ struct BvGPUInfoVk
 		VkPhysicalDeviceCustomBorderColorFeaturesEXT customBorderColorFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT };
 		VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timelineSemaphoreFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR };
 		VkPhysicalDeviceImagelessFramebufferFeaturesKHR imagelessFrameBufferFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR };
+		VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertexAttributeDivisorFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT };
 	} m_ExtendedFeatures;
 	BvVector<VkQueueFamilyProperties> m_QueueFamilyProperties;
 	BvVector<VkExtensionProperties> m_SupportedExtensions;
@@ -57,6 +60,7 @@ struct BvGPUInfoVk
 		bool swapChain : 1;
 		bool deviceProperties2 : 1;
 		bool memoryRequirements2 : 1;
+		bool vertexAttributeDivisor : 1;
 		bool bindMemory2 : 1;
 		bool maintenance1 : 1;
 		bool maintenance2 : 1;

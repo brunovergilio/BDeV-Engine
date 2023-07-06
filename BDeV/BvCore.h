@@ -137,7 +137,17 @@ typedef uint64_t u64;
 typedef float	 f32;
 typedef double	 f64;
 
-template<typename Type> constexpr const Type kMin = std::numeric_limits<Type>::min();
+template<typename Type> constexpr const Type kMin = []() -> auto
+{
+	if constexpr (std::is_floating_point_v<Type>)
+	{
+		return std::numeric_limits<Type>::lowest();
+	}
+	else
+	{
+		return std::numeric_limits<Type>::min();
+	}
+}();
 template<typename Type> constexpr const Type kMax = std::numeric_limits<Type>::max();
 
 constexpr const auto kI8Min = kMin<i8>;
@@ -160,6 +170,10 @@ constexpr const auto kI64Max = kMax<i64>;
 constexpr const auto kU64Min = kMin<u64>;
 constexpr const auto kU64Max = kMax<u64>;
 
+constexpr const auto kF32Min = kMin<f32>;
+constexpr const auto kF32Max = kMax<f32>;
+constexpr const auto kF64Min = kMin<f64>;
+constexpr const auto kF64Max = kMax<f64>;
 
 template<typename Type>
 inline constexpr bool IsPodV = std::is_trivial_v<Type> && std::is_standard_layout_v<Type>;

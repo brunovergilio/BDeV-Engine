@@ -2,6 +2,7 @@
 
 
 #include "BvCommonGl.h"
+#include "BvGPUInfoGl.h"
 
 
 class BvWindow;
@@ -26,7 +27,8 @@ private:
 	HGLRC m_hRC = nullptr;
 #endif
 	bool m_SupportsVSync = false;
+	i32 m_SwapInterval = 0;
 };
 
 
-bool InitializeOpenGL();
+bool InitializeOpenGL(BvGPUInfoGl& gpuInfo);

@@ -23,25 +23,39 @@ BvGraphicsPipelineStateVk::~BvGraphicsPipelineStateVk()
 
 void BvGraphicsPipelineStateVk::Create()
 {
-	BvFixedVector<VkVertexInputBindingDescription, kMaxVertexBindings> bindingDescs(m_PipelineStateDesc.m_VertexBindingDesc.Size(), {});
-	for (auto i = 0u; i < bindingDescs.Size(); i++)
-	{
-		bindingDescs[i].binding = m_PipelineStateDesc.m_VertexBindingDesc[i].m_Binding;
-		bindingDescs[i].stride = m_PipelineStateDesc.m_VertexBindingDesc[i].m_Stride;
-		bindingDescs[i].inputRate = GetVkVertexInputRate(m_PipelineStateDesc.m_VertexBindingDesc[i].m_InputRate);
-	}
-
-	BvFixedVector<VkVertexInputAttributeDescription, kMaxVertexBindings> attributeDescs(m_PipelineStateDesc.m_VertexAttributeDesc.Size(), {});
+	BvFixedVector<VkVertexInputAttributeDescription, kMaxVertexBindings> attributeDescs(m_PipelineStateDesc.m_VertexInputDesc.Size(), {});
+	BvFixedVector<VkVertexInputBindingDescription, kMaxVertexBindings> bindingDescs;
+	BvFixedVector<VkVertexInputBindingDivisorDescriptionEXT, kMaxVertexBindings> divisorDescs;
+	BvFixedVector<u32, kMaxVertexBindings> bindingIndices(kMaxVertexBindings, kU32Max);
 	for (auto i = 0u; i < attributeDescs.Size(); i++)
 	{
-		attributeDescs[i].binding = m_PipelineStateDesc.m_VertexAttributeDesc[i].m_Binding;
-		attributeDescs[i].format = GetVkFormat(m_PipelineStateDesc.m_VertexAttributeDesc[i].m_Format);
-		attributeDescs[i].location = m_PipelineStateDesc.m_VertexAttributeDesc[i].m_Location;
-		attributeDescs[i].offset = m_PipelineStateDesc.m_VertexAttributeDesc[i].m_Offset;
+		attributeDescs[i].location = m_PipelineStateDesc.m_VertexInputDesc[i].m_Location;
+		attributeDescs[i].binding = m_PipelineStateDesc.m_VertexInputDesc[i].m_Binding;
+		attributeDescs[i].format = GetVkFormat(m_PipelineStateDesc.m_VertexInputDesc[i].m_Format);
+		attributeDescs[i].offset = m_PipelineStateDesc.m_VertexInputDesc[i].m_Offset;
+
+		// We keep track of each binding that hasn't already been set, and add the elements
+		// when a new one is found (which means bindingIndex == kU32Max)
+		auto& bindingIndex = bindingIndices[m_PipelineStateDesc.m_VertexInputDesc[i].m_Binding];
+		if (bindingIndex == kU32Max)
+		{
+			bindingDescs.PushBack({ m_PipelineStateDesc.m_VertexInputDesc[i].m_Binding, m_PipelineStateDesc.m_VertexInputDesc[i].m_Stride,
+				GetVkVertexInputRate(m_PipelineStateDesc.m_VertexInputDesc[i].m_InputRate) });
+			bindingIndex = bindingDescs.Size() - 1;
+		}
+
+		if (m_PipelineStateDesc.m_VertexInputDesc[i].m_InputRate == InputRate::kPerInstance)
+		{
+			divisorDescs.PushBack({ m_PipelineStateDesc.m_VertexInputDesc[i].m_Binding, m_PipelineStateDesc.m_VertexInputDesc[i].m_InstanceRate});
+		}
 	}
 
-	VkPipelineVertexInputStateCreateInfo vertexCI{};
-	vertexCI.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	VkPipelineVertexInputDivisorStateCreateInfoEXT vertexDivisorStateCI{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT };
+	vertexDivisorStateCI.vertexBindingDivisorCount = divisorDescs.Size();
+	vertexDivisorStateCI.pVertexBindingDivisors = divisorDescs.Data();
+
+	VkPipelineVertexInputStateCreateInfo vertexCI{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	vertexCI.pNext = m_Device.GetGPUInfo().m_FeaturesSupported.vertexAttributeDivisor && divisorDescs.Size() > 0 ? &vertexDivisorStateCI : nullptr;
 	if (bindingDescs.Size() > 0)
 	{
 		vertexCI.vertexBindingDescriptionCount = (u32)bindingDescs.Size();
@@ -53,22 +67,18 @@ void BvGraphicsPipelineStateVk::Create()
 		vertexCI.pVertexAttributeDescriptions = attributeDescs.Data();
 	}
 
-	VkPipelineInputAssemblyStateCreateInfo iaCI{};
-	iaCI.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	VkPipelineInputAssemblyStateCreateInfo iaCI{ VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
 	iaCI.primitiveRestartEnable = m_PipelineStateDesc.m_InputAssemblyStateDesc.m_PrimitiveRestart;
 	iaCI.topology = GetVkPrimitiveTopology(m_PipelineStateDesc.m_InputAssemblyStateDesc.m_Topology);
 
-	VkPipelineTessellationStateCreateInfo tessCI{};
-	tessCI.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+	VkPipelineTessellationStateCreateInfo tessCI{ VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
 	tessCI.patchControlPoints = m_PipelineStateDesc.m_TessellationStateDesc.m_PatchControlPoints;
 
-	VkPipelineViewportStateCreateInfo viewportCI{};
-	viewportCI.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	VkPipelineViewportStateCreateInfo viewportCI{ VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 	viewportCI.viewportCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxViewportCount;
 	viewportCI.scissorCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxScissorCount;
 
-	VkPipelineRasterizationStateCreateInfo rasterizerCI{};
-	rasterizerCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	VkPipelineRasterizationStateCreateInfo rasterizerCI{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 	rasterizerCI.polygonMode = GetVkPolygonMode(m_PipelineStateDesc.m_RasterizerStateDesc.m_FillMode);
 	rasterizerCI.cullMode = GetVkCullModeFlags(m_PipelineStateDesc.m_RasterizerStateDesc.m_CullMode);
 	rasterizerCI.frontFace = GetVkFrontFace(m_PipelineStateDesc.m_RasterizerStateDesc.m_FrontFace);
@@ -79,14 +89,13 @@ void BvGraphicsPipelineStateVk::Create()
 	rasterizerCI.depthClampEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthClip;
 	rasterizerCI.lineWidth = 1.0f;
 
-	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{};
+	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
 	if (m_Device.GetGPUInfo().m_FeaturesSupported.conservativeRasterization && m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
 	{
 		const auto & conservativeRasterProps = m_Device.GetGPUInfo().m_ExtendedProperties.convervativeRasterizationProps;
 
 		if (conservativeRasterProps.maxExtraPrimitiveOverestimationSize > 0.0f)
 		{
-			conservativeRaster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
 			conservativeRaster.conservativeRasterizationMode =
 				VkConservativeRasterizationModeEXT::VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
 			conservativeRaster.extraPrimitiveOverestimationSize = conservativeRasterProps.maxExtraPrimitiveOverestimationSize;
@@ -95,8 +104,7 @@ void BvGraphicsPipelineStateVk::Create()
 		}
 	}
 
-	VkPipelineDepthStencilStateCreateInfo depthStencilCI{};
-	depthStencilCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	VkPipelineDepthStencilStateCreateInfo depthStencilCI{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
 	depthStencilCI.depthTestEnable = m_PipelineStateDesc.m_DepthStencilDesc.m_DepthTestEnable;
 	depthStencilCI.depthWriteEnable = m_PipelineStateDesc.m_DepthStencilDesc.m_DepthWriteEnable;
 	depthStencilCI.depthCompareOp = GetVkCompareOp(m_PipelineStateDesc.m_DepthStencilDesc.m_DepthOp);
@@ -108,6 +116,7 @@ void BvGraphicsPipelineStateVk::Create()
 	depthStencilCI.front.compareOp = GetVkCompareOp(m_PipelineStateDesc.m_DepthStencilDesc.m_StencilFront.m_StencilFunc);
 	depthStencilCI.front.writeMask = m_PipelineStateDesc.m_DepthStencilDesc.m_StencilWriteMask;
 	depthStencilCI.front.compareMask = m_PipelineStateDesc.m_DepthStencilDesc.m_StencilReadMask;
+	//depthStencilCI.front.reference = 0; // Set dynamically
 
 	depthStencilCI.back.failOp = GetVkStencilOp(m_PipelineStateDesc.m_DepthStencilDesc.m_StencilBack.m_StencilFailOp);
 	depthStencilCI.back.depthFailOp = GetVkStencilOp(m_PipelineStateDesc.m_DepthStencilDesc.m_StencilBack.m_StencilDepthFailOp);
@@ -115,14 +124,14 @@ void BvGraphicsPipelineStateVk::Create()
 	depthStencilCI.back.compareOp = GetVkCompareOp(m_PipelineStateDesc.m_DepthStencilDesc.m_StencilBack.m_StencilFunc);
 	depthStencilCI.back.writeMask = m_PipelineStateDesc.m_DepthStencilDesc.m_StencilWriteMask;
 	depthStencilCI.back.compareMask = m_PipelineStateDesc.m_DepthStencilDesc.m_StencilReadMask;
+	//depthStencilCI.back.reference = 0; // Set dynamically
 
 	depthStencilCI.depthBoundsTestEnable = m_PipelineStateDesc.m_DepthStencilDesc.m_DepthBoundsTestEnable;
 	depthStencilCI.minDepthBounds = 0.0f;
 	depthStencilCI.maxDepthBounds = 1.0f;
 
 	u32 sampleMask[] = { m_PipelineStateDesc.m_SampleMask, 0 };
-	VkPipelineMultisampleStateCreateInfo msCI{};
-	msCI.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	VkPipelineMultisampleStateCreateInfo msCI{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
 	msCI.rasterizationSamples = GetVkSampleCountFlagBits(m_PipelineStateDesc.m_MultisampleStateDesc.m_SampleCount);
 	msCI.pSampleMask = sampleMask;
 
@@ -132,10 +141,9 @@ void BvGraphicsPipelineStateVk::Create()
 		rtvFormats[i] = GetVkFormat(m_PipelineStateDesc.m_RenderTargetFormats[i]);
 	}
 
-	VkPipelineRenderingCreateInfoKHR pipelineRenderingCI{};
+	VkPipelineRenderingCreateInfoKHR pipelineRenderingCI{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
 	if (m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering)
 	{
-		pipelineRenderingCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
 		pipelineRenderingCI.colorAttachmentCount = m_PipelineStateDesc.m_RenderTargetFormats.Size();
 		pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
 		pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
@@ -153,7 +161,7 @@ void BvGraphicsPipelineStateVk::Create()
 		blendAttachments[i].colorBlendOp = GetVkBlendOp(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_BlendOp);
 		blendAttachments[i].dstColorBlendFactor = GetVkBlendFactor(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_DstBlend);
 		blendAttachments[i].dstAlphaBlendFactor = GetVkBlendFactor(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_DstBlendAlpha);
-		blendAttachments[i].alphaBlendOp = GetVkBlendOp(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_BlendOpAlpha);
+		blendAttachments[i].alphaBlendOp = GetVkBlendOp(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_AlphaBlendOp);
 		blendAttachments[i].colorWriteMask = m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_RenderTargetWriteMask;
 
 		if (blendAttachments[i].blendEnable)
@@ -162,8 +170,7 @@ void BvGraphicsPipelineStateVk::Create()
 		}
 	}
 
-	VkPipelineColorBlendStateCreateInfo blendCI{};
-	blendCI.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	VkPipelineColorBlendStateCreateInfo blendCI{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
 	if (blendAttachments.Size() > 0)
 	{
 		blendCI.attachmentCount = (u32)blendAttachments.Size();
@@ -185,8 +192,7 @@ void BvGraphicsPipelineStateVk::Create()
 		dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_BLEND_CONSTANTS);
 	}
 
-	VkPipelineDynamicStateCreateInfo dynamicStateCI{};
-	dynamicStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	VkPipelineDynamicStateCreateInfo dynamicStateCI{ VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
 	dynamicStateCI.dynamicStateCount = (u32)dynamicStates.Size();
 	dynamicStateCI.pDynamicStates = dynamicStates.Data();
 
@@ -200,8 +206,7 @@ void BvGraphicsPipelineStateVk::Create()
 			m_PipelineStateDesc.m_ShaderStages[i].m_pByteCode, shaderStages[i].stage);
 	}
 
-	VkGraphicsPipelineCreateInfo pipelineCI{};
-	pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	VkGraphicsPipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 	pipelineCI.pNext = !m_PipelineStateDesc.m_pRenderPass && m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering ? &pipelineRenderingCI : nullptr;
 	//pipelineCI.flags = 0;
 	pipelineCI.stageCount = (u32)m_PipelineStateDesc.m_ShaderStages.Size();
@@ -257,8 +262,7 @@ BvComputePipelineStateVk::~BvComputePipelineStateVk()
 
 void BvComputePipelineStateVk::Create()
 {
-	VkComputePipelineCreateInfo pipelineCI{};
-	pipelineCI.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	VkComputePipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
 	pipelineCI.layout = static_cast<BvShaderResourceLayoutVk *>(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
 	pipelineCI.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	pipelineCI.stage.pName = m_PipelineStateDesc.m_ShaderByteCodeDesc.m_EntryPoint.CStr();

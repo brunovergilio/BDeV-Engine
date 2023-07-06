@@ -1,50 +1,44 @@
 #include "BDeV/System/Threading/BvSync.h"
+#include "../BvProcess.h"
+#include <Windows.h>
 
 
 BvMutex::BvMutex()
 {
-	InitializeCriticalSection(&m_Mutex);
 }
 
 
 BvMutex::~BvMutex()
 {
-	DeleteCriticalSection(&m_Mutex);
 }
 
 
 BvMutex::BvMutex(BvMutex && rhs) noexcept
 {
-	*this = std::move(rhs);
 }
 
 
 BvMutex & BvMutex::operator =(BvMutex && rhs) noexcept
 {
-	if (this != &rhs)
-	{
-		std::swap(m_Mutex, rhs.m_Mutex);
-	}
-
 	return *this;
 }
 
 
 void BvMutex::Lock()
 {
-	EnterCriticalSection(&m_Mutex);
+	m_Mutex.lock();
 }
 
 
 bool BvMutex::TryLock()
 {
-	return TryEnterCriticalSection(&m_Mutex);
+	return m_Mutex.try_lock();
 }
 
 
 void BvMutex::Unlock()
 {
-	LeaveCriticalSection(&m_Mutex);
+	m_Mutex.unlock();
 }
 
 
@@ -69,7 +63,7 @@ void BvSpinlock::Lock()
 
 		while (m_Lock.load(std::memory_order::memory_order_relaxed))
 		{
-			YieldProcessor();
+			YieldProcessorExecution();
 		}
 	}
 }

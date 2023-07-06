@@ -31,3 +31,4 @@ struct BvStackTrace
 
 BV_API const BvSystemInfo& GetSystemInfo();
 BV_API void GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip = 1, const u32 numFramesToRecord = 3);
+BV_API void YieldProcessorExecution();

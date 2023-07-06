@@ -4,14 +4,14 @@
 #include "BDeV/Utils/BvUtils.h"
 
 
+using FiberFunction = void(*)(void*);
+
 class BV_API BvFiber
 {
 	BV_NOCOPY(BvFiber);
 
 public:
 	friend class BvThread;
-
-	using FiberFunction = void(*)(void*);
 
 	BvFiber();
 	BvFiber(BvFiber&& rhs) noexcept;
@@ -21,7 +21,7 @@ public:
 
 	void Switch(const BvFiber& fiber) const;
 
-	BV_INLINE void* GetFiber() const { return m_pFiber; }
+	void* GetFiber() const;
 
 private:
 	void Create(FiberFunction pFunction, void* const pData = nullptr, const size_t stackSize = 0);
@@ -32,7 +32,11 @@ private:
 #endif
 
 private:
-	FiberFunction m_pFunction = nullptr;
-	void* m_pData = nullptr;
-	void* m_pFiber = nullptr;
+	struct FiberData
+	{
+		FiberFunction m_pFunction = nullptr;
+		void* m_pData = nullptr;
+		void* m_pFiber = nullptr;
+	};
+	FiberData* m_pFiberData = nullptr;
 };

@@ -163,7 +163,10 @@
     <ClInclude Include="BvCommonGl.h" />
     <ClInclude Include="BvContextGl.h" />
     <ClInclude Include="BvDebugReportGl.h" />
+    <ClInclude Include="BvFramebufferGl.h" />
+    <ClInclude Include="BvGPUInfoGl.h" />
     <ClInclude Include="BvPipelineStateGl.h" />
+    <ClInclude Include="BvRenderContextStateGl.h" />
     <ClInclude Include="BvRenderDeviceGl.h" />
     <ClInclude Include="BvRenderEngineGl.h" />
     <ClInclude Include="BvRenderPassGl.h" />
@@ -175,6 +178,7 @@
     <ClInclude Include="BvTextureGl.h" />
     <ClInclude Include="BvTextureViewGl.h" />
     <ClInclude Include="BvTypeConversionsGl.h" />
+    <ClInclude Include="BvVertexArrayObjectGl.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BDeV\BDeV.vcxproj">
@@ -189,7 +193,9 @@
     <ClCompile Include="BvCommandPoolGl.cpp" />
     <ClCompile Include="BvCommandQueueGl.cpp" />
     <ClCompile Include="BvDebugReportGl.cpp" />
+    <ClCompile Include="BvFramebufferGl.cpp" />
     <ClCompile Include="BvPipelineStateGl.cpp" />
+    <ClCompile Include="BvRenderContextStateGl.cpp" />
     <ClCompile Include="BvRenderDeviceGl.cpp" />
     <ClCompile Include="BvRenderEngineGl.cpp" />
     <ClCompile Include="BvRenderPassGl.cpp" />
@@ -201,6 +207,7 @@
     <ClCompile Include="BvTextureGl.cpp" />
     <ClCompile Include="BvTextureViewGl.cpp" />
     <ClCompile Include="BvTypeConversionsGl.cpp" />
+    <ClCompile Include="BvVertexArrayObjectGl.cpp" />
     <ClCompile Include="Windows\BvContextGlWindows.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -26,7 +26,8 @@ public:
 	template<class Fn, class... Args,
 		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
 		BvThread(const u32 stackSize, Fn&& fn, Args &&... args)
-		: m_pDelegate(new BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...)) {
+		: m_pDelegate(new BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
+	{
 		Create(stackSize);
 	}
 

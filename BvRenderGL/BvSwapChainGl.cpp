@@ -1,9 +1,10 @@
 #include "BvSwapChainGl.h"
 #include "BvContextGl.h"
 
-BvSwapChainGl::BvSwapChainGl(BvWindow* pWindow, const SwapChainDesc& swapChainParams)
-	: BvSwapChain(pWindow, swapChainParams), m_pContext(new BvContextGl(pWindow))
+BvSwapChainGl::BvSwapChainGl(const BvRenderDeviceGl& device, BvWindow* pWindow, const SwapChainDesc& swapChainParams)
+	: BvSwapChain(pWindow, swapChainParams), m_Device(device), m_pContext(new BvContextGl(pWindow))
 {
+	m_SwapChainDesc.m_SwapChainImageCount = 2;
 }
 
 
@@ -26,4 +27,5 @@ void BvSwapChainGl::Destroy()
 
 void BvSwapChainGl::Present(bool vSync)
 {
+	m_pContext->SwapBuffers(i32(vSync));
 }

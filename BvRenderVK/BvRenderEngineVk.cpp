@@ -393,19 +393,20 @@ void BvRenderEngineVk::SetupDevicePropertiesAndFeatures(u32 gpuIndex)
 	gpu.m_FeaturesSupported.bindMemory2 = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME);
 	if (gpu.m_FeaturesSupported.deviceProperties2)
 	{
-		VkPhysicalDeviceProperties2 deviceProperties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-		VkPhysicalDeviceFeatures2 deviceFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+		VkPhysicalDeviceProperties2KHR deviceProperties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+		VkPhysicalDeviceFeatures2KHR deviceFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 
 		void** pNextProperty = &deviceProperties.pNext;
 		void** pNextFeature = &deviceFeatures.pNext;
 
+		gpu.m_FeaturesSupported.vertexAttributeDivisor = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.maintenance1 = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_MAINTENANCE1_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.maintenance2 = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_MAINTENANCE2_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.imageFormatList = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.imagelessFrameBuffer = gpu.m_FeaturesSupported.imageFormatList && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.multiview = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_MULTIVIEW_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.renderpass2 = gpu.m_FeaturesSupported.maintenance2 &&
-			gpu.m_FeaturesSupported.multiview && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+		gpu.m_FeaturesSupported.multiview && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.depthStencilResolve = gpu.m_FeaturesSupported.renderpass2 && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.dynamicRendering = gpu.m_FeaturesSupported.depthStencilResolve && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.fragmentShading = gpu.m_FeaturesSupported.renderpass2 && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
@@ -417,16 +418,25 @@ void BvRenderEngineVk::SetupDevicePropertiesAndFeatures(u32 gpuIndex)
 		gpu.m_FeaturesSupported.spirv1_4 = gpu.m_FeaturesSupported.shaderFloatControls && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_SPIRV_1_4_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.meshShader = gpu.m_FeaturesSupported.spirv1_4 && IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_MESH_SHADER_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.accelerationStructure = gpu.m_FeaturesSupported.descriptorIndexing && gpu.m_FeaturesSupported.bufferDeviceAddress &&
-			gpu.m_FeaturesSupported.deferredHostOperations && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+		gpu.m_FeaturesSupported.deferredHostOperations && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.rayTracingPipeline = gpu.m_FeaturesSupported.accelerationStructure &&
-			gpu.m_FeaturesSupported.spirv1_4 && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+		gpu.m_FeaturesSupported.spirv1_4 && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.rayQuery = gpu.m_FeaturesSupported.accelerationStructure &&
-			gpu.m_FeaturesSupported.spirv1_4 && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_RAY_QUERY_EXTENSION_NAME);
+		gpu.m_FeaturesSupported.spirv1_4 && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_RAY_QUERY_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.pipelineLibrary = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.conservativeRasterization = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.customBorderColor = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.timelineSemaphore = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
 		gpu.m_FeaturesSupported.memoryBudget = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+
+		if (gpu.m_FeaturesSupported.vertexAttributeDivisor)
+		{
+			*pNextProperty = &gpu.m_ExtendedProperties.vertexAttributeDivisorProperties;
+			pNextProperty = &gpu.m_ExtendedProperties.vertexAttributeDivisorProperties.pNext;
+
+			*pNextFeature = &gpu.m_ExtendedFeatures.vertexAttributeDivisorFeatures;
+			pNextFeature = &gpu.m_ExtendedFeatures.vertexAttributeDivisorFeatures.pNext;
+		}
 
 		if (gpu.m_FeaturesSupported.maintenance2)
 		{

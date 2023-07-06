@@ -4,6 +4,7 @@
 #include "BDeV/System/File/BvAsyncFile.h"
 #include "BDeV/System/File/BvFileSystem.h"
 #include "BDeV/Utils/BvUtils.h"
+#include "BDeV/Engine/JobSystem/BvJobSystem.h"
 #include "BDeV/Engine/TBJobSystem/BvTBJobSystem.h"
 #include <functional>
 #include "BDeV/System/Memory/BvMemory.h"
@@ -113,8 +114,57 @@ struct A
 };
 
 
+template<typename Lambda>
+struct Func : public BvDelegateBase
+{
+	template<typename = typename std::enable_if_t<std::is_same_v<std::invoke_result_t<Lambda>, void>&& std::is_invocable_v<Lambda>>>
+	Func(Lambda&& lambda)
+		: m_Lambda(std::move(lambda))
+	{
+	}
+
+	void Invoke() const override
+	{
+		m_Lambda();
+	}
+
+	Lambda m_Lambda;
+};
+
+
+BV_JOB_FUNCTION(DoSleep)
+{
+	auto id = BV_JOB_DATA(u32);
+	auto ms = rand() % 30;
+	printf("Job #%u in Thread #%llu sleeping for %u ms\n", id, BvThread::GetCurrentThread().GetId(), ms);
+	BvThread::Sleep(ms);
+}
+
+
 int main()
 {
+	BvTaskT<24> f;
+	f.Set([](int c, int b) {}, 2, 4);
+
+	JS::JobSystemDesc desc;
+	desc.m_NumWorkerThreads = 1;
+	JS::Initialize(desc);
+
+	constexpr auto jobCount = 129;
+	JS::Job jobs[jobCount]{};
+	srand(time(nullptr));
+	for (auto i = 0; i < jobCount; i++)
+	{
+		jobs[i].m_pFunction = DoSleep;
+		jobs[i].m_pData = (void*)i;
+	}
+
+	JS::RunJobs(jobCount, jobs);
+
+	getchar();
+
+	JS::Shutdown();
+
 	BvRobinMap<int, char> mm;
 	mm.Emplace(1, 'c');
 	mm.Emplace(4, 'd');
@@ -127,7 +177,7 @@ int main()
 	mm.Erase(4);
 
 
-	BV_RUN_TEST_UNITS();
+	//BV_RUN_TEST_UNITS();
 
 	BvVector<int> a(10, 3);
 	//const BvVector<BvMonitor*>& monitors = GetMonitors();

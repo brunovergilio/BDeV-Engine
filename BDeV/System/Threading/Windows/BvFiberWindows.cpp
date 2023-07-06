@@ -19,9 +19,7 @@ BvFiber & BvFiber::operator =(BvFiber && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		std::swap(m_pFiber, rhs.m_pFiber);
-		std::swap(m_pFunction, rhs.m_pFunction);
-		std::swap(m_pData, rhs.m_pData);
+		std::swap(m_pFiberData, rhs.m_pFiberData);
 	}
 
 	return *this;
@@ -42,17 +40,28 @@ BvFiber::~BvFiber()
 
 void BvFiber::Switch(const BvFiber & fiber) const
 {
-	BvAssert(fiber.m_pFiber != nullptr, "Fiber is nullptr");
-	SwitchToFiber(fiber.m_pFiber);
+	BvAssert(fiber.m_pFiberData->m_pFiber != nullptr, "Fiber is nullptr");
+	SwitchToFiber(fiber.m_pFiberData->m_pFiber);
+}
+
+
+void* BvFiber::GetFiber() const
+{
+	return m_pFiberData->m_pFiber;
 }
 
 
 void BvFiber::Create(FiberFunction pFunction, void* const pData, const size_t stackSize)
 {
-	BvAssert(pFunction != nullptr, "Fiber's callback routine is nullptr");
-
-	m_pFunction = pFunction;
-	m_pData = pData;
+	m_pFiberData = new FiberData();
+	m_pFiberData->m_pFunction = pFunction;
+	m_pFiberData->m_pData = pData;
+	
+	// If we don't specify a function that means we're converting a thread to a fiber
+	if (!pFunction)
+	{
+		return;
+	}
 
 	// Piece of information taken from https://github.com/google/marl/issues/12
 	// The Win32 CreateFiber function has unexpected virtual memory size by default.When using CreateFiberEx,
@@ -67,23 +76,28 @@ void BvFiber::Create(FiberFunction pFunction, void* const pData, const size_t st
 	// If this minimum stack size is OK for performance, then that's how fiber creation should be done on Windows.
 	//
 	// If we need smaller values(16KiB is common in schedulers), then asm fibers should be used instead IMO.
-	m_pFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, this);
+	m_pFiberData->m_pFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, m_pFiberData);
 
-	BvAssert(m_pFiber != nullptr, "Couldn't create Fiber");
+	BvAssert(m_pFiberData->m_pFiber != nullptr, "Couldn't create Fiber");
 }
 
 
 void BvFiber::Destroy()
 {
-	if (m_pFiber && m_pFunction)
+	if (m_pFiberData)
 	{
-		DeleteFiber(m_pFiber);
+		if (m_pFiberData->m_pFiber && m_pFiberData->m_pFunction)
+		{
+			DeleteFiber(m_pFiberData->m_pFiber);
+		}
+		delete m_pFiberData;
+		m_pFiberData = nullptr;
 	}
 }
 
 
 void BvFiber::FiberEntryPoint(void * pData)
 {
-	BvFiber * pFiber = reinterpret_cast<BvFiber *>(pData);
+	FiberData * pFiber = reinterpret_cast<FiberData *>(pData);
 	pFiber->m_pFunction(pFiber->m_pData);
 }

@@ -6,22 +6,6 @@
 #include "BDeV/Container/BvFixedVector.h"
 
 
-
-enum class LoadOp : u8
-{
-	kDontCare = 0x0,
-	kLoad = 0x1,
-	kClear = 0x2,
-};
-
-
-enum class StoreOp : u8
-{
-	kDontCare = 0x0,
-	kStore = 0x1,
-};
-
-
 struct RenderPassTargetDesc
 {
 	RenderPassTargetDesc()

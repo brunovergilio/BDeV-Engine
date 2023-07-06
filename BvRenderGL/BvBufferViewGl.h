@@ -16,6 +16,8 @@ public:
 	BvBufferViewGl(const BvRenderDeviceGl& device, const BufferViewDesc& bufferViewDesc);
 	~BvBufferViewGl() override;
 
+	BvBufferGl* GetTexture() const { return static_cast<BvBufferGl*>(m_BufferViewDesc.m_pBuffer); }
+
 private:
 	const BvRenderDeviceGl& m_Device;
 };

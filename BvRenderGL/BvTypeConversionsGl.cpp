@@ -2,92 +2,141 @@
 #include "BDeV/Container/BvRobinMap.h"
 
 
-static BvRobinMap<Format, GLenum> s_FormatToGlFormatMap =
+static constexpr FormatMapGl kFormatMapGl[] =
 {
-	{ Format::kUnknown,				0 },
-
-	{ Format::kRGBA32_Float,		GL_RGBA32F },
-	{ Format::kRGBA32_UInt,			GL_RGBA32UI },
-	{ Format::kRGBA32_SInt,			GL_RGBA32I },
-
-	{ Format::kRGB32_Float,			GL_RGB32F },
-	{ Format::kRGB32_UInt,			GL_RGB32UI },
-	{ Format::kRGB32_SInt,			GL_RGB32I },
-
-	{ Format::kRG32_Float,			GL_RG32F },
-	{ Format::kRG32_UInt,			GL_RG32UI },
-	{ Format::kRG32_SInt,			GL_RG32I },
-
-	{ Format::kR32_Float,			GL_R32F },
-	{ Format::kR32_UInt,			GL_R32UI },
-	{ Format::kR32_SInt,			GL_R32I },
-
-	{ Format::kRGBA16_Float,		GL_RGBA16F },
-	{ Format::kRGBA16_UNorm,		GL_RGBA16 },
-	{ Format::kRGBA16_UInt,			GL_RGBA16UI },
-	{ Format::kRGBA16_SNorm,		GL_RGBA16_SNORM },
-	{ Format::kRGBA16_SInt,			GL_RGBA16I },
-
-	{ Format::kRG16_Float,			GL_RG16F },
-	{ Format::kRG16_UNorm,			GL_RG16 },
-	{ Format::kRG16_UInt,			GL_RG16UI },
-	{ Format::kRG16_SNorm,			GL_RG16_SNORM },
-	{ Format::kRG16_SInt,			GL_RG16I },
-
-	{ Format::kR16_Float,			GL_R16F },
-	{ Format::kR16_UNorm,			GL_R16 },
-	{ Format::kR16_UInt,			GL_R16UI },
-	{ Format::kR16_SNorm,			GL_R16_SNORM },
-	{ Format::kR16_SInt,			GL_R16I },
-
-	{ Format::kRGBA8_UNorm_SRGB,	GL_SRGB8_ALPHA8 },
-	{ Format::kRGBA8_UNorm,			GL_RGBA8 },
-	{ Format::kRGBA8_UInt,			GL_RGBA8UI },
-	{ Format::kRGBA8_SNorm,			GL_RGBA8_SNORM },
-	{ Format::kRGBA8_SInt,			GL_RGBA8I },
-
-	{ Format::kBGRA8_UNorm_SRGB,	0 },
-	{ Format::kBGRA8_UNorm,			0 },
-
-	{ Format::kRG8_UNorm,			GL_RG8 },
-	{ Format::kRG8_UInt,			GL_RG8UI },
-	{ Format::kRG8_SNorm,			GL_RG8_SNORM },
-	{ Format::kRG8_SInt,			GL_RG8I },
-
-	{ Format::kR8_UNorm,			GL_R8 },
-	{ Format::kR8_UInt,				GL_R8UI },
-	{ Format::kR8_SNorm,			GL_R8_SNORM },
-	{ Format::kR8_SInt,				GL_R8I },
-
-	{ Format::kD32_Float_S8X24_UInt,GL_DEPTH32F_STENCIL8 },
-	{ Format::kD32_Float,			GL_DEPTH_COMPONENT32F },
-	{ Format::kD24_UNorm_S8_UInt,	GL_DEPTH24_STENCIL8 },
-	{ Format::kD16_UNorm,			GL_DEPTH_COMPONENT16 },
-
-	{ Format::kRGB10A2_UNorm,		GL_RGB10_A2 },
-	{ Format::kRGB10A2_UInt,		GL_RGB10_A2UI },
-	{ Format::kRG11B10_Float,		GL_R11F_G11F_B10F },
-
-	{ Format::kBC1_UNorm,			GL_COMPRESSED_RGB_S3TC_DXT1_EXT },
-	{ Format::kBC1_UNorm_SRGB,		GL_COMPRESSED_SRGB_S3TC_DXT1_EXT },
-
-	{ Format::kBC2_UNorm,			GL_COMPRESSED_RGBA_S3TC_DXT3_EXT },
-	{ Format::kBC2_UNorm_SRGB,		GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT },
-
-	{ Format::kBC3_UNorm,			GL_COMPRESSED_RGBA_S3TC_DXT5_EXT },
-	{ Format::kBC3_UNorm_SRGB,		GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT },
-
-	{ Format::kBC4_UNorm,			GL_COMPRESSED_RED_RGTC1 },
-	{ Format::kBC4_SNorm,			GL_COMPRESSED_SIGNED_RED_RGTC1 },
-
-	{ Format::kBC5_UNorm,			GL_COMPRESSED_RG_RGTC2 },
-	{ Format::kBC5_SNorm,			GL_COMPRESSED_SIGNED_RG_RGTC2 },
-
-	{ Format::kBC6H_UF16,			GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT },
-	{ Format::kBC6H_SF16,			GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT },
-
-	{ Format::kBC7_UNorm,			GL_COMPRESSED_RGBA_BPTC_UNORM },
-	{ Format::kBC7_UNorm_SRGB,		GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM },
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ GL_RGBA32F,								0,					0, false }, // Format::kRGBA32_Typeless,
+	{ GL_RGBA32F,								GL_FLOAT,			4, false }, // Format::kRGBA32_Float,
+	{ GL_RGBA32UI,								GL_UNSIGNED_INT,	4, false }, // Format::kRGBA32_UInt,
+	{ GL_RGBA32I,								GL_INT,				4, false }, // Format::kRGBA32_SInt,
+	{ GL_RGB32F,								0,					0, false }, // Format::kRGB32_Typeless,
+	{ GL_RGB32F,								GL_FLOAT,			3, false }, // Format::kRGB32_Float,
+	{ GL_RGB32UI,								GL_UNSIGNED_INT,	3, false }, // Format::kRGB32_UInt,
+	{ GL_RGB32I,								GL_INT,				3, false }, // Format::kRGB32_SInt,
+	{ GL_RGBA16F,								0,					0, false }, // Format::kRGBA16_Typeless,
+	{ GL_RGBA16F,								GL_HALF_FLOAT,		4, false }, // Format::kRGBA16_Float,
+	{ GL_RGBA16,								GL_HALF_FLOAT,		4, true  }, // Format::kRGBA16_UNorm,
+	{ GL_RGBA16UI,								GL_UNSIGNED_SHORT,	4, false }, // Format::kRGBA16_UInt,
+	{ GL_RGBA16_SNORM,							GL_HALF_FLOAT,		4, true  }, // Format::kRGBA16_SNorm,
+	{ GL_RGBA16I,								GL_SHORT,			4, false }, // Format::kRGBA16_SInt,
+	{ GL_RG32F,									0,					0, false }, // Format::kRG32_Typeless,
+	{ GL_RG32F,									GL_FLOAT,			2, false }, // Format::kRG32_Float,
+	{ GL_RG32UI,								GL_UNSIGNED_INT,	2, false }, // Format::kRG32_UInt,
+	{ GL_RG32I,									GL_INT,				2, false }, // Format::kRG32_SInt,
+	{ GL_DEPTH32F_STENCIL8,						0,					0, false }, // Format::kR32G8X24_Typeless,
+	{ GL_DEPTH32F_STENCIL8,						0,					0, false }, // Format::kD32_Float_S8X24_UInt,
+	{ GL_DEPTH32F_STENCIL8,						0,					0, false }, // Format::kR32_Float_X8X24_Typeless,
+	{ 0,										0,					0, false }, // Format::kX32_Typeless_G8X24_UInt,
+	{ GL_RGB10_A2,								0,					0, false }, // Format::kRGB10A2_Typeless,
+	{ GL_RGB10_A2,								0,					0, false }, // Format::kRGB10A2_UNorm,
+	{ GL_RGB10_A2UI,							0,					0, false }, // Format::kRGB10A2_UInt,
+	{ GL_R11F_G11F_B10F,						0,					0, false }, // Format::kRG11B10_Float,
+	{ GL_RGBA8,									0,					0, false }, // Format::kRGBA8_Typeless,
+	{ GL_RGBA8,									GL_UNSIGNED_BYTE,	4, true  }, // Format::kRGBA8_UNorm,
+	{ GL_SRGB8_ALPHA8,							0,					0, false }, // Format::kRGBA8_UNorm_SRGB,
+	{ GL_RGBA8UI,								GL_UNSIGNED_BYTE,	4, false }, // Format::kRGBA8_UInt,
+	{ GL_RGBA8_SNORM,							GL_BYTE,			4, true  }, // Format::kRGBA8_SNorm,
+	{ GL_RGBA8I,								GL_BYTE,			4, false }, // Format::kRGBA8_SInt,
+	{ GL_RG16F,									0,					2, false }, // Format::kRG16_Typeless,
+	{ GL_RG16F,									GL_HALF_FLOAT,		2, false }, // Format::kRG16_Float,
+	{ GL_RG16,									GL_HALF_FLOAT,		2, true  }, // Format::kRG16_UNorm,
+	{ GL_RG16UI,								GL_UNSIGNED_SHORT,	2, false }, // Format::kRG16_UInt,
+	{ GL_RG16_SNORM,							GL_HALF_FLOAT,		2, true  }, // Format::kRG16_SNorm,
+	{ GL_RG16I,									GL_SHORT,			2, false }, // Format::kRG16_SInt,
+	{ GL_R32F,									0,					0, false }, // Format::kR32_Typeless,
+	{ GL_DEPTH_COMPONENT32F,					0,					0, false }, // Format::kD32_Float,
+	{ GL_R32F,									GL_FLOAT,			1, false }, // Format::kR32_Float,
+	{ GL_R32UI,									GL_UNSIGNED_INT,	1, false }, // Format::kR32_UInt,
+	{ GL_R32I,									GL_INT,				1, false }, // Format::kR32_SInt,
+	{ GL_DEPTH24_STENCIL8,						0,					0, false }, // Format::kR24G8_Typeless,
+	{ GL_DEPTH24_STENCIL8,						0,					0, false }, // Format::kD24_UNorm_S8_UInt,
+	{ GL_DEPTH24_STENCIL8,						0,					0, false }, // Format::kR24_UNorm_X8_Typeless,
+	{ 0,										0,					0, false }, // Format::kX24_Typeless_G8_UInt,
+	{ GL_RG8,									0,					0, false }, // Format::kRG8_Typeless,
+	{ GL_RG8,									GL_UNSIGNED_BYTE,	2, true  }, // Format::kRG8_UNorm,
+	{ GL_RG8UI,									GL_UNSIGNED_BYTE,	2, false }, // Format::kRG8_UInt,
+	{ GL_RG8_SNORM,								GL_BYTE,			2, true  }, // Format::kRG8_SNorm,
+	{ GL_RG8I,									GL_BYTE,			2, false }, // Format::kRG8_SInt,
+	{ GL_R16F,									0,					0, false }, // Format::kR16_Typeless,
+	{ GL_R16F,									GL_HALF_FLOAT,		1, false }, // Format::kR16_Float,
+	{ GL_DEPTH_COMPONENT16,						0,					0, false }, // Format::kD16_UNorm,
+	{ GL_R16,									GL_HALF_FLOAT,		1, true  }, // Format::kR16_UNorm,
+	{ GL_R16UI,									GL_UNSIGNED_SHORT,	1, false }, // Format::kR16_UInt,
+	{ GL_R16_SNORM,								GL_HALF_FLOAT,		1, true  }, // Format::kR16_SNorm,
+	{ GL_R16I,									GL_SHORT,			1, false }, // Format::kR16_SInt,
+	{ GL_R8,									0,					0, false }, // Format::kR8_Typeless,
+	{ GL_R8,									GL_UNSIGNED_BYTE,	1, true  }, // Format::kR8_UNorm,
+	{ GL_R8UI,									GL_UNSIGNED_BYTE,	1, false }, // Format::kR8_UInt,
+	{ GL_R8_SNORM,								GL_BYTE,			1, true	 }, // Format::kR8_SNorm,
+	{ GL_R8I,									GL_BYTE,			1, false }, // Format::kR8_SInt,
+	{ GL_R8,									0,					0, false }, // Format::kA8_UNorm,
+	{ 0,										0,					0, false }, // Format::kR1_UNorm,
+	{ GL_RGB9_E5,								0,					0, false }, // Format::kRGB9E5_SHAREDEXP,
+	{ 0,										0,					0, false }, // Format::kRG8_BG8_UNorm,
+	{ 0,										0,					0, false }, // Format::kGR8_GB8_UNorm,
+	{ GL_COMPRESSED_RGB_S3TC_DXT1_EXT,			0,					0, false }, // Format::kBC1_Typeless,
+	{ GL_COMPRESSED_RGB_S3TC_DXT1_EXT,			0,					0, false }, // Format::kBC1_UNorm,
+	{ GL_COMPRESSED_SRGB_S3TC_DXT1_EXT,			0,					0, false }, // Format::kBC1_UNorm_SRGB,
+	{ GL_COMPRESSED_RGBA_S3TC_DXT3_EXT,			0,					0, false }, // Format::kBC2_Typeless,
+	{ GL_COMPRESSED_RGBA_S3TC_DXT3_EXT,			0,					0, false }, // Format::kBC2_UNorm,
+	{ GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT,	0,					0, false }, // Format::kBC2_UNorm_SRGB,
+	{ GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,			0,					0, false }, // Format::kBC3_Typeless,
+	{ GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,			0,					0, false }, // Format::kBC3_UNorm,
+	{ GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT,	0,					0, false }, // Format::kBC3_UNorm_SRGB,
+	{ GL_COMPRESSED_RED_RGTC1,					0,					0, false }, // Format::kBC4_Typeless,
+	{ GL_COMPRESSED_RED_RGTC1,					0,					0, false }, // Format::kBC4_UNorm,
+	{ GL_COMPRESSED_SIGNED_RED_RGTC1,			0,					0, false }, // Format::kBC4_SNorm,
+	{ GL_COMPRESSED_RG_RGTC2,					0,					0, false }, // Format::kBC5_Typeless,
+	{ GL_COMPRESSED_RG_RGTC2,					0,					0, false }, // Format::kBC5_UNorm,
+	{ GL_COMPRESSED_SIGNED_RG_RGTC2,			0,					0, false }, // Format::kBC5_SNorm,
+	{ 0,										0,					0, false }, // Format::kB5G6R5_UNorm,
+	{ 0,										0,					0, false }, // Format::kBGR5A1_UNorm,
+	{ GL_RGBA8,									0,					0, false }, // Format::kBGRA8_UNorm,
+	{ 0,										0,					0, false }, // Format::kBGRX8_UNorm,
+	{ 0,										0,					0, false }, // Format::kRGB10_XR_BIAS_A2_UNorm,
+	{ 0,										0,					0, false }, // Format::kBGRA8_Typeless,
+	{ 0,										0,					0, false }, // Format::kBGRA8_UNorm_SRGB,
+	{ 0,										0,					0, false }, // Format::kBGRX8_Typeless,
+	{ 0,										0,					0, false }, // Format::kBGRX8_UNorm_SRGB,
+	{ GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,	0,					0, false }, // Format::kBC6H_Typeless,
+	{ GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,	0,					0, false }, // Format::kBC6H_UF16,
+	{ GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT,		0,					0, false }, // Format::kBC6H_SF16,
+	{ GL_COMPRESSED_RGBA_BPTC_UNORM,			0,					0, false }, // Format::kBC7_Typeless,
+	{ GL_COMPRESSED_RGBA_BPTC_UNORM,			0,					0, false }, // Format::kBC7_UNorm,
+	{ GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM,		0,					0, false }, // Format::kBC7_UNorm_SRGB,
+	{ 0,										0,					0, false }, // Format::kAYUV,
+	{ 0,										0,					0, false }, // Format::kY410,
+	{ 0,										0,					0, false }, // Format::kY416,
+	{ 0,										0,					0, false }, // Format::kNV12,
+	{ 0,										0,					0, false }, // Format::kP010,
+	{ 0,										0,					0, false }, // Format::kP016,
+	{ 0,										0,					0, false }, // Format::k420_OPAQUE,
+	{ 0,										0,					0, false }, // Format::kYUY2,
+	{ 0,										0,					0, false }, // Format::kY210,
+	{ 0,										0,					0, false }, // Format::kY216,
+	{ 0,										0,					0, false }, // Format::kNV11,
+	{ 0,										0,					0, false }, // Format::kAI44,
+	{ 0,										0,					0, false }, // Format::kIA44,
+	{ 0,										0,					0, false }, // Format::kP8,
+	{ 0,										0,					0, false }, // Format::kA8P8,
+	{ 0,										0,					0, false }, // Format::kBGRA4_UNorm,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kUnknown,
+	{ 0,										0,					0, false }, // Format::kP208,
+	{ 0,										0,					0, false }, // Format::kV208,
+	{ 0,										0,					0, false }, // Format::kV408,
 };
 
 
@@ -130,8 +179,8 @@ GLenum GetGlBufferMemoryFlags(MemoryFlags memoryFlags)
 	{
 	case MemoryFlags::kDeviceLocal:		return 0;
 	case MemoryFlags::kHostVisible:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT;
-	case MemoryFlags::kHostCoherent:	return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT;
-	case MemoryFlags::kUpload:			return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT;
+	case MemoryFlags::kHostCoherent:	return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
+	case MemoryFlags::kUpload:			return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 	case MemoryFlags::kHostCached:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 	case MemoryFlags::kReadBack:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 	}
@@ -224,15 +273,15 @@ GLenum GetGlTextureTarget(const TextureDesc& textureDesc)
 }
 
 
+FormatMapGl GetGlFormatMap(Format format)
+{
+	return kFormatMapGl[(u8)format];
+}
+
+
 GLenum GetGlFormat(Format format)
 {
-	auto it = s_FormatToGlFormatMap.FindKey(format);
-	if (it != s_FormatToGlFormatMap.cend())
-	{
-		return it->second;
-	}
-
-	return 0;
+	return kFormatMapGl[(u8)format].format;
 }
 
 
@@ -251,38 +300,141 @@ GLint GetGlMinFilter(Filter filter, MipMapFilter mipMapFilter)
 
 GLint GetGlMagFilter(Filter filter)
 {
-	return filter == Filter::kLinear ? GL_LINEAR : GL_NEAREST;
+	static constexpr GLint kFilters[] =
+	{
+		GL_NEAREST,
+		GL_LINEAR
+	};
+
+	return kFilters[(u8)filter];
 }
 
 
 GLint GetGlAddressMode(AddressMode addressMode)
 {
-	switch (addressMode)
+	static constexpr GLint kAddressModes[] =
 	{
-	case AddressMode::kWrap:		return GL_REPEAT;
-	case AddressMode::kMirror:		return GL_MIRRORED_REPEAT;
-	case AddressMode::kClamp:		return GL_CLAMP_TO_EDGE;
-	case AddressMode::kBorder:		return GL_CLAMP_TO_BORDER;
-	case AddressMode::kMirrorOnce:	return GL_MIRROR_CLAMP_TO_EDGE;
-	}
-	
-	return 0;
+		GL_REPEAT,
+		GL_MIRRORED_REPEAT,
+		GL_CLAMP_TO_EDGE,
+		GL_CLAMP_TO_BORDER,
+		GL_MIRROR_CLAMP_TO_EDGE
+	};
+
+	return kAddressModes[(u8)addressMode];
 }
 
 
 GLint GetGlCompareOp(CompareOp compareOp)
 {
-	switch (compareOp)
+	static constexpr GLint kCompareOps[] =
 	{
-	case CompareOp::kNever:			return GL_NEVER;
-	case CompareOp::kLess:			return GL_LESS;
-	case CompareOp::kEqual:			return GL_EQUAL;
-	case CompareOp::kLessEqual:		return GL_LEQUAL;
-	case CompareOp::kGreater:		return GL_GREATER;
-	case CompareOp::kNotEqual:		return GL_NOTEQUAL;
-	case CompareOp::kGreaterEqual:	return GL_GEQUAL;
-	case CompareOp::kAlways:		return GL_ALWAYS;
-	}
+		GL_NEVER,
+		GL_LESS,
+		GL_EQUAL,
+		GL_LEQUAL,
+		GL_GREATER,
+		GL_NOTEQUAL,
+		GL_GEQUAL,
+		GL_ALWAYS
+	};
 
-	return 0;
+	return kCompareOps[(u8)compareOp];
+}
+
+GLenum GetGlFillMode(FillMode fillMode)
+{
+	static constexpr GLenum kFillModes[] =
+	{
+		GL_FILL,
+		GL_LINE
+	};
+
+	return kFillModes[(u8)fillMode];
+}
+
+GLenum GetGlCullMode(CullMode cullMode)
+{
+	static constexpr GLenum kCullModes[] =
+	{
+		0,
+		GL_FRONT,
+		GL_BACK,
+		GL_FRONT_AND_BACK
+	};
+
+	return kCullModes[(u8)cullMode];
+}
+
+GLenum GetGlFrontFace(FrontFace frontFace)
+{
+	static constexpr GLenum kFrontFaces[] =
+	{
+		GL_CW,
+		GL_CCW
+	};
+
+	return kFrontFaces[(u8)frontFace];
+}
+
+
+GLenum GetGlStencilOp(StencilOp stencilOp)
+{
+	static constexpr GLenum kStencilOps[] =
+	{
+		GL_KEEP,
+		GL_ZERO,
+		GL_REPLACE,
+		GL_INCR,
+		GL_DECR,
+		GL_INVERT,
+		GL_INCR_WRAP,
+		GL_DECR_WRAP,
+	};
+
+	return kStencilOps[(u8)stencilOp];
+}
+
+
+GLenum GetGlBlendOp(BlendOp blendOp)
+{
+	static constexpr GLenum kBlendOps[] =
+	{
+		GL_FUNC_ADD,
+		GL_FUNC_SUBTRACT,
+		GL_FUNC_REVERSE_SUBTRACT,
+		GL_MIN,
+		GL_MAX,
+	};
+
+	return kBlendOps[(u8)blendOp];
+}
+
+
+GLenum GetGlBlendFactor(BlendFactor blendFactor)
+{
+	static constexpr GLenum kBlendFactors[] =
+	{
+		GL_ZERO,
+		GL_ONE,
+		GL_SRC_COLOR,
+		GL_ONE_MINUS_SRC_COLOR,
+		GL_DST_COLOR,
+		GL_ONE_MINUS_DST_COLOR,
+		GL_SRC_ALPHA,
+		GL_ONE_MINUS_SRC_ALPHA,
+		GL_DST_ALPHA,
+		GL_ONE_MINUS_DST_ALPHA,
+		GL_CONSTANT_COLOR,
+		GL_ONE_MINUS_CONSTANT_COLOR,
+		GL_CONSTANT_ALPHA,
+		GL_ONE_MINUS_CONSTANT_ALPHA,
+		GL_SRC_ALPHA_SATURATE,
+		GL_SRC1_COLOR,
+		GL_ONE_MINUS_SRC1_COLOR,
+		GL_SRC1_ALPHA,
+		GL_ONE_MINUS_SRC1_ALPHA,
+	};
+
+	return kBlendFactors[(u8)blendFactor];
 }

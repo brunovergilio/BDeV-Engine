@@ -67,8 +67,7 @@ class IBvShaderReflectionData
 
 public:
 	virtual const ShaderResourceLayoutDesc& GetResourceLayout() const = 0;
-	virtual const BvVector<VertexAttributeDesc>& GetVertexAttributes() const = 0;
-	virtual const BvVector<VertexBindingDesc>& GetVertexBindings() const = 0;
+	virtual const BvVector<VertexInputDesc>& GetVertexAttributes() const = 0;
 
 protected:
 	IBvShaderReflectionData() {}

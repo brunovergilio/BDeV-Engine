@@ -93,14 +93,13 @@ void BvFramebufferManagerVk::RemoveFramebuffer(const BvTextureViewVk * const pTe
 			if (pView == pTextureView)
 			{
 				m_Framebuffers.Erase(pFramebuffer.first);
-				return;
+				break;
 			}
 		}
 
 		if (desc.m_pDepthStencilView != nullptr && desc.m_pDepthStencilView == pTextureView)
 		{
 			m_Framebuffers.Erase(pFramebuffer.first);
-			return;
 		}
 	}
 }

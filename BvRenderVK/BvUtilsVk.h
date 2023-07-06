@@ -15,7 +15,6 @@
 }
 
 const char * const VkResultToString(const VkResult result);
-bool IsDepthFormat(const VkFormat format);
-bool IsStencilFormat(const VkFormat format);
-bool IsDepthStencilFormat(const VkFormat format);
-VkImageAspectFlags GetVkAspectMaskFlags(const VkFormat format);
+bool IsDepthFormat(Format format);
+bool IsStencilFormat(Format format);
+bool IsDepthStencilFormat(Format format);

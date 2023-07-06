@@ -13,7 +13,7 @@ public:
 
 
 template<class Fn, class... Args>
-class BV_API BvDelegate final : public BvDelegateBase
+class BvDelegate final : public BvDelegateBase
 {
 public:
 	template<typename = typename std::enable_if_t<std::is_same_v<std::invoke_result_t<Fn, Args...>, void>&& std::is_invocable_v<Fn, Args...>>>
@@ -33,60 +33,59 @@ private:
 
 
 template<size_t JobSize>
-class BV_API BvJobT
+class BvTaskT
 {
 public:
-	BvJobT() {}
+	BvTaskT() {}
 
 	template<typename Fn, typename... Args,
 		typename = typename std::enable_if_t<
-		!std::is_same_v<std::decay_t<Fn>, BvJobT>
+		!std::is_same_v<std::decay_t<Fn>, BvTaskT>
 		&& std::is_invocable_v<Fn, Args...>
 		&& std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
-	explicit BvJobT(Fn&& fn, Args &&... args)
+	explicit BvTaskT(Fn&& fn, Args &&... args)
 	{
 		BvCompilerAssert(sizeof(BvDelegate<Fn, Args...>) <= JobSize, "Job object is too big");
 		Set(std::forward<Fn>(fn), std::forward<Args>(args)...);
 	}
 
-	explicit BvJobT(const BvJobT& rhs)
+	explicit BvTaskT(const BvTaskT& rhs)
 	{
 		memcpy(m_Data, rhs.m_Data, JobSize);
 	}
 
-	BvJobT& operator=(const BvJobT& rhs)
+	BvTaskT& operator=(const BvTaskT& rhs)
 	{
 		if (this != &rhs)
 		{
-			this->~BvJobT();
+			this->~BvTaskT();
 			memcpy(m_Data, rhs.m_Data, JobSize);
 		}
 
 		return *this;
 	}
 
-	explicit BvJobT(BvJobT&& rhs) noexcept
+	explicit BvTaskT(BvTaskT&& rhs) noexcept
 	{
 		*this = std::move(rhs);
 	}
 
-	BvJobT& operator=(BvJobT&& rhs) noexcept
+	BvTaskT& operator=(BvTaskT&& rhs) noexcept
 	{
 		if (this != &rhs)
 		{
-			this->~BvJobT();
+			this->~BvTaskT();
 			memcpy(m_Data, rhs.m_Data, JobSize);
-			rhs.~BvJobT();
+			rhs.~BvTaskT();
 		}
 
 		return *this;
 	}
 
-	~BvJobT()
+	~BvTaskT()
 	{
 		if (IsSet())
 		{
-			reinterpret_cast<BvDelegateBase* const>(m_Data)->~BvDelegateBase();
 			Reset();
 		}
 	}
@@ -94,12 +93,12 @@ public:
 	void Run() const
 	{
 		BvAssert(IsSet(), "Job doesn't have an entry point");
-		reinterpret_cast<const BvDelegateBase* const>(m_Data)->Invoke();
+		m_pDelegate->Invoke();
 	}
 
 	template<typename Fn, typename... Args,
 		typename = typename std::enable_if_t<
-		!std::is_same_v<std::decay_t<Fn>, BvJobT>
+		!std::is_same_v<std::decay_t<Fn>, BvTaskT>
 		&& std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
 	void Set(Fn&& fn, Args &&... args)
 	{
@@ -109,16 +108,18 @@ public:
 
 	bool IsSet() const
 	{
-		auto vp = *reinterpret_cast<const u64* const>(m_Data);
-		return vp != 0;
+		return m_pDelegate != nullptr;
 	}
 
 	void Reset()
 	{
-		auto pVp = reinterpret_cast<u64* const>(m_Data);
-		pVp = 0;
+		m_pDelegate = nullptr;
 	}
 
 private:
-	u8 m_Data[JobSize]{};
+	union
+	{
+		u8 m_Data[JobSize]{};
+		BvDelegateBase* m_pDelegate;
+	};
 };

@@ -13,6 +13,7 @@
 #include "BvSemaphoreVk.h"
 #include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
+#include "BvCommandQueueVk.h"
 
 
 constexpr auto kMaxCopyRegions = 14u; // I'm assuming a region per mip, so 2^14 = 16384 - more than I will ever use
@@ -510,10 +511,10 @@ void BvCommandBufferVk::CopyTextureRegion(const BvTexture * const pSrcTexture, B
 	}
 
 	imageCopyRegion.srcSubresource.mipLevel = copyRegion.texture.srcMipLevel;
-	imageCopyRegion.srcSubresource.aspectMask = GetVkAspectMaskFlags(GetVkFormat(pSrc->GetDesc().m_Format));
+	imageCopyRegion.srcSubresource.aspectMask = GetVkFormatMap(pSrc->GetDesc().m_Format).aspectFlags;
 
 	imageCopyRegion.dstSubresource.mipLevel = copyRegion.texture.dstMipLevel;
-	imageCopyRegion.dstSubresource.aspectMask = GetVkAspectMaskFlags(GetVkFormat(pDst->GetDesc().m_Format));
+	imageCopyRegion.dstSubresource.aspectMask = GetVkFormatMap(pDst->GetDesc().m_Format).aspectFlags;
 
 	vkCmdCopyImage(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		pDst->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -542,7 +543,7 @@ void BvCommandBufferVk::CopyTextureRegion(const BvBuffer * const pSrcBuffer, BvT
 		copyRegion.bufferTexture.textureSize.height,
 		copyRegion.bufferTexture.textureSize.depthOrLayerCount
 	};
-	bufferImageCopyRegion.imageSubresource.aspectMask = GetVkAspectMaskFlags(GetVkFormat(pDst->GetDesc().m_Format));;
+	bufferImageCopyRegion.imageSubresource.aspectMask = GetVkFormatMap(pDst->GetDesc().m_Format).aspectFlags;
 	bufferImageCopyRegion.imageSubresource.mipLevel = copyRegion.bufferTexture.mipLevel;
 
 	switch (pDst->GetDesc().m_ImageType)
@@ -599,7 +600,7 @@ void BvCommandBufferVk::CopyTextureRegion(const BvTexture * const pSrcTexture, B
 		copyRegion.bufferTexture.textureSize.height,
 		copyRegion.bufferTexture.textureSize.depthOrLayerCount
 	};
-	bufferImageCopyRegion.imageSubresource.aspectMask = GetVkAspectMaskFlags(GetVkFormat(pSrc->GetDesc().m_Format));;
+	bufferImageCopyRegion.imageSubresource.aspectMask = GetVkFormatMap(pSrc->GetDesc().m_Format).aspectFlags;
 	bufferImageCopyRegion.imageSubresource.mipLevel = copyRegion.bufferTexture.mipLevel;
 
 	switch (pSrc->GetDesc().m_ImageType)
@@ -683,7 +684,7 @@ void BvCommandBufferVk::ResourceBarrier(const u32 barrierCount, const ResourceBa
 			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			//barrier.pNext = nullptr;
 			barrier.image = static_cast<BvTextureVk *>(pBarriers[i].pTexture)->GetHandle();
-			barrier.subresourceRange.aspectMask = GetVkAspectMaskFlags(GetVkFormat(pBarriers[i].pTexture->GetDesc().m_Format));
+			barrier.subresourceRange.aspectMask = GetVkFormatMap(pBarriers[i].pTexture->GetDesc().m_Format).aspectFlags;
 			barrier.subresourceRange.baseMipLevel = pBarriers[i].subresource.firstMip;
 			barrier.subresourceRange.levelCount = pBarriers[i].subresource.mipCount;
 			barrier.subresourceRange.baseArrayLayer = pBarriers[i].subresource.firstLayer;

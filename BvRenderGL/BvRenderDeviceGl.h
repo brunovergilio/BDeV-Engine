@@ -3,15 +3,18 @@
 
 #include "BDeV/RenderAPI/BvRenderDevice.h"
 #include "BDeV/RenderAPI/BvRenderEngine.h"
+#include "BvGPUInfoGl.h"
 
 
 class BvRenderEngineGl;
+class BvRenderContextStateGl;
+class BvFramebufferManagerGl;
 
 
 class BvRenderDeviceGl final : public BvRenderDevice
 {
 public:
-	BvRenderDeviceGl(const DeviceCreateDesc& deviceDesc);
+	BvRenderDeviceGl(const DeviceCreateDesc& deviceDesc, const BvGPUInfoGl& gpuInfo);
 	~BvRenderDeviceGl();
 
 	void Create(const DeviceCreateDesc& deviceCreateDesc);
@@ -37,8 +40,14 @@ public:
 	BV_INLINE BvCommandQueue* GetTransferQueue(const u32 index = 0) const override final { return nullptr; }
 	bool QueueFamilySupportsPresent(const QueueFamilyType queueFamilyType) const override final { return true; }
 
+	BV_INLINE const BvGPUInfoGl& GetGPUInfo() const { return m_GPUInfo; }
+	BV_INLINE BvFramebufferManagerGl* GetFramebufferManager() const { return m_pFramebufferManager; }
+	BV_INLINE BvRenderContextStateGl* GetRenderContextState() const { return m_pContextState; }
+
 private:
 	BvRenderEngineGl* m_pEngine = nullptr;
-	//BvFramebufferManagerGl* m_pFramebufferManager;
+	BvFramebufferManagerGl* m_pFramebufferManager = nullptr;
+	BvRenderContextStateGl* m_pContextState = nullptr;
 	BvRenderDeviceFactory* m_pFactory = nullptr;
+	const BvGPUInfoGl& m_GPUInfo;
 };

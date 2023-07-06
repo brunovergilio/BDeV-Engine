@@ -27,5 +27,8 @@ public:
 	BV_INLINE GLuint GetHandle() const { return m_Buffer; }
 
 private:
+	std::pair<GLenum, GLenum> GetBufferUsageFlags();
+
+private:
 	GLuint m_Buffer = 0;
 };

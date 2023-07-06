@@ -30,4 +30,4 @@ static constexpr const char * const GetTypeName()	\
 }													\
 private:											\
 
-#define BV_INIT_TEST_UNIT_SYSTEM() Internal::TestUnitSystem g_TestUnitSystem;
+#define BV_INIT_TEST_UNIT_SYSTEM() Internal::TestUnitSystem g_TestUnitSystem;#define BV_INLINE

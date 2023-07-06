@@ -23,7 +23,7 @@ public:
 	explicit BvVec(const Float2 & v);
 	explicit BvVec(const Float3 & v);
 	explicit BvVec(const Float4 & v);
-	explicit BvVec(const vf32 & m128);
+	explicit BvVec(const vf32 m128);
 
 	void Set(const float x, const float y, const float z, const float w = 0.0f);
 	void Set(const float s);
@@ -48,7 +48,7 @@ public:
 	BvVec ReplicateY() const;
 	BvVec ReplicateZ() const;
 	BvVec ReplicateW() const;
-	template<unsigned int x, unsigned int y, unsigned int z, unsigned int w> BvVec Permute() const;
+	template<unsigned int X, unsigned int Y, unsigned int Z, unsigned int W> BvVec Permute() const;
 
 	BvVec Max(const BvVec & v) const;
 	BvVec Min(const BvVec & v) const;

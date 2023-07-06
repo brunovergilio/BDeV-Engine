@@ -25,7 +25,7 @@ BvRenderDevice* const BvRenderEngineGl::CreateRenderDevice(const DeviceCreateDes
 {
 	if (!m_pDevice)
 	{
-		m_pDevice = new BvRenderDeviceGl(deviceDesc);
+		m_pDevice = new BvRenderDeviceGl(deviceDesc, m_GPUInfo);
 	}
 
 	return m_pDevice;
@@ -40,7 +40,8 @@ bool BvRenderEngineGl::IsExtensionSupported(const char* const pExtension)
 
 void BvRenderEngineGl::Create()
 {
-	if (!InitializeOpenGL())
+	auto result = InitializeOpenGL(m_GPUInfo);
+	if (!result)
 	{
 		BV_ERROR("Couldn't initialize OpenGL!");
 	}

@@ -2,6 +2,7 @@
 
 
 #include "BDeV/RenderAPI/BvRenderEngine.h"
+#include "BvGPUInfoGl.h"
 
 
 class BvDebugReportGl;
@@ -31,6 +32,7 @@ private:
 #if defined(BV_DEBUG)
 	BvDebugReportGl* m_pDebugReport = nullptr;
 #endif
+	BvGPUInfoGl m_GPUInfo{};
 };
 
 

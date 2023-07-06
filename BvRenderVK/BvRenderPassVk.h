@@ -36,7 +36,7 @@ private:
 template<>
 struct BvHash<RenderPassDesc>
 {
-	size_t operator()(const RenderPassDesc& renderPassDesc)
+	size_t operator()(const RenderPassDesc& renderPassDesc) const
 	{
 		u64 hash = 0;
 		HashCombine(hash, renderPassDesc.m_RenderTargets.Size());

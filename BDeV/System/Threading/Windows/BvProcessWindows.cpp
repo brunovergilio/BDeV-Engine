@@ -172,3 +172,9 @@ void GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u3
 	}
 }
 #pragma warning( pop )
+
+
+void YieldProcessorExecution()
+{
+	YieldProcessor();
+}

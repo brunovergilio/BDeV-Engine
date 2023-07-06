@@ -1,10 +1,10 @@
 #pragma once
 
 
-#include "../Matrix/BvMat.h"
-#include "../Quaternion/BvQuat.h"
-#include "../../Math/BvLoaders.h"
-#include "../../Math/BvFastVec.h"
+#include "BDeV/Math/Math/BvFastVec.h"
+#include "BDeV/Math/Wrappers/Matrix/BvMat.h"
+#include "BDeV/Math/Wrappers/Quaternion/BvQuat.h"
+#include "BDeV/Math/Math/BvLoaders.h"
 
 
 inline BvVec::BvVec()
@@ -48,7 +48,7 @@ inline BvVec::BvVec(const Float3 & v)
 inline BvVec::BvVec(const Float4 & v)
 	: m128(Load4(v.v)) {}
 
-inline BvVec::BvVec(const vf32 & m128)
+inline BvVec::BvVec(const vf32 m128)
 	: m128(m128) {}
 
 inline void BvVec::Set(const float x, const float y, const float z, const float w)
@@ -146,10 +146,10 @@ inline BvVec BvVec::ReplicateW() const
 	return BvVec(VectorReplicateW(m128));
 }
 
-template<unsigned int x, unsigned int y, unsigned int z, unsigned int w>
+template<unsigned int X, unsigned int Y, unsigned int Z, unsigned int W>
 inline BvVec BvVec::Permute() const
 {
-	return BvVec(VectorPermute<x, y, z, w>());
+	return VectorPermute<X, Y, Z, W>(m128);
 }
 
 inline BvVec BvVec::Max(const BvVec & v) const

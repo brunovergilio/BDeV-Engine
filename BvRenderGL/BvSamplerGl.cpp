@@ -1,5 +1,6 @@
 #include "BvSamplerGl.h"
 #include "BvTypeConversionsGl.h"
+#include "BvRenderDeviceGl.h"
 
 
 BvSamplerGl::BvSamplerGl(const BvRenderDeviceGl& device, const SamplerDesc& samplerDesc)
@@ -25,7 +26,7 @@ void BvSamplerGl::Create()
 	glSamplerParameteri(m_Sampler, GL_TEXTURE_WRAP_R, GetGlAddressMode(m_SamplerDesc.m_AddressModeW));
 	glSamplerParameteri(m_Sampler, GL_TEXTURE_COMPARE_MODE, m_SamplerDesc.m_CompareEnable ? GL_COMPARE_REF_TO_TEXTURE : GL_NONE);
 	glSamplerParameteri(m_Sampler, GL_TEXTURE_COMPARE_FUNC, GetGlCompareOp(m_SamplerDesc.m_CompareOp));
-	if (glewIsSupported("GL_EXT_texture_filter_anisotropic"))
+	if (m_Device.GetGPUInfo().m_ExtendedFeatures.textureFilterAnisotropic)
 	{
 		float maxSupportedAnisotropy = 1.0f;
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxSupportedAnisotropy);

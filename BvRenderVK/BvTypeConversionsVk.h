@@ -10,8 +10,17 @@
 #include "BDeV/RenderAPI/BvCommandPool.h"
 
 
+struct FormatMapVk
+{
+	VkFormat format;
+	VkImageAspectFlags aspectFlags;
+	VkComponentMapping componentMapping;
+};
+
+
 VkImageType GetVkImageType(const TextureType type);
 VkImageViewType GetVkImageViewType(const TextureViewType viewType);
+const FormatMapVk& GetVkFormatMap(Format format);
 VkFormat GetVkFormat(const Format format);
 Format GetFormat(const VkFormat format);
 VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags);

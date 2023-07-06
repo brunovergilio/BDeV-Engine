@@ -63,7 +63,7 @@ void BvThread::SetName(const char* pThreadName) const
 	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
 
 	constexpr u32 kMaxThreadNameLength = 32;
-	wchar_t threadName[32];
+	wchar_t threadName[kMaxThreadNameLength];
 	mbstate_t state{};
 	mbsrtowcs(threadName, &pThreadName, kMaxThreadNameLength - 1, &state);
 
@@ -109,19 +109,19 @@ const u32 BvThread::GetCurrentProcessor()
 void BvThread::ConvertToFiber(void* pData)
 {
 	auto& fiber = GetThreadFiberInternal();
-	BvAssert(fiber.m_pFiber == nullptr, "Fiber already converted / created");
-	fiber.m_pFiber = ConvertThreadToFiberEx(pData, FIBER_FLAG_FLOAT_SWITCH);
-	BvAssert(fiber.m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
+	BvAssert(fiber.m_pFiberData->m_pFiber == nullptr, "Fiber already converted / created");
+	fiber.m_pFiberData->m_pFiber = ConvertThreadToFiberEx(pData, FIBER_FLAG_FLOAT_SWITCH);
+	BvAssert(fiber.m_pFiberData->m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
 }
 
 
 void BvThread::ConvertFromFiber()
 {
 	auto& fiber = GetThreadFiberInternal();
-	BvAssert(fiber.m_pFiber != nullptr, "Thread not yet converted to Fiber");
+	BvAssert(fiber.m_pFiberData->m_pFiber != nullptr, "Thread not yet converted to Fiber");
 	BOOL result = ConvertFiberToThread();
 	BvAssert(result, "Couldn't convert Fiber to Thread");
-	fiber.m_pFiber = nullptr;
+	fiber.m_pFiberData->m_pFiber = nullptr;
 }
 
 
@@ -145,10 +145,13 @@ void BvThread::Create(const u32 stackSize)
 
 void BvThread::Destroy()
 {
-	auto& fiber = GetThreadFiberInternal();
-	if (fiber.m_pFiber)
+	if (m_hThread == GetCurrentThread().m_hThread)
 	{
-		ConvertFromFiber();
+		auto& fiber = GetThreadFiberInternal();
+		if (fiber.m_pFiberData->m_pFiber)
+		{
+			ConvertFromFiber();
+		}
 	}
 
 	if (m_hThread && m_pDelegate)
@@ -162,7 +165,7 @@ void BvThread::Destroy()
 
 BvFiber& GetThreadFiberInternal()
 {
-	static thread_local BvFiber thisFiber;
+	static thread_local BvFiber thisFiber(nullptr);
 
 	return thisFiber;
 }

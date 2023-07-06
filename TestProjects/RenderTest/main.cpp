@@ -40,7 +40,7 @@ int main()
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
 	typedef IBvShaderCompiler* (*pFNGetShaderCompiler)();
 	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("GetShaderCompiler");
-	BvSharedLib renderVkLib("BvRenderVk.dll");
+	BvSharedLib renderVkLib("BvRenderGl.dll");
 	typedef BvRenderEngine* (*pFNCreateRenderEngine)();
 	typedef void(*pFNDestroyRenderEngine)();
 	pFNCreateRenderEngine createRenderEngineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
@@ -64,6 +64,7 @@ int main()
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_pName = "Test";
+	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
 	auto pGraphicsQueue = pDevice->GetGraphicsQueue();
 	BvSwapChain* pSwapChain = pDevice->CreateSwapChain(pWindow, swapChainDesc, *pGraphicsQueue);
 
@@ -71,7 +72,7 @@ int main()
 
 	RenderPassDesc renderPassDesc;
 	RenderPassTargetDesc renderPassTargetDesc;
-	renderPassTargetDesc.m_Format = Format::kBGRA8_UNorm;
+	renderPassTargetDesc.m_Format = Format::kRGBA8_UNorm;
 	renderPassTargetDesc.m_StateAfter = ResourceState::kPresent;
 	renderPassDesc.m_RenderTargets.PushBack(renderPassTargetDesc);
 	auto pRenderPass = pDevice->CreateRenderPass(renderPassDesc);
@@ -114,19 +115,14 @@ int main()
 	pipelineDesc.m_pShaderResourceLayout = pShaderResourceLayout;
 	pipelineDesc.m_InputAssemblyStateDesc.m_Topology = Topology::kTriangleList;
 	
-	pipelineDesc.m_VertexBindingDesc.Resize(1);
-	pipelineDesc.m_VertexBindingDesc[0].m_Binding = 0;
-	pipelineDesc.m_VertexBindingDesc[0].m_InputRate = InputRate::kPerVertex;
-	pipelineDesc.m_VertexBindingDesc[0].m_Stride = sizeof(PosColorVertex);
+	pipelineDesc.m_VertexInputDesc.Resize(2);
+	pipelineDesc.m_VertexInputDesc[0].m_Format = Format::kRGB32_Float;
+	pipelineDesc.m_VertexInputDesc[0].m_Stride = sizeof(PosColorVertex);
 
-	pipelineDesc.m_VertexAttributeDesc.Resize(2);
-	pipelineDesc.m_VertexAttributeDesc[0].m_Binding = 0;
-	pipelineDesc.m_VertexAttributeDesc[0].m_Format = Format::kRGB32_Float;
-	pipelineDesc.m_VertexAttributeDesc[0].m_Location = 0;
-	pipelineDesc.m_VertexAttributeDesc[1].m_Binding = 0;
-	pipelineDesc.m_VertexAttributeDesc[1].m_Format = Format::kRGBA32_Float;
-	pipelineDesc.m_VertexAttributeDesc[1].m_Location = 1;
-	pipelineDesc.m_VertexAttributeDesc[1].m_Offset = sizeof(Float3);
+	pipelineDesc.m_VertexInputDesc[1].m_Format = Format::kRGBA32_Float;
+	pipelineDesc.m_VertexInputDesc[1].m_Location = 1;
+	pipelineDesc.m_VertexInputDesc[1].m_Stride = sizeof(PosColorVertex);
+	pipelineDesc.m_VertexInputDesc[1].m_Offset = sizeof(Float3);
 
 	auto pPSO = pDevice->CreateGraphicsPipeline(pipelineDesc);
 

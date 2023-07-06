@@ -39,6 +39,12 @@ BvContextGl::~BvContextGl()
 
 void BvContextGl::SwapBuffers(i32 swapInterval)
 {
+	if (m_SupportsVSync && m_SwapInterval != swapInterval)
+	{
+		m_SwapInterval = swapInterval;
+		wglSwapIntervalEXT(m_SwapInterval);
+	}
+
 	if (!::SwapBuffers(m_hDC))
 	{
 		BV_OS_ERROR();
@@ -156,7 +162,7 @@ void BvContextGl::Destroy()
 }
 
 
-bool InitializeOpenGL()
+bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 {
 	// =======================================
 	// Create a temporary window
@@ -233,17 +239,40 @@ bool InitializeOpenGL()
 		return false;
 	}
 
-	if (!wglewIsSupported("WGL_ARB_create_context"))
+	if (!WGLEW_ARB_create_context)
 	{
 		BV_ERROR("OpenGL 4.0+ not supported");
 		return false;
 	}
 
-	if (!glewIsSupported("GL_ARB_direct_state_access"))
+	const char* pVersionName = (const char*)glGetString(GL_VERSION);
+	const char* pRendererName = (const char*)glGetString(GL_RENDERER);
+	const char* pVendorName = (const char*)glGetString(GL_VENDOR);
+	const char* pShaderVersionName = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+	const char* pDot = strstr(pVersionName, ".");
+	u32 majorVersion = 0;
+	u32 minorVersion = 0;
+	if (pDot)
 	{
-		BV_ERROR("OpenGL DSA functions not supported!");
-		return false;
+		auto index = (u32)(pDot - pVersionName);
+		majorVersion = (u32)(pVersionName[index - 1] - '0');
+		minorVersion = (u32)(pVersionName[index + 1] - '0');
 	}
+
+	gpuInfo.majorVersion = majorVersion;
+	gpuInfo.minorVersion = minorVersion;
+	strncpy(gpuInfo.driverName, pVersionName, BvGPUInfoGl::kMaxDriverNameSize - 1);
+	strncpy(gpuInfo.deviceName, pRendererName, BvGPUInfoGl::kMaxDeviceNameSize - 1);
+	strncpy(gpuInfo.vendorName, pVendorName, BvGPUInfoGl::kMaxDeviceNameSize - 1);
+	strncpy(gpuInfo.shaderVersionName, pShaderVersionName, BvGPUInfoGl::kMaxDeviceNameSize - 1);
+
+	// Check for extended features
+	gpuInfo.m_ExtendedFeatures.textureFilterAnisotropic = GLEW_EXT_texture_filter_anisotropic;
+	gpuInfo.m_ExtendedFeatures.polygonOffsetClamp = GLEW_EXT_polygon_offset_clamp;
+	gpuInfo.m_ExtendedFeatures.nvConservativeRaster = GLEW_NV_conservative_raster;
+	gpuInfo.m_ExtendedFeatures.intelConservativeRaster = GLEW_INTEL_conservative_rasterization;
+	gpuInfo.m_ExtendedFeatures.depthBoundsTest = GLEW_EXT_depth_bounds_test;
+	gpuInfo.m_ExtendedFeatures.directStateAccess = GLEW_ARB_direct_state_access;
 
 	if (!wglMakeCurrent(nullptr, nullptr))
 	{

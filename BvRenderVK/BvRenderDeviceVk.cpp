@@ -11,6 +11,7 @@
 #include "BvBufferViewVk.h"
 #include "BvShaderResourceSetPoolVk.h"
 #include "BvRenderVK/BvFramebufferVk.h"
+#include "BvTypeConversionsVk.h"
 
 
 BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo, const DeviceCreateDesc& deviceDesc)
@@ -102,6 +103,14 @@ void BvRenderDeviceVk::SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo,
 
 	void** pNextFeature = const_cast<void**>(&deviceCreateInfo.pNext);
 	BvGPUInfoVk& gpuInfo = const_cast<BvGPUInfoVk&>(m_GPUInfo);
+
+	if (m_GPUInfo.m_FeaturesSupported.vertexAttributeDivisor)
+	{
+		enabledExtensions.PushBack(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
+
+		*pNextFeature = &gpuInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures;
+		pNextFeature = &gpuInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures.pNext;
+	}
 
 	if (m_GPUInfo.m_FeaturesSupported.memoryRequirements2)
 	{
@@ -594,6 +603,46 @@ bool BvRenderDeviceVk::QueueFamilySupportsPresent(const QueueFamilyType queueFam
 	return vkGetPhysicalDeviceWin32PresentationSupportKHR(m_GPUInfo.m_PhysicalDevice, queueFamilyIndex) == VK_TRUE;
 #else
 #endif
+}
+
+
+bool BvRenderDeviceVk::HasImageSupport(Format format)
+{
+	const auto& vkFormatMap = GetVkFormatMap(format);
+
+	VkFormatProperties formatProperties{};
+	vkGetPhysicalDeviceFormatProperties(m_GPUInfo.m_PhysicalDevice, GetVkFormat(format), &formatProperties);
+
+	VkFormatFeatureFlags featureFlags = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+	if (vkFormatMap.aspectFlags & VK_IMAGE_ASPECT_COLOR_BIT)
+	{
+		featureFlags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+	}
+	else if ((vkFormatMap.aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT) || (vkFormatMap.aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT))
+	{
+		featureFlags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	}
+
+	return (formatProperties.optimalTilingFeatures & featureFlags) == featureFlags
+		|| (formatProperties.linearTilingFeatures & featureFlags) == featureFlags;
+}
+
+
+BvCommandQueue* BvRenderDeviceVk::GetGraphicsQueue(const u32 index) const
+{
+	return m_GraphicsQueues[index];
+}
+
+
+BvCommandQueue* BvRenderDeviceVk::GetComputeQueue(const u32 index) const
+{
+	return m_ComputeQueues[index];
+}
+
+
+BvCommandQueue* BvRenderDeviceVk::GetTransferQueue(const u32 index) const
+{
+	return m_TransferQueues[index];
 }
 
 
