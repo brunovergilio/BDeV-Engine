@@ -22,18 +22,20 @@ namespace JS
 		Priority m_Priority = Priority::kNormal;
 	};
 
-	struct JobCounter
-	{
-		friend class BvJobSystem;
+	class Counter;
 
-		JobCounter() = default;
-		JobCounter(i32 index, i32 version);
-		bool IsDone() const;
+	//struct JobCounter
+	//{
+	//	friend class BvJobSystem;
 
-	private:
-		i32 m_Index = -1;
-		i32 m_Version = 0;
-	};
+	//	JobCounter() = default;
+	//	JobCounter(i32 index, i32 version);
+	//	bool IsDone() const;
+
+	//private:
+	//	i32 m_Index = -1;
+	//	i32 m_Version = 0;
+	//};
 
 
 #define BV_JOB_DECL(jobName) void jobName(void* pData)
@@ -57,7 +59,10 @@ namespace JS
 	BV_API void Initialize(const JobSystemDesc& jobSystemDesc = JobSystemDesc());
 	BV_API void Shutdown();
 
-	BV_API JobCounter RunJob(const Job& job);
-	BV_API JobCounter RunJobs(u32 count, const Job* const pJobs);
-	BV_API void WaitForCounter(const JobCounter& jobCounter);
+	BV_API void RunJob(const Job& job);
+	BV_API void RunJobs(u32 count, const Job* const pJobs);
+	BV_API void WaitForCounter(JobCounter* pJobCounter);
+	BV_API JobCounter* AllocCounter();
+	BV_API void FreeJobCounter();
+	BV_API bool IsJobCounterDone();
 };

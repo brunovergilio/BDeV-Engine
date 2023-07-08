@@ -14,9 +14,6 @@ public:
 	BvMutex();
 	~BvMutex();
 
-	BvMutex(BvMutex&& rhs) noexcept;
-	BvMutex& operator =(BvMutex&& rhs) noexcept;
-
 	void Lock();
 	bool TryLock();
 	void Unlock();
@@ -40,30 +37,6 @@ public:
 
 private:
 	std::atomic<bool> m_Lock;
-};
-
-
-class BV_API BvSignal
-{
-	BV_NOCOPY(BvSignal);
-
-public:
-	BvSignal();
-	explicit BvSignal(const bool manualReset, const bool signaled = false);
-	~BvSignal();
-
-	BvSignal(BvSignal&& rhs) noexcept;
-	BvSignal& operator =(BvSignal&& rhs) noexcept;
-
-	void Set();
-	void Reset();
-	bool Wait(const u32 timeout = kU32Max);
-
-private:
-	void Destroy();
-
-private:
-	void* m_hEvent = nullptr;
 };
 
 
@@ -97,4 +70,28 @@ public:
 
 private:
 	LockType& m_Lock;
+};
+
+
+class BV_API BvSignal
+{
+	BV_NOCOPY(BvSignal);
+
+public:
+	BvSignal();
+	explicit BvSignal(const bool manualReset, const bool signaled = false);
+	~BvSignal();
+
+	BvSignal(BvSignal&& rhs) noexcept;
+	BvSignal& operator =(BvSignal&& rhs) noexcept;
+
+	void Set();
+	void Reset();
+	bool Wait(const u32 timeout = kU32Max);
+
+private:
+	void Destroy();
+
+private:
+	void* m_hEvent = nullptr;
 };

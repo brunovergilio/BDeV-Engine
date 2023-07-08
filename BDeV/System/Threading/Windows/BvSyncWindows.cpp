@@ -13,17 +13,6 @@ BvMutex::~BvMutex()
 }
 
 
-BvMutex::BvMutex(BvMutex && rhs) noexcept
-{
-}
-
-
-BvMutex & BvMutex::operator =(BvMutex && rhs) noexcept
-{
-	return *this;
-}
-
-
 void BvMutex::Lock()
 {
 	m_Mutex.lock();
