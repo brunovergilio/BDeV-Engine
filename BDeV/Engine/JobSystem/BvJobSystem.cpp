@@ -5,6 +5,7 @@
 #include "BDeV/System/Threading/BvFiber.h"
 #include "BDeV/System/Threading/BvSync.h"
 #include "BDeV/System/Threading/BvProcess.h"
+#include "BvRingBuffer.h"
 
 
 namespace JS
@@ -53,16 +54,60 @@ namespace JS
 	};
 
 
+	struct ThreadData
+	{
+		ThreadData() = default;
+		ThreadData(const ThreadData&) {}
+
+		BvThread m_Thread;
+		BvSignal m_WorkerSignal;
+		u32 m_FiberIndex{};
+		u32 m_CurrJobIndices[4]{};
+		u32 m_CurrWaitListIndices[4]{};
+	};
+
+	struct FiberData
+	{
+		FiberData() = default;
+		FiberData(const FiberData&) {}
+
+		enum class Status : u8
+		{
+			kAvailable,
+			kInUse,
+			kInWaitList
+		};
+
+		Job* m_pJob = nullptr;
+		ThreadData* m_pThreadData = nullptr;
+		BvFiber m_Fiber;
+		std::atomic<Status> m_Status;
+		bool shouldAddToWaitList{};
+	};
+
 	struct JobPool
 	{
 		JobPool() = default;
 		JobPool(const JobPool& rhs) {}
 
-		BvVector<Job> m_Jobs;
-		std::atomic<u32> m_CurrJobIndex{};
-		std::atomic<u32> m_LastJobIndex{};
-		BvSpinlock m_Lock;
+		BvRingBuffer<Job> m_Jobs;
+		BvRingBuffer<FiberData*> m_SuspendedJobs;
 	};
+
+	//struct JobPool
+	//{
+	//	JobPool() = default;
+	//	JobPool(const JobPool& rhs) {}
+
+	//	BvVector<Job> m_Jobs;
+	//	BvVector<u32> m_WaitFiberIndices;
+	//	std::atomic<u32> m_CurrJobIndex{};
+	//	std::atomic<u32> m_LastJobIndex{};
+	//	std::atomic<u32> m_CurrWaitFiberIndex{};
+	//	std::atomic<u32> m_LastWaitFiberIndex{};
+	//	BvSpinlock m_JobLock;
+	//	BvSpinlock m_WaitFiberLock;
+	//};
 
 
 	class BvJobSystem
@@ -83,56 +128,17 @@ namespace JS
 		void FreeCounter(Counter* pCounter);
 
 	private:
-		struct ThreadData
-		{
-			ThreadData() = default;
-			ThreadData(const ThreadData&) {}
-
-			BvThread m_Thread;
-			BvSignal m_WorkerSignal;
-			u32 m_FiberIndex{};
-			u32 m_CurrJobIndices[4]{};
-			u32 m_CurrWaitListIndices[4]{};
-		};
-
-		struct FiberData
-		{
-			FiberData() = default;
-			FiberData(const FiberData&) {}
-
-			enum class Status : u8
-			{
-				kAvailable,
-				kInUse,
-				kInWaitList
-			};
-
-			Job* m_pJob = nullptr;
-			ThreadData* m_pThreadData = nullptr;
-			BvFiber m_Fiber;
-			std::atomic<Status> m_Status;
-			bool shouldAddToWaitList{};
-		};
-
 		void WorkerThreadFunction(u32 index);
-		FiberData* GetJob(u32 workerThreadIndex, u32 poolIndex);
-		bool AcquireFiber(u32& fiberIndex);
-		bool AcquireJob(u32 poolIndex, u32& jobIndex, u32 lastJobIndex);
-		u32 GetNextJobIndex(u32 poolIndex, u32 currJobIndex);
-		static void FiberFunction(void* pData);
+		FiberData* GetJob(ThreadData* pThreadData, JobPool& jobPool);
+		void AddToWaitList(JobPool& jobPool);
+		u32 GetNextIndex(u32 currIndex, u32 size);
+		void FiberFunction(u32 fiberIndex);
 
 	private:
-		// TODO: Maybe these should be global and regular arrays with specific sizes
-		JobPool m_JobPools[4]{};
 		BvVector<Counter> m_CounterPool;
-		BvVector<u32> m_WaitLists[4]{};
-
+		BvVector<JobPool> m_JobPools;
 		BvVector<ThreadData> m_WorkerThreads;
 		BvVector<FiberData> m_FiberPool;
-		BvSpinlock m_JobLock[4]{};
-		BvSpinlock m_WaitListLock[4]{};
-		std::atomic<u32> m_LastJobIndices[4]{};
-		std::atomic<u32> m_LastWaitListIndices[4]{};
 		std::atomic<bool> m_Active{};
 	};
 
@@ -177,6 +183,7 @@ namespace JS
 		for (auto& jobPool : m_JobPools)
 		{
 			jobPool.m_Jobs.Resize(jobSystemDesc.m_JobPoolSize);
+			jobPool.m_SuspendedJobs.Resize(jobSystemDesc.m_FiberPoolSize);
 		}
 
 		m_CounterPool.Resize(jobSystemDesc.m_JobPoolSize);
@@ -186,9 +193,12 @@ namespace JS
 		}
 
 		m_FiberPool.Resize(jobSystemDesc.m_FiberPoolSize);
-		for (auto& fiberData : m_FiberPool)
+		for (auto i = 0u; i < m_FiberPool.Size(); ++i)
 		{
-			fiberData.m_Fiber = BvFiber(FiberFunction, &fiberData, jobSystemDesc.m_FiberStackSize);
+			m_FiberPool[i].m_Fiber = BvFiber(jobSystemDesc.m_FiberStackSize, [this, i]()
+				{
+					FiberFunction(i);
+				});
 		}
 	}
 
@@ -218,15 +228,7 @@ namespace JS
 			
 			// Lock the joblist
 			auto& jobPool = m_JobPools[jobPoolIndex];
-			BvScopedLock lock(jobPool.m_Lock);
-			auto lastJobIndex = jobPool.m_LastJobIndex.load(std::memory_order::relaxed);
-			auto nextJobIndex = (lastJobIndex + 1) % jobPool.m_Jobs.Size();
-
-			// Add the job
-			jobPool.m_Jobs[lastJobIndex] = *pJobs;
-
-			// Update the index
-			jobPool.m_LastJobIndex.store(nextJobIndex, std::memory_order::release);
+			jobPool.m_Jobs.Push(*pJobs);
 		}
 		
 		// Notify worker threads
@@ -281,20 +283,14 @@ namespace JS
 			// Wait for new jobs
 			worker.m_WorkerSignal.Wait();
 
-			bool fiberAcquired = false;
-			bool jobAcquired = false;
-
 			// Process each pool by priority
 			for (auto poolIndex = 0; poolIndex < 4; ++poolIndex)
 			{
-				u32 lastJobIndex = m_LastJobIndices[poolIndex].load(std::memory_order::acquire);
-				u32& currJobIndex = worker.m_CurrJobIndices[poolIndex];
-				u32 fiberIndex = 0;
-
+				FiberData* pFiberData = nullptr;
 				// Run until there are no more jobs
-				while (currJobIndex != lastJobIndex)
+				do
 				{
-					auto pFiberData = GetJob(workerThreadIndex, poolIndex);
+					pFiberData = GetJob(&worker, m_JobPools[poolIndex]);
 					if (pFiberData)
 					{
 						// We switch to the fiber and let it execute the job. After finishing the job
@@ -304,56 +300,21 @@ namespace JS
 
 						// When we return from the fiber, we check if it needs to be put on the wait list;
 						// if not, then we send it back to the pool
-						auto fiberStatus = FiberData::Status::kAvailable;
 						if (pFiberData->shouldAddToWaitList)
 						{
 							// Reset this flag
 							pFiberData->shouldAddToWaitList = false;
-							fiberStatus = FiberData::Status::kInWaitList;
+							// Update the fiber's status
+							pFiberData->m_Status.store(FiberData::Status::kInWaitList);
+							AddToWaitList(m_JobPools[poolIndex]);
 						}
-						// Update the fiber's status
-						pFiberData->m_Status.store(fiberStatus);
-					}
-
-					// Try to get a fiber from the pool
-					if (!fiberAcquired)
-					{
-						fiberAcquired = AcquireFiber(fiberIndex);
-					}
-
-					// Try to get a job from the pool
-					if (!jobAcquired)
-					{
-						jobAcquired = AcquireJob(poolIndex, currJobIndex, lastJobIndex);
-					}
-
-					if (fiberAcquired && jobAcquired)
-					{
-						auto pFiberData = &m_FiberPool[fiberIndex];
-						pFiberData->m_pJob = &m_JobPools[poolIndex][currJobIndex];
-						pFiberData->m_pThreadData = &worker;
-
-						// We switch to the fiber and let it execute the job. After finishing the job
-						// or if at any point there's a wait call inside the function, the running
-						// fiber will switch back to the worker thread that activated it.
-						worker.m_Thread.GetThreadFiber().Switch(pFiberData->m_Fiber);
-
-						// When we return from the fiber, we check if it needs to be put on the wait list;
-						// if not, then we send it back to the pool
-						auto fiberStatus = FiberData::Status::kAvailable;
-						if (pFiberData->shouldAddToWaitList)
+						else
 						{
-							// Reset this flag
-							pFiberData->shouldAddToWaitList = false;
-							fiberStatus = FiberData::Status::kInWaitList;
+							// Update the fiber's status
+							pFiberData->m_Status.store(FiberData::Status::kAvailable);
 						}
-						// Update the fiber's status
-						pFiberData->m_Status.store(fiberStatus);
-
-						fiberAcquired = false;
-						jobAcquired = false;
 					}
-				}
+				} while (pFiberData != nullptr);
 			}
 		}
 
@@ -361,110 +322,97 @@ namespace JS
 	}
 
 
-	BvJobSystem::FiberData* BvJobSystem::GetJob(u32 workerThreadIndex, u32 poolIndex)
+	FiberData* BvJobSystem::GetJob(ThreadData* pThreadData, JobPool& jobPool)
 	{
-		auto& jobPool = m_JobPools[poolIndex];
-		auto lastJobIndex = jobPool.m_LastJobIndex.load(std::memory_order::relaxed);
-		auto expected = jobPool.m_CurrJobIndex.load(std::memory_order::relaxed);
-		auto desired = 0;
-		do
-		{
-			desired = GetNextJobIndex(poolIndex, expected);
-		} while (expected != lastJobIndex && !jobPool.m_CurrJobIndex.compare_exchange_weak(expected, desired));
+		//auto lastJobIndex = jobPool.m_LastJobIndex.load();
+		//auto currJobIndex = jobPool.m_CurrJobIndex.load();
+		//auto nextJobIndex = GetNextIndex(currJobIndex, (u32)jobPool.m_Jobs.Size());
+		//while (currJobIndex != lastJobIndex && !jobPool.m_CurrJobIndex.compare_exchange_weak(currJobIndex, nextJobIndex))
+		//{
+		//	nextJobIndex = GetNextIndex(currJobIndex, (u32)jobPool.m_Jobs.Size());
+		//}
+		Job* pJob = nullptr;
 
 		FiberData* pFiberData = nullptr;
 		// If we found a job in the pool, then we look for a fiber to assign it to,
 		// otherwise we go to the wait list and look for a job / fiber that's ready to
 		// be resumed
-		if (expected != lastJobIndex)
+		if (jobPool.m_Jobs.Pop(pJob))
 		{
-			for (auto i = 0; i < m_FiberPool.Size(); ++i)
+			while (!pFiberData)
 			{
-				auto exp = FiberData::Status::kAvailable;
-				if (m_FiberPool[i].m_Status.compare_exchange_strong(exp, FiberData::Status::kInUse))
+				for (auto i = 0; i < m_FiberPool.Size(); ++i)
 				{
-					pFiberData = &m_FiberPool[i];
-					pFiberData->m_pJob = &jobPool.m_Jobs[expected];
-					pFiberData->m_pThreadData = &m_WorkerThreads[workerThreadIndex];
-					break;
+					auto exp = FiberData::Status::kAvailable;
+					if (m_FiberPool[i].m_Status.compare_exchange_strong(exp, FiberData::Status::kInUse))
+					{
+						pFiberData = &m_FiberPool[i];
+						pFiberData->m_pJob = pJob;
+						pFiberData->m_pThreadData = pThreadData;
+						break;
+					}
+				}
+
+				if (!pFiberData)
+				{
+					YieldProcessorExecution();
 				}
 			}
 		}
 		else
 		{
-			// TODO: Look for a job in the wait list
-		}
+			//auto lastWaitFiberIndex = jobPool.m_LastWaitFiberIndex.load();
+			//auto currWaitFiberIndex = jobPool.m_CurrWaitFiberIndex.load();
+			//auto nextWaitFiberIndex = GetNextIndex(currWaitFiberIndex, (u32)jobPool.m_WaitFiberIndices.Size());
+			//while (currWaitFiberIndex != lastWaitFiberIndex && !jobPool.m_CurrWaitFiberIndex.compare_exchange_weak(currWaitFiberIndex, nextWaitFiberIndex))
+			//{
+			//	nextWaitFiberIndex = GetNextIndex(currWaitFiberIndex, (u32)jobPool.m_WaitFiberIndices.Size());
+			//}
 
+			FiberData** ppFiberData = nullptr;
+			if (jobPool.m_SuspendedJobs.Pop(ppFiberData))
+			{
+				pFiberData = *ppFiberData;
+				pFiberData->m_pThreadData = pThreadData;
+				pFiberData->m_Status.exchange(FiberData::Status::kInUse);
+			}
+		}
 
 		return pFiberData;
 	}
 
 
-	bool BvJobSystem::AcquireJob(u32 poolIndex, u32& jobIndex, u32 lastJobIndex)
+	void BvJobSystem::AddToWaitList(JobPool& jobPool)
 	{
-		bool result = false;
-		auto expectedStatus = JobData::Status::kInPool;
-		// Look for a job in the active pool
-		while (jobIndex != lastJobIndex)
 		{
-			result = m_JobPools[poolIndex][jobIndex].m_Status.compare_exchange_strong(expectedStatus, JobData::Status::kAcquired);
-			if (result)
-			{
-				break;
-			}
-			else
-			{
-				jobIndex = GetNextJobIndex(poolIndex, jobIndex);
-				expectedStatus = JobData::Status::kInPool;
-			}
+			// Lock the joblist
+			BvScopedLock lock(jobPool.m_WaitFiberLock);
+			auto lastWaitFiberIndex = jobPool.m_LastWaitFiberIndex.load();
+			auto nextWaitFiberIndex = (lastWaitFiberIndex + 1) % jobPool.m_WaitFiberIndices.Size();
+
+			jobPool.m_WaitFiberIndices[lastWaitFiberIndex] = *pJobs;
+
+			// Update the index
+			jobPool.m_LastWaitFiberIndex.store(nextWaitFiberIndex);
 		}
 
-		// If we couldn't find a job in the active pool, then look in the wait pool
-		if (!result)
+		// Notify worker threads
+		for (auto& workerThread : m_WorkerThreads)
 		{
-			// TODO: Loop through the wait pool
+			workerThread.m_WorkerSignal.Set();
 		}
-		
-		return result;
 	}
 
 
-	u32 BvJobSystem::GetNextJobIndex(u32 poolIndex, u32 currJobIndex)
+	u32 BvJobSystem::GetNextIndex(u32 currIndex, u32 size)
 	{
-		return (currJobIndex + 1) % (u32)m_JobPools[poolIndex].m_Jobs.Size();
+		return (currIndex + 1) % size;
 	}
 
 
-	bool BvJobSystem::AcquireFiber(u32& fiberIndex)
+	void BvJobSystem::FiberFunction(u32 fiberIndex)
 	{
-		for (auto i = fiberIndex; i < m_FiberPool.Size(); i++)
-		{
-			auto expectedStatus = FiberData::Status::kAvailable;
-			if (m_FiberPool[i].m_Status.compare_exchange_strong(expectedStatus, FiberData::Status::kInUse))
-			{
-				fiberIndex = i;
-				return true;
-			}
-		}
-
-		for (auto i = 0; i < fiberIndex; i++)
-		{
-			auto expectedStatus = FiberData::Status::kAvailable;
-			if (m_FiberPool[i].m_Status.compare_exchange_strong(expectedStatus, FiberData::Status::kInUse))
-			{
-				fiberIndex = i;
-				return true;
-			}
-		}
-
-		BvAssert(false, "Failed to get a fiber! Increase fiber pool size!");
-		return false;
-	}
-
-
-	void BvJobSystem::FiberFunction(void* pData)
-	{
-		auto pFiberData = reinterpret_cast<FiberData*>(pData);
+		auto pFiberData = &m_FiberPool[fiberIndex];
 
 		while (s_JobSystem.m_Active.load())
 		{
@@ -472,9 +420,7 @@ namespace JS
 			// Run the job
 			pJobData->m_pFunction(pJobData->m_pData);
 			// Update the job counter
-			pJobData->m_pJobCounter->Update();
-			// Return the job to the pool
-			pJobData->m_Status.store(JobData::Status::kAvailable);
+			pJobData->m_pCounter->Update();
 			pFiberData->m_pJob = nullptr;
 
 			// Switch back to the worker thread
@@ -482,20 +428,6 @@ namespace JS
 		}
 
 		pFiberData->m_Fiber.Switch(pFiberData->m_pThreadData->m_Thread.GetThreadFiber());
-	}
-
-
-	std::pair<JobCounterImpl*, i32> BvJobSystem::GetUnusedCounter()
-	{
-		for (auto i = 0u; i < m_CounterPool.Size(); ++i)
-		{
-			if (m_CounterPool[i].Acquire())
-			{
-				return std::make_pair(&m_CounterPool[i], (i32)i);
-			}
-		}
-
-		return std::make_pair(nullptr, -1);
 	}
 
 

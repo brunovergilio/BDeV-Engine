@@ -38,14 +38,14 @@ public:
 	static void Sleep(const u32 miliseconds);
 	static void YieldExecution();
 	static const BvThread& GetCurrentThread();
-	static const u32 GetCurrentProcessor();
-	static void ConvertToFiber(void* pData = nullptr);
+	static u32 GetCurrentProcessor();
+	static void ConvertToFiber();
 	static void ConvertFromFiber();
 
-	BV_INLINE const u64 GetId() const { return m_ThreadId; }
+	BV_INLINE u64 GetId() const { return m_ThreadId; }
 	BV_INLINE const void* GetHandle() const { return m_hThread; }
 	const BvFiber& GetThreadFiber() const;
-	const bool IsFiber() const;
+	bool IsFiber() const;
 
 private:
 	void Create(const u32 stackSize = 0);

@@ -100,28 +100,28 @@ const BvThread & BvThread::GetCurrentThread()
 }
 
 
-const u32 BvThread::GetCurrentProcessor()
+u32 BvThread::GetCurrentProcessor()
 {
 	return GetCurrentProcessorNumber();
 }
 
 
-void BvThread::ConvertToFiber(void* pData)
+void BvThread::ConvertToFiber()
 {
 	auto& fiber = GetThreadFiberInternal();
-	BvAssert(fiber.m_pFiberData->m_pFiber == nullptr, "Fiber already converted / created");
-	fiber.m_pFiberData->m_pFiber = ConvertThreadToFiberEx(pData, FIBER_FLAG_FLOAT_SWITCH);
-	BvAssert(fiber.m_pFiberData->m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
+	BvAssert(fiber.m_pFiber == nullptr, "Fiber already converted / created");
+	fiber.m_pFiber = ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
+	BvAssert(fiber.m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
 }
 
 
 void BvThread::ConvertFromFiber()
 {
 	auto& fiber = GetThreadFiberInternal();
-	BvAssert(fiber.m_pFiberData->m_pFiber != nullptr, "Thread not yet converted to Fiber");
+	BvAssert(fiber.m_pFiber != nullptr, "Thread not yet converted to Fiber");
 	BOOL result = ConvertFiberToThread();
 	BvAssert(result, "Couldn't convert Fiber to Thread");
-	fiber.m_pFiberData->m_pFiber = nullptr;
+	fiber.m_pFiber = nullptr;
 }
 
 
@@ -131,7 +131,7 @@ const BvFiber& BvThread::GetThreadFiber() const
 }
 
 
-const bool BvThread::IsFiber() const
+bool BvThread::IsFiber() const
 {
 	return GetThreadFiber().GetFiber() != nullptr;
 }
@@ -148,7 +148,7 @@ void BvThread::Destroy()
 	if (m_hThread == GetCurrentThread().m_hThread)
 	{
 		auto& fiber = GetThreadFiberInternal();
-		if (fiber.m_pFiberData->m_pFiber)
+		if (fiber.m_pFiber)
 		{
 			ConvertFromFiber();
 		}
@@ -165,7 +165,7 @@ void BvThread::Destroy()
 
 BvFiber& GetThreadFiberInternal()
 {
-	static thread_local BvFiber thisFiber(nullptr);
+	static thread_local BvFiber thisFiber;
 
 	return thisFiber;
 }

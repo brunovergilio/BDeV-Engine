@@ -61,8 +61,8 @@ namespace JS
 
 	BV_API void RunJob(const Job& job);
 	BV_API void RunJobs(u32 count, const Job* const pJobs);
-	BV_API void WaitForCounter(JobCounter* pJobCounter);
-	BV_API JobCounter* AllocCounter();
+	BV_API void WaitForCounter(Counter* pCounter);
+	BV_API Counter* AllocCounter();
 	BV_API void FreeJobCounter();
 	BV_API bool IsJobCounterDone();
 };

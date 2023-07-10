@@ -158,6 +158,7 @@
     <ClInclude Include="Container\BvStringId.h" />
     <ClInclude Include="Container\BvVector.h" />
     <ClInclude Include="Engine\Application\BvApplication.h" />
+    <ClInclude Include="Engine\JobSystem\BvRingBuffer.h" />
     <ClInclude Include="Engine\TBJobSystem\BvTBJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystemTLS.h" />

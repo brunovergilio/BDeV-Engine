@@ -2,6 +2,7 @@
 
 
 #include "BDeV/Utils/BvUtils.h"
+#include "BDeV/Utils/BvDelegate.h"
 
 
 using FiberFunction = void(*)(void*);
@@ -16,7 +17,19 @@ public:
 	BvFiber();
 	BvFiber(BvFiber&& rhs) noexcept;
 	BvFiber& operator=(BvFiber&& rhs) noexcept;
-	explicit BvFiber(FiberFunction pFunction, void* const pData = nullptr, const size_t stackSize = 0);
+	template<class Fn, class... Args,
+		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
+	BvFiber(Fn&& fn, Args &&... args)
+		: BvFiber(0, std::forward<Fn>(fn), std::forward<Args>(args)...) {}
+
+	template<class Fn, class... Args,
+		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
+	BvFiber(const u32 stackSize, Fn&& fn, Args &&... args)
+		: m_pDelegate(new BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
+	{
+		Create(stackSize);
+	}
+
 	~BvFiber();
 
 	void Switch(const BvFiber& fiber) const;
@@ -24,19 +37,10 @@ public:
 	void* GetFiber() const;
 
 private:
-	void Create(FiberFunction pFunction, void* const pData = nullptr, const size_t stackSize = 0);
+	void Create(const size_t stackSize);
 	void Destroy();
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	static void __stdcall FiberEntryPoint(void* pData);
-#endif
-
 private:
-	struct FiberData
-	{
-		FiberFunction m_pFunction = nullptr;
-		void* m_pData = nullptr;
-		void* m_pFiber = nullptr;
-	};
-	FiberData* m_pFiberData = nullptr;
+	BvDelegateBase* m_pDelegate = nullptr;
+	void* m_pFiber = nullptr;
 };
