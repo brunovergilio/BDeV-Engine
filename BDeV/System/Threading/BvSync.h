@@ -23,6 +23,24 @@ private:
 };
 
 
+class BV_API BvAdaptiveMutex
+{
+	BV_NOCOPY(BvAdaptiveMutex);
+
+public:
+	BvAdaptiveMutex();
+	~BvAdaptiveMutex();
+
+	void Lock();
+	bool TryLock();
+	void Unlock();
+
+private:
+	std::mutex m_Lock;
+	std::atomic<u32> m_SpinCount;
+};
+
+
 class BV_API BvSpinlock
 {
 	BV_NOCOPYMOVE(BvSpinlock);

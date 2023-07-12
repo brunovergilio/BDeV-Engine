@@ -5,7 +5,7 @@
 #include "BDeV/Container/BvVector.h"
 
 
-template<typename Type>
+template<typename Type, size_t Size>
 class BvRingBuffer
 {
 public:
@@ -13,17 +13,13 @@ public:
 	BvRingBuffer(const BvRingBuffer& rhs) {}
 	~BvRingBuffer() {}
 
-	void Resize(u32 size)
-	{
-		m_Queue.Resize(size);
-	}
-
 	bool Push(const Type& value)
 	{
-		BvScopedLock lock(m_AddLock);
+		auto currIndex = m_CurrIndex.load();
+		BvScopedLock lock(m_PushLock);
 		u32 lastIndex = m_LastIndex.load();
 		u32 nextIndex = GetNextIndex(lastIndex);
-		if (nextIndex != m_CurrIndex.load())
+		if (nextIndex != currIndex)
 		{
 			m_Queue[lastIndex] = value;
 			m_LastIndex.store(nextIndex);
@@ -33,26 +29,21 @@ public:
 		return false;
 	}
 
-	bool Pop(Type*& pValue)
+	bool Pop(Type* pValue)
 	{
 		auto lastIndex = m_LastIndex.load();
+		BvScopedLock lock(m_PopLock);
 		auto currIndex = m_CurrIndex.load();
 		auto nextIndex = GetNextIndex(currIndex);
-		while (currIndex != lastIndex && !m_CurrIndex.compare_exchange_weak(currIndex, nextIndex))
-		{
-			nextIndex = GetNextIndex(currIndex);
-		}
-
 		if (currIndex != lastIndex)
 		{
 			pValue = &m_Queue[currIndex];
+			m_CurrIndex.store(nextIndex);
 			return true;
 		}
 
 		return false;
 	}
-
-	BvVector& GetContainer() const { return m_Queue; }
 
 private:
 	u32 GetNextIndex(u32 currIndex)
@@ -61,8 +52,9 @@ private:
 	}
 
 private:
-	BvVector<Type> m_Queue;
+	Type m_Queue[Size];
 	std::atomic<u32> m_LastIndex{};
 	std::atomic<u32> m_CurrIndex{};
-	BvSpinlock m_AddLock;
+	BvAdaptiveMutex m_PushLock;
+	BvAdaptiveMutex m_PopLock;
 };

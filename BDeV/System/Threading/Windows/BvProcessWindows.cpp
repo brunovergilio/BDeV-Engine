@@ -6,57 +6,56 @@
 #include <DbgHelp.h>
 
 
-BvSystemInfo g_SystemInfo = []()
+const BvSystemInfo& BvProcess::GetSystemInfo()
 {
-	BvSystemInfo systemInfo{};
-
-	void* pBufferData = nullptr;
-	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
-	DWORD bufferSize = 0;
-	DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
-	if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	static BvSystemInfo s_SystemInfo = []()
 	{
-		pBufferData = malloc(bufferSize);
-		pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
-		result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
-		if (result == FALSE)
+		BvSystemInfo systemInfo{};
+
+		void* pBufferData = nullptr;
+		PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
+		DWORD bufferSize = 0;
+		DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
+		if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 		{
-			free(pBufferData);
+			pBufferData = malloc(bufferSize);
+			pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
+			result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
+			if (result == FALSE)
+			{
+				free(pBufferData);
+				BV_OS_ERROR();
+				return systemInfo;
+			}
+		}
+		else
+		{
 			BV_OS_ERROR();
-			return systemInfo;
 		}
-	}
-	else
-	{
-		BV_OS_ERROR();
-	}
 
-	auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+		auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
 
-	for (auto i = 0u; i < count; i++)
-	{
-		if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationProcessorCore)
+		for (auto i = 0u; i < count; i++)
 		{
-			systemInfo.m_NumCores++;
+			if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationProcessorCore)
+			{
+				systemInfo.m_NumCores++;
 
-			// A hyperthreaded core supplies more than one logical processor.
-			systemInfo.m_NumLogicalProcessors += __popcnt(pBuffer[i].ProcessorMask);
+				// A hyperthreaded core supplies more than one logical processor.
+				systemInfo.m_NumLogicalProcessors += __popcnt(pBuffer[i].ProcessorMask);
+			}
 		}
-	}
 
-	free(pBufferData);
+		free(pBufferData);
 
-	SYSTEM_INFO osInfo;
-	GetSystemInfo(&osInfo);
-	systemInfo.m_MemPageSize = osInfo.dwPageSize;
+		SYSTEM_INFO osInfo;
+		::GetSystemInfo(&osInfo);
+		systemInfo.m_MemPageSize = osInfo.dwPageSize;
 
-	return systemInfo;
-}();
+		return systemInfo;
+	}();
 
-
-const BvSystemInfo & GetSystemInfo()
-{
-	return g_SystemInfo;
+	return s_SystemInfo;
 }
 
 
@@ -79,7 +78,7 @@ public:
 };
 
 
-void GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u32 numFramesToRecord)
+void BvProcess::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u32 numFramesToRecord)
 {
 	static StackTraceHandler s_StackTraceHandler;
 
@@ -174,7 +173,7 @@ void GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u3
 #pragma warning( pop )
 
 
-void YieldProcessorExecution()
+void BvProcess::YieldExecution()
 {
 	YieldProcessor();
 }

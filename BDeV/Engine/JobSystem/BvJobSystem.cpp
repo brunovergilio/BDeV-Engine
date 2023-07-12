@@ -10,16 +10,20 @@
 
 namespace JS
 {
+	constexpr u32 kJobCountPerPool = 400;
+	constexpr u32 kSuspendedJobCountPerPool = 32;
+	constexpr u32 kCounterPoolCount = 1000;
+
 	class Counter
 	{
 	public:
 		Counter() {}
-		Counter(const Counter&) : m_Value(0), m_Index(0), m_Acquired(false) {}
+		//Counter(const Counter&) : m_Value(0), m_Index(0), m_Acquired(false) {}
 		//Counter& operator=(const Counter&) { return *this; }
 
 		bool Acquire()
 		{
-			return !m_Acquired.exchange(true);
+			return !m_Acquired.load(std::memory_order::relaxed) && !m_Acquired.exchange(true);
 		}
 
 		void Release()
@@ -42,17 +46,16 @@ namespace JS
 			return m_Value == 0;
 		}
 
-		void SetIndex(u32 index)
-		{
-			m_Index = index;
-		}
-
 	private:
 		std::atomic<u32> m_Value{0};
-		u32 m_Index{0};
 		std::atomic<bool> m_Acquired{false};
 	};
 
+	struct JobData
+	{
+		Job m_Job;
+		Counter* m_pCounter;
+	};
 
 	struct ThreadData
 	{
@@ -78,36 +81,29 @@ namespace JS
 			kInWaitList
 		};
 
-		Job* m_pJob = nullptr;
+		JobData* m_pJobData = nullptr;
+		Counter* m_pCounter = nullptr;
 		ThreadData* m_pThreadData = nullptr;
 		BvFiber m_Fiber;
 		std::atomic<Status> m_Status;
 		bool shouldAddToWaitList{};
 	};
 
-	struct JobPool
+	struct SuspendedJobData
 	{
-		JobPool() = default;
-		JobPool(const JobPool& rhs) {}
-
-		BvRingBuffer<Job> m_Jobs;
-		BvRingBuffer<FiberData*> m_SuspendedJobs;
+		FiberData* m_pFiberData = nullptr;
+		BvSpinlock m_Lock;
 	};
 
-	//struct JobPool
-	//{
-	//	JobPool() = default;
-	//	JobPool(const JobPool& rhs) {}
+	struct JobPool
+	{
+		BvRingBuffer<JobData, kJobCountPerPool> m_Jobs;
+		SuspendedJobData m_SuspendedJobs[kSuspendedJobCountPerPool];
+	};
 
-	//	BvVector<Job> m_Jobs;
-	//	BvVector<u32> m_WaitFiberIndices;
-	//	std::atomic<u32> m_CurrJobIndex{};
-	//	std::atomic<u32> m_LastJobIndex{};
-	//	std::atomic<u32> m_CurrWaitFiberIndex{};
-	//	std::atomic<u32> m_LastWaitFiberIndex{};
-	//	BvSpinlock m_JobLock;
-	//	BvSpinlock m_WaitFiberLock;
-	//};
+
+	JobPool g_JobPool[3];
+	Counter g_CounterPool[kCounterPoolCount];
 
 
 	class BvJobSystem
@@ -123,14 +119,13 @@ namespace JS
 
 		void RunJobs(u32 count, const Job* pJobs);
 		void WaitForCounter(Counter* pCounter);
-		bool IsDone(Counter* pCounter);
 		Counter* AllocCounter();
-		void FreeCounter(Counter* pCounter);
+		void FreeCounter(Counter*& pCounter);
 
 	private:
 		void WorkerThreadFunction(u32 index);
-		FiberData* GetJob(ThreadData* pThreadData, JobPool& jobPool);
-		void AddToWaitList(JobPool& jobPool);
+		FiberData* GetJob(ThreadData* pThreadData);
+		void AddToWaitList(FiberData* pFiberData);
 		u32 GetNextIndex(u32 currIndex, u32 size);
 		void FiberFunction(u32 fiberIndex);
 
@@ -180,17 +175,13 @@ namespace JS
 		SetWorkerThreadIndex(0);
 
 		// Initialize obj pools
-		for (auto& jobPool : m_JobPools)
-		{
-			jobPool.m_Jobs.Resize(jobSystemDesc.m_JobPoolSize);
-			jobPool.m_SuspendedJobs.Resize(jobSystemDesc.m_FiberPoolSize);
-		}
+		//for (auto& jobPool : m_JobPools)
+		//{
+		//	jobPool.m_Jobs.Resize(jobSystemDesc.m_JobPoolSize);
+		//	jobPool.m_SuspendedJobs.Resize(jobSystemDesc.m_FiberPoolSize);
+		//}
 
-		m_CounterPool.Resize(jobSystemDesc.m_JobPoolSize);
-		for (auto i = 0u; i < m_CounterPool.Size(); ++i)
-		{
-			m_CounterPool[i].SetIndex(i);
-		}
+		//m_CounterPool.Resize(jobSystemDesc.m_JobPoolSize);
 
 		m_FiberPool.Resize(jobSystemDesc.m_FiberPoolSize);
 		for (auto i = 0u; i < m_FiberPool.Size(); ++i)
@@ -222,13 +213,13 @@ namespace JS
 
 	void BvJobSystem::RunJobs(u32 count, const Job* pJobs)
 	{
-		for (u32 i = 0; i < count; ++i, ++pJobs)
+		auto pCounter = AllocCounter();
+		for (u32 i = 0; i < count; ++i)
 		{
-			auto jobPoolIndex = 3 - (u32)(*pJobs).m_Priority;
-			
-			// Lock the joblist
+			auto jobPoolIndex = 2 - (u32)(*pJobs).m_Priority;
 			auto& jobPool = m_JobPools[jobPoolIndex];
-			jobPool.m_Jobs.Push(*pJobs);
+			JobData jobData{ pJobs[i], pCounter };
+			jobPool.m_Jobs.Push(jobData);
 		}
 		
 		// Notify worker threads
@@ -239,9 +230,9 @@ namespace JS
 	}
 
 
-	void BvJobSystem::WaitForCounter(const JobCounter& jobCounter)
+	void BvJobSystem::WaitForCounter(Counter* pCounter)
 	{
-		if (jobCounter.IsDone())
+		if (pCounter->IsDone())
 		{
 			return;
 		}
@@ -264,11 +255,32 @@ namespace JS
 		else
 		{
 			// System-External thread
-			while (!jobCounter.IsDone())
+			while (!pCounter->IsDone())
 			{
-				YieldProcessorExecution();
+				BvProcess::YieldExecution();
 			}
 		}
+	}
+
+
+	JS::Counter* BvJobSystem::AllocCounter()
+	{
+		for (auto i = 0; i < kCounterPoolCount; ++i)
+		{
+			if (g_CounterPool[i].Acquire())
+			{
+				return &g_CounterPool[i];
+			}
+		}
+
+		return nullptr;
+	}
+
+
+	void BvJobSystem::FreeCounter(Counter*& pCounter)
+	{
+		pCounter->Release();
+		pCounter = nullptr;
 	}
 
 
@@ -283,117 +295,99 @@ namespace JS
 			// Wait for new jobs
 			worker.m_WorkerSignal.Wait();
 
-			// Process each pool by priority
-			for (auto poolIndex = 0; poolIndex < 4; ++poolIndex)
+			FiberData* pFiberData = nullptr;
+			// Run until there are no more jobs
+			do
 			{
-				FiberData* pFiberData = nullptr;
-				// Run until there are no more jobs
-				do
+				pFiberData = GetJob(&worker);
+				if (pFiberData)
 				{
-					pFiberData = GetJob(&worker, m_JobPools[poolIndex]);
-					if (pFiberData)
-					{
-						// We switch to the fiber and let it execute the job. After finishing the job
-						// or if at any point there's a wait call inside the function, the running
-						// fiber will switch back to the worker thread that activated it.
-						worker.m_Thread.GetThreadFiber().Switch(pFiberData->m_Fiber);
+					// We switch to the fiber and let it execute the job. After finishing the job
+					// or if at any point there's a wait call inside the function, the running
+					// fiber will switch back to the worker thread that activated it.
+					worker.m_Thread.GetThreadFiber().Switch(pFiberData->m_Fiber);
 
-						// When we return from the fiber, we check if it needs to be put on the wait list;
-						// if not, then we send it back to the pool
-						if (pFiberData->shouldAddToWaitList)
-						{
-							// Reset this flag
-							pFiberData->shouldAddToWaitList = false;
-							// Update the fiber's status
-							pFiberData->m_Status.store(FiberData::Status::kInWaitList);
-							AddToWaitList(m_JobPools[poolIndex]);
-						}
-						else
-						{
-							// Update the fiber's status
-							pFiberData->m_Status.store(FiberData::Status::kAvailable);
-						}
+					// When we return from the fiber, we check if it needs to be put on the wait list;
+					// if not, then we send it back to the pool
+					if (pFiberData->shouldAddToWaitList)
+					{
+						// Reset this flag
+						pFiberData->shouldAddToWaitList = false;
+						// Send the fiber to the wait list
+						AddToWaitList(pFiberData);
 					}
-				} while (pFiberData != nullptr);
-			}
+					else
+					{
+						// Update the fiber's status
+						pFiberData->m_Status.store(FiberData::Status::kAvailable);
+					}
+				}
+			} while (pFiberData != nullptr);
 		}
 
 		BvThread::ConvertFromFiber();
 	}
 
 
-	FiberData* BvJobSystem::GetJob(ThreadData* pThreadData, JobPool& jobPool)
+	FiberData* BvJobSystem::GetJob(ThreadData* pThreadData)
 	{
-		//auto lastJobIndex = jobPool.m_LastJobIndex.load();
-		//auto currJobIndex = jobPool.m_CurrJobIndex.load();
-		//auto nextJobIndex = GetNextIndex(currJobIndex, (u32)jobPool.m_Jobs.Size());
-		//while (currJobIndex != lastJobIndex && !jobPool.m_CurrJobIndex.compare_exchange_weak(currJobIndex, nextJobIndex))
-		//{
-		//	nextJobIndex = GetNextIndex(currJobIndex, (u32)jobPool.m_Jobs.Size());
-		//}
-		Job* pJob = nullptr;
-
+		JobData* pJobData = nullptr;
 		FiberData* pFiberData = nullptr;
-		// If we found a job in the pool, then we look for a fiber to assign it to,
-		// otherwise we go to the wait list and look for a job / fiber that's ready to
-		// be resumed
-		if (jobPool.m_Jobs.Pop(pJob))
+
+		for (auto poolIndex = 0; poolIndex < 3; ++poolIndex)
 		{
-			while (!pFiberData)
+			if (g_JobPool[poolIndex].m_Jobs.Pop(pJobData))
 			{
-				for (auto i = 0; i < m_FiberPool.Size(); ++i)
+				// If we found a job in the pool, then we look for a fiber to assign it to
+				// TODO: Think of a better way to deal with this when there're no available fibers
+				while (true)
 				{
-					auto exp = FiberData::Status::kAvailable;
-					if (m_FiberPool[i].m_Status.compare_exchange_strong(exp, FiberData::Status::kInUse))
+					for (auto i = 0; i < m_FiberPool.Size(); ++i)
 					{
-						pFiberData = &m_FiberPool[i];
-						pFiberData->m_pJob = pJob;
+						auto exp = FiberData::Status::kAvailable;
+						if (m_FiberPool[i].m_Status.load(std::memory_order::relaxed) == exp
+							&& m_FiberPool[i].m_Status.compare_exchange_strong(exp, FiberData::Status::kInUse))
+						{
+							pFiberData = &m_FiberPool[i];
+							pFiberData->m_pJobData = pJobData;
+							pFiberData->m_pThreadData = pThreadData;
+							return pFiberData;
+						}
+					}
+
+					BvProcess::YieldExecution();
+				}
+			}
+			else
+			{
+				// If we couldn't get a job from the pool, check the wait list
+				for (auto suspendedFiberIndex = 0u; suspendedFiberIndex < kSuspendedJobCountPerPool; ++suspendedFiberIndex)
+				{
+					auto expected = FiberData::Status::kInWaitList;
+					pFiberData = g_JobPool[poolIndex].m_SuspendedJobs[suspendedFiberIndex].m_pFiberData;
+					if (pFiberData->m_pCounter->IsDone() && pFiberData->m_Status.load(std::memory_order::memory_order_relaxed) == expected
+						&& pFiberData->m_Status.compare_exchange_strong(expected, FiberData::Status::kInUse))
+					{
 						pFiberData->m_pThreadData = pThreadData;
-						break;
+						return pFiberData;
 					}
 				}
-
-				if (!pFiberData)
-				{
-					YieldProcessorExecution();
-				}
-			}
-		}
-		else
-		{
-			//auto lastWaitFiberIndex = jobPool.m_LastWaitFiberIndex.load();
-			//auto currWaitFiberIndex = jobPool.m_CurrWaitFiberIndex.load();
-			//auto nextWaitFiberIndex = GetNextIndex(currWaitFiberIndex, (u32)jobPool.m_WaitFiberIndices.Size());
-			//while (currWaitFiberIndex != lastWaitFiberIndex && !jobPool.m_CurrWaitFiberIndex.compare_exchange_weak(currWaitFiberIndex, nextWaitFiberIndex))
-			//{
-			//	nextWaitFiberIndex = GetNextIndex(currWaitFiberIndex, (u32)jobPool.m_WaitFiberIndices.Size());
-			//}
-
-			FiberData** ppFiberData = nullptr;
-			if (jobPool.m_SuspendedJobs.Pop(ppFiberData))
-			{
-				pFiberData = *ppFiberData;
-				pFiberData->m_pThreadData = pThreadData;
-				pFiberData->m_Status.exchange(FiberData::Status::kInUse);
 			}
 		}
 
-		return pFiberData;
+		return nullptr;
 	}
 
 
-	void BvJobSystem::AddToWaitList(JobPool& jobPool)
+	void BvJobSystem::AddToWaitList(FiberData* pFiberData)
 	{
+		auto poolIndex = 2 - (u32)pFiberData->m_pJobData->m_Job.m_Priority;
+		for (auto i = 0; i < kSuspendedJobCountPerPool; i++)
 		{
-			// Lock the joblist
-			BvScopedLock lock(jobPool.m_WaitFiberLock);
-			auto lastWaitFiberIndex = jobPool.m_LastWaitFiberIndex.load();
-			auto nextWaitFiberIndex = (lastWaitFiberIndex + 1) % jobPool.m_WaitFiberIndices.Size();
+			if (g_JobPool[poolIndex].m_SuspendedJobs[i]->m_WaitListLock.TryLock())
+			{
 
-			jobPool.m_WaitFiberIndices[lastWaitFiberIndex] = *pJobs;
-
-			// Update the index
-			jobPool.m_LastWaitFiberIndex.store(nextWaitFiberIndex);
+			}
 		}
 
 		// Notify worker threads
@@ -416,12 +410,12 @@ namespace JS
 
 		while (s_JobSystem.m_Active.load())
 		{
-			auto pJobData = pFiberData->m_pJob;
+			auto pJobData = pFiberData->m_pJobData;
 			// Run the job
 			pJobData->m_pFunction(pJobData->m_pData);
 			// Update the job counter
 			pJobData->m_pCounter->Update();
-			pFiberData->m_pJob = nullptr;
+			pFiberData->m_pJobData = nullptr;
 
 			// Switch back to the worker thread
 			pFiberData->m_Fiber.Switch(pFiberData->m_pThreadData->m_Thread.GetThreadFiber());
@@ -443,33 +437,26 @@ namespace JS
 	}
 
 
-	JobCounter RunJob(const Job& job)
+	void RunJob(const Job& job, JobCounter*& pCounter)
 	{
-		return s_JobSystem.RunJobs(1, &job);
+
 	}
 
 
-	JobCounter RunJobs(u32 count, const Job* const pJobs)
+	void RunJobs(u32 count, const Job* pJobs, JobCounter*& pCounter)
 	{
-		return s_JobSystem.RunJobs(count, pJobs);
+
 	}
 
 
-	void WaitForCounter(const JobCounter& jobCounter)
+	void WaitForCounter(JobCounter* pCounter)
 	{
-		s_JobSystem.WaitForCounter(jobCounter);
+
 	}
 
 
-	JobCounter::JobCounter(i32 index, i32 version)
-		: m_Index(index), m_Version(version)
+	void WaitForCounterAndFree(JobCounter*& pCounter)
 	{
-	}
 
-
-	bool JobCounter::IsDone() const
-	{
-		auto& counter = s_JobSystem.GetCounters()[m_Index];
-		return counter.IsDone(m_Version);
 	}
 }

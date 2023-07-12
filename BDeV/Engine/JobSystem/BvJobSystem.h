@@ -1,47 +1,34 @@
 #pragma once
 
 #include "BDeV/Utils/BvUtils.h"
+#include "BDeV/Utils/BvDelegate.h"
 
 
 namespace JS
 {
-	using JobFunction = void(*)(void*);
+	enum class JobPriority : u8
+	{
+		kLow,
+		kNormal,
+		kHigh,
+	};
+
+	constexpr auto kMaxJobFunctionSize = kCacheLineSize - (sizeof(const char*) * 3);
+	using JobFunction = BvTaskT<kMaxJobFunctionSize>;
+	//using JobFunction = void(*)(void*);
 
 	struct Job
 	{
-		enum class Priority : u8
-		{
-			kLow,
-			kNormal,
-			kHigh,
-			kCritical
-		};
-
-		JobFunction m_pFunction = nullptr;
-		void* m_pData = nullptr;
-		Priority m_Priority = Priority::kNormal;
+		JobFunction m_Job;
+		const char* m_pName = nullptr;
+		JobPriority m_Priority = JobPriority::kNormal;
 	};
+	constexpr auto k = sizeof Job;
 
-	class Counter;
+	class JobCounter;
 
-	//struct JobCounter
-	//{
-	//	friend class BvJobSystem;
-
-	//	JobCounter() = default;
-	//	JobCounter(i32 index, i32 version);
-	//	bool IsDone() const;
-
-	//private:
-	//	i32 m_Index = -1;
-	//	i32 m_Version = 0;
-	//};
-
-
-#define BV_JOB_DECL(jobName) void jobName(void* pData)
-#define BV_JOB_DECL_STATIC(jobName) static void jobName(void* pData) // For class methods
 #define BV_JOB_FUNCTION(jobName) void jobName(void* pData)
-#define BV_JOB_DATA(dataType) reinterpret_cast<dataType>(pData)
+#define BV_JOB_DATA(dataType) static_cast<dataType*>(pData)
 
 	struct JobSystemDesc
 	{
@@ -59,10 +46,8 @@ namespace JS
 	BV_API void Initialize(const JobSystemDesc& jobSystemDesc = JobSystemDesc());
 	BV_API void Shutdown();
 
-	BV_API void RunJob(const Job& job);
-	BV_API void RunJobs(u32 count, const Job* const pJobs);
-	BV_API void WaitForCounter(Counter* pCounter);
-	BV_API Counter* AllocCounter();
-	BV_API void FreeJobCounter();
-	BV_API bool IsJobCounterDone();
+	BV_API void RunJob(const Job& job, JobCounter*& pCounter);
+	BV_API void RunJobs(u32 count, const Job* pJobs, JobCounter*& pCounter);
+	BV_API void WaitForCounter(JobCounter* pCounter);
+	BV_API void WaitForCounterAndFree(JobCounter*& pCounter);
 };

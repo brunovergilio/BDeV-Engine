@@ -31,6 +31,50 @@ void BvMutex::Unlock()
 }
 
 
+constexpr u32 kDefaultSpinCount = 100;
+
+
+BvAdaptiveMutex::BvAdaptiveMutex()
+	: m_SpinCount(kDefaultSpinCount)
+{
+}
+
+
+BvAdaptiveMutex::~BvAdaptiveMutex()
+{
+}
+
+
+void BvAdaptiveMutex::Lock()
+{
+	u32 currSpinCount{};
+	u32 lastSpinCount = m_SpinCount.load(std::memory_order::acquire);
+	u32 maxSpinCount = lastSpinCount << 1;
+	while (!m_Lock.try_lock())
+	{
+		if (currSpinCount++ > maxSpinCount)
+		{
+			m_Lock.lock();
+			break;
+		}
+	}
+
+	m_SpinCount.store((lastSpinCount + currSpinCount) >> 1, std::memory_order::release);
+}
+
+
+bool BvAdaptiveMutex::TryLock()
+{
+	return m_Lock.try_lock();
+}
+
+
+void BvAdaptiveMutex::Unlock()
+{
+	m_Lock.unlock();
+}
+
+
 BvSpinlock::BvSpinlock()
 {
 }
