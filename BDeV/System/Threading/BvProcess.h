@@ -10,7 +10,8 @@ struct BvSystemInfo
 {
 	u32 m_NumCores;
 	u32 m_NumLogicalProcessors;
-	u32 m_MemPageSize;
+	u32 m_PageSize;
+	u32 m_LargePageSize;
 };
 
 

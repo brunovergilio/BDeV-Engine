@@ -50,7 +50,13 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 
 		SYSTEM_INFO osInfo;
 		::GetSystemInfo(&osInfo);
-		systemInfo.m_MemPageSize = osInfo.dwPageSize;
+		systemInfo.m_PageSize = osInfo.dwPageSize;
+		systemInfo.m_LargePageSize = osInfo.dwPageSize;
+
+		if (auto largePageSize = (u32)GetLargePageMinimum())
+		{
+			systemInfo.m_LargePageSize = largePageSize;
+		}
 
 		return systemInfo;
 	}();

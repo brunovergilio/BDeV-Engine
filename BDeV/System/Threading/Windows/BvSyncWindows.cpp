@@ -96,7 +96,7 @@ void BvSpinlock::Lock()
 
 		while (m_Lock.load(std::memory_order::memory_order_relaxed))
 		{
-			YieldProcessorExecution();
+			BvProcess::YieldExecution();
 		}
 	}
 }

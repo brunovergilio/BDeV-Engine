@@ -67,9 +67,9 @@ void BvTBJobSystemWorker::AddJobList(BvTBJobList* pJobList)
 {
 	{
 		BvScopedLock<BvSpinlock> lock(m_Lock);
-		auto lastJobIndex = m_LastJobIndex.load();
+		auto lastJobIndex = m_LastJobIndex.load(std::memory_order::relaxed);
 		m_JobLists[lastJobIndex] = pJobList;
-		m_LastJobIndex = (lastJobIndex + 1u) % (u32)m_JobLists.Size();
+		m_LastJobIndex.store((lastJobIndex + 1u) % (u32)m_JobLists.Size(), std::memory_order::relaxed);
 	}
 	
 	// If m_pJobSystem is not nullptr, then this is a worker thread
@@ -98,7 +98,7 @@ void BvTBJobSystemWorker::Stop()
 
 void BvTBJobSystemWorker::Process()
 {
-	u32 lastJobIndex = m_LastJobIndex.load();
+	u32 lastJobIndex = m_LastJobIndex.load(std::memory_order::relaxed);
 	u32 jobListIndex = 0;
 	// Keep track of the last job list that this worker failed processing
 	u32 lastSkippedJobListIndex = kU32Max;
@@ -303,7 +303,7 @@ void BvTBJobSystem::Initialize(const JobSystemDesc desc)
 	auto numWorkerThreads = 0;
 	auto numThreadsPerCore = 1;
 
-	const auto& sysInfo = GetSystemInfo();
+	const auto& sysInfo = BvProcess::GetSystemInfo();
 	BvAssert(desc.m_NumThreads <= sysInfo.m_NumLogicalProcessors, "Not enough logical processors for the worker threads");
 
 	switch (desc.m_Parallelism)

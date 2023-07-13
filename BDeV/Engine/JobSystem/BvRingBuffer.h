@@ -5,7 +5,7 @@
 #include "BDeV/Container/BvVector.h"
 
 
-template<typename Type, size_t Size>
+template<typename Type, u32 SIZE>
 class BvRingBuffer
 {
 public:
@@ -48,11 +48,11 @@ public:
 private:
 	u32 GetNextIndex(u32 currIndex)
 	{
-		return (currIndex + 1) % (u32)m_Queue.Size();
+		return (currIndex + 1u) % SIZE;
 	}
 
 private:
-	Type m_Queue[Size];
+	Type m_Queue[SIZE];
 	std::atomic<u32> m_LastIndex{};
 	std::atomic<u32> m_CurrIndex{};
 	BvAdaptiveMutex m_PushLock;

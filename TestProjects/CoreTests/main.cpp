@@ -150,16 +150,16 @@ int main()
 	desc.m_NumWorkerThreads = 1;
 	JS::Initialize(desc);
 
-	constexpr auto jobCount = 129;
-	JS::Job jobs[jobCount]{};
+	constexpr auto kJobCount = 129;
+	JS::Job jobs[kJobCount]{};
 	srand(time(nullptr));
-	for (auto i = 0; i < jobCount; i++)
+	for (auto i = 0; i < kJobCount; i++)
 	{
-		jobs[i].m_pFunction = DoSleep;
-		jobs[i].m_pData = (void*)i;
+		jobs[i].m_Job.Set(DoSleep, (void*)i);
 	}
 
-	JS::RunJobs(jobCount, jobs);
+	JS::Counter* pCounter = nullptr;
+	JS::RunJobs(kJobCount, jobs, pCounter);
 
 	getchar();
 

@@ -181,7 +181,7 @@ inline constexpr bool IsPodV = std::is_trivial_v<Type> && std::is_standard_layou
 constexpr size_t kCacheLineSize = std::hardware_destructive_interference_size;
 
 constexpr size_t kPointerSize = sizeof(void*);
-constexpr size_t kDefaultAlignmentSize = kPointerSize;
+constexpr size_t kDefaultAlignmentSize = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 constexpr size_t kMinAllocationSize = kPointerSize;
 
 

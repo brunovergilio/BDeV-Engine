@@ -25,7 +25,7 @@ namespace JS
 	};
 	constexpr auto k = sizeof Job;
 
-	class JobCounter;
+	class Counter;
 
 #define BV_JOB_FUNCTION(jobName) void jobName(void* pData)
 #define BV_JOB_DATA(dataType) static_cast<dataType*>(pData)
@@ -46,8 +46,8 @@ namespace JS
 	BV_API void Initialize(const JobSystemDesc& jobSystemDesc = JobSystemDesc());
 	BV_API void Shutdown();
 
-	BV_API void RunJob(const Job& job, JobCounter*& pCounter);
-	BV_API void RunJobs(u32 count, const Job* pJobs, JobCounter*& pCounter);
-	BV_API void WaitForCounter(JobCounter* pCounter);
-	BV_API void WaitForCounterAndFree(JobCounter*& pCounter);
+	BV_API void RunJob(const Job& job, Counter*& pCounter);
+	BV_API void RunJobs(u32 count, const Job* pJobs, Counter*& pCounter);
+	BV_API void WaitForCounter(Counter* pCounter);
+	BV_API void FreeCounter(Counter*& pCounter);
 };

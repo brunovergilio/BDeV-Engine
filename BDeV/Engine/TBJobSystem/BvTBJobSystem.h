@@ -125,7 +125,7 @@ public:
 	{
 		while (!IsDone())
 		{
-			YieldProcessorExecution();
+			BvProcess::YieldExecution();
 		}
 	}
 
