@@ -134,9 +134,9 @@ struct Func : public BvDelegateBase
 
 BV_JOB_FUNCTION(DoSleep)
 {
-	auto id = BV_JOB_DATA(u32);
+	auto id = *BV_JOB_DATA(u32);
 	auto ms = rand() % 30;
-	printf("Job #%u in Thread #%llu sleeping for %u ms\n", id, BvThread::GetCurrentThread().GetId(), ms);
+	printf("Job #%u in Thread #%llu sleeping for %d ms\n", id, BvThread::GetCurrentThread().GetId(), ms);
 	BvThread::Sleep(ms);
 }
 

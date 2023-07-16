@@ -64,6 +64,7 @@ namespace JS
 		BvThread m_Thread;
 		BvSignal m_WorkerSignal;
 		struct FiberData* m_pFiberData = nullptr;
+		Counter* m_pMainThreadWaitCounter = nullptr;
 	};
 
 	struct FiberData
@@ -98,7 +99,7 @@ namespace JS
 	};
 
 
-	JobPool g_JobPool[3];
+	JobPool g_JobPools[3];
 	Counter g_CounterPool[kCounterPoolCount];
 
 
@@ -125,8 +126,8 @@ namespace JS
 		void FiberFunction(u32 fiberIndex);
 
 	private:
-		BvVector<Counter> m_CounterPool;
-		BvVector<JobPool> m_JobPools;
+		//BvVector<Counter> m_CounterPool;
+		//BvVector<JobPool> m_JobPools;
 		BvVector<ThreadData> m_WorkerThreads;
 		BvVector<FiberData> m_FiberPool;
 		std::atomic<bool> m_Active{};
@@ -162,9 +163,6 @@ namespace JS
 					
 					// Set processor affinity
 					BvThread::GetCurrentThread().SetAffinity(i - 1);
-
-					// Convert to fiber
-					BvThread::ConvertToFiber();
 
 					// Work
 					WorkerThreadFunction(i);
@@ -223,7 +221,7 @@ namespace JS
 		for (u32 i = 0; i < count; ++i)
 		{
 			auto jobPoolIndex = 2 - (u32)(*pJobs).m_Priority;
-			auto& jobPool = m_JobPools[jobPoolIndex];
+			auto& jobPool = g_JobPools[jobPoolIndex];
 			JobData jobData{ pJobs[i], pCounter };
 			jobPool.m_Jobs.Push(jobData);
 		}
@@ -245,20 +243,29 @@ namespace JS
 		}
 
 		auto workerThreadIndex = GetWorkerThreadIndex();
-		if (workerThreadIndex > 0)
+		if (workerThreadIndex >= 0)
 		{
-			// Worker thread
+			// Worker / Main thread
 			auto pWorkerThread = &m_WorkerThreads[workerThreadIndex];
 			auto pFiberData = pWorkerThread->m_pFiberData;
-			pFiberData->m_pWaitCounter = pCounter;
-			// Switch back to the worker thread fiber
-			pFiberData->m_Fiber.Switch(pWorkerThread->m_Thread.GetThreadFiber());
-		}
-		else if (workerThreadIndex == 0)
-		{
-			// Main thread
-			auto pWorkerThread = &m_WorkerThreads[workerThreadIndex];
-			WorkerThreadFunction(workerThreadIndex);
+
+			// If we have a fiber, that means we're at that fiber's stack currently,
+			// so we switch back. The case we may not have a fiber is if we're in
+			// the thread that created the job system and issue a wait call, so
+			// in that case we just call the worker function.
+			if (pFiberData)
+			{
+				pFiberData->m_pWaitCounter = pCounter;
+				// Switch back to the worker thread fiber
+				pFiberData->m_Fiber.Switch(BvThread::GetCurrentThread().GetThreadFiber());
+			}
+			else
+			{
+				pWorkerThread->m_pMainThreadWaitCounter = pCounter;
+				WorkerThreadFunction(workerThreadIndex);
+				pWorkerThread->m_pMainThreadWaitCounter = nullptr;
+				pWorkerThread->m_pFiberData = nullptr;
+			}
 		}
 		else
 		{
@@ -296,6 +303,9 @@ namespace JS
 	{
 		auto& worker = m_WorkerThreads[workerThreadIndex];
 
+		// Convert to fiber
+		BvThread::ConvertToFiber();
+
 		while (m_Active.load())
 		{
 			if (workerThreadIndex > 0)
@@ -330,12 +340,9 @@ namespace JS
 					}
 				}
 
-				if (workerThreadIndex == 0)
+				if (workerThreadIndex == 0 && worker.m_pMainThreadWaitCounter->IsDone())
 				{
-					if (worker.m_pFiberData->m_pWaitCounter->IsDone())
-					{
-						return;
-					}
+					return;
 				}
 			} while (pFiberData != nullptr);
 		}
@@ -347,7 +354,7 @@ namespace JS
 		JobData* pJobData = nullptr;
 		for (auto poolIndex = 0; poolIndex < 3; ++poolIndex)
 		{
-			if (g_JobPool[poolIndex].m_Jobs.Pop(pJobData))
+			if (g_JobPools[poolIndex].m_Jobs.Pop(pJobData))
 			{
 				// If we found a job in the pool, then we look for a fiber to assign it to
 				// TODO: Think of a better way to deal with this when there're no available fibers
@@ -375,7 +382,7 @@ namespace JS
 				// If we couldn't get a job from the pool, check the wait list
 				for (auto suspendedFiberIndex = 0u; suspendedFiberIndex < kSuspendedJobCountPerPool; ++suspendedFiberIndex)
 				{
-					auto& suspendedJob = g_JobPool[poolIndex].m_SuspendedJobs[suspendedFiberIndex];
+					auto& suspendedJob = g_JobPools[poolIndex].m_SuspendedJobs[suspendedFiberIndex];
 					if (suspendedJob.m_Lock.TryLock())
 					{
 						auto pFiberData = suspendedJob.m_pFiberData;
@@ -404,7 +411,7 @@ namespace JS
 		auto poolIndex = 2 - (u32)pFiberData->m_pJobData->m_Job.m_Priority;
 		for (auto i = 0; i < kSuspendedJobCountPerPool; i++)
 		{
-			auto& suspendedJob = g_JobPool[poolIndex].m_SuspendedJobs[i];
+			auto& suspendedJob = g_JobPools[poolIndex].m_SuspendedJobs[i];
 			if (suspendedJob.m_Lock.TryLock())
 			{
 				if (!suspendedJob.m_pFiberData)

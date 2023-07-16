@@ -4,8 +4,11 @@
 #include <Windows.h>
 
 
-// Forward declaration
-static void __stdcall FiberEntryPoint(void* pData);
+void __stdcall FiberEntryPoint(void* pData)
+{
+	BvDelegateBase* pDelegate = reinterpret_cast<BvDelegateBase*>(pData);
+	pDelegate->Invoke();
+}
 
 
 BvFiber::BvFiber()
@@ -39,8 +42,8 @@ BvFiber::~BvFiber()
 
 void BvFiber::Switch(const BvFiber & fiber) const
 {
-	BvAssert(m_pFiber != nullptr, "Fiber is nullptr");
-	SwitchToFiber(m_pFiber);
+	BvAssert(fiber.m_pFiber != nullptr, "Fiber is nullptr");
+	SwitchToFiber(fiber.m_pFiber);
 }
 
 
@@ -78,11 +81,4 @@ void BvFiber::Destroy()
 		DeleteFiber(m_pFiber);
 		delete m_pDelegate;
 	}
-}
-
-
-static void __stdcall FiberEntryPoint(void* pData)
-{
-	BvDelegateBase* pDelegate = reinterpret_cast<BvDelegateBase*>(pData);
-	pDelegate->Invoke();
 }
