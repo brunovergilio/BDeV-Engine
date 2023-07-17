@@ -4,7 +4,7 @@
 #include "BDeV/System/Memory/BvMemoryCommon.h"
 
 
-class BV_API BvNoMemoryMarker
+class BvNoMemoryMarker
 {
 	BV_NOCOPYMOVE(BvNoMemoryMarker);
 public:
@@ -16,7 +16,7 @@ public:
 };
 
 
-class BV_API BvMemoryMarker
+class BvMemoryMarker
 {
 	BV_NOCOPYMOVE(BvMemoryMarker);
 public:

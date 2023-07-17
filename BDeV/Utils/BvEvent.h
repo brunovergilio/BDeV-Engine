@@ -6,7 +6,7 @@
 
 
 template<class... Args>
-class BV_API BvEvent
+class BvEvent
 {
 public:
 	BvEvent()

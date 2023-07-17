@@ -284,4 +284,4 @@ enum class BvMouseButton : u8
 BV_USE_ENUM_CLASS_OPERATORS(BvMouseButton);
 
 
-BV_API const char* const GetKeyName(BvKey key);
+const char* const GetKeyName(BvKey key);

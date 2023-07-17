@@ -13,8 +13,8 @@ __pragma(warning(suppress:4100))
 #endif
 
 
-BV_API u64 FNV1a64(const void* const pBytes, const size_t size);
-BV_API u64 MurmurHash64A(const void* const pBytes, size_t size, u64 seed = 0);
+u64 FNV1a64(const void* const pBytes, const size_t size);
+u64 MurmurHash64A(const void* const pBytes, size_t size, u64 seed = 0);
 
 
 // https://github.com/HowardHinnant/hash_append/issues/7

@@ -7,7 +7,7 @@
 
 // Managed pointer for the IBvObject interface, heavily based of Microsoft's ComPtr class
 template<typename T>
-class BV_API BvPtr
+class BvPtr
 {
 public:
 	BvPtr() noexcept

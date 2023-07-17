@@ -6,7 +6,7 @@
 #include "BDeV/Container/BvRobinMap.h"
 
 
-struct BV_API TrackingInfo
+struct TrackingInfo
 {
 	size_t m_Size;
 	size_t m_Alignment;
@@ -15,7 +15,7 @@ struct BV_API TrackingInfo
 };
 
 
-class BV_API BvNoMemoryTracker
+class BvNoMemoryTracker
 {
 	BV_NOCOPYMOVE(BvNoMemoryTracker);
 public:
@@ -30,7 +30,7 @@ public:
 };
 
 
-class BV_API BvSimpleMemoryTracker
+class BvSimpleMemoryTracker
 {
 	BV_NOCOPYMOVE(BvSimpleMemoryTracker);
 public:
@@ -48,7 +48,7 @@ private:
 };
 
 
-class BV_API BvExtendedMemoryTracker
+class BvExtendedMemoryTracker
 {
 	BV_NOCOPYMOVE(BvExtendedMemoryTracker);
 public:
@@ -72,7 +72,7 @@ private:
 };
 
 
-class BV_API BvFullMemoryTracker
+class BvFullMemoryTracker
 {
 	BV_NOCOPYMOVE(BvFullMemoryTracker);
 public:

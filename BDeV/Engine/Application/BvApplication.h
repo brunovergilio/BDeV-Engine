@@ -6,7 +6,7 @@
 #include <atomic>
 
 
-class BV_API BvApplication
+class BvApplication
 {
 	BV_NOCOPYMOVE(BvApplication);
 

@@ -11,7 +11,7 @@
 #endif
 
 
-class BV_API BvKeyboard final
+class BvKeyboard final
 {
 	BV_NOCOPYMOVE(BvKeyboard);
 
@@ -49,5 +49,5 @@ public:
 
 namespace Input
 {
-	BV_API BvKeyboard* GetKeyboard();
+	BvKeyboard* GetKeyboard();
 }

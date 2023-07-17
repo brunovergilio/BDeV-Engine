@@ -33,5 +33,5 @@ private:
 
 namespace Input
 {
-	BV_API BvInput* GetInput();
+	BvInput* GetInput();
 }

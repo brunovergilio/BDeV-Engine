@@ -3,6 +3,18 @@
 #include <Windows.h>
 
 
+void* BvHeapMemory::Alloc(size_t size, size_t alignment)
+{
+	return _aligned_malloc(size, alignment);
+}
+
+
+void BvHeapMemory::Free(void* pMem)
+{
+	_aligned_free(pMem);
+}
+
+
 void* BvVirtualMemory::Reserve(size_t size)
 {
 	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS);
@@ -25,9 +37,9 @@ void BvVirtualMemory::Commit(void* pAddress, size_t size)
 }
 
 
-void* BvVirtualMemory::ReserveAndCommit(size_t size)
+void* BvVirtualMemory::ReserveAndCommit(size_t size, bool largePage)
 {
-	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT | (largePage ? MEM_LARGE_PAGES : 0), PAGE_READWRITE);
 	if (!pMem)
 	{
 		BV_OS_ERROR();

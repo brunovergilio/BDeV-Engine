@@ -10,7 +10,7 @@
 #endif
 
 
-class BV_API BvPlatform
+class BvPlatform
 {
 	BV_NOCOPYMOVE(BvPlatform);
 

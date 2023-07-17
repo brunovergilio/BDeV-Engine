@@ -4,7 +4,7 @@
 #include "BDeV/System/Memory/BvMemoryCommon.h"
 
 
-class BV_API BvLinearAllocator
+class BvLinearAllocator
 {
 	BV_NOCOPYMOVE(BvLinearAllocator);
 public:

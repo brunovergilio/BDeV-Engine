@@ -4,7 +4,7 @@
 #include "BDeV/Utils/BvUtils.h"
 
 
-class BV_API BvSharedLib
+class BvSharedLib
 {
 	BV_NOCOPY(BvSharedLib);
 

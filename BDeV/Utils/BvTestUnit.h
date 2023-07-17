@@ -23,7 +23,7 @@ namespace Internal
 		BvVector<Test> m_Tests;
 	};
 
-	class BV_API TestUnitSystem
+	class TestUnitSystem
 	{
 	public:
 		TestUnitSystem() {}

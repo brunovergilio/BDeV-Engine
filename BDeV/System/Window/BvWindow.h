@@ -10,7 +10,7 @@
 #endif
 
 
-class BV_API BvWindow final
+class BvWindow final
 {
 public:
 	static constexpr const char* const s_DefaultWindowName = "BDeV Window";

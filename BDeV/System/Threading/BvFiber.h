@@ -7,7 +7,7 @@
 
 using FiberFunction = void(*)(void*);
 
-class BV_API BvFiber
+class BvFiber
 {
 	BV_NOCOPY(BvFiber);
 

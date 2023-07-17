@@ -8,7 +8,7 @@
 class BvFiber;
 
 
-class BV_API BvThread
+class BvThread
 {
 	BV_NOCOPY(BvThread);
 

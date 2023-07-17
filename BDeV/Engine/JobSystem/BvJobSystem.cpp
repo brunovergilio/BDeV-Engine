@@ -164,6 +164,9 @@ namespace JS
 					// Set processor affinity
 					BvThread::GetCurrentThread().SetAffinity(i - 1);
 
+					// Convert to fiber
+					BvThread::ConvertToFiber();
+
 					// Work
 					WorkerThreadFunction(i);
 
@@ -197,12 +200,12 @@ namespace JS
 	void BvJobSystem::Shutdown()
 	{
 		m_Active.store(false);
-		for (auto& workerThread : m_WorkerThreads)
+		for (auto i = 1u; i < m_WorkerThreads.Size(); i++)
 		{
 			// Notify worker threads
-			workerThread.m_WorkerSignal.Set();
+			m_WorkerThreads[i].m_WorkerSignal.Set();
 			// Wait for worker threads to finish
-			workerThread.m_Thread.Wait();
+			m_WorkerThreads[i].m_Thread.Wait();
 		}
 		m_WorkerThreads.Clear();
 		m_FiberPool.Clear();
@@ -302,9 +305,6 @@ namespace JS
 	void BvJobSystem::WorkerThreadFunction(u32 workerThreadIndex)
 	{
 		auto& worker = m_WorkerThreads[workerThreadIndex];
-
-		// Convert to fiber
-		BvThread::ConvertToFiber();
 
 		while (m_Active.load())
 		{
@@ -479,7 +479,7 @@ namespace JS
 	}
 
 
-	void WaitForCounter(Counter*& pCounter)
+	void WaitForCounter(Counter* pCounter)
 	{
 		s_JobSystem.WaitForCounter(pCounter);
 	}

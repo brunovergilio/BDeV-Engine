@@ -11,7 +11,7 @@
 #endif
 
 
-class BV_API BvMouse final
+class BvMouse final
 {
 	BV_NOCOPYMOVE(BvMouse);
 
@@ -47,5 +47,5 @@ private:
 
 namespace Input
 {
-	BV_API BvMouse* GetMouse();
+	BvMouse* GetMouse();
 }

@@ -25,24 +25,24 @@ char stack3[1024];
 char stack4[100];
 
 
-BV_INIT_TEST_UNIT_SYSTEM();
-
-BV_TEST_UNIT(abc)
-{
-	BV_TEST(1 == 3);
-	BV_TEST(2 == 2);
-	BV_TEST(0.0f == 0.0f);
-	BV_TEST(true == 1);
-}
-
-
-BV_TEST_UNIT(def)
-{
-	BV_TEST(1 == 3);
-	BV_TEST(2 == 2);
-	BV_TEST(0.0f == 0.0f);
-	BV_TEST(true == 1);
-}
+//BV_INIT_TEST_UNIT_SYSTEM();
+//
+//BV_TEST_UNIT(abc)
+//{
+//	BV_TEST(1 == 3);
+//	BV_TEST(2 == 2);
+//	BV_TEST(0.0f == 0.0f);
+//	BV_TEST(true == 1);
+//}
+//
+//
+//BV_TEST_UNIT(def)
+//{
+//	BV_TEST(1 == 3);
+//	BV_TEST(2 == 2);
+//	BV_TEST(0.0f == 0.0f);
+//	BV_TEST(true == 1);
+//}
 
 
 struct WE
@@ -134,15 +134,40 @@ struct Func : public BvDelegateBase
 
 BV_JOB_FUNCTION(DoSleep)
 {
-	auto id = *BV_JOB_DATA(u32);
+	auto id = (u32)BV_JOB_DATA;
 	auto ms = rand() % 30;
 	printf("Job #%u in Thread #%llu sleeping for %d ms\n", id, BvThread::GetCurrentThread().GetId(), ms);
 	BvThread::Sleep(ms);
 }
 
 
+struct alignas(64) MyStruct
+{
+	char c[64];
+};
+
 int main()
 {
+	MyStruct* my = new MyStruct();
+	i32* uu = new i32();
+	MyStruct* mcy = new MyStruct[10];
+	i32* uuc = new i32[10];
+
+	delete my;
+	delete uu;
+	delete mcy;
+	delete uuc;
+
+	MyStruct* mya = new (std::nothrow) MyStruct();
+	i32* uua = new (std::nothrow) i32();
+	MyStruct* amcy = new (std::nothrow) MyStruct[10];
+	i32* auuc = new (std::nothrow) i32[10];
+
+	delete mya;
+	delete uua;
+	delete amcy;
+	delete auuc;
+
 	BvTaskT<24> f;
 	f.Set([](int c, int b) {}, 2, 4);
 
@@ -160,6 +185,7 @@ int main()
 
 	JS::Counter* pCounter = nullptr;
 	JS::RunJobs(kJobCount, jobs, pCounter);
+	JS::WaitForCounter(pCounter);
 
 	getchar();
 

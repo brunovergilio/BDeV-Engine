@@ -6,7 +6,7 @@
 #include "BDeV/System/File/BvPath.h"
 
 
-class BV_API BvFileSystem
+class BvFileSystem
 {
 public:
 	static bool FileExists(const char* pFileName);

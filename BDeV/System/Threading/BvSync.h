@@ -6,7 +6,7 @@
 #include <atomic>
 
 
-class BV_API BvMutex
+class BvMutex
 {
 	BV_NOCOPY(BvMutex);
 
@@ -23,7 +23,7 @@ private:
 };
 
 
-class BV_API BvAdaptiveMutex
+class BvAdaptiveMutex
 {
 	BV_NOCOPY(BvAdaptiveMutex);
 
@@ -41,7 +41,7 @@ private:
 };
 
 
-class BV_API BvSpinlock
+class BvSpinlock
 {
 	BV_NOCOPYMOVE(BvSpinlock);
 
@@ -58,7 +58,7 @@ private:
 };
 
 
-class BV_API BvNoLock
+class BvNoLock
 {
 	BV_NOCOPY(BvNoLock);
 
@@ -76,7 +76,7 @@ public:
 
 
 template<class LockType>
-class BV_API BvScopedLock
+class BvScopedLock
 {
 	BV_NOCOPYMOVE(BvScopedLock);
 
@@ -91,7 +91,7 @@ private:
 };
 
 
-class BV_API BvSignal
+class BvSignal
 {
 	BV_NOCOPY(BvSignal);
 

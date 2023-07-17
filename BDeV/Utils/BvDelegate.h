@@ -4,7 +4,7 @@
 #include <tuple>
 
 
-class BV_API BvDelegateBase
+class BvDelegateBase
 {
 public:
 	virtual ~BvDelegateBase() {}
@@ -93,7 +93,7 @@ public:
 	void Run() const
 	{
 		BvAssert(IsSet(), "Job doesn't have an entry point");
-		m_pDelegate->Invoke();
+		reinterpret_cast<const BvDelegateBase*>(m_Data)->Invoke();
 	}
 
 	template<typename Fn, typename... Args,
@@ -109,11 +109,13 @@ public:
 	bool IsSet() const
 	{
 		return m_pDelegate != nullptr;
+		//return *reinterpret_cast<const u64*>(m_Data) != 0;
 	}
 
 	void Reset()
 	{
 		m_pDelegate = nullptr;
+		//*reinterpret_cast<u64*>(m_Data) = 0;
 	}
 
 private:

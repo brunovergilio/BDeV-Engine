@@ -29,7 +29,7 @@ public:
 		return false;
 	}
 
-	bool Pop(Type* pValue)
+	bool Pop(Type*& pValue)
 	{
 		auto lastIndex = m_LastIndex.load();
 		BvScopedLock lock(m_PopLock);

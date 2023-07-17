@@ -22,12 +22,20 @@ private:
 };
 
 
+class BvHeapMemory
+{
+public:
+	static void* Alloc(size_t size, size_t alignment = kDefaultAlignmentSize);
+	static void Free(void* pMem);
+};
+
+
 class BvVirtualMemory
 {
 public:
 	static void* Reserve(size_t size);
 	static void Commit(void* pAddress, size_t size);
-	static void* ReserveAndCommit(size_t size);
+	static void* ReserveAndCommit(size_t size, bool largePage = false);
 	static void Decommit(void* pAddress, size_t size);
 	static void Release(void* pAddress);
 };

@@ -283,7 +283,7 @@ struct ComputePipelineStateDesc
 };
 
 
-class BV_API BvGraphicsPipelineState
+class BvGraphicsPipelineState
 {
 	BV_NOCOPYMOVE(BvGraphicsPipelineState);
 
@@ -300,7 +300,7 @@ protected:
 };
 
 
-class BV_API BvComputePipelineState
+class BvComputePipelineState
 {
 	BV_NOCOPYMOVE(BvComputePipelineState);
 

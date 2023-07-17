@@ -8,7 +8,7 @@
 #include "BDeV/System/File/BvAsyncFile.h"
 
 
-class BV_API BvPath
+class BvPath
 {
 public:
 	BvPath();

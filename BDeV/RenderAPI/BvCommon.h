@@ -436,7 +436,7 @@ struct ResourceBarrierDesc
 
 
 // Interface that serves as a base class for the render components
-class BV_API IBvRenderObject
+class IBvRenderObject
 {
 	BV_NOCOPYMOVE(IBvRenderObject);
 

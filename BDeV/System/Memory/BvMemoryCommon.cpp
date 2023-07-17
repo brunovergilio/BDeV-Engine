@@ -69,3 +69,65 @@ IBvMemoryAllocator* GetDefaultAllocator()
 {
 	return g_pCurrentDefaultAllocator;
 }
+
+
+void* operator new  (std::size_t count)
+{
+	return BvMAlloc(count);
+}
+
+void* operator new[](std::size_t count)
+{
+	return BvMAlloc(count);
+}
+
+void* operator new  (std::size_t count, std::align_val_t al)
+{
+	return BvMAlloc(count, (size_t)al);
+}
+
+void* operator new[](std::size_t count, std::align_val_t al)
+{
+	return BvMAlloc(count, (size_t)al);
+}
+
+void* operator new  (std::size_t count, const std::nothrow_t& tag) noexcept
+{
+	return BvMAlloc(count);
+}
+
+void* operator new[](std::size_t count, const std::nothrow_t& tag) noexcept
+{
+	return BvMAlloc(count);
+}
+
+void* operator new  (std::size_t count, std::align_val_t al, const std::nothrow_t&) noexcept
+{
+	return BvMAlloc(count, (size_t)al);
+}
+
+void* operator new[](std::size_t count, std::align_val_t al, const std::nothrow_t&) noexcept
+{
+	return BvMAlloc(count, (size_t)al);
+}
+
+
+void operator delete  (void* ptr) noexcept
+{
+	BvFree(ptr);
+}
+
+void operator delete[](void* ptr) noexcept
+{
+	BvFree(ptr);
+}
+
+void operator delete  (void* ptr, std::align_val_t al) noexcept
+{
+	BvFree(ptr);
+}
+
+void operator delete[](void* ptr, std::align_val_t al) noexcept
+{
+	BvFree(ptr);
+}

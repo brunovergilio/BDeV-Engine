@@ -30,7 +30,7 @@ struct BvStackTrace
 };
 
 
-class BV_API BvProcess final
+class BvProcess final
 {
 public:
 	static const BvSystemInfo& GetSystemInfo();

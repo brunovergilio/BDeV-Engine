@@ -10,7 +10,7 @@
 struct AsyncFileData;
 
 
-class BV_API AsyncFileRequest
+class AsyncFileRequest
 {
 public:
 	friend class BvAsyncFile;
@@ -30,7 +30,7 @@ private:
 };
 
 
-class BV_API BvAsyncFile
+class BvAsyncFile
 {
 public:
 	friend class BvFileSystem;

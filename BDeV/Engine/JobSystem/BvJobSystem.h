@@ -28,7 +28,7 @@ namespace JS
 	class Counter;
 
 #define BV_JOB_FUNCTION(jobName) void jobName(void* pData)
-#define BV_JOB_DATA(dataType) static_cast<dataType*>(pData)
+#define BV_JOB_DATA pData
 
 	struct JobSystemDesc
 	{
@@ -43,11 +43,11 @@ namespace JS
 		u32 m_FiberPoolSize = kDefaultFiberPoolSize;
 	};
 
-	BV_API void Initialize(const JobSystemDesc& jobSystemDesc = JobSystemDesc());
-	BV_API void Shutdown();
+	void Initialize(const JobSystemDesc& jobSystemDesc = JobSystemDesc());
+	void Shutdown();
 
-	BV_API void RunJob(const Job& job, Counter*& pCounter);
-	BV_API void RunJobs(u32 count, const Job* pJobs, Counter*& pCounter);
-	BV_API void WaitForCounter(Counter* pCounter);
-	BV_API void FreeCounter(Counter*& pCounter);
+	void RunJob(const Job& job, Counter*& pCounter);
+	void RunJobs(u32 count, const Job* pJobs, Counter*& pCounter);
+	void WaitForCounter(Counter* pCounter);
+	void FreeCounter(Counter*& pCounter);
 };

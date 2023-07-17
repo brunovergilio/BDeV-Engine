@@ -5,7 +5,7 @@
 #include "BDeV/Container/BvVector.h"
 
 
-class BV_API BvNoBoundsChecker
+class BvNoBoundsChecker
 {
 public:
 	BvNoBoundsChecker() {}
@@ -22,7 +22,7 @@ public:
 };
 
 
-class BV_API BvSimpleBoundsChecker
+class BvSimpleBoundsChecker
 {
 public:
 	BvSimpleBoundsChecker();
@@ -39,7 +39,7 @@ public:
 };
 
 
-class BV_API BvExtendedBoundsChecker
+class BvExtendedBoundsChecker
 {
 public:
 	BvExtendedBoundsChecker();

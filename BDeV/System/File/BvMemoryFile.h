@@ -4,7 +4,7 @@
 #include "BDeV/Utils/BvUtils.h"
 
 
-class BV_API BvMemoryFile
+class BvMemoryFile
 {
 public:
 	BvMemoryFile();

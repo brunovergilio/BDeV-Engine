@@ -16,9 +16,9 @@ union MemType
 };
 
 
-BV_API void* BvAlignMemory(void* pAddress, size_t alignment);
-BV_API void* BvMAlloc(size_t size, size_t alignment = kDefaultAlignmentSize, size_t alignmentOffset = 0);
-BV_API void BvFree(void* pAddress);
+void* BvAlignMemory(void* pAddress, size_t alignment);
+void* BvMAlloc(size_t size, size_t alignment = kDefaultAlignmentSize, size_t alignmentOffset = 0);
+void BvFree(void* pAddress);
 
 
 namespace Internal
@@ -88,7 +88,7 @@ namespace Internal
 }
 
 
-class BV_API IBvMemoryAllocator
+class IBvMemoryAllocator
 {
 public:
 	virtual ~IBvMemoryAllocator() {}
@@ -99,7 +99,7 @@ public:
 
 template<typename AllocatorType, typename LockType, typename BoundsCheckingType,
 	typename MemoryMarkingType, typename MemoryTrackingType>
-class BV_API BvMemoryAllocator final : public IBvMemoryAllocator
+class BvMemoryAllocator final : public IBvMemoryAllocator
 {
 public:
 	BvMemoryAllocator() {}
@@ -167,9 +167,26 @@ private:
 };
 
 
-BV_API void SetDefaultAllocator(IBvMemoryAllocator* defaultAllocator);
-BV_API IBvMemoryAllocator* GetDefaultAllocator();
+void SetDefaultAllocator(IBvMemoryAllocator* defaultAllocator);
+IBvMemoryAllocator* GetDefaultAllocator();
 
+
+// Replaceable allocation functions
+void* operator new  (std::size_t count);
+void* operator new[](std::size_t count);
+void* operator new  (std::size_t count, std::align_val_t al);
+void* operator new[](std::size_t count, std::align_val_t al);
+
+// Replaceable non-throwing allocation functions
+void* operator new  (std::size_t count, const std::nothrow_t& tag) noexcept;
+void* operator new[](std::size_t count, const std::nothrow_t& tag) noexcept;
+void* operator new  (std::size_t count, std::align_val_t al, const std::nothrow_t&) noexcept;
+void* operator new[](std::size_t count,	std::align_val_t al, const std::nothrow_t&) noexcept;
+
+void operator delete  (void* ptr) noexcept;
+void operator delete[](void* ptr) noexcept;
+void operator delete  (void* ptr, std::align_val_t al) noexcept;
+void operator delete[](void* ptr, std::align_val_t al) noexcept;
 
 #define BvNew(Type) BvNewA(Type, GetDefaultAllocator())
 #define BvNewArray(Type, count) BvNewArrayA(Type, count, GetDefaultAllocator())

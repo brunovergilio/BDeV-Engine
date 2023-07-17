@@ -9,7 +9,7 @@
 #endif
 
 
-struct BV_API VideoMode
+struct VideoMode
 {
 	u32 m_BitsPerPixel = 0;
 	u32 m_Width = 0;
@@ -18,7 +18,7 @@ struct BV_API VideoMode
 };
 
 
-class BV_API BvMonitor
+class BvMonitor
 {
 	BV_NOCOPYMOVE(BvMonitor);
 
@@ -65,5 +65,5 @@ protected:
 };
 
 
-BV_API const BvVector<BvMonitor*>& GetMonitors();
-BV_API BvMonitor* GetMonitorFromPoint(i32 x, i32 y);
+const BvVector<BvMonitor*>& GetMonitors();
+BvMonitor* GetMonitorFromPoint(i32 x, i32 y);

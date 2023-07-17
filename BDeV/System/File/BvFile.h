@@ -5,7 +5,7 @@
 #include "BDeV/System/File/BvFileCommon.h"
 
 
-class BV_API BvFile
+class BvFile
 {
 public:
 	friend class BvFileSystem;

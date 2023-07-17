@@ -37,19 +37,19 @@ enum ConsoleColor : u16
 // PrintF functions
 
 // Default white text and black background printf
-BV_API i32 PrintF(const char* pFormat, ...);
+i32 PrintF(const char* pFormat, ...);
 // Custom color text and black background printf
-BV_API i32 PrintF(ConsoleColor textColor, const char* pFormat, ...);
+i32 PrintF(ConsoleColor textColor, const char* pFormat, ...);
 // Custom color text and custom background printf
-BV_API i32 PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFormat, ...);
+i32 PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFormat, ...);
 // Same as printf but to the debug window (if one exists)
-BV_API i32 DPrintF(const char* pFormat, ...);
+i32 DPrintF(const char* pFormat, ...);
 // ================
 
-BV_API void RaiseError(const char* pMessage, const char* pTitle = "BDeV Error");
-BV_API u32 GetOSErrorCode();
-BV_API const char* GetOSErrorMessage();
-BV_API void DbgBreak();
+void RaiseError(const char* pMessage, const char* pTitle = "BDeV Error");
+u32 GetOSErrorCode();
+const char* GetOSErrorMessage();
+void DbgBreak();
 
 
 #if BV_DEBUG

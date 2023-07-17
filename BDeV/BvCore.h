@@ -34,26 +34,6 @@
 
 	// Compiler-dependent stuff
 	#if BV_COMPILER == BV_COMPILER_MSVC
-		#if defined(BV_STATIC_LIB)
-			#define BV_API
-		#else
-			#if defined (BV_DLL_EXPORT)
-				#define BV_API __declspec(dllexport)
-			#else
-				#define BV_API __declspec(dllimport)
-			#endif
-		#endif
-
-		#if defined(BV_STATIC_LIB)
-			#define BV_PLUGIN_API
-		#else
-			#if defined (BV_PLUGIN_DLL_EXPORT)
-				#define BV_PLUGIN_API __declspec(dllexport)
-			#else
-				#define BV_PLUGIN_API __declspec(dllimport)
-			#endif
-		#endif
-
 		#define BV_FUNCTION __FUNCTION__
 		#define BV_FILE __FILE__
 		#define BV_LINE __LINE__
@@ -80,26 +60,6 @@
 		#pragma warning(disable:4996) // function or variable unsafe
 	
 	#else
-		#if defined(BV_STATIC_LIB)
-			#define BV_API
-		#else
-			#if defined (BV_DLL_EXPORT)
-				#define BV_API __attribute__ (dllexport)
-			#else
-				#define BV_API __attribute__ (dllimport)
-			#endif
-		#endif
-
-		#if defined(BV_STATIC_LIB)
-			#define BV_PLUGIN_API
-		#else
-			#if defined (BV_PLUGIN_DLL_EXPORT)
-				#define BV_PLUGIN_API __attribute__ (dllexport)
-			#else
-				#define BV_PLUGIN_API __attribute__ (dllimport)
-			#endif
-		#endif
-
 		#define BV_FUNCTION __func__
 		#define BV_FILE __FILE__
 		#define BV_LINE __LINE__
