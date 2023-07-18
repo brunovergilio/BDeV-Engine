@@ -17,6 +17,7 @@
 #include "BDeV/System/Debug/BvDebug.h"
 #include "BDeV/Utils/BvTestUnit.h"
 #include "BDeV/System/Memory/BvMemory.h"
+#include "BDeV/Engine/MemorySystem/BvMemorySystem.h"
 
 
 char stack[1024];
@@ -146,27 +147,28 @@ struct alignas(64) MyStruct
 	char c[64];
 };
 
+
 int main()
 {
-	MyStruct* my = new MyStruct();
 	i32* uu = new i32();
-	MyStruct* mcy = new MyStruct[10];
+	MyStruct* my = new MyStruct();
 	i32* uuc = new i32[10];
+	MyStruct* mcy = new MyStruct[10];
 
-	delete my;
 	delete uu;
-	delete mcy;
-	delete uuc;
+	delete my;
+	delete[] uuc;
+	delete[] mcy;
 
-	MyStruct* mya = new (std::nothrow) MyStruct();
 	i32* uua = new (std::nothrow) i32();
-	MyStruct* amcy = new (std::nothrow) MyStruct[10];
+	MyStruct* mya = new (std::nothrow) MyStruct();
 	i32* auuc = new (std::nothrow) i32[10];
+	MyStruct* amcy = new (std::nothrow) MyStruct[10];
 
-	delete mya;
 	delete uua;
-	delete amcy;
-	delete auuc;
+	delete mya;
+	delete[] auuc;
+	delete[] amcy;
 
 	BvTaskT<24> f;
 	f.Set([](int c, int b) {}, 2, 4);

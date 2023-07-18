@@ -16,6 +16,4 @@ public:
 	void Free(void* ptr);
 
 	size_t GetAllocationSize(void* pMem);
-
-private:
 };

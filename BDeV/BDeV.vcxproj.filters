@@ -84,6 +84,7 @@
     <ClInclude Include="System\Window\BvWindowCommon.h" />
     <ClInclude Include="Container\BvRobinSet.h" />
     <ClInclude Include="Engine\JobSystem\BvRingBuffer.h" />
+    <ClInclude Include="Engine\MemorySystem\BvMemorySystem.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -126,6 +127,7 @@
     <ClCompile Include="Utils\BvHash.cpp" />
     <ClCompile Include="Container\BvStringId.cpp" />
     <ClCompile Include="System\Memory\BvMemoryCommon.cpp" />
+    <ClCompile Include="Engine\MemorySystem\BvMemorySystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Math\Math\FPU\BvFastMat_FPU.inl" />

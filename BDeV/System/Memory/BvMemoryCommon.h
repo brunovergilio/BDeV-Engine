@@ -49,7 +49,7 @@ namespace Internal
 		Type* pMem = reinterpret_cast<Type*>(mem.pAsVoidPtr);
 
 		// Only call the ctor if needed
-		if constexpr (!std::is_trivially_constructible_v<Type>)
+		if constexpr (!IsPodV<Type>)
 		{
 			// Construct every element
 			for (auto i = 0u; i < count; i++)
@@ -70,7 +70,7 @@ namespace Internal
 		mem.pAsUIntPtr--;
 
 		// Only call the dtor if needed
-		if constexpr (!std::is_trivially_destructible_v<Type>)
+		if constexpr (!IsPodV<Type>)
 		{
 			u32 count = *mem.pAsUIntPtr;
 			// Call the dtors in reverse order
@@ -107,12 +107,13 @@ public:
 		: m_Allocator(pStart, pEnd) {}
 	~BvMemoryAllocator() {}
 
-	void* Allocate(size_t size, size_t alignment, size_t alignmentOffset, const BvSourceInfo& sourceInfo) override
+	void* Allocate(size_t size, size_t alignment, const BvSourceInfo& sourceInfo) override
 	{
 		m_Lock.Lock();
 
-		size += BoundsCheckingType::kBackGuardSize;
-		MemType mem{ m_Allocator.Allocate(size, alignment, alignmentOffset + BoundsCheckingType::kFrontGuardSize) };
+		size_t originalSize = size;
+		size_t newSize = size + BoundsCheckingType::kFrontGuardSize + BoundsCheckingType::kBackGuardSize;
+		MemType mem{ m_Allocator.Allocate(newSize, alignment, alignmentOffset + BoundsCheckingType::kFrontGuardSize) };
 
 		// We start counting from the aligned address, so the real size will be different
 		const size_t usedSize = m_Allocator.GetAllocationSize(mem.pAsVoidPtr);
@@ -124,11 +125,9 @@ public:
 
 		m_MemoryTracking.OnAllocation(mem.pAsVoidPtr, size, alignment, sourceInfo);
 
-		mem.pAsCharPtr += BoundsCheckingType::kFrontGuardSize;
-
 		m_Lock.Unlock();
 
-		return mem.pAsVoidPtr;
+		return mem.pAsCharPtr + BoundsCheckingType::kFrontGuardSize;
 	}
 
 	void Free(void* pMem, const BvSourceInfo& sourceInfo) override
@@ -171,30 +170,23 @@ void SetDefaultAllocator(IBvMemoryAllocator* defaultAllocator);
 IBvMemoryAllocator* GetDefaultAllocator();
 
 
-// Replaceable allocation functions
 void* operator new  (std::size_t count);
 void* operator new[](std::size_t count);
 void* operator new  (std::size_t count, std::align_val_t al);
 void* operator new[](std::size_t count, std::align_val_t al);
 
-// Replaceable non-throwing allocation functions
-void* operator new  (std::size_t count, const std::nothrow_t& tag) noexcept;
-void* operator new[](std::size_t count, const std::nothrow_t& tag) noexcept;
-void* operator new  (std::size_t count, std::align_val_t al, const std::nothrow_t&) noexcept;
-void* operator new[](std::size_t count,	std::align_val_t al, const std::nothrow_t&) noexcept;
+void operator delete  (void* ptr);
+void operator delete[](void* ptr);
+void operator delete  (void* ptr, std::align_val_t al);
+void operator delete[](void* ptr, std::align_val_t al);
 
-void operator delete  (void* ptr) noexcept;
-void operator delete[](void* ptr) noexcept;
-void operator delete  (void* ptr, std::align_val_t al) noexcept;
-void operator delete[](void* ptr, std::align_val_t al) noexcept;
-
-#define BvNew(Type) BvNewA(Type, GetDefaultAllocator())
-#define BvNewArray(Type, count) BvNewArrayA(Type, count, GetDefaultAllocator())
-#define BvDelete(pObj) BvDeleteA(pObj, GetDefaultAllocator())
-#define BvDeleteArray(pObjs) BvDeleteArrayA(pObjs, GetDefaultAllocator())
+#define BV_NEW(Type) BvNewA(Type, GetDefaultAllocator())
+#define BV_NEW(Type, count) BvNewArrayA(Type, count, GetDefaultAllocator())
+#define BV_DELETE(pObj) BvDeleteA(pObj, GetDefaultAllocator())
+#define BV_DELETE_ARRAY(pObjs) BvDeleteArrayA(pObjs, GetDefaultAllocator())
 
 
-#define BvNewA(Type, allocator) new ((allocator).Allocate(sizeof(Type), alignof(Type), 0, { BV_FUNCTION, BV_FILE, BV_LINE })) Type
-#define BvNewArrayA(Type, count, allocator) Internal::NewArray<Type>(count, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
-#define BvDeleteA(pObj, allocator) Internal::Delete(pObj, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
-#define BvDeleteArrayA(pObjs, allocator) Internal::DeleteArray(pObjs, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
+#define BV_NEWA(Type, allocator) new ((allocator).Allocate(sizeof(Type), alignof(Type), 0, { BV_FUNCTION, BV_FILE, BV_LINE })) Type
+#define BV_NEWA(Type, count, allocator) Internal::NewArray<Type>(count, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
+#define BV_DELETEA(pObj, allocator) Internal::Delete(pObj, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
+#define BV_DELETE_ARRAYA(pObjs, allocator) Internal::DeleteArray(pObjs, allocator, BV_FUNCTION, BV_FILE, BV_LINE)

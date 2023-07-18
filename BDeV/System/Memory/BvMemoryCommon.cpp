@@ -18,9 +18,6 @@ void* BvAlignMemory(void* pAddress, size_t alignment)
 
 void* BvMAlloc(size_t size, size_t alignment, size_t alignmentOffset)
 {
-	// We adjust the alignment to the minimum required (if needed)
-	alignment = std::max(alignment, kDefaultAlignmentSize);
-
 	// Allocate memory using malloc - the total size will be the requested size, plus
 	// the alignment and alignment offset, and we also add another kPointerSize bytes
 	// in order to store the pointer back to the original address when freeing it
@@ -91,43 +88,22 @@ void* operator new[](std::size_t count, std::align_val_t al)
 	return BvMAlloc(count, (size_t)al);
 }
 
-void* operator new  (std::size_t count, const std::nothrow_t& tag) noexcept
-{
-	return BvMAlloc(count);
-}
-
-void* operator new[](std::size_t count, const std::nothrow_t& tag) noexcept
-{
-	return BvMAlloc(count);
-}
-
-void* operator new  (std::size_t count, std::align_val_t al, const std::nothrow_t&) noexcept
-{
-	return BvMAlloc(count, (size_t)al);
-}
-
-void* operator new[](std::size_t count, std::align_val_t al, const std::nothrow_t&) noexcept
-{
-	return BvMAlloc(count, (size_t)al);
-}
-
-
-void operator delete  (void* ptr) noexcept
+void operator delete  (void* ptr)
 {
 	BvFree(ptr);
 }
 
-void operator delete[](void* ptr) noexcept
+void operator delete[](void* ptr)
 {
 	BvFree(ptr);
 }
 
-void operator delete  (void* ptr, std::align_val_t al) noexcept
+void operator delete  (void* ptr, std::align_val_t al)
 {
 	BvFree(ptr);
 }
 
-void operator delete[](void* ptr, std::align_val_t al) noexcept
+void operator delete[](void* ptr, std::align_val_t al)
 {
 	BvFree(ptr);
 }
