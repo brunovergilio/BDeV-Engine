@@ -3,19 +3,19 @@
 #include <Windows.h>
 
 
-void* BvHeapMemoryArea::Alloc(size_t size, size_t alignment)
+void* BvHeapMemory::Alloc(size_t size, size_t alignment)
 {
 	return _aligned_malloc(size, alignment);
 }
 
 
-void BvHeapMemoryArea::Free(void* pMem)
+void BvHeapMemory::Free(void* pMem)
 {
 	_aligned_free(pMem);
 }
 
 
-void* BvVirtualMemoryArea::Reserve(size_t size)
+void* BvVirtualMemory::Reserve(size_t size)
 {
 	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS);
 	if (!pMem)
@@ -27,7 +27,7 @@ void* BvVirtualMemoryArea::Reserve(size_t size)
 }
 
 
-void BvVirtualMemoryArea::Commit(void* pAddress, size_t size)
+void BvVirtualMemory::Commit(void* pAddress, size_t size)
 {
 	auto pMem = VirtualAlloc(pAddress, size, MEM_COMMIT, PAGE_READWRITE);
 	if (!pMem)
@@ -37,7 +37,7 @@ void BvVirtualMemoryArea::Commit(void* pAddress, size_t size)
 }
 
 
-void* BvVirtualMemoryArea::ReserveAndCommit(size_t size, bool useLargePage)
+void* BvVirtualMemory::ReserveAndCommit(size_t size, bool useLargePage)
 {
 	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT | (useLargePage ? MEM_LARGE_PAGES : 0), PAGE_READWRITE);
 	if (!pMem)
@@ -49,7 +49,7 @@ void* BvVirtualMemoryArea::ReserveAndCommit(size_t size, bool useLargePage)
 }
 
 
-void BvVirtualMemoryArea::Decommit(void* pAddress, size_t size)
+void BvVirtualMemory::Decommit(void* pAddress, size_t size)
 {
 #pragma warning(push)
 #pragma warning(disable:6250)
@@ -65,7 +65,7 @@ void BvVirtualMemoryArea::Decommit(void* pAddress, size_t size)
 }
 
 
-void BvVirtualMemoryArea::Release(void* pAddress)
+void BvVirtualMemory::Release(void* pAddress)
 {
 	auto result = VirtualFree(pAddress, 0, MEM_RELEASE);
 	if (!result)

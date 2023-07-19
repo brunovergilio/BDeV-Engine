@@ -15,11 +15,10 @@ BvLinearAllocator::~BvLinearAllocator()
 
 void* BvLinearAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	// The total size will be => [allocation + alignment + alignmentOffset + kPointerSize]
+	// The total size will be => [allocation + alignment + kPointerSize]
 	// The extra 2 kPointerSize bytes will store the address to the next element and
 	// the original memory address, so it can have its size calculated
-	alignment = std::max(alignment, kDefaultAlignmentSize);
-	size += alignment + alignmentOffset + (kPointerSize << 1);
+	size += alignment + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds
 	if (m_pCurrent + size >= m_pEnd)
@@ -77,7 +76,7 @@ void BvLinearAllocator::Debug()
 	{
 		MemType next{ reinterpret_cast<void*>(*mem.pAsSizeTPtr) };
 		auto size = next.asSizeT - mem.asSizeT;
-		printf("(0x%p) Block Size: %llu\n", mem.pAsVoidPtr, size);
+		PrintF("(0x%p) Block Size: %llu\n", mem.pAsVoidPtr, size);
 		mem.pAsCharPtr += size;
 	}
 }

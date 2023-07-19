@@ -71,7 +71,7 @@ void RaiseError(const char* pMessage, const char* pTitle)
 	}
 	if (result == IDRETRY)
 	{
-		__debugbreak();
+		DbgBreak();
 		return;
 	}
 	if (result == IDIGNORE)

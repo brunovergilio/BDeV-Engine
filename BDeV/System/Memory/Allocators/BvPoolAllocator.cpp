@@ -59,7 +59,7 @@ void BvPoolAllocator::Debug()
 	auto pWalker = (void**)m_pHead;
 	while (pWalker)
 	{
-		printf("(0x%p) Block Size: Fixed\n", pWalker);
+		PrintF("(0x%p) Block Size: Fixed\n", pWalker);
 		pWalker = (void**)*pWalker;
 	}
 }

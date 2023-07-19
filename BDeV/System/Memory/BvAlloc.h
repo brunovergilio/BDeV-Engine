@@ -5,16 +5,35 @@
 #include "BDeV/Utils/BvUtils.h"
 
 
+class BvHeapMemory final
+{
+public:
+	static void* Alloc(size_t size, size_t alignment = kDefaultAlignmentSize);
+	static void Free(void* pMem);
+};
+
+
+class BvVirtualMemory final
+{
+public:
+	static void* Reserve(size_t size);
+	static void Commit(void* pAddress, size_t size);
+	static void* ReserveAndCommit(size_t size, bool useLargePage = false);
+	static void Decommit(void* pAddress, size_t size);
+	static void Release(void* pAddress);
+};
+
+
 template<size_t N>
 class BvStackMemoryArea final
 {
 	BV_NOCOPYMOVE(BvStackMemoryArea);
-	
+
 public:
 	BvStackMemoryArea() {}
 	~BvStackMemoryArea() {}
 
-	operator char*() { return m_Data; }
+	operator char* () { return m_Data; }
 	size_t GetSize() const { return N; }
 
 private:
@@ -27,8 +46,11 @@ class BvHeapMemoryArea final
 	BV_NOCOPYMOVE(BvHeapMemoryArea);
 
 public:
-	static void* Alloc(size_t size, size_t alignment = kDefaultAlignmentSize);
-	static void Free(void* pMem);
+	BvHeapMemoryArea();
+	~BvHeapMemoryArea();
+
+	void* Alloc(size_t size, size_t alignment = kDefaultAlignmentSize);
+	void Free(void* pMem);
 };
 
 
@@ -37,17 +59,10 @@ class BvVirtualMemoryArea final
 	BV_NOCOPYMOVE(BvVirtualMemoryArea);
 
 public:
-	BvVirtualMemoryArea();
+	BvVirtualMemoryArea(size_t reservePageCount, size_t initialPageCommitCount = 0, bool useLargePage = false);
 	~BvVirtualMemoryArea();
 
-	static void* Reserve(size_t size);
-	static void Commit(void* pAddress, size_t size);
-	static void* ReserveAndCommit(size_t size, bool useLargePage = false);
-	static void Decommit(void* pAddress, size_t size);
-	static void Release(void* pAddress);
-
-	void* ReservePages(size_t pageCount);
-	void CommitPage(size_t pageIndex);
+	void* AllocatePage();
 	void* ReserveAndCommitPages(size_t pageCount, bool useLargePage = false);
 	void DecommitPage(size_t pageIndex);
 

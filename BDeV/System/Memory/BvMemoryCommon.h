@@ -24,7 +24,7 @@ void BvFree(void* pAddress);
 namespace Internal
 {
 	template<typename Type, class Allocator>
-	void Delete(Type* pObj, Allocator& allocator, const char* const pFunction, const char* const pFile, const u32 line)
+	void Delete(Type* pObj, Allocator& allocator, const BvSourceInfo& sourceInfo)
 	{
 		// Only call the dtor if needed
 		if constexpr (!std::is_trivially_destructible_v<Type>)
@@ -32,14 +32,12 @@ namespace Internal
 			pObj->~Type();
 		}
 
-		BvSourceInfo sourceInfo{ pFunction, pFile, line };
 		allocator.Free(pObj, sourceInfo);
 	}
 
 	template<typename Type, class Allocator>
-	Type* NewArray(size_t count, Allocator& allocator, const char* const pFunction, const char* const pFile, const u32 line)
+	Type* NewArray(size_t count, Allocator& allocator, const BvSourceInfo& sourceInfo)
 	{
-		BvSourceInfo sourceInfo{ pFunction, pFile, line };
 		MemType mem{ allocator.Allocate(count * sizeof(Type), alignof(Type), sizeof(u32), sourceInfo) };
 
 		// Store the count right before the first element
@@ -64,7 +62,7 @@ namespace Internal
 	}
 
 	template<typename Type, class Allocator>
-	void DeleteArray(Type* pObjs, Allocator& allocator, const char* const pFunction, const char* const pFile, const u32 line)
+	void DeleteArray(Type* pObjs, Allocator& allocator, const BvSourceInfo& sourceInfo)
 	{
 		MemType mem{ pObjs };
 		mem.pAsUIntPtr--;
@@ -82,7 +80,6 @@ namespace Internal
 			pObjs[i]->~Type();
 		}
 
-		BvSourceInfo sourceInfo{ pFunction, pFile, line };
 		allocator.Free(mem.pAsVoidPtr, sourceInfo);
 	}
 }
@@ -111,9 +108,8 @@ public:
 	{
 		m_Lock.Lock();
 
-		size_t originalSize = size;
 		size_t newSize = size + BoundsCheckingType::kFrontGuardSize + BoundsCheckingType::kBackGuardSize;
-		MemType mem{ m_Allocator.Allocate(newSize, alignment, alignmentOffset + BoundsCheckingType::kFrontGuardSize) };
+		MemType mem{ m_Allocator.Allocate(newSize, alignment, BoundsCheckingType::kFrontGuardSize) };
 
 		// We start counting from the aligned address, so the real size will be different
 		const size_t usedSize = m_Allocator.GetAllocationSize(mem.pAsVoidPtr);
@@ -166,10 +162,6 @@ private:
 };
 
 
-void SetDefaultAllocator(IBvMemoryAllocator* defaultAllocator);
-IBvMemoryAllocator* GetDefaultAllocator();
-
-
 void* operator new  (std::size_t count);
 void* operator new[](std::size_t count);
 void* operator new  (std::size_t count, std::align_val_t al);
@@ -180,13 +172,8 @@ void operator delete[](void* ptr);
 void operator delete  (void* ptr, std::align_val_t al);
 void operator delete[](void* ptr, std::align_val_t al);
 
-#define BV_NEW(Type) BvNewA(Type, GetDefaultAllocator())
-#define BV_NEW(Type, count) BvNewArrayA(Type, count, GetDefaultAllocator())
-#define BV_DELETE(pObj) BvDeleteA(pObj, GetDefaultAllocator())
-#define BV_DELETE_ARRAY(pObjs) BvDeleteArrayA(pObjs, GetDefaultAllocator())
 
-
-#define BV_NEWA(Type, allocator) new ((allocator).Allocate(sizeof(Type), alignof(Type), 0, { BV_FUNCTION, BV_FILE, BV_LINE })) Type
-#define BV_NEWA(Type, count, allocator) Internal::NewArray<Type>(count, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
-#define BV_DELETEA(pObj, allocator) Internal::Delete(pObj, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
-#define BV_DELETE_ARRAYA(pObjs, allocator) Internal::DeleteArray(pObjs, allocator, BV_FUNCTION, BV_FILE, BV_LINE)
+#define BV_NEW(Type, allocator) new ((allocator).Allocate(sizeof(Type), alignof(Type), 0, { BV_FUNCTION, BV_FILE, BV_LINE })) Type
+#define BV_NEW(Type, count, allocator) Internal::NewArray<Type>(count, allocator, { BV_FUNCTION, BV_FILE, BV_LINE })
+#define BV_DELETE(pObj, allocator) Internal::Delete(pObj, allocator, { BV_FUNCTION, BV_FILE, BV_LINE })
+#define BV_DELETE_ARRAY(pObjs, allocator) Internal::DeleteArray(pObjs, allocator, { BV_FUNCTION, BV_FILE, BV_LINE })

@@ -21,7 +21,7 @@ void* BvMAlloc(size_t size, size_t alignment, size_t alignmentOffset)
 	// Allocate memory using malloc - the total size will be the requested size, plus
 	// the alignment and alignment offset, and we also add another kPointerSize bytes
 	// in order to store the pointer back to the original address when freeing it
-	MemType mem{ malloc(size + alignment + alignmentOffset + kPointerSize) };
+	MemType mem{ malloc(size + alignment + kPointerSize) };
 
 	// We align the memory with the added offset and kPointerSize
 	MemType alignedMem{ BvAlignMemory(mem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
@@ -51,24 +51,7 @@ void BvFree(void* pAddress)
 }
 
 
-BvMemoryAllocator<BvDefaultAllocator, BvNoLock, BvNoBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker> g_DefaultAllocator;
-std::atomic<IBvMemoryAllocator*> g_pCurrentDefaultAllocator = &g_DefaultAllocator;
-
-
-void SetDefaultAllocator(IBvMemoryAllocator* defaultAllocator)
-{
-	BvAssert(defaultAllocator != nullptr, "Default allocator can't be nullptr.");
-	g_pCurrentDefaultAllocator = defaultAllocator;
-}
-
-
-IBvMemoryAllocator* GetDefaultAllocator()
-{
-	return g_pCurrentDefaultAllocator;
-}
-
-
-void* operator new  (std::size_t count)
+void* operator new(std::size_t count)
 {
 	return BvMAlloc(count);
 }
@@ -78,7 +61,7 @@ void* operator new[](std::size_t count)
 	return BvMAlloc(count);
 }
 
-void* operator new  (std::size_t count, std::align_val_t al)
+void* operator new(std::size_t count, std::align_val_t al)
 {
 	return BvMAlloc(count, (size_t)al);
 }
@@ -88,7 +71,7 @@ void* operator new[](std::size_t count, std::align_val_t al)
 	return BvMAlloc(count, (size_t)al);
 }
 
-void operator delete  (void* ptr)
+void operator delete(void* ptr)
 {
 	BvFree(ptr);
 }
@@ -98,7 +81,7 @@ void operator delete[](void* ptr)
 	BvFree(ptr);
 }
 
-void operator delete  (void* ptr, std::align_val_t al)
+void operator delete(void* ptr, std::align_val_t al)
 {
 	BvFree(ptr);
 }

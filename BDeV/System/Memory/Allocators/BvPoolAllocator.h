@@ -11,7 +11,7 @@ public:
 	BvPoolAllocator(void* pStart, void* pEnd, size_t elementSize, size_t alignment);
 	~BvPoolAllocator();
 
-	// The parameters are provided so the class can be used as a template
+	// The parameters are provided so the class can be used as a template parameter
 	void* Allocate(size_t size = 0, size_t alignment = 0, size_t alignmentOffset = 0);
 	void Free(void* pPtr);
 

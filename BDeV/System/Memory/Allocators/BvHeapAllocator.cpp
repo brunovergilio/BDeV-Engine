@@ -34,8 +34,7 @@ BvHeapAllocator::~BvHeapAllocator()
 
 void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	alignment = std::max(alignment, kDefaultAlignmentSize);
-	size += alignment + alignmentOffset + kPointerSize;
+	size += alignment + kPointerSize;
 	
 	size_t blockSize = 0;
 	bool blockInUse = true;
@@ -167,9 +166,9 @@ void BvHeapAllocator::Debug()
 		GetBlockInfo(curr.pAsSizeTPtr, size, inUse);
 		if (curr.pAsCharPtr > m_pStart)
 		{
-			printf("Prev(0x%p) ", (void*)curr.pAsSizeTPtr[-1]);
+			PrintF("Prev(0x%p) ", (void*)curr.pAsSizeTPtr[-1]);
 		}
-		printf("(0x%p) Block Size: %llu - In use: %s\n", curr.pAsVoidPtr, size, inUse ? "Yes" : "No");
+		PrintF("(0x%p) Block Size: %llu - In use: %s\n", curr.pAsVoidPtr, size, inUse ? "Yes" : "No");
 		curr.asSizeT += size + kBlockInfoSize;
 	}
 }
