@@ -14,13 +14,13 @@ BvDefaultAllocator::~BvDefaultAllocator()
 
 void* BvDefaultAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset)
 {
-	return BvMAlloc(size, alignment, alignmentOffset);
+	return BvHeapMemory::Alloc(size, alignment, alignmentOffset);
 }
 
 
 void BvDefaultAllocator::Free(void* ptr)
 {
-	BvFree(ptr);
+	BvHeapMemory::Free(ptr);
 }
 
 

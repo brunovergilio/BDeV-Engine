@@ -8,8 +8,8 @@
 class BvHeapMemory final
 {
 public:
-	static void* Alloc(size_t size, size_t alignment = kDefaultAlignmentSize);
-	static void Free(void* pMem);
+	static void* Alloc(size_t size, size_t alignment = kDefaultAlignmentSize, size_t alignmentOffset = 0);
+	static void Free(void* pAddress);
 };
 
 

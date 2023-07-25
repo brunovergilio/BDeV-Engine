@@ -34,7 +34,7 @@ BvHeapAllocator::~BvHeapAllocator()
 
 void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	size += alignment + kPointerSize;
+	size += alignment + alignmentOffset + kPointerSize;
 	
 	size_t blockSize = 0;
 	bool blockInUse = true;
@@ -77,7 +77,7 @@ void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentO
 		mem.pAsCharPtr += kBlockHeaderSize;
 
 		// Align the pointer with the added offset
-		MemType alignedMem{ BvAlignMemory(mem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
+		MemType alignedMem{ AlignMemory(mem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
 		// Offset it back
 		alignedMem.pAsCharPtr -= alignmentOffset;
 		// Store the offset to the misaligned memory address

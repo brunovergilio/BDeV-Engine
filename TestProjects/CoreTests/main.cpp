@@ -150,25 +150,15 @@ struct alignas(64) MyStruct
 
 int main()
 {
-	i32* uu = new i32();
-	MyStruct* my = new MyStruct();
-	i32* uuc = new i32[10];
-	MyStruct* mcy = new MyStruct[10];
+	i32* uu = BV_NEW i32();
+	MyStruct* my = BV_NEW MyStruct();
+	i32* uuc = BV_NEW i32[10];
+	MyStruct* mcy = BV_NEW MyStruct[10];
 
-	delete uu;
-	delete my;
-	delete[] uuc;
-	delete[] mcy;
-
-	i32* uua = new (std::nothrow) i32();
-	MyStruct* mya = new (std::nothrow) MyStruct();
-	i32* auuc = new (std::nothrow) i32[10];
-	MyStruct* amcy = new (std::nothrow) MyStruct[10];
-
-	delete uua;
-	delete mya;
-	delete[] auuc;
-	delete[] amcy;
+	BV_DELETE   uu;
+	BV_DELETE   my;
+	BV_DELETE[] uuc;
+	BV_DELETE[] mcy;
 
 	BvTaskT<24> f;
 	f.Set([](int c, int b) {}, 2, 4);

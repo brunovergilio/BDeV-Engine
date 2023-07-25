@@ -2,7 +2,7 @@
 
 
 BvPoolAllocator::BvPoolAllocator(void* pStart, void* pEnd, size_t elementSize, size_t alignment)
-	: m_pHead(BvAlignMemory(pStart, alignment)), m_ElementSize(elementSize)
+	: m_pHead(AlignMemory(pStart, alignment)), m_ElementSize(elementSize)
 {
 	BvAssert(elementSize >= kPointerSize, "Element size must be at least the size of a pointer");
 

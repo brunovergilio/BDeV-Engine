@@ -4,89 +4,102 @@
 #include "BDeV/System/Memory/Utilities/BvMemoryMarker.h"
 #include "BDeV/System/Memory/Utilities/BvMemoryTracker.h"
 #include "BDeV/System/Threading/BvSync.h"
+#include "BDeV/System/Memory/BvAlloc.h"
 
 
-void* BvAlignMemory(void* pAddress, size_t alignment)
+BvMemoryAllocator<BvDefaultAllocator, BvNoLock, BvNoBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker> g_DefaultAllocator;
+IBvMemoryAllocator* GetDefaultAllocator()
 {
-	BvAssert(pAddress != nullptr, "Address has to be valid");
-	BvAssert((alignment & (alignment - 1)) == 0, "Alignment has to be a power of 2");
-
-	const size_t mask = alignment - 1;
-	return reinterpret_cast<void*>((reinterpret_cast<size_t>(pAddress) + mask) & (~mask));
-}
-
-
-void* BvMAlloc(size_t size, size_t alignment, size_t alignmentOffset)
-{
-	// Allocate memory using malloc - the total size will be the requested size, plus
-	// the alignment and alignment offset, and we also add another kPointerSize bytes
-	// in order to store the pointer back to the original address when freeing it
-	MemType mem{ malloc(size + alignment + kPointerSize) };
-
-	// We align the memory with the added offset and kPointerSize
-	MemType alignedMem{ BvAlignMemory(mem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
-
-	// We move back the offset bytes
-	alignedMem.pAsCharPtr -= alignmentOffset;
-	// And then we set the originally allocated memory address
-	alignedMem.pAsSizeTPtr[-1] = mem.asSizeT;
-
-	// return the memory containing the offset bytes
-	return alignedMem.pAsVoidPtr;
-}
-
-
-void BvFree(void* pAddress)
-{
-	if (pAddress)
-	{
-		// We take the returned address and move back size_t* bytes,
-		// since that's where we stored our original pointer
-		MemType mem{ pAddress };
-
-		// We free the address that was stored as a size_t value,
-		// so we need to cast it back to void*
-		free(reinterpret_cast<void*>(mem.pAsSizeTPtr[-1]));
-	}
+	return &g_DefaultAllocator;
 }
 
 
 void* operator new(std::size_t count)
 {
-	return BvMAlloc(count);
+	BvAssert(false, "This shouldn't be called! Use BV_NEW instead!");
+	return BvHeapMemory::Alloc(count);
 }
 
 void* operator new[](std::size_t count)
 {
-	return BvMAlloc(count);
+	BvAssert(false, "This shouldn't be called! Use BV_NEW instead!");
+	return BvHeapMemory::Alloc(count);
 }
 
 void* operator new(std::size_t count, std::align_val_t al)
 {
-	return BvMAlloc(count, (size_t)al);
+	BvAssert(false, "This shouldn't be called! Use BV_NEW instead!");
+	return BvHeapMemory::Alloc(count, (size_t)al);
 }
 
 void* operator new[](std::size_t count, std::align_val_t al)
 {
-	return BvMAlloc(count, (size_t)al);
+	BvAssert(false, "This shouldn't be called! Use BV_NEW instead!");
+	return BvHeapMemory::Alloc(count, (size_t)al);
 }
 
 void operator delete(void* ptr)
 {
-	BvFree(ptr);
+	BvHeapMemory::Free(ptr);
 }
 
 void operator delete[](void* ptr)
 {
-	BvFree(ptr);
+	BvHeapMemory::Free(ptr);
 }
 
 void operator delete(void* ptr, std::align_val_t al)
 {
-	BvFree(ptr);
+	BvHeapMemory::Free(ptr);
 }
 
 void operator delete[](void* ptr, std::align_val_t al)
 {
-	BvFree(ptr);
+	BvHeapMemory::Free(ptr);
+}
+
+
+// Custom
+void* operator new  (std::size_t count, const BvSourceInfo& sourceInfo)
+{
+	PrintF("Default allocation at %s() (%s), line %llu\n", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+	return BvHeapMemory::Alloc(count);
+}
+
+void* operator new[](std::size_t count, const BvSourceInfo& sourceInfo)
+{
+	PrintF("Default allocation at %s() (%s), line %llu\n", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+	return BvHeapMemory::Alloc(count);
+}
+
+void* operator new  (std::size_t count, std::align_val_t al, const BvSourceInfo& sourceInfo)
+{
+	PrintF("Default allocation at %s() (%s), line %llu\n", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+	return BvHeapMemory::Alloc(count, (size_t)al);
+}
+
+void* operator new[](std::size_t count, std::align_val_t al, const BvSourceInfo& sourceInfo)
+{
+	PrintF("Default allocation at %s() (%s), line %llu\n", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+	return BvHeapMemory::Alloc(count, (size_t)al);
+}
+
+void operator delete  (void* ptr, const BvSourceInfo& sourceInfo)
+{
+	BvHeapMemory::Free(ptr);
+}
+
+void operator delete[](void* ptr, const BvSourceInfo& sourceInfo)
+{
+	BvHeapMemory::Free(ptr);
+}
+
+void operator delete  (void* ptr, std::align_val_t al, const BvSourceInfo& sourceInfo)
+{
+	BvHeapMemory::Free(ptr);
+}
+
+void operator delete[](void* ptr, std::align_val_t al, const BvSourceInfo& sourceInfo)
+{
+	BvHeapMemory::Free(ptr);
 }

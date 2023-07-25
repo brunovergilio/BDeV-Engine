@@ -1,17 +1,41 @@
 #include "BDeV/System/Memory/BvAlloc.h"
 #include "BDeV/System/Debug/BvDebug.h"
+#include "BDeV/System/Memory/BvMemoryCommon.h"
 #include <Windows.h>
 
 
-void* BvHeapMemory::Alloc(size_t size, size_t alignment)
+void* BvHeapMemory::Alloc(size_t size, size_t alignment, size_t alignmentOffset)
 {
-	return _aligned_malloc(size, alignment);
+	// Allocate memory using malloc - the total size will be the requested size, plus
+	// the alignment and alignment offset, and we also add another kPointerSize bytes
+	// in order to store the pointer back to the original address when freeing it
+	MemType unalignedMem{ malloc(size + alignment + alignmentOffset + kPointerSize) };
+
+	// We align the memory with the added offset and kPointerSize
+	MemType alignedMemWithOffset{ AlignMemory(unalignedMem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
+
+	// We move back the offset bytes
+	alignedMemWithOffset.pAsCharPtr -= alignmentOffset;
+	// And then we set the originally allocated memory address
+	alignedMemWithOffset.pAsSizeTPtr[-1] = unalignedMem.asSizeT;
+
+	// return the memory containing the offset bytes
+	return alignedMemWithOffset.pAsVoidPtr;
 }
 
 
-void BvHeapMemory::Free(void* pMem)
+void BvHeapMemory::Free(void* pAddress)
 {
-	_aligned_free(pMem);
+	if (pAddress)
+	{
+		// We take the returned address and move back size_t* bytes,
+		// since that's where we stored our original pointer
+		MemType alignedMemWithOffset{ pAddress };
+
+		// We free the address that was stored as a size_t value,
+		// so we need to cast it back to void*
+		free(reinterpret_cast<void*>(alignedMemWithOffset.pAsSizeTPtr[-1]));
+	}
 }
 
 

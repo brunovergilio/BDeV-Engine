@@ -149,7 +149,7 @@ struct BvSourceInfo
 {
 	const char* m_pFunction;
 	const char* m_pFile;
-	size_t m_Line;
+	i32 m_Line;
 };
 
 

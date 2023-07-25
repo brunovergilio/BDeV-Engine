@@ -18,7 +18,7 @@ void* BvLinearAllocator::Allocate(size_t size, size_t alignment, size_t alignmen
 	// The total size will be => [allocation + alignment + kPointerSize]
 	// The extra 2 kPointerSize bytes will store the address to the next element and
 	// the original memory address, so it can have its size calculated
-	size += alignment + (kPointerSize << 1);
+	size += alignment + alignmentOffset + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds
 	if (m_pCurrent + size >= m_pEnd)
@@ -32,7 +32,7 @@ void* BvLinearAllocator::Allocate(size_t size, size_t alignment, size_t alignmen
 	*mem.pAsSizeTPtr = reinterpret_cast<size_t>(m_pCurrent + size);
 
 	// Align the pointer with the added offset
-	MemType alignedMem{ BvAlignMemory(mem.pAsCharPtr + alignmentOffset + (kPointerSize << 1), alignment) };
+	MemType alignedMem{ AlignMemory(mem.pAsCharPtr + alignmentOffset + (kPointerSize << 1), alignment) };
 	// Offset it back
 	alignedMem.pAsCharPtr -= alignmentOffset;
 	// Store the original memory address

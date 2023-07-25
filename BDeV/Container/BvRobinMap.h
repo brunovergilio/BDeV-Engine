@@ -250,7 +250,7 @@ inline void BvRobinMap<Key, Value, Hash, Comparer>::ResizeAndRehash(const size_t
 	auto oldCapacity = m_Capacity;
 	m_Capacity = size;
 
-	KeyValue* pNewData = reinterpret_cast<KeyValue *>(BvMAlloc((sizeof(KeyValue) + sizeof(size_t)) * m_Capacity, std::max(alignof(KeyValue), alignof(size_t))));
+	KeyValue* pNewData = reinterpret_cast<KeyValue *>(m_pAllocator->Allocate((sizeof(KeyValue) + sizeof(size_t)) * m_Capacity, std::max(alignof(KeyValue), alignof(size_t)), 0, BV_SOURCE_INFO));
 	size_t* pNewHashes = reinterpret_cast<size_t *>(reinterpret_cast<char*>(pNewData) + (sizeof(KeyValue) * m_Capacity));
 	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 
