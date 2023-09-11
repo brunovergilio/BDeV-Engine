@@ -22,7 +22,7 @@ namespace JS
 
 		bool Acquire()
 		{
-			return m_Acquired.load(std::memory_order::relaxed) == false && !m_Acquired.exchange(true);
+			return m_Acquired.load() == false && !m_Acquired.exchange(true);
 		}
 
 		void Release()
@@ -162,7 +162,7 @@ namespace JS
 					SetWorkerThreadIndex(i);
 					
 					// Set processor affinity
-					BvThread::GetCurrentThread().SetAffinity(i - 1);
+					BvThread::GetCurrentThread().SetAffinityMask(i - 1);
 
 					// Convert to fiber
 					BvThread::ConvertToFiber();

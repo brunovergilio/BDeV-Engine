@@ -5,6 +5,23 @@
 #include "BDeV/Utils/BvUtils.h"
 
 
+template<size_t N>
+class BvStackMemory final
+{
+	BV_NOCOPYMOVE(BvStackMemory);
+
+public:
+	BvStackMemory() {}
+	~BvStackMemory() {}
+
+	operator char* () { return m_Data; }
+	size_t GetSize() const { return N; }
+
+private:
+	char m_Data[N];
+};
+
+
 class BvHeapMemory final
 {
 public:
@@ -21,23 +38,6 @@ public:
 	static void* ReserveAndCommit(size_t size, bool useLargePage = false);
 	static void Decommit(void* pAddress, size_t size);
 	static void Release(void* pAddress);
-};
-
-
-template<size_t N>
-class BvStackMemoryArea final
-{
-	BV_NOCOPYMOVE(BvStackMemoryArea);
-
-public:
-	BvStackMemoryArea() {}
-	~BvStackMemoryArea() {}
-
-	operator char* () { return m_Data; }
-	size_t GetSize() const { return N; }
-
-private:
-	char m_Data[N];
 };
 
 

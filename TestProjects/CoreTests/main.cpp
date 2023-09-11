@@ -48,7 +48,7 @@ char stack4[100];
 
 struct WE
 {
-	BV_RTTI(WE);									
+	BV_RTTI(WE);
 	int f();
 	int ff() {}
 	int a = int(0);
@@ -124,9 +124,10 @@ struct Func : public BvDelegateBase
 	{
 	}
 
+	~Func() {}
+
 	void Invoke() const override
 	{
-		m_Lambda();
 	}
 
 	Lambda m_Lambda;

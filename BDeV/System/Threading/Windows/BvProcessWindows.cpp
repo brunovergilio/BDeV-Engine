@@ -4,6 +4,7 @@
 #include "BDeV/System/Debug/BvDebug.h"
 #include <Windows.h>
 #include <DbgHelp.h>
+#include <bit>
 
 
 const BvSystemInfo& BvProcess::GetSystemInfo()
@@ -42,7 +43,13 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 				systemInfo.m_NumCores++;
 
 				// A hyperthreaded core supplies more than one logical processor.
-				systemInfo.m_NumLogicalProcessors += __popcnt(pBuffer[i].ProcessorMask);
+				systemInfo.m_NumLogicalProcessors += std::popcount(pBuffer[i].ProcessorMask);
+			}
+			else if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationCache)
+			{
+				if (pBuffer->Cache.Level == 1) { systemInfo.m_L1CacheCount++; }
+				else if (pBuffer->Cache.Level == 2) { systemInfo.m_L2CacheCount++; }
+				else if (pBuffer->Cache.Level == 3) { systemInfo.m_L3CacheCount++; }
 			}
 		}
 

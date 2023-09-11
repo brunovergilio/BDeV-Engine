@@ -50,11 +50,20 @@ void BvThread::Wait()
 }
 
 
-void BvThread::SetAffinity(const u32 affinityMask) const
+void BvThread::SetAffinityMask(const u64 affinityMask) const
 {
 	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
 
-	SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(affinityMask));
+	SetThreadAffinityMask(m_hThread, static_cast<DWORD_PTR>(affinityMask));
+}
+
+
+void BvThread::LockToCore(u32 coreIndex) const
+{
+	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
+	BvAssert(coreIndex < 64, "This implementation supports only 64 cores");
+
+	SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(coreIndex));
 }
 
 
@@ -62,7 +71,7 @@ void BvThread::SetName(const char* pThreadName) const
 {
 	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
 
-	constexpr u32 kMaxThreadNameLength = 32;
+	constexpr u32 kMaxThreadNameLength = 64;
 	wchar_t threadName[kMaxThreadNameLength];
 	mbstate_t state{};
 	mbsrtowcs(threadName, &pThreadName, kMaxThreadNameLength - 1, &state);
@@ -72,6 +81,22 @@ void BvThread::SetName(const char* pThreadName) const
 	{
 		// TODO: Handle error
 	}
+}
+
+
+void BvThread::SetPriority(ThreadPriority priority) const
+{
+	constexpr i32 priorities[] =
+	{
+		THREAD_PRIORITY_NORMAL,
+		THREAD_PRIORITY_ABOVE_NORMAL,
+		THREAD_PRIORITY_HIGHEST,
+		THREAD_PRIORITY_TIME_CRITICAL,
+		THREAD_PRIORITY_BELOW_NORMAL,
+		THREAD_PRIORITY_LOWEST,
+	};
+
+	SetThreadPriority(m_hThread, priorities[(i32)priority]);
 }
 
 

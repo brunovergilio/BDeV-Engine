@@ -8,6 +8,17 @@
 class BvFiber;
 
 
+enum class ThreadPriority : u8
+{
+	kNormal,
+	kAboveNormal,
+	kHighest,
+	kTimeCritical,
+	kBelowNormal,
+	kLowest,
+};
+
+
 class BvThread
 {
 	BV_NOCOPY(BvThread);
@@ -32,8 +43,10 @@ public:
 	}
 
 	void Wait();
-	void SetAffinity(const u32 affinityMask) const;
+	void SetAffinityMask(const u64 affinityMask) const;
+	void LockToCore(u32 coreIndex) const;
 	void SetName(const char* pThreadName) const;
+	void SetPriority(ThreadPriority priority) const;
 
 	static void Sleep(const u32 miliseconds);
 	static void YieldExecution();

@@ -148,8 +148,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BvCore.h" />
+    <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
     <ClInclude Include="Engine\MemorySystem\BvMemorySystem.h" />
-    <ClInclude Include="BvObject.h" />
     <ClInclude Include="Container\BvFixedVector.h" />
     <ClInclude Include="Container\BvIterator.h" />
     <ClInclude Include="Container\BvQueue.h" />
@@ -236,6 +236,7 @@
     <Natvis Include="BvCore.natvis" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
     <ClCompile Include="Engine\MemorySystem\BvMemorySystem.cpp" />
     <ClCompile Include="Container\BvStringId.cpp" />
     <ClCompile Include="Engine\Application\BvApplication.cpp" />
