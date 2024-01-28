@@ -28,7 +28,7 @@ public:											  		\
 
 
 template<u32 N, class Type>
-constexpr u32 BvArraySize(Type(&)[N])
+constexpr u32 ArraySize(Type(&)[N])
 {
 	return N;
 }

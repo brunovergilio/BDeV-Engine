@@ -66,7 +66,7 @@ void BvPlatform::Shutdown()
 	{
 		for (auto pWindow : g_WindowsToDelete)
 		{
-			delete pWindow;
+			BvDelete(pWindow);
 		}
 		g_WindowsToDelete.Clear();
 	}
@@ -88,7 +88,7 @@ void BvPlatform::ProcessOSEvents()
 	{
 		for (auto pWindow : g_WindowsToDelete)
 		{
-			delete pWindow;
+			BvDelete(pWindow);
 		}
 		g_WindowsToDelete.Clear();
 	}
@@ -104,7 +104,7 @@ void BvPlatform::ProcessOSEvents()
 
 BvWindow* BvPlatform::CreateWindow(const WindowDesc& windowDesc)
 {
-	auto pWindowWindows = new BvWindow(windowDesc);
+	auto pWindowWindows = BvNew(BvWindow, windowDesc);
 	g_Windows.Emplace(pWindowWindows->GetHandle(), pWindowWindows);
 
 	return reinterpret_cast<BvWindow*>(pWindowWindows);

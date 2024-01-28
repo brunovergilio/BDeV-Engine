@@ -1,18 +1,21 @@
 #pragma once
 
 
-#define BV_MATH_TYPE_SIMD 1
-#define BV_MATH_TYPE_FPU 2
+#include "BDeV/BvCore.h"
 
 
-#if defined(_WIN32)
-#define BV_MATH_USE_TYPE BV_MATH_TYPE_SIMD
+#define BV_MATH_INSTRUCTION_SIMD 1
+#define BV_MATH_INSTRUCTION_FPU 2
+
+
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_SIMD
 #else
-#define BV_MATH_USE_TYPE BV_MATH_TYPE_FPU
+#define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_FPU
 #endif
 
 
-#if (BV_MATH_USE_TYPE == BV_MATH_TYPE_SIMD)
+#if (BV_MATH_INSTRUCTION == BV_MATH_INSTRUCTION_SIMD)
 //#include <mmintrin.h>  // MMX
 //#include <xmmintrin.h> // SSE
 //#include <emmintrin.h> // SSE2
@@ -27,7 +30,6 @@
 #endif
 
 #include <cmath>
-
 
 // Default floating point error threshold
 constexpr float kEpsilon = 0.0001f;

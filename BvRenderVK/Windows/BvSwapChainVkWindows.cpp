@@ -14,7 +14,6 @@ void BvSwapChainVk::CreateSurface()
 	surfaceCreateInfo.hwnd = m_pWindow->GetHandle();
 
 	auto result = vkCreateWin32SurfaceKHR(m_Device.GetInstanceHandle(), &surfaceCreateInfo, nullptr, &m_Surface);
-	BvCheckErrorReturnVk(result, );
 }
 
 

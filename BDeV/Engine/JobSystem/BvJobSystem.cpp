@@ -22,7 +22,7 @@ namespace JS
 
 		bool Acquire()
 		{
-			return m_Acquired.load(std::memory_order::relaxed) == false && !m_Acquired.exchange(true);
+			return m_Acquired.load() == false && !m_Acquired.exchange(true);
 		}
 
 		void Release()
@@ -155,14 +155,13 @@ namespace JS
 		m_WorkerThreads.Resize(jobSystemDesc.m_NumWorkerThreads + 1);
 		for (auto i = 1u; i <= jobSystemDesc.m_NumWorkerThreads; i++)
 		{
-			m_WorkerThreads[i].m_WorkerSignal = BvSignal(false);
 			m_WorkerThreads[i].m_Thread = BvThread([this, i]()
 				{
 					// Set TLS data
 					SetWorkerThreadIndex(i);
 					
 					// Set processor affinity
-					BvThread::GetCurrentThread().SetAffinity(i - 1);
+					BvThread::GetCurrentThread().SetAffinityMask(i - 1);
 
 					// Convert to fiber
 					BvThread::ConvertToFiber();

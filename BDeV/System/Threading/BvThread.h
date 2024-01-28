@@ -3,6 +3,7 @@
 
 #include "BDeV/Utils/BvUtils.h"
 #include "BDeV/Utils/BvDelegate.h"
+#include "BDeV/System/Memory/BvMemoryCommon.h"
 
 
 class BvFiber;
@@ -13,6 +14,25 @@ class BvThread
 	BV_NOCOPY(BvThread);
 
 public:
+	enum class Priority : u8
+	{
+		kAuto,
+		kNormal,
+		kAboveNormal,
+		kHighest,
+		kTimeCritical,
+		kBelowNormal,
+		kLowest,
+	};
+
+	struct CreateInfo
+	{
+		u64 m_AffinityMask; // Bitmask determining which cores this thread can run on (0 = all logical processors)
+		u32 m_StackSize; // Stack size in bytes for the thread (0 = let system decide)
+		Priority m_Priority; // Priority this thread will have
+		bool m_CreateSuspended; // Start the thread right away
+	};
+
 	BvThread();
 	BvThread(BvThread&& rhs) noexcept;
 	BvThread& operator=(BvThread&& rhs) noexcept;
@@ -20,22 +40,24 @@ public:
 
 	template<class Fn, class... Args,
 		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
-		BvThread(Fn&& fn, Args &&... args)
-		: BvThread(0, std::forward<Fn>(fn), std::forward<Args>(args)...) {}
+	BvThread(Fn&& fn, Args&&... args)
+		: BvThread(CreateInfo{}, std::forward<Fn>(fn), std::forward<Args>(args)...) {}
 
 	template<class Fn, class... Args,
 		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
-		BvThread(const u32 stackSize, Fn&& fn, Args &&... args)
-		: m_pDelegate(new BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
+	BvThread(const CreateInfo& createInfo, Fn&& fn, Args&&... args)
+		: m_pDelegate (new((void*)BvNewN(u8, sizeof(BvDelegate<Fn, Args...>))) BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
 	{
-		Create(stackSize);
+		Create(createInfo);
 	}
 
 	void Wait();
-	void SetAffinity(const u32 affinityMask) const;
+	void SetAffinityMask(u64 affinityMask) const;
+	void LockToCore(u32 coreIndex) const;
 	void SetName(const char* pThreadName) const;
+	void SetPriority(Priority priority) const;
 
-	static void Sleep(const u32 miliseconds);
+	static void Sleep(u32 miliseconds);
 	static void YieldExecution();
 	static const BvThread& GetCurrentThread();
 	static u32 GetCurrentProcessor();
@@ -43,12 +65,13 @@ public:
 	static void ConvertFromFiber();
 
 	BV_INLINE u64 GetId() const { return m_ThreadId; }
-	BV_INLINE const void* GetHandle() const { return m_hThread; }
+	BV_INLINE void* GetHandle() const { return m_hThread; }
 	const BvFiber& GetThreadFiber() const;
 	bool IsFiber() const;
 
 private:
-	void Create(const u32 stackSize = 0);
+	void Create();
+	void Create(const CreateInfo& createInfo);
 	void Destroy();
 
 private:

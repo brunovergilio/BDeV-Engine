@@ -60,8 +60,8 @@ class BvLexer
 public:
 	BvLexer(const char* pData);
 	BvLexer(const BvLexer& rhs);
-	BvLexer(BvLexer&& rhs);
-	BvLexer& operator=(const BvLexer& rhs) noexcept;
+	BvLexer& operator=(const BvLexer& rhs);
+	BvLexer(BvLexer&& rhs) noexcept;
 	BvLexer& operator=(BvLexer&& rhs) noexcept;
 	~BvLexer();
 

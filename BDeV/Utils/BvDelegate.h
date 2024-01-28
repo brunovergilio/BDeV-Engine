@@ -102,7 +102,7 @@ public:
 		&& std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
 	void Set(Fn&& fn, Args &&... args)
 	{
-		BvCompilerAssert(sizeof(BvDelegate<Fn, Args...>) <= JobSize, "Job object is too big");
+		static_assert(sizeof(BvDelegate<Fn, Args...>) <= JobSize, "Job object is too big");
 		new (m_Data) BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...);
 	}
 

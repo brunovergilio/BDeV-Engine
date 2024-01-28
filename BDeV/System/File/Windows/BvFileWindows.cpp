@@ -1,7 +1,6 @@
 #include "BDeV/System/File/BvFile.h"
 #include "BDeV/System/Debug/BvDebug.h"
-#include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 
 
 BvFile::BvFile()
@@ -203,6 +202,18 @@ void BvFile::Close()
 	{
 		CloseHandle(m_hFile);
 		m_hFile = INVALID_HANDLE_VALUE;
+	}
+}
+
+
+void BvFile::Flush()
+{
+	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+
+	BOOL status = FlushFileBuffers(m_hFile);
+	if (!status)
+	{
+		// TODO: Handle Error
 	}
 }
 

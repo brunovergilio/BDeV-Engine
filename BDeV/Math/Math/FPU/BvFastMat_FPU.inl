@@ -4,7 +4,7 @@
 #include "BvFastVec_FPU.inl"
 
 
-#if (BV_MATH_USE_TYPE == BV_MATH_TYPE_FPU)
+#if (BV_MATH_INSTRUCTION == BV_MATH_INSTRUCTION_FPU)
 
 
 // ==================================
@@ -26,22 +26,22 @@ mf32 MatrixSet(const vf32 & v0, const vf32 & v1, const vf32 & v2, const vf32 & v
 // ======================
 
 mf32 MatrixAdd(const mf32 & m1, const mf32 & m2);
-mf32 MatrixAdd(const mf32 & m, const float s);
+mf32 MatrixAdd(const mf32 & m, f32 s);
 
 mf32 MatrixSub(const mf32 & m1, const mf32 & m2);
-mf32 MatrixSub(const mf32 & m, const float s);
+mf32 MatrixSub(const mf32 & m, f32 s);
 
 mf32 MatrixMul(const mf32 & m1, const mf32 & m2);
-mf32 MatrixMul(const mf32 & m, const float s);
+mf32 MatrixMul(const mf32 & m, f32 s);
 
-mf32 MatrixDiv(const mf32 & m, const float s);
+mf32 MatrixDiv(const mf32 & m, f32 s);
 
 mf32 MatrixIdentity();
 
 mf32 MatrixTranspose(const mf32 & m);
 
 vf32 MatrixDeterminantV(const mf32 & m);
-float MatrixDeterminant(const mf32 & m);
+f32 MatrixDeterminant(const mf32 & m);
 
 mf32 MatrixInverse(const mf32 & m);
 
@@ -61,61 +61,61 @@ mf32 & operator -= (mf32 & m1, const mf32 & m2);
 mf32 operator * (const mf32 & m1, const mf32 & m2);
 mf32 & operator *= (mf32 & m1, const mf32 & m2);
 
-mf32 operator + (const mf32 & m, const float s);
-mf32 & operator += (mf32 & m, const float s);
+mf32 operator + (const mf32 & m, f32 s);
+mf32 & operator += (mf32 & m, f32 s);
 
-mf32 operator - (const mf32 & m, const float s);
-mf32 & operator -= (mf32 & m, const float s);
+mf32 operator - (const mf32 & m, f32 s);
+mf32 & operator -= (mf32 & m, f32 s);
 
-mf32 operator * (const mf32 & m, const float s);
-mf32 & operator *= (mf32 & m, const float s);
+mf32 operator * (const mf32 & m, f32 s);
+mf32 & operator *= (mf32 & m, f32 s);
 
-mf32 operator / (const mf32 & m, const float s);
-mf32 & operator /= (mf32 & m, const float s);
+mf32 operator / (const mf32 & m, f32 s);
+mf32 & operator /= (mf32 & m, f32 s);
 
 // ======================
 // Specialized Operations
 // ======================
 
-mf32 MatrixScaling(const float sX, const float sY, const float sZ);
+mf32 MatrixScaling(f32 sX, f32 sY, f32 sZ);
 
-mf32 MatrixTranslation(const float tX, const float tY, const float tZ);
+mf32 MatrixTranslation(f32 tX, f32 tY, f32 tZ);
 
-mf32 MatrixRotationX(const float angle);
-mf32 MatrixRotationY(const float angle);
-mf32 MatrixRotationZ(const float angle);
-mf32 MatrixRotationAxis(const vf32 & axis, const float angle);
+mf32 MatrixRotationX(f32 angle);
+mf32 MatrixRotationY(f32 angle);
+mf32 MatrixRotationZ(f32 angle);
+mf32 MatrixRotationAxis(const vf32 & axis, f32 angle);
 
 mf32 MatrixLookAt(const vf32 & eyePos, const vf32 & dirVec, const vf32 & upVec);
 mf32 MatrixLookAtLH(const vf32 & eyePos, const vf32 & lookPos, const vf32 & upVec);
 mf32 MatrixLookAtRH(const vf32 & eyePos, const vf32 & lookPos, const vf32 & upVec);
 
-mf32 MatrixPerspectiveLH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
-mf32 MatrixPerspectiveRH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY);
+mf32 MatrixPerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY);
 
-mf32 MatrixPerspectiveLH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
-mf32 MatrixPerspectiveRH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY);
+mf32 MatrixPerspectiveRH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY);
 
-mf32 MatrixPerspectiveLH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
-mf32 MatrixPerspectiveRH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY);
+mf32 MatrixPerspectiveLH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY);
+mf32 MatrixPerspectiveRH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY);
 
-mf32 MatrixOrthographicOffCenterLH_DX(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ);
+mf32 MatrixOrthographicOffCenterLH_DX(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ);
 
-mf32 MatrixOrthographicOffCenterRH_DX(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ);
+mf32 MatrixOrthographicOffCenterRH_DX(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ);
 
-mf32 MatrixOrthographicOffCenterLH_GL(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ);
+mf32 MatrixOrthographicOffCenterLH_GL(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ);
 
-mf32 MatrixOrthographicOffCenterRH_GL(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ);
+mf32 MatrixOrthographicOffCenterRH_GL(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ);
 
-mf32 MatrixOrthographicOffCenterLH_VK(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ);
+mf32 MatrixOrthographicOffCenterLH_VK(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ);
 
-mf32 MatrixOrthographicOffCenterRH_VK(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ);
+mf32 MatrixOrthographicOffCenterRH_VK(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ);
 
 // ======================
 // Definitions
@@ -145,7 +145,7 @@ inline mf32 MatrixAdd(const mf32 & m1, const mf32 & m2)
 	return m;
 }
 
-inline mf32 MatrixAdd(const mf32 & m, const float s)
+inline mf32 MatrixAdd(const mf32 & m, f32 s)
 {
 	mf32 r;
 	r.r[0] = VectorAdd(m.r[0], s);
@@ -167,7 +167,7 @@ inline mf32 MatrixSub(const mf32 & m1, const mf32 & m2)
 	return m;
 }
 
-inline mf32 MatrixSub(const mf32 & m, const float s)
+inline mf32 MatrixSub(const mf32 & m, f32 s)
 {
 	mf32 r;
 	r.r[0] = VectorSub(m.r[0], s);
@@ -212,7 +212,7 @@ inline mf32 MatrixMul(const mf32 & m1, const mf32 & m2)
 	return m;
 }
 
-inline mf32 MatrixMul(const mf32 & m, const float s)
+inline mf32 MatrixMul(const mf32 & m, f32 s)
 {
 	mf32 r;
 	r.r[0] = VectorSet(
@@ -246,7 +246,7 @@ inline mf32 MatrixMul(const mf32 & m, const float s)
 	return r;
 }
 
-inline mf32 MatrixDiv(const mf32 & m, const float s)
+inline mf32 MatrixDiv(const mf32 & m, f32 s)
 {
 	mf32 r;
 	r.r[0] = VectorDiv(m.r[0], s);
@@ -281,14 +281,14 @@ inline mf32 MatrixTranspose(const mf32 & m)
 
 inline vf32 MatrixDeterminantV(const mf32 & m)
 {
-	float a1 = m.r[2].z * m.r[3].w - m.r[2].w * m.r[3].z;
-	float a2 = m.r[2].y * m.r[3].w - m.r[2].w * m.r[3].y;
-	float a3 = m.r[2].y * m.r[3].z - m.r[2].z * m.r[3].y;
-	float a4 = m.r[2].x * m.r[3].w - m.r[2].w * m.r[3].x;
-	float a5 = m.r[2].x * m.r[3].z - m.r[2].z * m.r[3].x;
-	float a6 = m.r[2].x * m.r[3].y - m.r[2].y * m.r[3].x;
+	f32 a1 = m.r[2].z * m.r[3].w - m.r[2].w * m.r[3].z;
+	f32 a2 = m.r[2].y * m.r[3].w - m.r[2].w * m.r[3].y;
+	f32 a3 = m.r[2].y * m.r[3].z - m.r[2].z * m.r[3].y;
+	f32 a4 = m.r[2].x * m.r[3].w - m.r[2].w * m.r[3].x;
+	f32 a5 = m.r[2].x * m.r[3].z - m.r[2].z * m.r[3].x;
+	f32 a6 = m.r[2].x * m.r[3].y - m.r[2].y * m.r[3].x;
 
-	float det =
+	f32 det =
 			m.r[0].x * (m.r[1].y * (a1) - m.r[1].z * (a2) + m.r[1].w * (a3))
 		- m.r[0].y * (m.r[1].x * (a1) - m.r[1].z * (a4) + m.r[1].w * (a5))
 		+ m.r[0].z * (m.r[1].x * (a2) - m.r[1].y * (a4) + m.r[1].w * (a6))
@@ -297,7 +297,7 @@ inline vf32 MatrixDeterminantV(const mf32 & m)
 	return VectorSet(det, det, det, det);
 }
 
-inline float MatrixDeterminant(const mf32 & m)
+inline f32 MatrixDeterminant(const mf32 & m)
 {
 	return MatrixDeterminantV(m).x;
 }
@@ -307,7 +307,7 @@ inline mf32 MatrixInverse(const mf32 & m)
 	mf32 mT = MatrixTranspose(m);
 
 	// First 12 coefficients
-	float tmp[12];
+	f32 tmp[12];
 	tmp[0] =  mT.r[2].z * mT.r[3].w;
 	tmp[1] =  mT.r[2].w * mT.r[3].z;
 	tmp[2] =  mT.r[2].y * mT.r[3].w;
@@ -370,7 +370,7 @@ inline mf32 MatrixInverse(const mf32 & m)
 	r.r[3].w =  tmp[10] * mT.r[2].z + tmp[4] *  mT.r[2].x + tmp[9] *  mT.r[2].y;
 	r.r[3].w -= tmp[8]  * mT.r[2].y + tmp[11] * mT.r[2].z + tmp[5] *  mT.r[2].x;
 
-	float det = 1.0f / (mT.r[0].x * r.r[0].x + mT.r[0].y * r.r[0].y + mT.r[0].z * r.r[0].z + mT.r[0].w * r.r[0].w);
+	f32 det = 1.0f / (mT.r[0].x * r.r[0].x + mT.r[0].y * r.r[0].y + mT.r[0].z * r.r[0].z + mT.r[0].w * r.r[0].w);
 
 	r.r[0].x *= det;
 	r.r[0].y *= det;
@@ -443,7 +443,7 @@ inline mf32 & operator *= (mf32 & m1, const mf32 & m2)
 	return m1;
 }
 
-inline mf32 operator + (const mf32 & m, const float s)
+inline mf32 operator + (const mf32 & m, f32 s)
 {
 	vf32 v = VectorReplicate(s);
 
@@ -456,7 +456,7 @@ inline mf32 operator + (const mf32 & m, const float s)
 	return r;
 }
 
-inline mf32 & operator += (mf32 & m, const float s)
+inline mf32 & operator += (mf32 & m, f32 s)
 {
 	m.r[0] = VectorAdd(m.r[0], s);
 	m.r[1] = VectorAdd(m.r[1], s);
@@ -466,7 +466,7 @@ inline mf32 & operator += (mf32 & m, const float s)
 	return m;
 }
 
-inline mf32 operator - (const mf32 & m, const float s)
+inline mf32 operator - (const mf32 & m, f32 s)
 {
 	vf32 v = VectorReplicate(s);
 
@@ -479,7 +479,7 @@ inline mf32 operator - (const mf32 & m, const float s)
 	return r;
 }
 
-inline mf32 & operator -= (mf32 & m, const float s)
+inline mf32 & operator -= (mf32 & m, f32 s)
 {
 	m.r[0] = VectorSub(m.r[0], s);
 	m.r[1] = VectorSub(m.r[1], s);
@@ -489,7 +489,7 @@ inline mf32 & operator -= (mf32 & m, const float s)
 	return m;
 }
 
-inline mf32 operator * (const mf32 & m, const float s)
+inline mf32 operator * (const mf32 & m, f32 s)
 {
 	vf32 v = VectorReplicate(s);
 
@@ -502,7 +502,7 @@ inline mf32 operator * (const mf32 & m, const float s)
 	return r;
 }
 
-inline mf32 & operator *= (mf32 & m, const float s)
+inline mf32 & operator *= (mf32 & m, f32 s)
 {
 	m.r[0] = VectorMul(m.r[0], s);
 	m.r[1] = VectorMul(m.r[1], s);
@@ -512,12 +512,12 @@ inline mf32 & operator *= (mf32 & m, const float s)
 	return m;
 }
 
-inline mf32 operator / (const mf32 & m, const float s)
+inline mf32 operator / (const mf32 & m, f32 s)
 {
 	return MatrixDiv(m, s);
 }
 
-inline mf32 & operator /= (mf32 & m, const float s)
+inline mf32 & operator /= (mf32 & m, f32 s)
 {
 	m = MatrixDiv(m, s);
 	return m;
@@ -527,7 +527,7 @@ inline mf32 & operator /= (mf32 & m, const float s)
 // Specialized Operations
 // ======================
 
-inline mf32 MatrixScaling(const float sX, const float sY, const float sZ)
+inline mf32 MatrixScaling(f32 sX, f32 sY, f32 sZ)
 {
 	mf32 r;
 	r.r[0] = VectorSet(sX, 0.0f, 0.0f, 0.0f);
@@ -538,7 +538,7 @@ inline mf32 MatrixScaling(const float sX, const float sY, const float sZ)
 	return r;
 }
 
-inline mf32 MatrixTranslation(const float tX, const float tY, const float tZ)
+inline mf32 MatrixTranslation(f32 tX, f32 tY, f32 tZ)
 {
 	mf32 r;
 	r.r[0] = VectorSet(1.0f, 0.0f, 0.0f, 0.0f);
@@ -549,9 +549,9 @@ inline mf32 MatrixTranslation(const float tX, const float tY, const float tZ)
 	return r;
 }
 
-inline mf32 MatrixRotationX(const float angle)
+inline mf32 MatrixRotationX(f32 angle)
 {
-	float cosSin[] = { cosf(angle), sinf(angle) };
+	f32 cosSin[] = { cosf(angle), sinf(angle) };
 
 	mf32 r;
 	r.r[0] = VectorSet(1.0f, 0.0f, 0.0f, 0.0f);
@@ -562,9 +562,9 @@ inline mf32 MatrixRotationX(const float angle)
 	return r;
 }
 
-inline mf32 MatrixRotationY(const float angle)
+inline mf32 MatrixRotationY(f32 angle)
 {
-	float cosSin[] = { cosf(angle), sinf(angle) };
+	f32 cosSin[] = { cosf(angle), sinf(angle) };
 
 	mf32 r;
 	r.r[0] = VectorSet(cosSin[0], 0.0f, -cosSin[1], 0.0f);
@@ -575,9 +575,9 @@ inline mf32 MatrixRotationY(const float angle)
 	return r;
 }
 
-inline mf32 MatrixRotationZ(const float angle)
+inline mf32 MatrixRotationZ(f32 angle)
 {
-	float cosSin[] = { cosf(angle), sinf(angle) };
+	f32 cosSin[] = { cosf(angle), sinf(angle) };
 
 	mf32 r;
 	r.r[0] = VectorSet(cosSin[0], cosSin[1], 0.0f, 0.0f);
@@ -588,11 +588,11 @@ inline mf32 MatrixRotationZ(const float angle)
 	return r;
 }
 
-inline mf32 MatrixRotationAxis(const vf32 & axis, const float angle)
+inline mf32 MatrixRotationAxis(const vf32 & axis, f32 angle)
 {
-	float cosAngle = cosf(angle);
-	float sinAngle = sinf(angle);
-	float oneMinusCos = 1.0f - cosAngle;
+	f32 cosAngle = cosf(angle);
+	f32 sinAngle = sinf(angle);
+	f32 oneMinusCos = 1.0f - cosAngle;
 
 	mf32 r;
 	r.r[0].x = cosAngle + axis.x * axis.x * oneMinusCos;
@@ -646,12 +646,12 @@ inline mf32 MatrixLookAtRH(const vf32 & eyePos, const vf32 & lookPos, const vf32
 	return MatrixLookAt(eyePos, dir, upVec);
 }
 
-inline mf32 MatrixPerspectiveLH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
-	float a = 1.0f / tanf(fovY * 0.5f);
-	float b = farZ / (farZ - nearZ);
+	f32 a = 1.0f / tanf(fovY * 0.5f);
+	f32 b = farZ / (farZ - nearZ);
 
-	const float vals[] = { a / aspectRatio, a, b, 1.0f, -nearZ * b};
+	f32 vals[] = { a / aspectRatio, a, b, 1.0f, -nearZ * b};
 
 	mf32 r;
 	r.r[0].x = vals[0];
@@ -663,12 +663,12 @@ inline mf32 MatrixPerspectiveLH_DX(const float nearZ, const float farZ, const fl
 	return r;
 }
 
-inline mf32 MatrixPerspectiveRH_DX(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
-	float a = 1.0f / tanf(fovY * 0.5f);
-	float b = farZ / (farZ - nearZ);
+	f32 a = 1.0f / tanf(fovY * 0.5f);
+	f32 b = farZ / (farZ - nearZ);
 
-	const float vals[] = { a / aspectRatio, a, b, -1.0f, nearZ * b };
+	f32 vals[] = { a / aspectRatio, a, b, -1.0f, nearZ * b };
 
 	mf32 r;
 	r.r[0].x = vals[0];
@@ -680,12 +680,12 @@ inline mf32 MatrixPerspectiveRH_DX(const float nearZ, const float farZ, const fl
 	return r;
 }
 
-inline mf32 MatrixPerspectiveLH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
-	float a = 1.0f / tanf(fovY * 0.5f);
-	float b = farZ - nearZ;
+	f32 a = 1.0f / tanf(fovY * 0.5f);
+	f32 b = farZ - nearZ;
 
-	const float vals[] = { a / aspectRatio, a, -(farZ + nearZ) / b, 1.0f, (2.0f * farZ * nearZ) / b };
+	f32 vals[] = { a / aspectRatio, a, -(farZ + nearZ) / b, 1.0f, (2.0f * farZ * nearZ) / b };
 
 	mf32 r;
 	r.r[0].x = vals[0];
@@ -697,12 +697,12 @@ inline mf32 MatrixPerspectiveLH_GL(const float nearZ, const float farZ, const fl
 	return r;
 }
 
-inline mf32 MatrixPerspectiveRH_GL(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveRH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
-	float a = 1.0f / tanf(fovY * 0.5f);
-	float b = farZ - nearZ;
+	f32 a = 1.0f / tanf(fovY * 0.5f);
+	f32 b = farZ - nearZ;
 
-	const float vals[] = { a / aspectRatio, a, -(farZ + nearZ) / b, -1.0f, (-2.0f * farZ * nearZ) / b };
+	f32 vals[] = { a / aspectRatio, a, -(farZ + nearZ) / b, -1.0f, (-2.0f * farZ * nearZ) / b };
 
 	mf32 r;
 	r.r[0].x = vals[0];
@@ -714,12 +714,12 @@ inline mf32 MatrixPerspectiveRH_GL(const float nearZ, const float farZ, const fl
 	return r;
 }
 
-inline mf32 MatrixPerspectiveLH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveLH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
-	float a = 1.0f / tanf(fovY * 0.5f);
-	float b = farZ / (farZ - nearZ);
+	f32 a = 1.0f / tanf(fovY * 0.5f);
+	f32 b = farZ / (farZ - nearZ);
 
-	const float vals[] = { a / aspectRatio, -a, b, 1.0f, -nearZ * b };
+	f32 vals[] = { a / aspectRatio, -a, b, 1.0f, -nearZ * b };
 
 	mf32 r;
 	r.r[0].x = vals[0];
@@ -731,12 +731,12 @@ inline mf32 MatrixPerspectiveLH_VK(const float nearZ, const float farZ, const fl
 	return r;
 }
 
-inline mf32 MatrixPerspectiveRH_VK(const float nearZ, const float farZ, const float aspectRatio, const float fovY)
+inline mf32 MatrixPerspectiveRH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
-	float a = 1.0f / tanf(fovY * 0.5f);
-	float b = farZ / (farZ - nearZ);
+	f32 a = 1.0f / tanf(fovY * 0.5f);
+	f32 b = farZ / (farZ - nearZ);
 
-	const float vals[] = { a / aspectRatio, -a, b, -1.0f, nearZ * b };
+	f32 vals[] = { a / aspectRatio, -a, b, -1.0f, nearZ * b };
 
 	mf32 r;
 	r.r[0].x = vals[0];
@@ -748,12 +748,12 @@ inline mf32 MatrixPerspectiveRH_VK(const float nearZ, const float farZ, const fl
 	return r;
 }
 
-inline mf32 MatrixOrthographicOffCenterLH_DX(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ)
+inline mf32 MatrixOrthographicOffCenterLH_DX(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ)
 {
-	float oneOverRMinusL = 1.0f / (right - left);
-	float oneOverTMinusB = 1.0f / (top - bottom);
-	float oneOverFMinusN = 1.0f / (farZ - nearZ);
+	f32 oneOverRMinusL = 1.0f / (right - left);
+	f32 oneOverTMinusB = 1.0f / (top - bottom);
+	f32 oneOverFMinusN = 1.0f / (farZ - nearZ);
 
 	mf32 r;
 	r.r[0].x = oneOverRMinusL + oneOverRMinusL;
@@ -764,12 +764,12 @@ inline mf32 MatrixOrthographicOffCenterLH_DX(const float right, const float left
 	return r;
 }
 
-inline mf32 MatrixOrthographicOffCenterRH_DX(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ)
+inline mf32 MatrixOrthographicOffCenterRH_DX(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ)
 {
-	float oneOverRMinusL = 1.0f / (right - left);
-	float oneOverTMinusB = 1.0f / (top - bottom);
-	float oneOverNMinusF = 1.0f / (nearZ - farZ);
+	f32 oneOverRMinusL = 1.0f / (right - left);
+	f32 oneOverTMinusB = 1.0f / (top - bottom);
+	f32 oneOverNMinusF = 1.0f / (nearZ - farZ);
 
 	mf32 r;
 	r.r[0].x = oneOverRMinusL + oneOverRMinusL;
@@ -780,12 +780,12 @@ inline mf32 MatrixOrthographicOffCenterRH_DX(const float right, const float left
 	return r;
 }
 
-inline mf32 MatrixOrthographicOffCenterLH_GL(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ)
+inline mf32 MatrixOrthographicOffCenterLH_GL(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ)
 {
-	float oneOverRMinusL = 1.0f / (right - left);
-	float oneOverTMinusB = 1.0f / (top - bottom);
-	float oneOverNMinusF = 1.0f / (nearZ - farZ);
+	f32 oneOverRMinusL = 1.0f / (right - left);
+	f32 oneOverTMinusB = 1.0f / (top - bottom);
+	f32 oneOverNMinusF = 1.0f / (nearZ - farZ);
 
 	mf32 r;
 	r.r[0].x = oneOverRMinusL + oneOverRMinusL;
@@ -796,12 +796,12 @@ inline mf32 MatrixOrthographicOffCenterLH_GL(const float right, const float left
 	return r;
 }
 
-inline mf32 MatrixOrthographicOffCenterRH_GL(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ)
+inline mf32 MatrixOrthographicOffCenterRH_GL(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ)
 {
-	float oneOverRMinusL = 1.0f / (right - left);
-	float oneOverTMinusB = 1.0f / (top - bottom);
-	float oneOverFMinusN = 1.0f / (farZ - nearZ);
+	f32 oneOverRMinusL = 1.0f / (right - left);
+	f32 oneOverTMinusB = 1.0f / (top - bottom);
+	f32 oneOverFMinusN = 1.0f / (farZ - nearZ);
 
 	mf32 r;
 	r.r[0].x = oneOverRMinusL + oneOverRMinusL;
@@ -812,12 +812,12 @@ inline mf32 MatrixOrthographicOffCenterRH_GL(const float right, const float left
 	return r;
 }
 
-inline mf32 MatrixOrthographicOffCenterLH_VK(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ)
+inline mf32 MatrixOrthographicOffCenterLH_VK(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ)
 {
-	float oneOverRMinusL = 1.0f / (right - left);
-	float oneOverTMinusB = 1.0f / (bottom - top);
-	float oneOverFMinusN = 1.0f / (farZ - nearZ);
+	f32 oneOverRMinusL = 1.0f / (right - left);
+	f32 oneOverTMinusB = 1.0f / (bottom - top);
+	f32 oneOverFMinusN = 1.0f / (farZ - nearZ);
 
 	mf32 r;
 	r.r[0].x = oneOverRMinusL + oneOverRMinusL;
@@ -828,12 +828,12 @@ inline mf32 MatrixOrthographicOffCenterLH_VK(const float right, const float left
 	return r;
 }
 
-inline mf32 MatrixOrthographicOffCenterRH_VK(const float right, const float left, const float top, const float bottom, const float
-	nearZ, const float farZ)
+inline mf32 MatrixOrthographicOffCenterRH_VK(f32 right, f32 left, f32 top, f32 bottom, f32
+	nearZ, f32 farZ)
 {
-	float oneOverRMinusL = 1.0f / (right - left);
-	float oneOverTMinusB = 1.0f / (bottom - top);
-	float oneOverNMinusF = 1.0f / (nearZ - farZ);
+	f32 oneOverRMinusL = 1.0f / (right - left);
+	f32 oneOverTMinusB = 1.0f / (bottom - top);
+	f32 oneOverNMinusF = 1.0f / (nearZ - farZ);
 
 	mf32 r;
 	r.r[0].x = oneOverRMinusL + oneOverRMinusL;

@@ -51,8 +51,8 @@ public:
 	AsyncFileRequest Read(void* const pBuffer, const u32 bufferSize, const u64 position = 0);
 	AsyncFileRequest Write(const void* const pBuffer, const u32 bufferSize, const u64 position = 0);
 
-	template<typename Type> u32 ReadT(Type& value, const u64 position = 0) { return Read(&value, sizeof(Type), position); }
-	template<typename Type> u32 WriteT(const Type& value, const u64 position = 0) { return Write(&value, sizeof(Type), position); }
+	template<typename Type> AsyncFileRequest ReadT(Type& value, const u64 position = 0) { return Read(&value, sizeof(Type), position); }
+	template<typename Type> AsyncFileRequest WriteT(const Type& value, const u64 position = 0) { return Write(&value, sizeof(Type), position); }
 
 	const u64 GetSize() const;
 

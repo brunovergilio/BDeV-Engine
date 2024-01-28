@@ -18,6 +18,8 @@
 #include "BDeV/Utils/BvTestUnit.h"
 #include "BDeV/System/Memory/BvMemory.h"
 #include "BDeV/Engine/MemorySystem/BvMemorySystem.h"
+#include "BDeV/System/Library/BvSharedLib.h"
+#include "BDeV/RenderAPI/BvRenderEngine.h"
 
 
 char stack[1024];
@@ -48,7 +50,7 @@ char stack4[100];
 
 struct WE
 {
-	BV_RTTI(WE);									
+	BV_RTTI(WE);
 	int f();
 	int ff() {}
 	int a = int(0);
@@ -124,9 +126,10 @@ struct Func : public BvDelegateBase
 	{
 	}
 
+	~Func() {}
+
 	void Invoke() const override
 	{
-		m_Lambda();
 	}
 
 	Lambda m_Lambda;
@@ -150,85 +153,93 @@ struct alignas(64) MyStruct
 
 int main()
 {
-	i32* uu = BV_NEW i32();
-	MyStruct* my = BV_NEW MyStruct();
-	i32* uuc = BV_NEW i32[10];
-	MyStruct* mcy = BV_NEW MyStruct[10];
+	//BvThread g(DoSleep, nullptr);
+	//BvConsole::PrintF(0x1f2b4fff, "Hello\n");
+	//for (auto i = 0; i < 12; i++)
+	//{
+	//	BvConsole::PrintF({ 0, u8(30 + i * 20), u8(i * 10)}, "Testing\n");
+	//}
 
-	BV_DELETE   uu;
-	BV_DELETE   my;
-	BV_DELETE[] uuc;
-	BV_DELETE[] mcy;
+	//BvConsole::PrintF({ 20, 60, 120 }, { 244, 200, 210 }, "Test\n");
+	//BvConsole::PrintF({ 100, 240, 20 }, "Test2\n");
+	//BvConsole::PrintF("Test3\n");
+	//BvConsole::PrintF({ 0, 255, 86 }, "Test4\n");
+	//BvConsole::PrintF({ 40, 170, 0 }, "Test5\n");
 
-	BvTaskT<24> f;
-	f.Set([](int c, int b) {}, 2, 4);
+	//i32* uu = BvNew(i32);
+	//MyStruct* my = BvNew(MyStruct);
+	//i32* uuc = BvNewN(i32, 10);
+	//MyStruct* mcy = BvNewN(MyStruct, 10);
 
-	JS::JobSystemDesc desc;
-	desc.m_NumWorkerThreads = 1;
-	JS::Initialize(desc);
+	//BvDelete(uu);
+	//BvDelete(my);
+	//BvDeleteN(uuc);
+	//BvDeleteN(mcy);
 
-	constexpr auto kJobCount = 129;
-	JS::Job jobs[kJobCount]{};
-	srand(time(nullptr));
-	for (auto i = 0; i < kJobCount; i++)
-	{
-		jobs[i].m_Job.Set(DoSleep, (void*)i);
-	}
+	//BvTaskT<24> f;
+	//f.Set([](int c, int b) {}, 2, 4);
 
-	JS::Counter* pCounter = nullptr;
-	JS::RunJobs(kJobCount, jobs, pCounter);
-	JS::WaitForCounter(pCounter);
+	//JS::JobSystemDesc desc;
+	//desc.m_NumWorkerThreads = 1;
+	//JS::Initialize(desc);
 
-	getchar();
+	//constexpr auto kJobCount = 129;
+	//JS::Job jobs[kJobCount]{};
+	//srand(time(nullptr));
+	//for (auto i = 0; i < kJobCount; i++)
+	//{
+	//	jobs[i].m_Job.Set(DoSleep, (void*)i);
+	//}
 
-	JS::Shutdown();
+	//JS::Counter* pCounter = nullptr;
+	//JS::RunJobs(kJobCount, jobs, pCounter);
+	//JS::WaitForCounter(pCounter);
 
-	BvRobinMap<int, char> mm;
-	mm.Emplace(1, 'c');
-	mm.Emplace(4, 'd');
-	mm.Emplace(6, 'e');
-	mm.Emplace(12, 'f');
+	//getchar();
 
-	const auto i = mm.FindKey(1);
+	//JS::Shutdown();
 
-	mm.Erase(1);
-	mm.Erase(4);
+	//BvRobinMap<int, char> mm;
+	//mm.Emplace(1, 'c');
+	//mm.Emplace(4, 'd');
+	//mm.Emplace(6, 'e');
+	//mm.Emplace(12, 'f');
+
+	//const auto i = mm.FindKey(1);
+
+	//mm.Erase(1);
+	//mm.Erase(4);
 
 
 	//BV_RUN_TEST_UNITS();
 
-	BvVector<int> a(10, 3);
+	//BvVector<int> a(10, 3);
 	//const BvVector<BvMonitor*>& monitors = GetMonitors();
-	PrintF(ConsoleColor::kLightGreen, "Test\n");
 	//auto pMonitor = GetMonitorFromPoint(-10, 30);
 
-	//BvPath paths[3];
-	//paths[0] = BvPath::FromCurrentDirectory();
-	//auto list = paths[0].GetFileList(L"*");
-	//paths[1] = BvPath(LR"(C:\Programming\C++\Graphics\Vulkan\Vulkan.sln)");
-	//paths[2] = BvPath(LR"(main.cpp)");
+	BvPath paths[3];
+	paths[0] = BvPath::FromCurrentDirectory();
+	auto list = paths[0].GetFileList(L"*");
+	paths[1] = BvPath(LR"(D:\Bruno\C++\BDeV-Engine\BDeV.sln)");
+	paths[2] = BvPath(LR"(main.cpp)");
 
-	//for (auto&& path : paths)
-	//{
-	//	auto name = path.GetName();
-	//	auto ext = path.GetExt();
-	//	auto nameAndExt = path.GetNameAndExt();
-	//	auto root = path.GetRoot();
-	//	auto relativeRoot = path.GetRelativeName();
-	//	auto relative = path.GetRelativeName(LR"(C:\Programming)");
-	//	auto relative2 = path.GetRelativeName(LR"(C:\Programming\Git\BDeV-Engine\TestProjects\CoreTests\CoreTests.vcxproj)");
-	//	auto absolute = path.GetAbsoluteName();
-	//	printf("Name: %ls\n", name.CStr());
-	//	printf("Ext: %ls\n", ext.CStr());
-	//	printf("NameAndExt: %ls\n", nameAndExt.CStr());
-	//	printf("Relative Path (With Root): %ls\n", relativeRoot.CStr());
-	//	printf("Relative Path (With C:\\Programming): %ls\n", relative.CStr());
-	//	printf("Relative Path2 : %ls\n", relative2.CStr());
-	//	printf("Absolute Path: %ls\n", absolute.CStr());
-	//	printf("Root: %ls\n", root.CStr());
+	for (auto&& path : paths)
+	{
+		auto name = path.GetName();
+		auto ext = path.GetExtension();
+		auto nameAndExt = path.GetNameAndExtension();
+		auto root = path.GetRoot();
+		auto relativeRoot = path.GetRelativePath();
+		auto absolute = path.GetAbsolutePath();
+		printf("Name: %ls\n", name.CStr());
+		printf("Ext: %ls\n", ext.CStr());
+		printf("NameAndExt: %ls\n", nameAndExt.CStr());
+		printf("Relative Path (With Root): %ls\n", relativeRoot.CStr());
+		printf("Absolute Path: %ls\n", absolute.CStr());
+		printf("Root: %ls\n", root.CStr());
 
-	//	printf("\n");
-	//}
+		printf("\n");
+	}
 
 	////BvFileSystem::DeleteDirectory(LR"(C:\Programming\C++\MiscTests\x64)");
 
@@ -274,12 +285,12 @@ int main()
 	//salloc.Free(p2);
 	//salloc.Free(p1);
 
-	BvLinearAllocator lalloc(stack2, stack2 + 1024);
-	p1 = lalloc.Allocate(100, 32);
-	p2 = lalloc.Allocate(200, 16);
-	p3 = lalloc.Allocate(300, 64);
-
-	lalloc.Debug();
+	//BvLinearAllocator lalloc(stack2, stack2 + 1024);
+	//p1 = lalloc.Allocate(100, 32);
+	//p2 = lalloc.Allocate(200, 16);
+	//p3 = lalloc.Allocate(300, 64);
+	//
+	//lalloc.Debug();
 
 	//void* p4 = nullptr;
 	//BvPoolAllocator palloc(stack3, stack3 + 100, 32, 32);

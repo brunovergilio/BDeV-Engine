@@ -1,13 +1,30 @@
 #include "BDeV/System/File/BvPath.h"
 #include "BDeV/System/File/BvFileCommon.h"
-#include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
-#include <windows.h>
-#include <Shlwapi.h>
-#include <PathCch.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
+#include <algorithm>
 
 
-#pragma comment(lib, "shlwapi.lib")
-#pragma comment(lib, "pathcch.lib")
+namespace BvPathUtils
+{
+	void ConvertToWidePath(BvWString& result, const char* pSrcBegin, const char* pSrcEnd, const std::locale& loc = std::locale());
+	bool IsSlash(wchar_t ch);
+	u32 GetEndOfRoot(const wchar_t* pPath, u32 size);
+	bool HasRootName(const wchar_t* pPath, u32 size);
+	std::wstring_view GetRootName(const wchar_t* pPath, u32 size);
+	bool HasRootSlash(const wchar_t* pPath, u32 size);
+	bool HasDriveLetter(const wchar_t* pPath, u32 size);
+	bool IsPathAbsolute(const wchar_t* pPath, u32 size);
+	u32 FindRelativePath(const wchar_t* pPath, u32 size);
+	u32 FindName(const wchar_t* pPath, u32 size);
+	u32 FindExtension(const wchar_t* pPath, u32 size);
+	u32 GetFileAttributeFlags(const BvWString& path);
+	bool HasUNCPathAndDrive(const wchar_t* pPath, u32 size);
+	bool IsRelativePathWithRootName(const wchar_t* pPath, u32 size);
+	void NormalizePath(const BvWString& path, BvWString& normalizedPath);
+	u32 GetParentPathEnd(const wchar_t* pPath, u32 size);
+	void AppendPath(BvWString& result, const wchar_t* pPath);
+	void AppendPath(BvWString& result, const BvWString& path);
+}
 
 
 BvPath::BvPath()
@@ -17,22 +34,42 @@ BvPath::BvPath()
 
 BvPath::BvPath(const char* pPath)
 {
-	wchar_t path[kMaxPathSize];
-	ConvertToWidePath(path, pPath);
+	BvPathUtils::ConvertToWidePath(m_Path, pPath, pPath + strlen(pPath));
+}
 
-	Prepare(path);
+
+BvPath::BvPath(const char* pPath, u32 count)
+{
+	BvPathUtils::ConvertToWidePath(m_Path, pPath, pPath + count);
 }
 
 
 BvPath::BvPath(const wchar_t* pPath)
+	: m_Path(pPath)
 {
-	Prepare(pPath);
+}
+
+
+BvPath::BvPath(const wchar_t* pPath, u32 count)
+	: m_Path(pPath, 0, count)
+{
+}
+
+
+BvPath::BvPath(const BvString& path)
+{
+	BvPathUtils::ConvertToWidePath(m_Path, path.CStr(), path.CStr() + path.Size());
+}
+
+
+BvPath::BvPath(const BvWString& path)
+	: m_Path(path)
+{
 }
 
 
 BvPath::BvPath(const BvPath& rhs)
-	: m_Path(rhs.m_Path), m_IsValid(rhs.IsValid()),
-	m_IsAbsolute(rhs.m_IsAbsolute), m_IsFile(rhs.m_IsFile)
+	: m_Path(rhs.m_Path)
 {
 }
 
@@ -42,10 +79,39 @@ BvPath& BvPath::operator=(const BvPath& rhs)
 	if (this != &rhs)
 	{
 		m_Path = rhs.m_Path;
-		m_IsValid = rhs.m_IsValid;
-		m_IsAbsolute = rhs.m_IsAbsolute;
-		m_IsFile = rhs.m_IsFile;
 	}
+	return *this;
+}
+
+
+BvPath& BvPath::operator=(const char* pPath)
+{
+	BvPathUtils::ConvertToWidePath(m_Path, pPath, pPath + strlen(pPath));
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator=(const wchar_t* pPath)
+{
+	m_Path = pPath;
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator=(const BvString& path)
+{
+	BvPathUtils::ConvertToWidePath(m_Path, path.CStr(), path.CStr() + path.Size());
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator=(const BvWString& path)
+{
+	m_Path = path;
+
 	return *this;
 }
 
@@ -61,10 +127,6 @@ BvPath& BvPath::operator=(BvPath&& rhs) noexcept
 	if (this != &rhs)
 	{
 		m_Path = std::move(rhs.m_Path);
-
-		m_IsValid = rhs.m_IsValid;
-		m_IsAbsolute = rhs.m_IsAbsolute;
-		m_IsFile = rhs.m_IsFile;
 	}
 	return *this;
 }
@@ -77,8 +139,17 @@ BvPath::~BvPath()
 
 BvPath BvPath::FromCurrentDirectory()
 {
-	wchar_t widePath[kMaxPathSize]{};
-	if (!GetCurrentDirectoryW(kMaxPathSize - 1, widePath))
+	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
+	if (!sizeNeeded)
+	{
+		DWORD error = GetLastError();
+		// TODO: Handle error
+
+		return BvPath();
+	}
+	BvPath currentPath;
+	currentPath.m_Path.Resize(sizeNeeded - 1);
+	if (!GetCurrentDirectoryW(sizeNeeded, &currentPath.m_Path[0]))
 	{
 		DWORD error = GetLastError();
 		// TODO: Handle error
@@ -86,226 +157,495 @@ BvPath BvPath::FromCurrentDirectory()
 		return BvPath();
 	}
 
-	return BvPath(widePath);
+	return currentPath;
 }
 
 
-BvWString BvPath::GetAbsoluteName() const
+BvPath BvPath::FromCurrentDrive()
 {
-	if (!m_IsValid)
+	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
+	if (!sizeNeeded)
 	{
-		return BvWString();
-	}
+		DWORD error = GetLastError();
+		// TODO: Handle error
 
-	if (m_IsAbsolute)
+		return BvPath();
+	}
+	BvPath currentPath;
+	currentPath.m_Path.Resize(sizeNeeded - 1);
+	if (!GetCurrentDirectoryW(sizeNeeded, &currentPath.m_Path[0]))
 	{
-		if (!wcsncmp(m_Path.CStr(), kWideFilePrefix, kWideFilePrefixSize))
-		{
-			return BvWString(m_Path.CStr() + kWideFilePrefixSize);
-		}
+		DWORD error = GetLastError();
+		// TODO: Handle error
 
-		return m_Path;
+		return BvPath();
 	}
-	else
-	{
-		wchar_t path[kMaxPathSize];
-		GetFullPathNameW(m_Path.CStr(), kMaxPathSize - 1, path, nullptr);
+	currentPath.m_Path.Erase(0, BvPathUtils::GetEndOfRoot(currentPath.m_Path.CStr(), currentPath.m_Path.Size()) + 1);
 
-		return BvWString(path);
-	}
-}
-
-
-BvWString BvPath::GetRelativeName(const wchar_t* pRelativeToPath) const
-{
-	if (!m_IsValid)
-	{
-		return BvWString();
-	}
-
-	wchar_t relativePath[kMaxPathSize]{};
-	if (!m_IsAbsolute)
-	{
-		wchar_t fullPath[kMaxPathSize];
-		if (!pRelativeToPath || pRelativeToPath[0] == 0)
-		{
-			GetFullPathNameW(m_Path.CStr(), kMaxPathSize - 1, fullPath, nullptr);
-			wchar_t root[4];
-			auto pAfterRoot = PathSkipRootW(fullPath);
-			auto count = (size_t)(pAfterRoot - fullPath);
-			wcsncpy_s(root, fullPath, count);
-			PathRelativePathToW(relativePath, m_Path.CStr() + kWideFilePrefixSize,
-				m_IsFile ? 0 : FILE_ATTRIBUTE_DIRECTORY, root, FILE_ATTRIBUTE_DIRECTORY);
-		}
-		else
-		{
-			GetFullPathNameW(m_Path.CStr(), kMaxPathSize - 1, fullPath, nullptr);
-			auto attributes = GetFileAttributesW(pRelativeToPath);
-			PathRelativePathToW(relativePath, fullPath, m_IsFile ? 0 : FILE_ATTRIBUTE_DIRECTORY,
-				pRelativeToPath, (attributes & FILE_ATTRIBUTE_DIRECTORY));
-		}
-	}
-	else
-	{
-		if (!pRelativeToPath || pRelativeToPath[0] == 0)
-		{
-			wchar_t root[4]{};
-			auto pAfterRoot = PathSkipRootW(m_Path.CStr());
-			auto count = (size_t)(pAfterRoot - m_Path.CStr());
-			wcsncpy_s(root, m_Path.CStr() + kWideFilePrefixSize,
-				count - kWideFilePrefixSize);
-			PathRelativePathToW(relativePath, m_Path.CStr() + kWideFilePrefixSize,
-				m_IsFile ? 0 : FILE_ATTRIBUTE_DIRECTORY, root, FILE_ATTRIBUTE_DIRECTORY);
-		}
-		else
-		{
-			auto attributes = GetFileAttributesW(pRelativeToPath);
-			PathRelativePathToW(relativePath, m_Path.CStr() + kWideFilePrefixSize, m_IsFile ? 0 : FILE_ATTRIBUTE_DIRECTORY,
-				pRelativeToPath, (attributes & FILE_ATTRIBUTE_DIRECTORY));
-		}
-
-	}
-	
-	return BvWString(relativePath);
-}
-
-
-BvWString BvPath::GetName() const
-{
-	if (!m_IsValid)
-	{
-		return BvWString();
-	}
-
-	wchar_t path[kMaxPathSize];
-	wcsncpy_s(path, m_Path.CStr(), kMaxPathSize - 1);
-	PathStripPathW(path);
-	auto pExt = PathFindExtensionW(path);
-	if (pExt)
-	{
-		*pExt = 0;
-	}
-
-	return BvWString(path);
-}
-
-
-BvWString BvPath::GetNameAndExt() const
-{
-	if (!m_IsValid)
-	{
-		return BvWString();
-	}
-
-	wchar_t path[kMaxPathSize];
-	wcsncpy_s(path, m_Path.CStr(), kMaxPathSize - 1);
-	PathStripPathW(path);
-
-	return BvWString(path);
-}
-
-
-BvWString BvPath::GetExt() const
-{
-	if (!m_IsValid)
-	{
-		return BvWString();
-	}
-
-	auto pExt = PathFindExtensionW(m_Path.CStr());
-	if (pExt)
-	{
-		return BvWString(pExt);
-	}
-	else
-	{
-		return BvWString();
-	}
-}
-
-
-BvWString BvPath::GetRoot() const
-{
-	if (!m_IsValid)
-	{
-		return BvWString();
-	}
-
-	wchar_t root[kMaxPathSize];
-	if (m_IsAbsolute)
-	{
-		wcsncpy_s(root, m_Path.CStr(), kMaxPathSize - 1);
-	}
-	else
-	{
-		GetFullPathNameW(m_Path.CStr(), kMaxPathSize - 1, root, nullptr);
-	}
-	PathCchStripToRoot(root, kMaxPathSize);
-
-	return BvWString(root + (!wcsncmp(root, kWideFilePrefix, kWideFilePrefixSize) ? kWideFilePrefixSize : 0));
+	return currentPath;
 }
 
 
 bool BvPath::IsAbsolute() const
 {
-	return m_IsValid && m_IsAbsolute;
+	return BvPathUtils::IsPathAbsolute(m_Path.CStr(), m_Path.Size());
 }
 
 
 bool BvPath::IsRelative() const
 {
-	return m_IsValid && !m_IsAbsolute;
+	return !IsAbsolute();
 }
 
 
 bool BvPath::IsValid() const
 {
-	return m_IsValid;
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	return GetFileAttributesExW(m_Path.CStr(), GetFileExInfoStandard, &fad);
 }
 
 
 bool BvPath::IsFile() const
 {
-	return m_IsValid && m_IsFile;
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	return GetFileAttributesExW(m_Path.CStr(), GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 : false;
 }
 
 
 bool BvPath::IsDirectory() const
 {
-	return m_IsValid && !m_IsFile;
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	return GetFileAttributesExW(m_Path.CStr(), GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 : false;
+}
+
+
+BvWString BvPath::GetName() const
+{
+	auto nameIndex = BvPathUtils::FindName(m_Path.CStr(), m_Path.Size());
+	auto extIndex = BvPathUtils::FindExtension(m_Path.CStr(), m_Path.Size());
+	auto count = extIndex - nameIndex;
+
+	return BvWString(m_Path.CStr(), nameIndex, count);
+}
+
+
+BvWString BvPath::GetNameAndExtension() const
+{
+	auto nameIndex = BvPathUtils::FindName(m_Path.CStr(), m_Path.Size());
+	return BvWString(m_Path.CStr(), nameIndex, m_Path.Size() - nameIndex);
+}
+
+
+BvWString BvPath::GetExtension() const
+{
+	auto extIndex = BvPathUtils::FindExtension(m_Path.CStr(), m_Path.Size());
+	return BvWString(m_Path.CStr(), extIndex, m_Path.Size() - extIndex);
+}
+
+
+BvWString BvPath::GetRoot() const
+{
+	auto rootDirEnd = BvPathUtils::GetEndOfRoot(m_Path.CStr(), m_Path.Size());
+	return BvWString(m_Path, 0, rootDirEnd + (BvPathUtils::IsSlash(m_Path[rootDirEnd]) ? 1 : 0));
+}
+
+
+BvWString BvPath::GetRootName() const
+{
+	auto rootNameView = BvPathUtils::GetRootName(m_Path.CStr(), m_Path.Size());
+	return BvWString(rootNameView.data(), 0, rootNameView.size());
+}
+
+
+BvWString BvPath::GetRootDirectory() const
+{
+	auto pRootEnd = m_Path.CStr() + BvPathUtils::GetEndOfRoot(m_Path.CStr(), m_Path.Size());
+	auto pRelativePath = std::find_if_not(pRootEnd, m_Path.LCStr(), BvPathUtils::IsSlash);
+	return BvWString(pRootEnd, 0, static_cast<u32>(pRelativePath - pRootEnd));
+}
+
+
+BvPath BvPath::GetNormalizedPath() const
+{
+	BvPath normalizedPath;
+	BvPathUtils::NormalizePath(m_Path, normalizedPath.m_Path);
+
+	return normalizedPath;
+}
+
+
+BvPath BvPath::GetAbsolutePath() const
+{
+	if (IsAbsolute())
+	{
+		return *this;
+	}
+
+	u32 sizeNeeded = GetFullPathNameW(m_Path.CStr(), 0, nullptr, nullptr);
+	if (sizeNeeded == 0)
+	{
+		// TODO: Handle error
+		return BvPath();
+	}
+
+	BvPath path;
+	path.m_Path.Resize(sizeNeeded);
+	GetFullPathNameW(m_Path.CStr(), path.m_Path.Size(), &path.m_Path[0], nullptr);
+	if (sizeNeeded == 0)
+	{
+		// TODO: Handle error
+		return BvPath();
+	}
+
+	return path;
+}
+
+
+BvPath BvPath::GetRelativePath() const
+{
+	auto index = BvPathUtils::FindRelativePath(m_Path.CStr(), m_Path.Size());
+	return BvPath(m_Path.CStr() + index, m_Path.Size() - index);
+}
+
+
+BvPath BvPath::GetParentPath() const
+{
+	return BvPath(m_Path.CStr(), BvPathUtils::GetParentPathEnd(m_Path.CStr(), m_Path.Size()));
+}
+
+
+BvPath BvPath::GetAppendedPath(const char* pPath) const
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvPath appendedPath(m_Path);
+	BvWString path;
+	BvPathUtils::ConvertToWidePath(path, pPath, pPath + strlen(pPath));
+	BvPathUtils::AppendPath(appendedPath.m_Path, path);
+
+	return appendedPath;
+}
+
+
+BvPath BvPath::GetAppendedPath(const wchar_t* pPath) const
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvPath appendedPath(m_Path);
+	BvPathUtils::AppendPath(appendedPath.m_Path, pPath);
+
+	return appendedPath;
+}
+
+
+BvPath BvPath::GetAppendedPath(const BvString& path) const
+{
+	BvPath appendedPath(m_Path);
+	BvWString pathW;
+	BvPathUtils::ConvertToWidePath(pathW, path.CStr(), path.LCStr());
+	BvPathUtils::AppendPath(appendedPath.m_Path, pathW);
+
+	return appendedPath;
+}
+
+
+BvPath BvPath::GetAppendedPath(const BvWString& path) const
+{
+	BvPath appendedPath(m_Path);
+	BvPathUtils::AppendPath(appendedPath.m_Path, path);
+
+	return appendedPath;
+}
+
+
+BvPath BvPath::GetAppendedPath(const BvPath& path) const
+{
+	BvPath appendedPath(m_Path);
+	BvPathUtils::AppendPath(appendedPath.m_Path, path.m_Path);
+
+	return appendedPath;
+}
+
+
+BvPath BvPath::GetPrependedPath(const char* pPath) const
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvWString path;
+	BvPathUtils::ConvertToWidePath(path, pPath, pPath + strlen(pPath));
+	BvPath prependedPath;
+	prependedPath.m_Path = std::move(path);
+	BvPathUtils::AppendPath(prependedPath.m_Path, m_Path);
+
+	return prependedPath;
+}
+
+
+BvPath BvPath::GetPrependedPath(const wchar_t* pPath) const
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvPath prependedPath(pPath);
+	BvPathUtils::AppendPath(prependedPath.m_Path, m_Path);
+
+	return prependedPath;
+}
+
+
+BvPath BvPath::GetPrependedPath(const BvString& path) const
+{
+	BvWString pathW;
+	BvPathUtils::ConvertToWidePath(pathW, path.CStr(), path.LCStr());
+	BvPath prependedPath;
+	prependedPath.m_Path = std::move(pathW);
+	BvPathUtils::AppendPath(prependedPath.m_Path, m_Path);
+
+	return prependedPath;
+}
+
+
+BvPath BvPath::GetPrependedPath(const BvWString& path) const
+{
+	BvPath prependedPath(path);
+	BvPathUtils::AppendPath(prependedPath.m_Path, m_Path);
+
+	return prependedPath;
+}
+
+
+BvPath BvPath::GetPrependedPath(const BvPath& path) const
+{
+	BvPath prependedPath(path);
+	BvPathUtils::AppendPath(prependedPath.m_Path, m_Path);
+
+	return prependedPath;
+}
+
+
+void BvPath::NormalizePath()
+{
+	BvWString normalizedPath;
+	BvPathUtils::NormalizePath(m_Path, normalizedPath);
+	std::swap(m_Path, normalizedPath);
+}
+
+
+void BvPath::ConvertToAbsolutePath()
+{
+	if (IsAbsolute())
+	{
+		return;
+	}
+
+	u32 sizeNeeded = GetFullPathNameW(m_Path.CStr(), 0, nullptr, nullptr);
+	if (sizeNeeded == 0)
+	{
+		// TODO: Handle error
+		return;
+	}
+
+	BvWString path(sizeNeeded);
+	GetFullPathNameW(m_Path.CStr(), path.Size(), &path[0], nullptr);
+	if (sizeNeeded == 0)
+	{
+		// TODO: Handle error
+		return;
+	}
+
+	std::swap(m_Path, path);
+}
+
+
+void BvPath::ConvertToRelativePath()
+{
+	auto index = BvPathUtils::FindRelativePath(m_Path.CStr(), m_Path.Size());
+	if (index != 0)
+	{
+		m_Path.Erase(0, index - 0);
+	}
+}
+
+
+void BvPath::MoveToParentPath()
+{
+	auto parentEndIndex = BvPathUtils::GetParentPathEnd(m_Path.CStr(), m_Path.Size());
+	m_Path.Erase(parentEndIndex, m_Path.Size() - parentEndIndex);
+}
+
+
+void BvPath::AppendPath(const char* pPath)
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvWString path;
+	BvPathUtils::ConvertToWidePath(path, pPath, pPath + strlen(pPath));
+	BvPathUtils::AppendPath(m_Path, path);
+}
+
+
+void BvPath::AppendPath(const wchar_t* pPath)
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvPathUtils::AppendPath(m_Path, pPath);
+}
+
+
+void BvPath::AppendPath(const BvString& path)
+{
+	BvWString pathW;
+	BvPathUtils::ConvertToWidePath(pathW, path.CStr(), path.LCStr());
+	BvPathUtils::AppendPath(m_Path, pathW);
+}
+
+
+void BvPath::AppendPath(const BvWString& path)
+{
+	BvPathUtils::AppendPath(m_Path, path);
+}
+
+
+void BvPath::AppendPath(const BvPath& path)
+{
+	BvPathUtils::AppendPath(m_Path, path.m_Path);
+}
+
+
+void BvPath::PrependPath(const char* pPath)
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvWString path;
+	BvPathUtils::ConvertToWidePath(path, pPath, pPath + strlen(pPath));
+	BvPathUtils::AppendPath(path, m_Path);
+	m_Path = std::move(path);
+}
+
+
+void BvPath::PrependPath(const wchar_t* pPath)
+{
+	BvAssert(pPath != nullptr, "Invalid path string");
+
+	BvWString path(pPath);
+	BvPathUtils::AppendPath(path, m_Path);
+	m_Path = std::move(path);
+}
+
+
+void BvPath::PrependPath(const BvString& path)
+{
+	BvWString pathW;
+	BvPathUtils::ConvertToWidePath(pathW, path.CStr(), path.LCStr());
+	BvPathUtils::AppendPath(pathW, m_Path);
+	m_Path = std::move(pathW);
+}
+
+
+void BvPath::PrependPath(const BvWString& path)
+{
+	BvWString prependedPath(path);
+	BvPathUtils::AppendPath(prependedPath, m_Path);
+	m_Path = std::move(prependedPath);
+}
+
+
+void BvPath::PrependPath(const BvPath& path)
+{
+	BvWString prependedPath(path.m_Path);
+	BvPathUtils::AppendPath(prependedPath, m_Path);
+	m_Path = std::move(prependedPath);
+}
+
+
+BvPath& BvPath::operator/=(const char* pPath)
+{
+	AppendPath(pPath);
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator/=(const wchar_t* pPath)
+{
+	AppendPath(pPath);
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator/=(const BvString& path)
+{
+	AppendPath(path);
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator/=(const BvWString& path)
+{
+	AppendPath(path);
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator/=(const BvPath& path)
+{
+	AppendPath(path);
+
+	return *this;
+}
+
+
+BvPath& BvPath::operator--()
+{
+	MoveToParentPath();
+	return *this;
+}
+
+
+BvPath BvPath::operator--(i32)
+{
+	BvPath path(*this);
+	MoveToParentPath();
+
+	return path;
+}
+
+
+bool BvPath::operator==(const BvPath& path) const
+{
+	return m_Path == path.m_Path;
+}
+
+
+bool BvPath::operator!=(const BvPath& path) const
+{
+	return m_Path != path.m_Path;
 }
 
 
 BvFile BvPath::AsFile(BvFileAccessMode mode) const
 {
-	return m_IsFile ? BvFile(m_Path.CStr(), mode, BvFileAction::kOpen) : BvFile();
+	return IsFile() ? BvFile(m_Path.CStr(), mode, BvFileAction::kOpen) : BvFile();
 }
 
 
-BvVector<BvPath> BvPath::GetFileList(const char* const pFilter) const
+BvAsyncFile BvPath::AsAsyncFile(BvFileAccessMode mode) const
 {
-	wchar_t filter[kMaxPathSize];
-	ConvertToWidePath(filter, pFilter);
-	return GetFileList(filter);
+	return IsFile() ? BvAsyncFile(m_Path.CStr(), mode, BvFileAction::kOpen) : BvAsyncFile();
 }
 
 
-BvVector<BvPath> BvPath::GetFileList(const wchar_t* const pFilter) const
+void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvWString& path, const BvWString& pathWithFilter)
 {
 	WIN32_FIND_DATAW findData;
-	wchar_t pathWithFilter[kMaxPathSize]{};
-	wcsncpy_s(pathWithFilter, m_Path.CStr(), kMaxPathSize - 1);
-	wcsncat_s(pathWithFilter, L"\\", kMaxPathSize - 1);
-	wcsncat_s(pathWithFilter, pFilter, kMaxPathSize - 1);
-
-	BvVector<BvPath> fileList;
-
-	auto hFind = FindFirstFileW(pathWithFilter, &findData);
+	auto hFind = FindFirstFileW(pathWithFilter.CStr(), &findData);
 	if (hFind == INVALID_HANDLE_VALUE)
 	{
 		DWORD error = GetLastError();
 		// TODO: Handle error
-		return fileList;
+		return;
 	}
 
 	do
@@ -313,8 +653,8 @@ BvVector<BvPath> BvPath::GetFileList(const wchar_t* const pFilter) const
 		BvWString filename(findData.cFileName);
 		if (filename != L"." && filename != L"..")
 		{
-			filename.Insert(m_Path, 0);
-			filename.Insert(L'\\', m_Path.Size());
+			filename.Insert(path, 0);
+			filename.Insert(L'\\', path.Size());
 			fileList.EmplaceBack(filename);
 		}
 	} while (FindNextFileW(hFind, &findData) != FALSE);
@@ -323,52 +663,436 @@ BvVector<BvPath> BvPath::GetFileList(const wchar_t* const pFilter) const
 	if (error != ERROR_NO_MORE_FILES)
 	{
 		// TODO: Handle error
-		return fileList;
+		return;
 	}
 
 	if (!FindClose(hFind))
 	{
 		// TODO: Handle error
+	}
+}
+
+
+BvVector<BvPath> BvPath::GetFileList(const char* pFilter) const
+{
+	BvVector<BvPath> fileList;
+	if (!IsDirectory())
+	{
 		return fileList;
 	}
+
+	BvWString pathWithFilter;
+	BvPathUtils::ConvertToWidePath(pathWithFilter, pFilter, pFilter + strlen(pFilter));
+	if (m_Path[m_Path.Size() - 1] != L'\\')
+	{
+		pathWithFilter.Insert(L'\\', 0);
+	}
+	pathWithFilter.Insert(m_Path, 0, m_Path.Size(), 0);
+
+	GetFileListFromPathWithFilter(fileList, m_Path, pathWithFilter);
 
 	return fileList;
 }
 
 
-void BvPath::Prepare(const wchar_t* const pPath)
+BvVector<BvPath> BvPath::GetFileList(const wchar_t* pFilter) const
 {
-	m_IsAbsolute = PathIsRelativeW(pPath) == FALSE;
-
-	wchar_t path[kMaxPathSize]{};
-	DWORD attributes = 0;
-	if (m_IsAbsolute)
+	BvVector<BvPath> fileList;
+	if (!IsDirectory())
 	{
-		if (wcsncmp(L"\\\\\?\\", pPath, kWideFilePrefixSize) != 0)
-		{
-			AddPrefixForMaxPathLimit(path, pPath);
-		}
-		else
-		{
-			wcsncpy_s(path, pPath, kMaxPathSize - 1);
-		}
-	}
-	else
-	{
-		// The "\\?\" prefix won't work for relative paths
-		wcsncpy_s(path, pPath, kMaxPathSize - 1);
+		return fileList;
 	}
 
-	attributes = GetFileAttributesW(path);
-	if (attributes == INVALID_FILE_ATTRIBUTES)
+	BvWString pathWithFilter(m_Path);
+	if (m_Path[m_Path.Size() - 1] != L'\\')
 	{
-		DWORD error = GetLastError();
-		// TODO: Handle error
+		pathWithFilter.Append(L'\\');
 	}
-	else
+	pathWithFilter.Append(pFilter);
+
+	GetFileListFromPathWithFilter(fileList, m_Path, pathWithFilter);
+
+	return fileList;
+}
+
+
+namespace BvPathUtils
+{
+	void ConvertToWidePath(BvWString& dst, const char* pSrcBegin, const char* pSrcEnd, const std::locale& loc)
 	{
-		m_Path = path;
-		m_IsFile = (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
-		m_IsValid = true;
+		auto const& facet = std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(loc);
+
+		dst.Resize(static_cast<u32>(pSrcEnd - pSrcBegin));
+
+		std::codecvt_base::result result = std::codecvt_base::ok;
+		do 
+		{
+			mbstate_t state{};
+			wchar_t* pDstBegin = &dst[0];
+			wchar_t* pDstEnd = pDstBegin + dst.Size();
+			wchar_t* pDstNext = nullptr;
+			const char* pSrcNext = nullptr;
+
+			result = facet.in(state, pSrcBegin, pSrcEnd, pSrcNext, pDstBegin, pDstEnd, pDstNext);
+
+			if (pSrcNext < pSrcBegin || pSrcNext > pSrcEnd || pDstNext < pDstBegin || pDstNext > pDstEnd)
+			{
+				BvAssert(false, "Invalid string conversion");
+				return;
+			}
+
+			switch (result)
+			{
+			case std::codecvt_base::partial:
+				if (pSrcNext == pSrcEnd && pDstNext != pDstEnd)
+				{
+					BvAssert(false, "Invalid string conversion");
+					return;
+				}
+
+				dst.Resize(dst.Size() * 2);
+				break;
+			case std::codecvt_base::error:
+			case std::codecvt_base::noconv:
+				BvAssert(false, "Invalid string conversion");
+				return;
+			default:
+				break;
+			}
+
+		} while (result != std::codecvt_base::ok);
+	}
+
+
+	bool IsSlash(wchar_t ch)
+	{
+		return ch == L'\\' || ch == L'/';
+	}
+
+
+	u32 GetEndOfRoot(const wchar_t* pPath, u32 size)
+	{
+		if (size < 2)
+		{
+			return 0;
+		}
+
+		if (HasDriveLetter(pPath, size))
+		{
+			return 2;
+		}
+
+		// The following paths all begin with a slash
+		if (!IsSlash(pPath[0]))
+		{
+			return 0;
+		}
+
+		// Check for \\?\, \??\ or \\.\ 
+		if (size >= 4 && IsSlash(pPath[3]) && (size == 4 || !IsSlash(pPath[4])) // \xx\$
+			&& ((IsSlash(pPath[1]) && (pPath[2] == L'?' || pPath[2] == L'.')) // \\?\$ or \\.\$
+				|| (pPath[1] == L'?' && pPath[2] == L'?'))) // \??\$
+		{
+			return 3;
+		}
+
+		// Check for \\server
+		if (size >= 3 && IsSlash(pPath[1]) && !IsSlash(pPath[2]))
+		{
+			return static_cast<u32>(std::find_if(pPath, pPath + size, IsSlash) - pPath);
+		}
+
+		return 0;
+	}
+
+
+	bool HasRootName(const wchar_t* pPath, u32 size)
+	{
+		return !GetRootName(pPath, size).empty();
+	}
+
+
+	std::wstring_view GetRootName(const wchar_t* pPath, u32 size)
+	{
+		return std::wstring_view(pPath, GetEndOfRoot(pPath, size));
+	}
+
+
+	bool HasRootSlash(const wchar_t* pPath, u32 size)
+	{
+		auto pEndOfRoot = pPath + GetEndOfRoot(pPath, size);
+		auto pRelPath = std::find_if_not(pEndOfRoot, pPath + size, IsSlash);
+
+		return static_cast<u32>(pRelPath - pEndOfRoot) > 0;
+	}
+
+
+	bool HasDriveLetter(const wchar_t* pPath, u32 size)
+	{
+		return size >= 2 && iswalpha(pPath[0]) && pPath[1] == L':';
+	}
+
+
+	bool IsPathAbsolute(const wchar_t* pPath, u32 size)
+	{
+		if (HasDriveLetter(pPath, size))
+		{
+			return size >= 3 && IsSlash(pPath[2]);
+		}
+
+		return GetEndOfRoot(pPath, size) != 0;
+	}
+
+
+	u32 FindRelativePath(const wchar_t* pPath, u32 size)
+	{
+		auto pFirst = pPath + GetEndOfRoot(pPath, size);
+		return static_cast<u32>(std::find_if_not(pFirst, pPath + size, IsSlash) - pPath);
+	}
+
+
+	u32 FindName(const wchar_t* pPath, u32 size)
+	{
+		if (size == 0)
+		{
+			return 0;
+		}
+
+		auto pFirst = pPath + FindRelativePath(pPath, size);
+		auto pLast = pPath + size;
+		while (pLast != pFirst && !IsSlash(pLast[-1]))
+		{
+			--pLast;
+		}
+
+		return static_cast<u32>(pLast - pPath);
+	}
+
+
+	u32 FindExtension(const wchar_t* pPath, u32 size)
+	{
+		if (size <= 1)
+		{
+			size;
+		}
+
+		auto pExtension = pPath + size - 1;
+		if (*pExtension == L'.')
+		{
+			if (size == 2 && pExtension[-1] == L'.') // ..
+			{
+				return size;
+			}
+			else
+			{
+				return static_cast<u32>(pExtension - pPath);
+			}
+		}
+
+		while (pPath != --pExtension)
+		{
+			if (*pExtension == L'.')
+			{
+				return static_cast<u32>(pExtension - pPath);
+			}
+		}
+
+		return size;
+	}
+
+
+	u32 GetFileAttributeFlags(const BvWString& path)
+	{
+		WIN32_FILE_ATTRIBUTE_DATA fad;
+		return GetFileAttributesExW(path.CStr(), GetFileExInfoStandard, &fad) ? fad.dwFileAttributes : 0;
+	}
+
+
+	bool HasUNCPathAndDrive(const wchar_t* pPath, u32 size)
+	{
+		std::wstring_view view(pPath, size);
+		return size >= 6 && view.starts_with(L"\\\\?\\") && iswalpha(pPath[4]) && pPath[5] == L':';
+	}
+
+
+	bool IsRelativePathWithRootName(const wchar_t* pPath, u32 size)
+	{
+		auto pFirst = pPath + FindRelativePath(pPath, size);
+		auto pLast = pPath + size;
+
+		while (pFirst != pLast)
+		{
+			auto pNext = std::find_if(pFirst, pLast, IsSlash);
+			if (GetEndOfRoot(pFirst, static_cast<u32>(pNext - pFirst)) != 0)
+			{
+				return true;
+			}
+
+			pFirst = std::find_if_not(pNext, pLast, IsSlash);
+		}
+
+		return false;
+	}
+
+	void NormalizePath(const BvWString& path, BvWString& normalizedPath)
+	{
+		if (path.Empty())
+		{
+			return;
+		}
+
+		BvVector<std::wstring_view> parts;
+		parts.Reserve(16);
+
+		auto rootEndIndex = BvPathUtils::GetEndOfRoot(path.CStr(), path.Size());;
+		normalizedPath.Append(path.CStr(), 0, rootEndIndex);
+
+		auto pRootEnd = path.CStr() + rootEndIndex;
+		auto pEnd = path.CStr() + path.Size();
+		auto pWalker = pRootEnd;
+
+		// Add the first separator if one exists and skip if there's more than one
+		bool hasRootSlash = false;
+		if (pWalker != pEnd && BvPathUtils::IsSlash(*pWalker))
+		{
+			hasRootSlash = true;
+			normalizedPath.Append(L'\\');
+			while (++pWalker != pEnd && BvPathUtils::IsSlash(*pWalker))
+			{
+			}
+		}
+
+		while (pWalker != pEnd)
+		{
+			if (BvPathUtils::IsSlash(*pWalker))
+			{
+				if (parts.Empty() || !parts.Back().empty())
+				{
+					parts.EmplaceBack();
+				}
+				++pWalker;
+			}
+			else
+			{
+				auto pNameEnd = std::find_if(pWalker + 1, pEnd, BvPathUtils::IsSlash);
+				parts.EmplaceBack(pWalker, static_cast<u32>(pNameEnd - pWalker));
+				pWalker = pNameEnd;
+			}
+		}
+
+		constexpr std::wstring_view dot = L".";
+		constexpr std::wstring_view dotDot = L"..";
+		u32 indexToDelete = 0u;
+		for (auto i = 0u; i < parts.Size();)
+		{
+			const auto& part = parts[i++];
+			if (part == dot)
+			{
+				if (i == parts.Size())
+				{
+					break;
+				}
+			}
+			else if (part != dotDot)
+			{
+				parts[indexToDelete++] = part;
+				if (i == parts.Size())
+				{
+					break;
+				}
+				++indexToDelete;
+			}
+			else
+			{
+				if (indexToDelete > 0 && parts[indexToDelete - 2] != dotDot)
+				{
+					indexToDelete -= 2;
+					if (i == parts.Size())
+					{
+						break;
+					}
+				}
+				else if (!hasRootSlash)
+				{
+					parts[indexToDelete++] = dotDot;
+					if (i == parts.Size())
+					{
+						break;
+					}
+					++indexToDelete;
+				}
+				else
+				{
+					if (i == parts.Size())
+					{
+						break;
+					}
+				}
+			}
+			++i;
+		}
+		parts.Erase(parts.begin() + indexToDelete, parts.end());
+
+		if (parts.Size() >= 2 && parts.Back().empty() && parts.end()[-2] == dotDot)
+		{
+			parts.PopBack();
+		}
+
+		for (const auto& part : parts)
+		{
+			if (part.empty())
+			{
+				normalizedPath.Append(L'\\');
+			}
+			else
+			{
+				normalizedPath.Append(part.data(), 0, part.size());
+			}
+		}
+
+		if (normalizedPath.Empty())
+		{
+			normalizedPath.Append(L'\\');
+		}
+	}
+
+
+	u32 GetParentPathEnd(const wchar_t* pPath, u32 size)
+	{
+		const wchar_t* pLast = pPath + size;
+
+		while (pLast != pPath && !BvPathUtils::IsSlash(pLast[-1]))
+		{
+			--pLast;
+		}
+
+		while (pLast != pPath && BvPathUtils::IsSlash(pLast[-1]))
+		{
+			--pLast;
+		}
+
+		return static_cast<u32>(pLast - pPath);
+	}
+
+
+	void AppendPath(BvWString& result, const wchar_t* pPath)
+	{
+		if (!BvPathUtils::IsSlash(result.GetLastChar()) && !BvPathUtils::IsSlash(*pPath))
+		{
+			result.Append(L'\\');
+		}
+
+		result.Append(pPath);
+	}
+
+
+	void AppendPath(BvWString& result, const BvWString& path)
+	{
+		if (!BvPathUtils::IsSlash(result.GetLastChar()) && !BvPathUtils::IsSlash(path[0]))
+		{
+			result.Append(L'\\');
+		}
+
+		result.Append(path);
 	}
 }

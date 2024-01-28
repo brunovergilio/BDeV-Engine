@@ -43,27 +43,27 @@ BvMonitor::~BvMonitor()
 }
 
 
-class BvMonitorStartUp
+class BvMonitorHelper
 {
-	BV_NOCOPYMOVE(BvMonitorStartUp);
+	BV_NOCOPYMOVE(BvMonitorHelper);
 
 public:
-	BvMonitorStartUp()
+	BvMonitorHelper()
 	{
-		BvVector<HMONITOR> hMonitors;
-		EnumDisplayMonitors(0, nullptr, &EnumMonitorCallback, (LPARAM)&hMonitors);
+		BvVector<HMONITOR> monitorHandles;
+		EnumDisplayMonitors(0, nullptr, &EnumMonitorCallback, (LPARAM)&monitorHandles);
 
-		for (auto hMonitor : hMonitors)
+		for (auto hMonitor : monitorHandles)
 		{
-			m_MonitorInfos.PushBack(new BvMonitor(hMonitor));
+			m_MonitorInfos.PushBack(BvNew(BvMonitor, hMonitor));
 		}
 	}
 
-	~BvMonitorStartUp()
+	~BvMonitorHelper()
 	{
 		for (auto pMonitorInfo : m_MonitorInfos)
 		{
-			delete pMonitorInfo;
+			BvDelete(pMonitorInfo);
 		}
 		m_MonitorInfos.Clear();
 	}
@@ -83,7 +83,7 @@ public:
 
 const BvVector<BvMonitor*>& GetMonitors()
 {
-	static BvMonitorStartUp monitorData;
+	static BvMonitorHelper monitorData;
 	return monitorData.m_MonitorInfos;
 }
 

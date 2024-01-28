@@ -35,20 +35,14 @@ void BvSimpleBoundsChecker::GuardBack(void* pMemory)
 void BvSimpleBoundsChecker::CheckFrontGuard(void* pMemory)
 {
 	MemType mem{ pMemory };
-	if (*mem.pAsSizeTPtr != kFrontGuardValue)
-	{
-		BV_ERROR("Front guards not maching in address 0x%p", mem.pAsVoidPtr);
-	}
+	BvAssert(*mem.pAsSizeTPtr == kFrontGuardValue, "Front guards not maching in address 0x%p", mem.pAsVoidPtr);
 }
 
 
 void BvSimpleBoundsChecker::CheckBackGuard(void* pMemory)
 {
 	MemType mem{ pMemory };
-	if (*mem.pAsSizeTPtr != kBackGuardValue)
-	{
-		BV_ERROR("Back guards not maching in address 0x%p", mem.pAsVoidPtr);
-	}
+	BvAssert(*mem.pAsSizeTPtr == kBackGuardValue, "Back guards not maching in address 0x%p", mem.pAsVoidPtr);
 }
 
 
@@ -72,8 +66,9 @@ void BvExtendedBoundsChecker::GuardFront(void* pMemory)
 
 	for (auto guard : m_FrontGuards)
 	{
-		BV_ERROR("Front guards not maching in address 0x%p", guard);
+		BvAssert(*guard == kFrontGuardValue, "Front guards not maching in address 0x%p", guard);
 	}
+	m_FrontGuards.EmplaceBack(mem.pAsSizeTPtr);
 }
 
 
@@ -81,11 +76,12 @@ void BvExtendedBoundsChecker::GuardBack(void* pMemory)
 {
 	MemType mem{ pMemory };
 	*mem.pAsSizeTPtr = kBackGuardValue;
-	
+
 	for (auto guard : m_BackGuards)
 	{
-		BV_ERROR("Back guards not maching in address 0x%p", guard);
+		BvAssert(*guard == kBackGuardValue, "Front guards not maching in address 0x%p", guard);
 	}
+	m_BackGuards.EmplaceBack(mem.pAsSizeTPtr);
 }
 
 
@@ -95,10 +91,8 @@ void BvExtendedBoundsChecker::CheckFrontGuard(void* pMemory)
 	u32 index = 0;
 	for (auto i = 0u; i < m_FrontGuards.Size(); i++)
 	{
-		if (*mem.pAsSizeTPtr != kFrontGuardValue)
-		{
-			BV_ERROR("Front guards not maching in address 0x%p", mem.pAsVoidPtr);
-		}
+		auto guard = m_FrontGuards[i];
+		BvAssert(*guard == kFrontGuardValue, "Front guards not maching in address 0x%p", guard);
 
 		if (mem.pAsVoidPtr == pMemory)
 		{
@@ -106,8 +100,7 @@ void BvExtendedBoundsChecker::CheckFrontGuard(void* pMemory)
 		}
 	}
 
-	std::swap(m_FrontGuards[index], m_FrontGuards.Back());
-	m_FrontGuards.PopBack();
+	m_FrontGuards.EraseAndSwapWithLast(index);
 }
 
 
@@ -117,10 +110,8 @@ void BvExtendedBoundsChecker::CheckBackGuard(void* pMemory)
 	u32 index = 0;
 	for (auto i = 0u; i < m_BackGuards.Size(); i++)
 	{
-		if (*mem.pAsSizeTPtr != kBackGuardValue)
-		{
-			BV_ERROR("Back guards not maching in address 0x%p", mem.pAsVoidPtr);
-		}
+		auto guard = m_BackGuards[i];
+		BvAssert(*guard == kBackGuardValue, "Back guards not maching in address 0x%p", guard);
 
 		if (mem.pAsVoidPtr == pMemory)
 		{
@@ -128,6 +119,5 @@ void BvExtendedBoundsChecker::CheckBackGuard(void* pMemory)
 		}
 	}
 
-	std::swap(m_BackGuards[index], m_BackGuards.Back());
-	m_BackGuards.PopBack();
+	m_BackGuards.EraseAndSwapWithLast(index);
 }

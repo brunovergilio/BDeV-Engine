@@ -5,11 +5,6 @@
 #include "BDeV/System/Window/BvWindow.h"
 
 
-#if defined(CreateWindow)
-#undef CreateWindow
-#endif
-
-
 class BvPlatform
 {
 	BV_NOCOPYMOVE(BvPlatform);

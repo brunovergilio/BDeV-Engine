@@ -114,7 +114,7 @@ bool BvSwapChainVk::Create()
 			// If we still couldn't find anything, then throw an error
 			if (format == VkFormat::VK_FORMAT_UNDEFINED)
 			{
-				BV_ERROR("Couldn't find a format for Vulkan's SwapChain");
+				BvCrash("Couldn't find a format for Vulkan's SwapChain");
 				return false;
 			}
 		}

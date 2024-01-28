@@ -1,5 +1,4 @@
 #include "BvDebugReportVk.h"
-#include "BvLoaderVk.h"
 
 
 BvDebugReportVk::BvDebugReportVk(const VkInstance instance)
@@ -116,10 +115,10 @@ VkBool32 VKAPI_PTR BvDebugReportVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsM
 		}
 	}
 
-	DPrintF("%s\n", message);
+	BvDebug::PrintF("%s\n", message);
 	if (triggerAbort)
 	{
-		BV_ERROR(message);
+		BvCrash(message);
 	}
 
 	return VK_FALSE;

@@ -4,6 +4,7 @@
 #include "BDeV/Utils/BvUtils.h"
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 
 
 class BvMutex
@@ -66,9 +67,6 @@ public:
 	BvNoLock() {}
 	~BvNoLock() {}
 
-	BvNoLock(BvNoLock&& rhs) = default;
-	BvNoLock& operator =(BvNoLock&& rhs) = default;
-
 	BV_INLINE void Lock() {}
 	BV_INLINE bool TryLock() { return true; }
 	BV_INLINE void Unlock() {}
@@ -96,20 +94,25 @@ class BvSignal
 	BV_NOCOPY(BvSignal);
 
 public:
+	enum class ResetType : u8
+	{
+		kAuto,
+		kManual,
+	};
+
 	BvSignal();
-	explicit BvSignal(const bool manualReset, const bool signaled = false);
+	explicit BvSignal(ResetType resetType, bool initiallySignaled = false);
 	~BvSignal();
 
-	BvSignal(BvSignal&& rhs) noexcept;
-	BvSignal& operator =(BvSignal&& rhs) noexcept;
+	void SetResetType(ResetType resetType);
 
 	void Set();
 	void Reset();
-	bool Wait(const u32 timeout = kU32Max);
+	bool Wait(u32 timeout = kU32Max);
 
 private:
-	void Destroy();
-
-private:
-	void* m_hEvent = nullptr;
+	std::condition_variable m_CV;
+	std::mutex m_Lock;
+	std::atomic<bool> m_Signaled;
+	ResetType m_ResetType = ResetType::kAuto;
 };

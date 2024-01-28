@@ -23,6 +23,9 @@ public:
 	bool Open(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
 	bool Open(const wchar_t* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
 
+	//static void ReadAllText(const char* const pFilename);
+	//static void ReadAllText(const wchar_t* const pFilename);
+
 	i32 Read(void* const pBuffer, const u32 bufferSize);
 	i32 Write(const void* const pBuffer, const u32 bufferSize);
 
@@ -37,6 +40,8 @@ public:
 	const u64 GetSize() const;
 
 	void Close();
+
+	void Flush();
 
 	void GetFileInfo(BvFileInfo& fileInfo);
 

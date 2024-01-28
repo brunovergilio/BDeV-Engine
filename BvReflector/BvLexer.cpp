@@ -10,7 +10,7 @@ BvLexer::BvLexer(const char* pData)
 		return;
 	}
 
-	// Make sure we skip the initial whitespaces, if any
+	// Make sure we skip the initial white spaces, if any
 	while (IsSpace(*m_pCurr))
 	{
 		++m_pCurr;

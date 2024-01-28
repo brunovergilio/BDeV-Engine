@@ -107,10 +107,10 @@ constexpr FormatMapVk kFormats[] =
 	{ VK_FORMAT_R8G8B8A8_UNORM,				VK_IMAGE_ASPECT_COLOR_BIT, { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_ONE } },	// Format::kAYUV,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY410,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY416,
-	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kNV12,
+	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::kNV12,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kP010,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kP016,
-	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::k420_OPAQUE,
+	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::k420_OPAQUE,
 	{ VK_FORMAT_G8B8G8R8_422_UNORM,			VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kYUY2,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY210,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY216,
@@ -216,33 +216,79 @@ static BvRobinMap<VkFormat, Format> s_VkFormatToFormatMap =
 };
 
 
+constexpr VkImageType kImageTypes[] =
+{
+	VkImageType::VK_IMAGE_TYPE_1D,
+	VkImageType::VK_IMAGE_TYPE_2D,
+	VkImageType::VK_IMAGE_TYPE_3D,
+};
+
+
+constexpr VkImageViewType kImageViewTypes[] =
+{
+	VkImageViewType::VK_IMAGE_VIEW_TYPE_1D,
+	VkImageViewType::VK_IMAGE_VIEW_TYPE_1D_ARRAY,
+	VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
+	VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+	VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE,
+	VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY,
+	VkImageViewType::VK_IMAGE_VIEW_TYPE_3D,
+};
+
+
+constexpr VkFilter kFilters[] =
+{
+	VkFilter::VK_FILTER_NEAREST,
+	VkFilter::VK_FILTER_LINEAR,
+};
+
+
+constexpr VkSamplerMipmapMode kMipMapModes[] =
+{
+	VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_NEAREST,
+	VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_LINEAR,
+};
+
+
+constexpr VkSamplerAddressMode kSamplerAddressModes[] =
+{
+	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
+	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
+};
+
+
+constexpr VkCompareOp kCompareOps[] =
+{
+	VkCompareOp::VK_COMPARE_OP_NEVER,
+	VkCompareOp::VK_COMPARE_OP_LESS,
+	VkCompareOp::VK_COMPARE_OP_EQUAL,
+	VkCompareOp::VK_COMPARE_OP_LESS_OR_EQUAL,
+	VkCompareOp::VK_COMPARE_OP_GREATER,
+	VkCompareOp::VK_COMPARE_OP_NOT_EQUAL,
+	VkCompareOp::VK_COMPARE_OP_GREATER_OR_EQUAL,
+	VkCompareOp::VK_COMPARE_OP_ALWAYS,
+};
+
+
+constexpr VkVertexInputRate kVertexInputRates[] =
+{
+	VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX,
+	VkVertexInputRate::VK_VERTEX_INPUT_RATE_INSTANCE,
+};
+
+
 VkImageType GetVkImageType(const TextureType type)
 {
-	switch (type)
-	{
-	case TextureType::kTexture1D: return VkImageType::VK_IMAGE_TYPE_1D;
-	case TextureType::kTexture2D: return VkImageType::VK_IMAGE_TYPE_2D;
-	case TextureType::kTexture3D: return VkImageType::VK_IMAGE_TYPE_3D;
-	}
-
-	return VkImageType::VK_IMAGE_TYPE_2D;
+	return kImageTypes[u32(type)];
 }
 
 
 VkImageViewType GetVkImageViewType(const TextureViewType viewType)
 {
-	switch (viewType)
-	{
-	case TextureViewType::kTexture1D:			return VkImageViewType::VK_IMAGE_VIEW_TYPE_1D;
-	case TextureViewType::kTexture1DArray:		return VkImageViewType::VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-	case TextureViewType::kTexture2D:			return VkImageViewType::VK_IMAGE_VIEW_TYPE_2D;
-	case TextureViewType::kTexture2DArray:		return VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-	case TextureViewType::kTextureCube:			return VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE;
-	case TextureViewType::kTextureCubeArray:	return VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-	case TextureViewType::kTexture3D:			return VkImageViewType::VK_IMAGE_VIEW_TYPE_3D;
-	}
-
-	return VkImageViewType::VK_IMAGE_VIEW_TYPE_2D;
+	return kImageViewTypes[u32(viewType)];
 }
 
 
@@ -315,58 +361,25 @@ VkMemoryPropertyFlags GetVkMemoryPropertyFlags(const MemoryFlags memoryFlags)
 
 VkFilter GetVkFilter(const Filter filter)
 {
-	switch (filter)
-	{
-	case Filter::kPoint:	return VkFilter::VK_FILTER_NEAREST;
-	case Filter::kLinear:	return VkFilter::VK_FILTER_LINEAR;
-	}
-
-	return VkFilter::VK_FILTER_LINEAR;
+	return kFilters[u32(filter)];
 }
 
 
 VkSamplerMipmapMode GetVkSamplerMipmapMode(const MipMapFilter mipMapFilter)
 {
-	switch (mipMapFilter)
-	{
-	case MipMapFilter::kPoint:	return VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	case MipMapFilter::kLinear:	return VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	}
-
-	return VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	return kMipMapModes[u32(mipMapFilter)];
 }
 
 
 VkSamplerAddressMode GetVkSamplerAddressMode(const AddressMode addressMode)
 {
-	switch (addressMode)
-	{
-	case AddressMode::kWrap:		return VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	case AddressMode::kMirror:		return VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-	case AddressMode::kClamp:		return VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	case AddressMode::kBorder:		return VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	case AddressMode::kMirrorOnce:	return VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-	}
-
-	return VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	return kSamplerAddressModes[u32(addressMode)];
 }
 
 
 VkCompareOp GetVkCompareOp(const CompareOp compareOp)
 {
-	switch (compareOp)
-	{
-	case CompareOp::kNever:			return VkCompareOp::VK_COMPARE_OP_NEVER;
-	case CompareOp::kLess:			return VkCompareOp::VK_COMPARE_OP_LESS;
-	case CompareOp::kEqual:			return VkCompareOp::VK_COMPARE_OP_EQUAL;
-	case CompareOp::kLessEqual:		return VkCompareOp::VK_COMPARE_OP_LESS_OR_EQUAL;
-	case CompareOp::kGreater:		return VkCompareOp::VK_COMPARE_OP_GREATER;
-	case CompareOp::kNotEqual:		return VkCompareOp::VK_COMPARE_OP_NOT_EQUAL;
-	case CompareOp::kGreaterEqual:	return VkCompareOp::VK_COMPARE_OP_GREATER_OR_EQUAL;
-	case CompareOp::kAlways:		return VkCompareOp::VK_COMPARE_OP_ALWAYS;
-	}
-
-	return VkCompareOp::VK_COMPARE_OP_NEVER;
+	return kCompareOps[u32(compareOp)];
 }
 
 
@@ -384,13 +397,7 @@ VkCommandBufferLevel GetVkCommandBufferLevel(const CommandType commandLevel)
 
 VkVertexInputRate GetVkVertexInputRate(const InputRate inputRate)
 {
-	switch (inputRate)
-	{
-	case InputRate::kPerVertex:		return VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX;
-	case InputRate::kPerInstance:	return VkVertexInputRate::VK_VERTEX_INPUT_RATE_INSTANCE;
-	}
-
-	return VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX;
+	return kVertexInputRates[u32(inputRate)];
 }
 
 

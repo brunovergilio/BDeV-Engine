@@ -77,7 +77,7 @@ void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentO
 		mem.pAsCharPtr += kBlockHeaderSize;
 
 		// Align the pointer with the added offset
-		MemType alignedMem{ AlignMemory(mem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
+		MemType alignedMem{ BvMemory::AlignMemory(mem.pAsCharPtr + alignmentOffset + kPointerSize, alignment) };
 		// Offset it back
 		alignedMem.pAsCharPtr -= alignmentOffset;
 		// Store the offset to the misaligned memory address
@@ -166,9 +166,9 @@ void BvHeapAllocator::Debug()
 		GetBlockInfo(curr.pAsSizeTPtr, size, inUse);
 		if (curr.pAsCharPtr > m_pStart)
 		{
-			PrintF("Prev(0x%p) ", (void*)curr.pAsSizeTPtr[-1]);
+			BvConsole::PrintF("Prev(0x%p) ", (void*)curr.pAsSizeTPtr[-1]);
 		}
-		PrintF("(0x%p) Block Size: %llu - In use: %s\n", curr.pAsVoidPtr, size, inUse ? "Yes" : "No");
+		BvConsole::PrintF("(0x%p) Block Size: %llu - In use: %s\n", curr.pAsVoidPtr, size, inUse ? "Yes" : "No");
 		curr.asSizeT += size + kBlockInfoSize;
 	}
 }

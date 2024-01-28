@@ -2,8 +2,8 @@
 #include "BDeV/System/Debug/BvDebug.h"
 #include "BDeV/System/Threading/BvSync.h"
 #include "BDeV/Utils/BvUtils.h"
-#include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
+#include "BDeV/System/Memory/BvMemoryCommon.h"
 
 
 struct AsyncFileData
@@ -14,7 +14,7 @@ struct AsyncFileData
 	std::atomic<u32> m_UseCount;
 
 	AsyncFileData()
-		: m_Signal(BvSignal(true)), m_UseCount(1) {}
+		: m_UseCount(1) {}
 	~AsyncFileData() { m_UseCount--; }
 };
 
@@ -74,7 +74,7 @@ AsyncFileRequest::~AsyncFileRequest()
 	{
 		if (--m_pIOData->m_UseCount == 0)
 		{
-			delete m_pIOData;
+			BvDelete(m_pIOData);
 		}
 	}
 }
@@ -227,7 +227,7 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, c
 	BvAssert(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
-	request.m_pIOData = new AsyncFileData();
+	request.m_pIOData = BvNew(AsyncFileData);
 	request.m_pIOData->m_OverlappedIO.Pointer = reinterpret_cast<void *>(position);
 	request.m_pIOData->m_hFile = m_hFile;
 
@@ -252,7 +252,7 @@ AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 buffer
 	BvAssert(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
-	request.m_pIOData = new AsyncFileData();
+	request.m_pIOData = BvNew(AsyncFileData);
 	request.m_pIOData->m_OverlappedIO.Pointer = reinterpret_cast<void *>(position);
 	request.m_pIOData->m_hFile = m_hFile;
 

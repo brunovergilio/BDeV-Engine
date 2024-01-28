@@ -6,7 +6,7 @@
 #include "BDeV\Utils\BvEvent.h"
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 #endif
 
 

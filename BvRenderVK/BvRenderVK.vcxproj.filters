@@ -22,7 +22,6 @@
     <ClCompile Include="BvFramebufferVk.cpp" />
     <ClCompile Include="BvDebugReportVk.cpp" />
     <ClCompile Include="BvShaderResourceSetPoolVk.cpp" />
-    <ClCompile Include="BvLoaderVk.cpp" />
     <ClCompile Include="BvCommonVk.cpp" />
     <ClCompile Include="BvFenceVk.cpp" />
   </ItemGroup>
@@ -49,7 +48,9 @@
     <ClInclude Include="BvFramebufferVk.h" />
     <ClInclude Include="BvDebugReportVk.h" />
     <ClInclude Include="BvShaderResourceSetPoolVk.h" />
-    <ClInclude Include="BvLoaderVk.h" />
     <ClInclude Include="BvFenceVk.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BvRenderVk.def" />
   </ItemGroup>
 </Project>

@@ -2,7 +2,7 @@
 #include "BvRenderVk/BvRenderDeviceVk.h"
 #include "BvUtilsVk.h"
 #include "BvTypeConversionsVk.h"
-#include <vma/vk_mem_alloc.h>
+#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 
 BvBufferVk::BvBufferVk(const BvRenderDeviceVk & device, const BufferDesc & bufferDesc)

@@ -3,7 +3,7 @@
 
 #include "BDeV/RenderAPI/BvBuffer.h"
 #include "BvCommonVk.h"
-#include <vma/vk_mem_alloc.h>
+#include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 
 
 class BvRenderDeviceVk;

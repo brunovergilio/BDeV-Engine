@@ -3,7 +3,7 @@
 #include "BDeV/System/Debug/BvDebug.h"
 #include <utility>
 #include <process.h>
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 
 
 BvFiber& GetThreadFiberInternal();
@@ -50,32 +50,88 @@ void BvThread::Wait()
 }
 
 
-void BvThread::SetAffinity(const u32 affinityMask) const
+void BvThread::SetAffinityMask(u64 affinityMask) const
 {
 	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
 
-	SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(affinityMask));
+	SetThreadAffinityMask(m_hThread, static_cast<DWORD_PTR>(affinityMask));
+}
+
+
+void BvThread::LockToCore(u32 coreIndex) const
+{
+	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
+	BvAssert(coreIndex < 64, "This implementation supports only 64 cores");
+
+	SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(coreIndex));
 }
 
 
 void BvThread::SetName(const char* pThreadName) const
 {
+	constexpr i32 kMaxThreadNameSize = 32;
+	BvAssert(strlen(pThreadName) < kMaxThreadNameSize, "Thread name is too long");
+
+#if (BV_COMPILER == BV_COMPILER_MSVC) && BV_COMPILER_VERSION >= 1913
 	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
 
-	constexpr u32 kMaxThreadNameLength = 32;
-	wchar_t threadName[kMaxThreadNameLength];
+	wchar_t threadName[kMaxThreadNameSize];
 	mbstate_t state{};
-	mbsrtowcs(threadName, &pThreadName, kMaxThreadNameLength - 1, &state);
+	mbsrtowcs(threadName, &pThreadName, kMaxThreadNameSize - 1, &state);
 
 	auto hr = SetThreadDescription(m_hThread, threadName);
 	if (FAILED(hr))
 	{
 		// TODO: Handle error
 	}
+#else
+	constexpr DWORD kMSVCException = 0x406D1388;
+
+#pragma pack(push,8)
+	typedef struct tagTHREADNAME_INFO
+	{
+		DWORD dwType; // Must be 0x1000.
+		LPCSTR szName; // Pointer to name (in user addr space).
+		DWORD dwThreadID; // Thread ID (-1=caller thread).
+		DWORD dwFlags; // Reserved for future use, must be zero.
+	} THREADNAME_INFO;
+#pragma pack(pop)
+
+	THREADNAME_INFO info;
+	info.dwType = 0x1000;
+	info.szName = pThreadName;
+	info.dwThreadID = (DWORD)m_ThreadId;
+	info.dwFlags = 0;
+
+	__try
+	{
+		RaiseException(kMSVCException, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+#endif
 }
 
 
-void BvThread::Sleep(const u32 miliseconds)
+void BvThread::SetPriority(Priority priority) const
+{
+	constexpr i32 priorities[] =
+	{
+		THREAD_PRIORITY_NORMAL,
+		THREAD_PRIORITY_NORMAL,
+		THREAD_PRIORITY_ABOVE_NORMAL,
+		THREAD_PRIORITY_HIGHEST,
+		THREAD_PRIORITY_TIME_CRITICAL,
+		THREAD_PRIORITY_BELOW_NORMAL,
+		THREAD_PRIORITY_LOWEST,
+	};
+
+	SetThreadPriority(m_hThread, priorities[(i32)priority]);
+}
+
+
+void BvThread::Sleep(u32 miliseconds)
 {
 	::Sleep(miliseconds);
 }
@@ -137,9 +193,18 @@ bool BvThread::IsFiber() const
 }
 
 
-void BvThread::Create(const u32 stackSize)
+void BvThread::Create()
 {
 	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0U, ThreadEntryPoint, m_pDelegate, 0U, reinterpret_cast<u32*>(&m_ThreadId)));
+}
+
+
+void BvThread::Create(const CreateInfo& createInfo)
+{
+	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, m_pDelegate,
+		createInfo.m_CreateSuspended ? CREATE_SUSPENDED : 0u, reinterpret_cast<u32*>(&m_ThreadId)));
+	SetPriority(createInfo.m_Priority);
+	SetAffinityMask(createInfo.m_AffinityMask);
 }
 
 
@@ -158,7 +223,7 @@ void BvThread::Destroy()
 	{
 		CloseHandle(m_hThread);
 
-		delete m_pDelegate;
+		BvDeleteN((u8*)m_pDelegate);
 	}
 }
 
@@ -171,7 +236,7 @@ BvFiber& GetThreadFiberInternal()
 }
 
 
-u32 ThreadEntryPoint(void* pData)
+u32 CALLBACK ThreadEntryPoint(void* pData)
 {
 	BvDelegateBase * pDelegate = reinterpret_cast<BvDelegateBase *>(pData);
 	pDelegate->Invoke();

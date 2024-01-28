@@ -3,6 +3,7 @@
 #include "BvTypeConversionsVk.h"
 #include "BvRenderPassVk.h"
 #include "BvShaderResourceVk.h"
+#include "BvUtilsVk.h"
 
 
 VkShaderModule CreateShaderModule(const BvRenderDeviceVk & device, size_t size, const u8 * pShaderCode, const VkShaderStageFlagBits shaderStage);
@@ -141,13 +142,44 @@ void BvGraphicsPipelineStateVk::Create()
 		rtvFormats[i] = GetVkFormat(m_PipelineStateDesc.m_RenderTargetFormats[i]);
 	}
 
+	auto dynamicRenderingSupported = m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering;
 	VkPipelineRenderingCreateInfoKHR pipelineRenderingCI{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
-	if (m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering)
+	VkRenderPass renderPass = m_PipelineStateDesc.m_pRenderPass ? static_cast<BvRenderPassVk*>(m_PipelineStateDesc.m_pRenderPass)->GetHandle() : VK_NULL_HANDLE;
+	if (renderPass == VK_NULL_HANDLE)
 	{
-		pipelineRenderingCI.colorAttachmentCount = m_PipelineStateDesc.m_RenderTargetFormats.Size();
-		pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
-		pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
-		pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
+		if (dynamicRenderingSupported)
+		{
+			pipelineRenderingCI.colorAttachmentCount = m_PipelineStateDesc.m_RenderTargetFormats.Size();
+			pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
+			pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
+			pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
+		}
+		else
+		{
+			// In the event we don't provide a render pass and we also don't support dynamic rendering, we'll have
+			// to create a default pass for this pipeline, based on the formats provided
+			RenderPassDesc rpd;
+			rpd.m_RenderTargets.Resize(rtvFormats.Size());
+			for (auto i = 0; i < rpd.m_RenderTargets.Size(); i++)
+			{
+				rpd.m_RenderTargets[i].m_Format = m_PipelineStateDesc.m_RenderTargetFormats[i];
+				rpd.m_RenderTargets[i].m_SampleCount = m_PipelineStateDesc.m_MultisampleStateDesc.m_SampleCount;
+			}
+			if (m_PipelineStateDesc.m_DepthStencilFormat != Format::kUnknown)
+			{
+				rpd.m_HasDepth = true;
+				rpd.m_DepthStencilTarget.m_Format = m_PipelineStateDesc.m_DepthStencilFormat;
+				rpd.m_DepthStencilTarget.m_SampleCount = m_PipelineStateDesc.m_MultisampleStateDesc.m_SampleCount;
+				if (IsStencilFormat(m_PipelineStateDesc.m_DepthStencilFormat))
+				{
+					rpd.m_DepthStencilTarget.m_StencilLoadOp = LoadOp::kClear;
+					rpd.m_DepthStencilTarget.m_StencilStoreOp = StoreOp::kStore;
+				}
+			}
+
+			auto pRenderPass = m_Device.GetRenderPassManager()->GetRenderPass(m_Device, rpd);
+			renderPass = pRenderPass->GetHandle();
+		}
 	}
 
 	BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets>
@@ -207,7 +239,7 @@ void BvGraphicsPipelineStateVk::Create()
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-	pipelineCI.pNext = !m_PipelineStateDesc.m_pRenderPass && m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering ? &pipelineRenderingCI : nullptr;
+	pipelineCI.pNext = !m_PipelineStateDesc.m_pRenderPass && dynamicRenderingSupported ? &pipelineRenderingCI : nullptr;
 	//pipelineCI.flags = 0;
 	pipelineCI.stageCount = (u32)m_PipelineStateDesc.m_ShaderStages.Size();
 	pipelineCI.pStages = shaderStages.Data();
@@ -220,7 +252,7 @@ void BvGraphicsPipelineStateVk::Create()
 	pipelineCI.pDepthStencilState = &depthStencilCI;
 	pipelineCI.pColorBlendState = &blendCI;
 	pipelineCI.pDynamicState = &dynamicStateCI;
-	pipelineCI.renderPass = m_PipelineStateDesc.m_pRenderPass ? static_cast<BvRenderPassVk *>(m_PipelineStateDesc.m_pRenderPass)->GetHandle() : VK_NULL_HANDLE;
+	pipelineCI.renderPass = renderPass;
 	pipelineCI.layout = static_cast<BvShaderResourceLayoutVk *>(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
 	pipelineCI.subpass = 0;
 	pipelineCI.basePipelineHandle = VK_NULL_HANDLE;

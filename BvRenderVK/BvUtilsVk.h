@@ -6,11 +6,10 @@
 #include "BDeV/RenderAPI/BvCommon.h"
 
 
-#define BvDebugVkResult(result) DPrintF("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)
+#define BvDebugVkResult(result) BvDebug::PrintF("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)
 #define BvCheckErrorReturnVk(result, ret) if (result != VK_SUCCESS) \
 {																	\
 	BvDebugVkResult(result);										\
-	BvDebugBreak();													\
 	return ret;														\
 }
 

@@ -25,6 +25,8 @@ public:
 	virtual void GetGPUInfo(const u32 index, BvGPUInfo & info) const = 0;
 	virtual BvRenderDevice * const CreateRenderDevice(const DeviceCreateDesc& deviceDesc = DeviceCreateDesc(), u32 gpuIndex = kAutoSelectGPU) = 0;
 	virtual const char * const GetEngineName() const = 0;
+	//virtual void Initialize() = 0;
+	//virtual void Shutdown() = 0;
 
 	BV_INLINE u32 GetSupportedGPUCount() const { return m_Devices.Size(); }
 	BV_INLINE BvRenderDevice * const GetRenderDevice(const u32 index = 0) const { return m_Devices[index]; }

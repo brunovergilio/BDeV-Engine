@@ -24,9 +24,9 @@ public:
 
 	BvVector(); // Default
 	BvVector(IBvMemoryAllocator* pAllocator); // Allocator
-	explicit BvVector(const size_t size, const Type & val = Type(), IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Fill
-	explicit BvVector(Iterator start, Iterator end, IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Range
-	BvVector(std::initializer_list<Type> list, IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Initializer List
+	explicit BvVector(const size_t size, const Type & val = Type(), IBvMemoryAllocator* pAllocator = nullptr); // Fill
+	explicit BvVector(Iterator start, Iterator end, IBvMemoryAllocator* pAllocator = nullptr); // Range
+	BvVector(std::initializer_list<Type> list, IBvMemoryAllocator* pAllocator = nullptr); // Initializer List
 	BvVector(const BvVector & rhs); // Copy
 	BvVector(BvVector && rhs) noexcept; // Move
 
@@ -106,7 +106,7 @@ private:
 
 private:
 	Type* m_pData = nullptr;
-	IBvMemoryAllocator* m_pAllocator = GetDefaultAllocator();
+	IBvMemoryAllocator* m_pAllocator = nullptr;
 	size_t m_Size = 0;
 	size_t m_Capacity = 0;
 };
@@ -114,7 +114,6 @@ private:
 
 template<class Type>
 inline BvVector<Type>::BvVector()
-	: m_pAllocator(GetDefaultAllocator())
 {
 }
 
@@ -248,14 +247,14 @@ inline void BvVector<Type>::SetAllocator(IBvMemoryAllocator* pAllocator)
 
 	if (m_Capacity > 0)
 	{
-		Type* pNewData = reinterpret_cast<Type*>(pAllocator->Allocate(m_Capacity * sizeof(Type), alignof(Type), 0, BV_SOURCE_INFO));
+		Type* pNewData = pAllocator ? BvMNewN(*pAllocator, Type, m_Capacity) : BvNewN(Type, m_Capacity);
 		for (auto i = 0u; i < m_Size; i++)
 		{
 			new (&pNewData[i]) Type(std::move(m_pData[i]));
 		}
 
 		Clear();
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
 		m_pData = pNewData;
 	}
 
@@ -763,7 +762,7 @@ inline void BvVector<Type>::Grow(const size_t size)
 		return;
 	}
 
-	Type* pNewData = reinterpret_cast<Type*>(m_pAllocator->Allocate(size * sizeof(Type), alignof(Type), 0, BV_SOURCE_INFO));
+	Type* pNewData = m_pAllocator ? BvMNewN(*m_pAllocator, Type, size) : BvNewN(Type, size);
 	for (auto i = 0u; i < m_Size; i++)
 	{
 		new (&pNewData[i]) Type(std::move(m_pData[i]));
@@ -773,7 +772,7 @@ inline void BvVector<Type>::Grow(const size_t size)
 	m_Capacity = size;
 	if (m_pData)
 	{
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
 	}
 	m_pData = pNewData;
 }
@@ -785,7 +784,7 @@ inline void BvVector<Type>::Destroy()
 
 	if (m_pData)
 	{
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
 		m_pData = nullptr;
 	}
 

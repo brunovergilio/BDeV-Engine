@@ -1652,13 +1652,13 @@ LoaderResult LoadDDSTextureFromFileEx(
 	DDS_ALPHA_MODE* alphaMode,
 	bool* isCubeMap)
 {
-	wchar_t widePath[kMaxPathSize]{};
-	wcscat(widePath, L"\\\\\?\\");
 	mbstate_t mbState{};
-	mbsrtowcs(widePath + 4, &szFileName, kMaxPathSize - 5, &mbState);
+	auto len = 1 + mbsrtowcs(nullptr, &szFileName, 0, &mbState);
+	BvVector<wchar_t> widePath(len);
+	mbsrtowcs(widePath.Data(), &szFileName, widePath.Size(), &mbState);
 
 	return LoadDDSTextureFromFileEx(
-		widePath,
+		widePath.Data(),
 		maxsize,
 		loadFlags,
 		ddsData,
@@ -1713,6 +1713,8 @@ LoaderResult LoadDDSTextureFromFileEx(
 		if (alphaMode)
 			*alphaMode = GetAlphaMode(header);
 	}
+
+	delete[] ddsData;
 
 	return hr;
 }

@@ -30,6 +30,47 @@ enum class ShaderResourceType : u8
 };
 
 
+struct SRDesc
+{
+	const char* m_pName;
+	u32 m_Binding;
+	u32 m_Count;
+	ShaderResourceType m_ResourceType;
+	ShaderStage m_Stages;
+};
+
+struct SRPDesc
+{
+	u32 index;
+	u32 srCount;
+	SRDesc* pSRDescs;
+};
+
+struct SSDesc
+{
+	const char* m_pName;
+	u32 m_Binding;
+	u32 m_Count;
+	BvSampler** m_pSamplers;
+	ShaderStage m_Stages;
+};
+
+struct PCDesc
+{
+	const char* m_pName;
+	u32 m_Size;
+	ShaderStage m_Stages;
+};
+
+struct SRLDesc
+{
+	u32 srpCount;
+	SRPDesc* m_pSRPDescs;
+	SSDesc m_SamplerDesc;
+	PCDesc m_PushConstantDesc;
+};
+
+
 struct ShaderResourceLayoutDesc
 {
 	struct ConstantDesc
@@ -38,7 +79,7 @@ struct ShaderResourceLayoutDesc
 		u32 m_Size = 0;
 		u32 m_Binding = 0;
 		u32 m_SignatureSlot = 0;
-		ShaderStage m_ShaderStages = ShaderStage::kAll;
+		ShaderStage m_ShaderStages = ShaderStage::kAllGraphicsStages;
 	};
 
 	struct ResourceDesc
@@ -47,7 +88,7 @@ struct ShaderResourceLayoutDesc
 		u32 m_Binding = 0;
 		u32 m_Count = 0;
 		ShaderResourceType m_ShaderResourceType = ShaderResourceType::kUnknown;
-		ShaderStage m_ShaderStages = ShaderStage::kAll;
+		ShaderStage m_ShaderStages = ShaderStage::kAllGraphicsStages;
 	};
 
 	struct StaticSamplerDesc
@@ -55,7 +96,7 @@ struct ShaderResourceLayoutDesc
 		BvString m_Name;
 		BvVector<BvSampler *> m_Samplers{};
 		u32 m_Binding = 0;
-		ShaderStage m_ShaderStages = ShaderStage::kAll;
+		ShaderStage m_ShaderStages = ShaderStage::kAllGraphicsStages;
 	};
 
 	struct SetDesc

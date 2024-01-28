@@ -34,8 +34,8 @@ public:
 	void CheckBackGuard(void* pMemory);
 
 public:
-	static constexpr size_t kFrontGuardSize = 4;
-	static constexpr size_t kBackGuardSize = 4;
+	static constexpr size_t kFrontGuardSize = sizeof(size_t);
+	static constexpr size_t kBackGuardSize = sizeof(size_t);
 };
 
 
@@ -51,10 +51,10 @@ public:
 	void CheckBackGuard(void* pMemory);
 
 public:
-	static constexpr size_t kFrontGuardSize = 4;
-	static constexpr size_t kBackGuardSize = 4;
+	static constexpr size_t kFrontGuardSize = sizeof(size_t);
+	static constexpr size_t kBackGuardSize = sizeof(size_t);
 
 private:
-	BvVector<u32*> m_FrontGuards;
-	BvVector<u32*> m_BackGuards;
+	BvVector<size_t*> m_FrontGuards;
+	BvVector<size_t*> m_BackGuards;
 };

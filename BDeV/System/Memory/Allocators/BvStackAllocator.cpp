@@ -32,7 +32,7 @@ void* BvStackAllocator::Allocate(size_t size, size_t alignment, size_t alignment
 	*mem.pAsSizeTPtr = reinterpret_cast<size_t>(m_pCurrent + size);
 
 	// Align the pointer with the added offset
-	MemType alignedMem{ AlignMemory(mem.pAsCharPtr + alignmentOffset + (kPointerSize << 1), alignment) };
+	MemType alignedMem{ BvMemory::AlignMemory(mem.pAsCharPtr + alignmentOffset + (kPointerSize << 1), alignment) };
 	// Offset it back
 	alignedMem.pAsCharPtr -= alignmentOffset;
 	// Store the original memory address
@@ -86,7 +86,7 @@ void BvStackAllocator::Debug()
 	{
 		MemType next{ reinterpret_cast<void*>(*mem.pAsSizeTPtr) };
 		auto size = next.asSizeT - mem.asSizeT;
-		PrintF("(0x%p) Block Size: %llu\n", mem.pAsVoidPtr, size);
+		BvConsole::PrintF("(0x%p) Block Size: %llu\n", mem.pAsVoidPtr, size);
 		mem.pAsCharPtr += size;
 	}
 }

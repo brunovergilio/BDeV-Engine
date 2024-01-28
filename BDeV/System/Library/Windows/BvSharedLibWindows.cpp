@@ -1,5 +1,5 @@
 #include "BDeV/System/Library/BvSharedLib.h"
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 
 
 BvSharedLib::BvSharedLib()

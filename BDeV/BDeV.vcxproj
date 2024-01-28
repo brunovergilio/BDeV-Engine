@@ -122,6 +122,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,6 +139,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,8 +150,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BvCore.h" />
+    <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
     <ClInclude Include="Engine\MemorySystem\BvMemorySystem.h" />
-    <ClInclude Include="BvObject.h" />
     <ClInclude Include="Container\BvFixedVector.h" />
     <ClInclude Include="Container\BvIterator.h" />
     <ClInclude Include="Container\BvQueue.h" />
@@ -177,6 +179,7 @@
     <ClInclude Include="Reflection\BvRTTI.h" />
     <ClInclude Include="RenderAPI\BvBuffer.h" />
     <ClInclude Include="RenderAPI\BvBufferView.h" />
+    <ClInclude Include="RenderAPI\BvColor.h" />
     <ClInclude Include="RenderAPI\BvCommandBuffer.h" />
     <ClInclude Include="RenderAPI\BvCommandPool.h" />
     <ClInclude Include="RenderAPI\BvCommandQueue.h" />
@@ -196,7 +199,6 @@
     <ClInclude Include="System\File\BvFile.h" />
     <ClInclude Include="System\File\BvFileCommon.h" />
     <ClInclude Include="System\File\BvFileSystem.h" />
-    <ClInclude Include="System\File\Windows\BvFileUtilsWindows.h" />
     <ClInclude Include="System\File\BvMemoryFile.h" />
     <ClInclude Include="System\File\BvPath.h" />
     <ClInclude Include="Engine\HID\BvInput.h" />
@@ -204,7 +206,6 @@
     <ClInclude Include="System\HID\BvKeyboard.h" />
     <ClInclude Include="System\HID\BvMouse.h" />
     <ClInclude Include="System\Library\BvSharedLib.h" />
-    <ClInclude Include="System\Memory\Allocators\BvDefaultAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvHeapAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvLinearAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvPoolAllocator.h" />
@@ -220,6 +221,7 @@
     <ClInclude Include="System\Threading\BvProcess.h" />
     <ClInclude Include="System\Threading\BvSync.h" />
     <ClInclude Include="System\Threading\BvThread.h" />
+    <ClInclude Include="System\Windows\BvWindowsHeader.h" />
     <ClInclude Include="System\Window\BvMonitor.h" />
     <ClInclude Include="System\Window\BvWindow.h" />
     <ClInclude Include="System\Window\BvWindowCommon.h" />
@@ -236,29 +238,28 @@
     <Natvis Include="BvCore.natvis" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
     <ClCompile Include="Engine\MemorySystem\BvMemorySystem.cpp" />
     <ClCompile Include="Container\BvStringId.cpp" />
     <ClCompile Include="Engine\Application\BvApplication.cpp" />
     <ClCompile Include="Engine\TBJobSystem\BvTBJobSystem.cpp" />
     <ClCompile Include="Engine\JobSystem\BvJobSystem.cpp" />
     <ClCompile Include="Engine\JobSystem\BvJobSystemTLS.cpp" />
+    <ClCompile Include="RenderAPI\BvColor.cpp" />
     <ClCompile Include="System\File\BvMemoryFile.cpp" />
     <ClCompile Include="System\File\Windows\BvAsyncFileWindows.cpp" />
     <ClCompile Include="System\File\Windows\BvFileSystemWindows.cpp" />
-    <ClCompile Include="System\File\Windows\BvFileUtilsWindows.cpp" />
     <ClCompile Include="System\File\Windows\BvFileWindows.cpp" />
     <ClCompile Include="System\File\Windows\BvPathWindows.cpp" />
     <ClCompile Include="System\HID\BvHIDCommon.cpp" />
     <ClCompile Include="System\HID\Windows\BvKeyboardWindows.cpp" />
     <ClCompile Include="System\HID\Windows\BvMouseWindows.cpp" />
     <ClCompile Include="System\Library\Windows\BvSharedLibWindows.cpp" />
-    <ClCompile Include="System\Memory\Allocators\BvDefaultAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvHeapAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvLinearAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvPoolAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvStackAllocator.cpp" />
     <ClCompile Include="System\Memory\BvMemory.cpp" />
-    <ClCompile Include="System\Memory\BvMemoryCommon.cpp" />
     <ClCompile Include="System\Memory\Utilities\BvBoundsChecker.cpp" />
     <ClCompile Include="System\Memory\Utilities\BvMemoryMarker.cpp" />
     <ClCompile Include="System\Memory\Utilities\BvMemoryTracker.cpp" />
@@ -266,7 +267,7 @@
     <ClCompile Include="System\Platform\Windows\BvPlatformWindows.cpp" />
     <ClCompile Include="System\Threading\Windows\BvFiberWindows.cpp" />
     <ClCompile Include="System\Threading\Windows\BvProcessWindows.cpp" />
-    <ClCompile Include="System\Threading\Windows\BvSyncWindows.cpp" />
+    <ClCompile Include="System\Threading\BvSync.cpp" />
     <ClCompile Include="System\Threading\Windows\BvThreadWindows.cpp" />
     <ClCompile Include="System\Window\Windows\BvMonitorWindows.cpp" />
     <ClCompile Include="System\Window\Windows\BvWindowWindows.cpp" />

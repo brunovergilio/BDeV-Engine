@@ -13,34 +13,30 @@ class BvVec
 public:
 	BvVec();
 
-	BvVec(const BvVec & rhs);
-	BvVec(BvVec && rhs) noexcept;
-	BvVec & operator=(const BvVec & rhs);
-	BvVec & operator=(BvVec && rhs) noexcept;
+	BvVec(const BvVec& rhs);
+	BvVec(BvVec&& rhs) noexcept;
+	BvVec& operator=(const BvVec& rhs);
+	BvVec& operator=(BvVec&& rhs) noexcept;
 
-	explicit BvVec(const float x, const float y, const float z, const float w = 0.0f);
-	explicit BvVec(const float s);
-	explicit BvVec(const Float2 & v);
-	explicit BvVec(const Float3 & v);
-	explicit BvVec(const Float4 & v);
-	explicit BvVec(const vf32 m128);
+	explicit BvVec(f32 x, f32 y, f32 z, f32 w = 0.0f);
+	explicit BvVec(f32 s);
+	explicit BvVec(const Float2& v);
+	explicit BvVec(const Float3& v);
+	explicit BvVec(const Float4& v);
+	explicit BvVec(crvf32 v);
 
-	void Set(const float x, const float y, const float z, const float w = 0.0f);
-	void Set(const float s);
-	void Set(const Float2 & v);
-	void Set(const Float3 & v);
-	void Set(const Float4 & v);
-	void Set(const vf32 & m128);
+	void Set(f32 x, f32 y, f32 z, f32 w = 0.0f);
+	void Set(f32 s);
+	void Set(const Float2& v);
+	void Set(const Float3& v);
+	void Set(const Float4& v);
+	void Set(crvf32 v);
 	void SetZero();
 
-	float GetX() const;
-	float GetY() const;
-	float GetZ() const;
-	float GetW() const;
-
-	const Float2& AsFloat2() const;
-	const Float3& AsFloat3() const;
-	const Float4& AsFloat4() const;
+	f32 GetX() const;
+	f32 GetY() const;
+	f32 GetZ() const;
+	f32 GetW() const;
 
 	BvQuat ToQuat() const;
 
@@ -50,83 +46,83 @@ public:
 	BvVec ReplicateW() const;
 	template<unsigned int X, unsigned int Y, unsigned int Z, unsigned int W> BvVec Permute() const;
 
-	BvVec Max(const BvVec & v) const;
-	BvVec Min(const BvVec & v) const;
+	BvVec Max(CRBvVec v) const;
+	BvVec Min(CRBvVec v) const;
 	BvVec Abs() const;
 	BvVec Floor() const;
 	BvVec Ceil() const;
 	BvVec Round() const;
 	BvVec Zero() const;
 
-	BvVec IsNearlyEqual(const BvVec & v, const float eps = kEpsilon) const;
-	BvVec IsZero(const float eps = kEpsilon) const;
+	BvVec IsNearlyEqual(CRBvVec v, f32 eps = kEpsilon) const;
+	BvVec IsZero(f32 eps = kEpsilon) const;
 
-	BvVec Add(const BvVec & v) const;
-	BvVec Sub(const BvVec & v) const;
-	BvVec Mul(const BvVec & v) const;
-	BvVec Div(const BvVec & v) const;
+	BvVec Add(CRBvVec v) const;
+	BvVec Sub(CRBvVec v) const;
+	BvVec Mul(CRBvVec v) const;
+	BvVec Div(CRBvVec v) const;
 
-	BvVec Add(const float val) const;
-	BvVec Sub(const float val) const;
-	BvVec Mul(const float val) const;
-	BvVec Div(const float val) const;
+	BvVec Add(f32 val) const;
+	BvVec Sub(f32 val) const;
+	BvVec Mul(f32 val) const;
+	BvVec Div(f32 val) const;
 
-	BvVec Mul(const BvMat & m) const;
+	BvVec Mul(const BvMat& m) const;
 
-	float Dot(const BvVec & v) const;
-	BvVec Cross(const BvVec & v) const;
+	f32 Dot(CRBvVec v) const;
+	BvVec Cross(CRBvVec v) const;
 
-	float Length() const;
-	float LengthSqr() const;
+	f32 Length() const;
+	f32 LengthSqr() const;
 
 	void Normalize();
 	BvVec Normal() const;
 
-	BvVec Project(const BvVec & normal) const;
-	BvVec Lerp(const BvVec & toVec, const float t) const;
-	BvVec Reflect(const BvVec & normal) const;
-	BvVec Refract(const BvVec& normal, const float eta) const;
+	BvVec Project(CRBvVec normal) const;
+	BvVec Lerp(CRBvVec toVec, f32 t) const;
+	BvVec Reflect(CRBvVec normal) const;
+	BvVec Refract(CRBvVec normal, f32 eta) const;
 
-	const float & operator[](const unsigned int index) const;
-	float & operator[](const unsigned int index);
+	const f32& operator[](unsigned int index) const;
+	f32& operator[](unsigned int index);
 
-	friend BvVec operator+(const BvVec & lhs, const BvVec & rhs);
-	friend BvVec operator-(const BvVec & lhs, const BvVec & rhs);
-	friend BvVec operator*(const BvVec & lhs, const BvVec & rhs);
-	friend BvVec operator/(const BvVec & lhs, const BvVec & rhs);
+	friend BvVec operator+(CRBvVec lhs, CRBvVec rhs);
+	friend BvVec operator-(CRBvVec lhs, CRBvVec rhs);
+	friend BvVec operator*(CRBvVec lhs, CRBvVec rhs);
+	friend BvVec operator/(CRBvVec lhs, CRBvVec rhs);
 
-	friend BvVec operator+(const BvVec & lhs, const float val);
-	friend BvVec operator-(const BvVec & lhs, const float val);
-	friend BvVec operator*(const BvVec & lhs, const float val);
-	friend BvVec operator/(const BvVec & lhs, const float val);
+	friend BvVec operator+(CRBvVec lhs, f32 val);
+	friend BvVec operator-(CRBvVec lhs, f32 val);
+	friend BvVec operator*(CRBvVec lhs, f32 val);
+	friend BvVec operator/(CRBvVec lhs, f32 val);
 
-	friend BvVec operator+(const float val, const BvVec & rhs);
-	friend BvVec operator-(const float val, const BvVec & rhs);
-	friend BvVec operator*(const float val, const BvVec & rhs);
-	friend BvVec operator/(const float val, const BvVec & rhs);
+	friend BvVec operator+(f32 val, CRBvVec rhs);
+	friend BvVec operator-(f32 val, CRBvVec rhs);
+	friend BvVec operator*(f32 val, CRBvVec rhs);
+	friend BvVec operator/(f32 val, CRBvVec rhs);
 
-	friend BvVec operator*(const BvVec & lhs, const BvMat & rhs);
+	friend BvVec operator*(CRBvVec lhs, const BvMat& rhs);
 
 	BvVec operator+() const;
 	BvVec operator-() const;
 
-	BvVec & operator+=(const BvVec & v);
-	BvVec & operator-=(const BvVec & v);
-	BvVec & operator*=(const BvVec & v);
-	BvVec & operator/=(const BvVec & v);
+	BvVec& operator+=(CRBvVec v);
+	BvVec& operator-=(CRBvVec v);
+	BvVec& operator*=(CRBvVec v);
+	BvVec& operator/=(CRBvVec v);
 
-	BvVec & operator+=(const float val);
-	BvVec & operator-=(const float val);
-	BvVec & operator*=(const float val);
-	BvVec & operator/=(const float val);
+	BvVec& operator+=(f32 val);
+	BvVec& operator-=(f32 val);
+	BvVec& operator*=(f32 val);
+	BvVec& operator/=(f32 val);
 
-	BvVec & operator*=(const BvMat & m);
+	BvVec& operator*=(const BvMat& m);
 
-	friend BvVec operator==(const BvVec & lhs, const BvVec & rhs);
-	friend BvVec operator< (const BvVec & lhs, const BvVec & rhs);
-	friend BvVec operator<=(const BvVec & lhs, const BvVec & rhs);
-	friend BvVec operator> (const BvVec & lhs, const BvVec & rhs);
-	friend BvVec operator>=(const BvVec & lhs, const BvVec & rhs);
+	friend BvVec operator==(CRBvVec lhs, CRBvVec rhs);
+	friend BvVec operator< (CRBvVec lhs, CRBvVec rhs);
+	friend BvVec operator<=(CRBvVec lhs, CRBvVec rhs);
+	friend BvVec operator> (CRBvVec lhs, CRBvVec rhs);
+	friend BvVec operator>=(CRBvVec lhs, CRBvVec rhs);
 
 	bool AllTrue() const;
 	bool AllFalse() const;
@@ -143,10 +139,10 @@ public:
 		Float2 v2;
 		Float3 v3;
 		Float4 v4;
-		float arr[4];
+		f32 arr[4];
 		struct
 		{
-			float x, y, z, w;
+			f32 x, y, z, w;
 		};
 	};
 };

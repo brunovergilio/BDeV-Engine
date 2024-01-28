@@ -4,7 +4,7 @@
 #include "BvFastVec_FPU.inl"
 
 
-#if (BV_MATH_USE_TYPE == BV_MATH_TYPE_FPU)
+#if (BV_MATH_INSTRUCTION == BV_MATH_INSTRUCTION_FPU)
 
 
 // ==================================
@@ -21,36 +21,36 @@
 
 qf32 QuaternionIdentity();
 
-qf32 QuaternionMul(const qf32 & q1, const qf32 & q2);
-qf32 QuaternionMulKeenan(const qf32 & q1, const qf32 & q2);
+qf32 QuaternionMul(crqf32 q1, crqf32 q2);
+qf32 QuaternionMulKeenan(crqf32 q1, crqf32 q2);
 
-qf32 QuaternionConjugate(const qf32 & q);
-qf32 QuaternionInverse(const qf32 & q);
+qf32 QuaternionConjugate(crqf32 q);
+qf32 QuaternionInverse(crqf32 q);
 
-qf32 QuaternionNormalize(const qf32 & q);
+qf32 QuaternionNormalize(crqf32 q);
 
-float QuaternionDot(const qf32 & q1, const qf32 & q2);
-qf32 QuaternionDotV(const qf32 & q1, const qf32 & q2);
+f32 QuaternionDot(crqf32 q1, crqf32 q2);
+qf32 QuaternionDotV(crqf32 q1, crqf32 q2);
 
-float QuaternionLengthSqr(const qf32 & q);
-qf32 QuaternionLengthSqrV(const qf32 & q);
+f32 QuaternionLengthSqr(crqf32 q);
+qf32 QuaternionLengthSqrV(crqf32 q);
 
-float QuaternionLength(const qf32 & q);
-qf32 QuaternionLengthV(const qf32 & q);
+f32 QuaternionLength(crqf32 q);
+qf32 QuaternionLengthV(crqf32 q);
 
-qf32 QuaternionRotationAxis(const vf32 & v, float angle);
-vf32 QuaternionQVQC(const qf32 & q, const vf32 & v);
-vf32 QuaternionQCVQ(const qf32 & q, const vf32 & v);
+qf32 QuaternionRotationAxis(const vf32 & v, f32 angle);
+vf32 QuaternionQVQC(crqf32 q, const vf32 & v);
+vf32 QuaternionQCVQ(crqf32 q, const vf32 & v);
 
-vf32 QuaternionQVQCKeenan(const qf32 & q, const vf32 & v);
-vf32 QuaternionQCVQKeenan(const qf32 & q, const vf32 & v);
+vf32 QuaternionQVQCKeenan(crqf32 q, const vf32 & v);
+vf32 QuaternionQCVQKeenan(crqf32 q, const vf32 & v);
 
-mf32 QuaternionToMatrix(const qf32 & q);
+mf32 QuaternionToMatrix(crqf32 q);
 qf32 QuaternionFromMatrix(const mf32 & m);
 
-qf32 QuaternionSlerp(const qf32 & q1, const qf32 & q2, const float t, const float epsilon = kEpsilon);
+qf32 QuaternionSlerp(crqf32 q1, crqf32 q2, f32 t, f32 epsilon = kEpsilon);
 
-float QuaternionAngle(const qf32 & q);
+f32 QuaternionAngle(crqf32 q);
 
 // =================
 // Definitions
@@ -65,7 +65,7 @@ inline qf32 QuaternionIdentity()
 	return qf32(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-inline qf32 QuaternionMul(const qf32 & q1, const qf32 & q2)
+inline qf32 QuaternionMul(crqf32 q1, crqf32 q2)
 {
 	// Quaternion Multiplication
 	// [q1s * q2v + q2s * q1v + q1 x q2] [q1s * q2s - q1.q2]
@@ -83,7 +83,7 @@ inline qf32 QuaternionMul(const qf32 & q1, const qf32 & q2)
 		);
 }
 
-inline qf32 QuaternionMulKeenan(const qf32 & q1, const qf32 & q2)
+inline qf32 QuaternionMulKeenan(crqf32 q1, crqf32 q2)
 {
 	// Quaternion Multiplication
 	// [q1s * q2v + q2s * q1v + q2 x q1] [q1s * q2s - q1.q2]
@@ -101,15 +101,15 @@ inline qf32 QuaternionMulKeenan(const qf32 & q1, const qf32 & q2)
 	);
 }
 
-inline qf32 QuaternionConjugate(const qf32 & q)
+inline qf32 QuaternionConjugate(crqf32 q)
 {
 	return VectorSet(-q.x, -q.y, -q.z, q.w);
 }
 
-inline qf32 QuaternionInverse(const qf32 & q)
+inline qf32 QuaternionInverse(crqf32 q)
 {
 	qf32 conj = QuaternionConjugate(q);
-	float oneOverLengthSqr = 1.0f / (QuaternionLengthSqr(q));
+	f32 oneOverLengthSqr = 1.0f / (QuaternionLengthSqr(q));
 
 	return qf32(
 		conj.x * oneOverLengthSqr,
@@ -119,9 +119,9 @@ inline qf32 QuaternionInverse(const qf32 & q)
 		);
 }
 
-inline qf32 QuaternionNormalize(const qf32 & q)
+inline qf32 QuaternionNormalize(crqf32 q)
 {
-	float oneOverLengthSqr = QuaternionLengthSqr(q);
+	f32 oneOverLengthSqr = QuaternionLengthSqr(q);
 
 	return qf32(
 		q.x * oneOverLengthSqr,
@@ -131,52 +131,52 @@ inline qf32 QuaternionNormalize(const qf32 & q)
 	);
 }
 
-inline float QuaternionDot(const qf32 & q1, const qf32 & q2)
+inline f32 QuaternionDot(crqf32 q1, crqf32 q2)
 {
-	// _mm_cvtss_f32 gets the value of the lowest float, in this case, X
+	// _mm_cvtss_f32 gets the value of the lowest f32, in this case, X
 	// _mm_store_ss could also be used, but I think it might be slower
 	return QuaternionDotV(q1, q2).x;
 }
 
-inline qf32 QuaternionDotV(const qf32 & q1, const qf32 & q2)
+inline qf32 QuaternionDotV(crqf32 q1, crqf32 q2)
 {
 	return VectorReplicate(q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w);
 }
 
-inline float QuaternionLengthSqr(const qf32 & q)
+inline f32 QuaternionLengthSqr(crqf32 q)
 {
 	return QuaternionLengthSqrV(q).x;
 }
 
-inline qf32 QuaternionLengthSqrV(const qf32 & q)
+inline qf32 QuaternionLengthSqrV(crqf32 q)
 {
 	return QuaternionDotV(q, q);
 }
 
-inline float QuaternionLength(const qf32 & v)
+inline f32 QuaternionLength(crqf32 v)
 {
 	return QuaternionLengthV(v).x;
 }
 
-inline qf32 QuaternionLengthV(const qf32 & v)
+inline qf32 QuaternionLengthV(crqf32 v)
 {
-	float oneOverLengthSqr = 1.0f / QuaternionLengthSqr(v);
+	f32 oneOverLengthSqr = 1.0f / QuaternionLengthSqr(v);
 	return qf32(v.x * oneOverLengthSqr, v.y * oneOverLengthSqr, v.z * oneOverLengthSqr, v.w * oneOverLengthSqr);
 }
 
-inline qf32 QuaternionRotationAxis(const vf32 & v, float angle)
+inline qf32 QuaternionRotationAxis(const vf32 & v, f32 angle)
 {
-	float halfAngle = angle * 0.5f;
-	float sinCos[] = { sinf(halfAngle), cosf(halfAngle) };
+	f32 halfAngle = angle * 0.5f;
+	f32 sinCos[] = { sinf(halfAngle), cosf(halfAngle) };
 
 	return vf32(v.x * sinCos[0], v.y * sinCos[0], v.z * sinCos[0], sinCos[1]);
 }
 
-inline vf32 QuaternionQVQC(const qf32 & q, const vf32 & v)
+inline vf32 QuaternionQVQC(crqf32 q, const vf32 & v)
 {
-	float w2MinusQDotQ = q.w * q.w - VectorDot(q, q);
-	float twoTimesQDotV = 2.0f * VectorDot(q, v);
-	float wTimesTwo = 2.0f * q.w;
+	f32 w2MinusQDotQ = q.w * q.w - VectorDot(q, q);
+	f32 twoTimesQDotV = 2.0f * VectorDot(q, v);
+	f32 wTimesTwo = 2.0f * q.w;
 	vf32 qCrossV = VectorCross(q, v);
 
 	return vf32(w2MinusQDotQ * v.x + twoTimesQDotV * q.x + wTimesTwo * qCrossV.x,
@@ -184,11 +184,11 @@ inline vf32 QuaternionQVQC(const qf32 & q, const vf32 & v)
 		w2MinusQDotQ * v.z + twoTimesQDotV * q.z + wTimesTwo * qCrossV.z);
 }
 
-inline vf32 QuaternionQCVQ(const qf32 & q, const vf32 & v)
+inline vf32 QuaternionQCVQ(crqf32 q, const vf32 & v)
 {
-	float w2MinusQDotQ = q.w * q.w - VectorDot(q, q);
-	float twoTimesQDotV = 2.0f * VectorDot(q, v);
-	float wTimesTwo = 2.0f * q.w;
+	f32 w2MinusQDotQ = q.w * q.w - VectorDot(q, q);
+	f32 twoTimesQDotV = 2.0f * VectorDot(q, v);
+	f32 wTimesTwo = 2.0f * q.w;
 	vf32 vCrossQ = VectorCross(v, q);
 
 	return vf32(w2MinusQDotQ * v.x + twoTimesQDotV * q.x + wTimesTwo * vCrossQ.x,
@@ -196,30 +196,30 @@ inline vf32 QuaternionQCVQ(const qf32 & q, const vf32 & v)
 		w2MinusQDotQ * v.z + twoTimesQDotV * q.z + wTimesTwo * vCrossQ.z);
 }
 		
-inline vf32 QuaternionQVQCKeenan(const qf32 & q, const vf32 & v)
+inline vf32 QuaternionQVQCKeenan(crqf32 q, const vf32 & v)
 {
 	return QuaternionQCVQ(q, v);
 }
 
-inline vf32 QuaternionQCVQKeenan(const qf32 & q, const vf32 & v)
+inline vf32 QuaternionQCVQKeenan(crqf32 q, const vf32 & v)
 {
 	return QuaternionQVQC(q, v);
 }
 
-inline mf32 QuaternionToMatrix(const qf32 & q)
+inline mf32 QuaternionToMatrix(crqf32 q)
 {
-	float xy = q.x * q.y;
-	float xz = q.x * q.z;
-	float xw = q.x * q.w;
+	f32 xy = q.x * q.y;
+	f32 xz = q.x * q.z;
+	f32 xw = q.x * q.w;
 
-	float yz = q.x * q.z;
-	float yw = q.x * q.w;
+	f32 yz = q.x * q.z;
+	f32 yw = q.x * q.w;
 
-	float zw = q.x * q.w;
+	f32 zw = q.x * q.w;
 
-	float xx = q.x * q.x;
-	float yy = q.y * q.y;
-	float zz = q.z * q.z;
+	f32 xx = q.x * q.x;
+	f32 yy = q.y * q.y;
+	f32 zz = q.z * q.z;
 
 	mf32 r;
 	r.r[0].x = 1.0f - 2.0f * (yy + zz);
@@ -247,12 +247,12 @@ inline mf32 QuaternionToMatrix(const qf32 & q)
 
 inline qf32 QuaternionFromMatrix(const mf32 & m)
 {
-	float trace = m.r[0].x + m.r[1].y + m.r[2].z;
+	f32 trace = m.r[0].x + m.r[1].y + m.r[2].z;
 
 	qf32 q;
 	if (trace > 0.0f)
 	{
-		float s = sqrtf(trace + 1.0f) * 2.0f; // S=4*qw 
+		f32 s = sqrtf(trace + 1.0f) * 2.0f; // S=4*qw 
 		q.w = 0.25f * s;
 		q.x = (m.r[2].y - m.r[1].z) / s;
 		q.y = (m.r[0].z - m.r[2].x) / s;
@@ -260,7 +260,7 @@ inline qf32 QuaternionFromMatrix(const mf32 & m)
 	}
 	else if ((m.r[0].x > m.r[1].y) && (m.r[0].x > m.r[2].z))
 	{
-		float s = sqrtf(1.0f + m.r[0].x - m.r[1].y - m.r[2].z) * 2.0f; // S=4*qx 
+		f32 s = sqrtf(1.0f + m.r[0].x - m.r[1].y - m.r[2].z) * 2.0f; // S=4*qx 
 		q.w = (m.r[2].y - m.r[1].z) / s;
 		q.x = 0.25f * s;
 		q.y = (m.r[0].y + m.r[1].x) / s;
@@ -268,7 +268,7 @@ inline qf32 QuaternionFromMatrix(const mf32 & m)
 	}
 	else if (m.r[1].y > m.r[2].z)
 	{
-		float s = sqrtf(1.0f + m.r[1].y - m.r[0].x - m.r[2].z) * 2.0f; // S=4*qy
+		f32 s = sqrtf(1.0f + m.r[1].y - m.r[0].x - m.r[2].z) * 2.0f; // S=4*qy
 		q.w = (m.r[0].z - m.r[2].x) / s;
 		q.x = (m.r[0].y + m.r[1].x) / s;
 		q.y = 0.25f * s;
@@ -276,7 +276,7 @@ inline qf32 QuaternionFromMatrix(const mf32 & m)
 	}
 	else
 	{
-		float s = sqrtf(1.0f + m.r[2].z - m.r[0].x - m.r[1].y) * 2.0f; // S=4*qz
+		f32 s = sqrtf(1.0f + m.r[2].z - m.r[0].x - m.r[1].y) * 2.0f; // S=4*qz
 		q.w = (m.r[1].x - m.r[0].y) / s;
 		q.x = (m.r[0].z + m.r[2].x) / s;
 		q.y = (m.r[1].z + m.r[2].y) / s;
@@ -286,9 +286,9 @@ inline qf32 QuaternionFromMatrix(const mf32 & m)
 	return QuaternionNormalize(q);
 }
 
-inline qf32 QuaternionSlerp(const qf32 & q1, const qf32 & q2, const float t, const float epsilon)
+inline qf32 QuaternionSlerp(crqf32 q1, crqf32 q2, f32 t, f32 epsilon)
 {
-	float cosOmega = QuaternionDot(q1, q2);
+	f32 cosOmega = QuaternionDot(q1, q2);
 	qf32 qt(q2);
 	if (cosOmega < 0.0f)
 	{
@@ -296,13 +296,13 @@ inline qf32 QuaternionSlerp(const qf32 & q1, const qf32 & q2, const float t, con
 		qt = QuaternionConjugate(qt);
 	}
 
-	float omega = acosf(cosOmega);
+	f32 omega = acosf(cosOmega);
 
-	float mult1 = 1.0f - t;
-	float mult2 = t;
+	f32 mult1 = 1.0f - t;
+	f32 mult2 = t;
 	if (omega > epsilon)
 	{
-		float oneOverSinOmega = 1.0f / sinf(omega);
+		f32 oneOverSinOmega = 1.0f / sinf(omega);
 		mult1 = sinf(mult1 * omega) * oneOverSinOmega;
 		mult2 = sinf(mult2 * omega) * oneOverSinOmega;
 	}
@@ -312,7 +312,7 @@ inline qf32 QuaternionSlerp(const qf32 & q1, const qf32 & q2, const float t, con
 	return QuaternionNormalize(r);
 }
 
-inline float QuaternionAngle(const qf32 & q)
+inline f32 QuaternionAngle(crqf32 q)
 {
 	return 2.0f * acosf(q.w);
 }

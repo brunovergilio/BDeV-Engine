@@ -12,7 +12,7 @@ class BvQueue
 public:
 	BvQueue();
 	BvQueue(IBvMemoryAllocator* pAllocator);
-	BvQueue(std::initializer_list<Type> list, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
+	BvQueue(std::initializer_list<Type> list, IBvMemoryAllocator* pAllocator = nullptr);
 	BvQueue(const BvQueue& rhs);
 	BvQueue(BvQueue&& rhs) noexcept;
 
@@ -61,7 +61,7 @@ private:
 
 private:
 	Type* m_pData = nullptr;
-	IBvMemoryAllocator* m_pAllocator = GetDefaultAllocator();
+	IBvMemoryAllocator* m_pAllocator = nullptr;
 	u32 m_Size = 0;
 	u32 m_Capacity = 0;
 	u32 m_Front = 0;
@@ -70,7 +70,6 @@ private:
 
 template<typename Type>
 BvQueue<Type>::BvQueue()
-	: m_pAllocator(GetDefaultAllocator())
 {
 }
 
@@ -195,14 +194,14 @@ inline void BvQueue<Type>::SetAllocator(IBvMemoryAllocator* pAllocator)
 
 	if (m_Capacity > 0)
 	{
-		Type* pNewData = reinterpret_cast<Type*>(pAllocator->Allocate(m_Capacity * sizeof(Type), alignof(Type), 0, BV_SOURCE_INFO));
+		Type* pNewData = pAllocator ? BvMNewN(*pAllocator, Type, m_Capacity) : BvNewN(Type, m_Capacity);
 		for (auto i = 0u; i < m_Size; i++)
 		{
 			new (&pNewData[i]) Type(std::move(m_pData[(m_Front + i) % m_Capacity]));
 		}
 
 		Clear();
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
 		m_pData = pNewData;
 	}
 
@@ -412,7 +411,7 @@ inline void BvQueue<Type>::Grow(u32 size)
 		return;
 	}
 
-	Type* pNewData = reinterpret_cast<Type*>(m_pAllocator->Allocate(size * sizeof(Type), alignof(Type), 0, BV_SOURCE_INFO));
+	Type* pNewData = m_pAllocator ? BvMNewN(*m_pAllocator, Type, size) : BvNewN(Type, size);
 	for (auto i = 0u; i < m_Size; i++)
 	{
 		auto curr = (m_Front + i) % m_Capacity;
@@ -423,7 +422,7 @@ inline void BvQueue<Type>::Grow(u32 size)
 	m_Capacity = size;
 	if (m_pData)
 	{
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
 	}
 	m_pData = pNewData;
 	m_Front = 0;
@@ -436,6 +435,6 @@ inline void BvQueue<Type>::Destroy()
 	Clear();
 	if (m_pData)
 	{
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
 	}
 }

@@ -2,84 +2,109 @@
 
 
 #include "BDeV/BvCore.h"
-#include <cassert>
+#include "BDeV/RenderAPI/BvColor.h"
 
 
-namespace BvDebugConstants
+class BvConsole
 {
-	constexpr u32 kMaxDebugMsgLen = 2048;
-	static thread_local char s_ErrorMessage[kMaxDebugMsgLen];
-}
-
-
-enum ConsoleColor : u16
-{
-	kBlack,
-	kBlue,
-	kGreen,
-	kAqua,
-	kRed,
-	kPurple,
-	kYellow,
-	kWhite,
-	kGrey,
-	kLightBlue,
-	kLightGreen,
-	kLightAqua,
-	kLightRed,
-	kLightPurple,
-	kLightYellow,
-	kBrightWhite,
+public:
+	// Default white text and black background printf
+	static i32 PrintF(const char* pFormat, ...);
+	// Custom color text and black background printf
+	static i32 PrintF(const BvColorI& textColor, const char* pFormat, ...);
+	// Custom color text and custom color background printf
+	static i32 PrintF(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
 };
 
+class BvDebug
+{
+public:
+	// Same as printf but to the debug window (if one exists)
+	static i32 PrintF(const char* pFormat, ...);
 
-// ================
-// PrintF functions
+	// Should only be called by assert macros
+	static void RaiseAssertionError(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
+};
 
-// Default white text and black background printf
-i32 PrintF(const char* pFormat, ...);
-// Custom color text and black background printf
-i32 PrintF(ConsoleColor textColor, const char* pFormat, ...);
-// Custom color text and custom background printf
-i32 PrintF(ConsoleColor textColor, ConsoleColor backGroundColor, const char* pFormat, ...);
-// Same as printf but to the debug window (if one exists)
-i32 DPrintF(const char* pFormat, ...);
-// ================
-
-void RaiseError(const char* pMessage, const char* pTitle = "BDeV Error");
-u32 GetOSErrorCode();
-const char* GetOSErrorMessage();
-void DbgBreak();
+class BvError
+{
+public:
+	static void RaiseError(const BvSourceInfo& sourceInfo, const char* pFormat, ...);
+	static void RaiseOSError(const BvSourceInfo& sourceInfo);
+};
 
 
 #if BV_DEBUG
 
-#define BV_ERROR(format, ...)											\
-{																		\
-	sprintf(BvDebugConstants::s_ErrorMessage, format, ## __VA_ARGS__);	\
-	RaiseError(BvDebugConstants::s_ErrorMessage);						\
-}
+#define BvAssert(cond, msg, ...) do															\
+{																							\
+	if (!(cond))																			\
+	{																						\
+		BvDebug::RaiseAssertionError(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+	}																						\
+} while (false)
 
-#define BV_OS_ERROR()															\
-{																				\
-	BV_ERROR("OS error [(0x%X)]: %s", GetOSErrorCode(), GetOSErrorMessage());	\
-}
+#define BvAssertOnce(cond, msg, ...) do														\
+{																							\
+	static bool log = true;																	\
+	if (log && !(cond))																		\
+	{																						\
+		BvDebug::RaiseAssertionError(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+		log = false;																		\
+	}																						\
+} while (false)
 
-#if BV_PLATFORM == BV_PLATFORM_WIN32
-#define BvAssert(cond, msg) if (!(cond)) { BV_ERROR("Error: %s\nCondition: %s\nFile: %s\nLine: %d\nFunction: %s", msg, #cond, BV_FILE, BV_LINE, BV_FUNCTION); }
+#define BvVerify(cond, msg, ...) do															\
+{																							\
+	if (!(cond))																			\
+	{																						\
+		BvDebug::RaiseAssertionError(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+	}																						\
+} while (false)
+
 #else
-#define BvAssert(cond, msg) assert((cond) && msg)
-#endif
 
-#define BvCompilerAssert(cond, msg) static_assert((cond), msg)
-#define BvDebugBreak() DbgBreak()
-
-#else
-
-#define BvAssert(cond, msg)
-#define BvCompilerAssert(cond, msg)
-#define BvDebugBreak()
-#define BV_ERROR(format, ...)
-#define BV_OS_ERROR()
+#define BvAssert(cond, msg, ...)
+#define BvAssertOnce(cond, msg, ...)
+#define BvVerify(cond, msg, ...) do	\
+{									\
+	if (!(cond))					\
+	{								\
+	}								\
+} while (false)
 
 #endif // #if BV_DEBUG
+
+
+// Tests a condition and crash if it fails with a custom message
+#define BvCrashIfFailed(cond, msg, ...) do									\
+{																			\
+	if (!(cond))															\
+	{																		\
+		BvError::RaiseError(BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+	}																		\
+} while (false)
+
+
+// Tests a condition resulting from an OS call and crash if it fails with a predefined system message
+#define BvOSCrashIfFailed(cond) do				\
+{												\
+	if (!(cond))								\
+	{											\
+		BvError::RaiseOSError(BV_SOURCE_INFO);	\
+	}											\
+} while (false)
+
+
+// Crash with a custom message
+#define BvCrash(msg, ...) do											\
+{																		\
+	BvError::RaiseError(BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+} while (false)
+
+
+// Crash with a predefined system message
+#define BvOSCrash() do						\
+{											\
+	BvError::RaiseOSError(BV_SOURCE_INFO);	\
+} while (false)

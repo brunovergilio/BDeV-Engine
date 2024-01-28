@@ -1,73 +1,91 @@
 #pragma once
 
 
+// =================================
 // Platform definitions
+// =================================
 #define BV_PLATFORM_WIN32 1
 
-#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
+#if defined(_WIN32) || defined(_WIN64) || defined(__WIN32__)
 	#define BV_PLATFORM BV_PLATFORM_WIN32
-#else
-	#error "Platform not yet supported"
 #endif
 
+
+// =================================
 // Compiler definitions
+// =================================
 #define BV_COMPILER_MSVC 1
 
 #if defined(_MSC_VER)
 	#define BV_COMPILER BV_COMPILER_MSVC
-	#define BV_COMPILER_VERSION _MSC_VER
-#else
-	#error "Compiler not yet supported"
 #endif
 
 
+// =================================
 // Platform-dependent stuff
+// =================================
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	#define BV_EXTERN_C extern "C"
+	#ifndef STRICT
+	#define STRICT
+	#endif
 	
-	#define WIN32_LEAN_AND_MEAN
+	#ifndef NOMINMAX
 	#define NOMINMAX
+	#endif
+	
+	#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+	#endif
+	
+	#ifndef VC_EXTRALEAN
+	#define VC_EXTRALEAN
+	#endif
+#else
+	#error "Platform not yet supported"
+#endif
+
+
+// =================================
+// Compiler-dependent stuff
+// =================================
+#if (BV_COMPILER == BV_COMPILER_MSVC)
+	#define BV_COMPILER_VERSION _MSC_VER
 	
 	#if (_MSC_VER >= 1915)
 		#define no_init_all deprecated
 	#endif
 
-	// Compiler-dependent stuff
-	#if BV_COMPILER == BV_COMPILER_MSVC
-		#define BV_FUNCTION __FUNCTION__
-		#define BV_FILE __FILE__
-		#define BV_LINE __LINE__
-		#define BV_INLINE __forceinline
-		#define BV_CPP_VER _MSVC_LANG
-		
-		#pragma warning(disable:4100) // unref
-		#pragma warning(disable:4103) // alignment changed after including header, may be due to missing #pragma pack(pop)
-		#pragma warning(disable:4189) // init but unref
-		#pragma warning(disable:4201) // nonstandard extension used: nameless struct/union
-		#pragma warning(disable:4458) // declaration of 'variable' hides class member
-		#pragma warning(disable:4521) // multiple copy constructors specified
-		#pragma warning(disable:4324) // structure was padded due to alignment specifier
-		#pragma warning(disable:4312) // conversion from 'src' to 'dst' of greater size
-		#pragma warning(disable:4018) // comparison signed/unsigned mismatch
-		#pragma warning(disable:4245) // initialization signed/unsigned mismatch
-		#pragma warning(disable:4311) // pointer truncation from 'src' to 'dst'
-		#pragma warning(disable:4302) // truncation from 'src' to 'dst'
-		#pragma warning(disable:4244) // conversion from 'src' to 'dst', possible loss of data
-		#pragma warning(disable:4267) // conversion from 'src' to 'dst', possible loss of data
-		#pragma warning(disable:6011) // deref possible nullptr
-		#pragma warning(disable:26812) // unscoped enum
-		#pragma warning(disable:4251) // object needs to have dll-interface to be used by clients of specific class
-		#pragma warning(disable:4996) // function or variable unsafe
-	
-	#else
-		#define BV_FUNCTION __func__
-		#define BV_FILE __FILE__
-		#define BV_LINE __LINE__
-		#define BV_INLINE inline
-		#define BV_CPP_VER __cplusplus
+	#if !defined(_CRT_SECURE_NO_WARNINGS)
+		#define _CRT_SECURE_NO_WARNINGS
 	#endif
+
+	#define BV_FUNCTION __FUNCTION__
+	#define BV_INLINE __forceinline
+	
+	#pragma warning(disable:4100)	// unref
+	#pragma warning(disable:4103)	// alignment changed after including header, may be due to missing #pragma pack(pop)
+	#pragma warning(disable:4189)	// init but unref
+	#pragma warning(disable:4201)	// nonstandard extension used: nameless struct/union
+	#pragma warning(disable:4458)	// declaration of 'variable' hides class member
+	#pragma warning(disable:4521)	// multiple copy constructors specified
+	#pragma warning(disable:4324)	// structure was padded due to alignment specifier
+	#pragma warning(disable:4312)	// conversion from 'src' to 'dst' of greater size
+	#pragma warning(disable:4018)	// comparison signed/unsigned mismatch
+	#pragma warning(disable:4245)	// initialization signed/unsigned mismatch
+	#pragma warning(disable:4311)	// pointer truncation from 'src' to 'dst'
+	#pragma warning(disable:4302)	// truncation from 'src' to 'dst'
+	#pragma warning(disable:4244)	// conversion from 'src' to 'dst', possible loss of data
+	#pragma warning(disable:4267)	// conversion from 'src' to 'dst', possible loss of data
+	#pragma warning(disable:6011)	// deref possible nullptr
+	#pragma warning(disable:26812)	// unscoped enum
+	#pragma warning(disable:4251)	// object needs to have dll-interface to be used by clients of specific class
+	#pragma warning(disable:4996)	// function or variable unsafe
+	#pragma warning(disable:26495)	// Variable 'variable' is uninitialized. Always initialize a member variable (type.6).
+
+	#define BV_API
+
 #else
-	#error "Platform not yet supported"
+	#error "Compiler not yet supported"
 #endif
 
 
@@ -81,21 +99,28 @@
 #include <limits>
 #include <cstdint>
 #include <new>
-#include <algorithm>
 #include <type_traits>
 
-typedef int8_t    i8;
-typedef int16_t  i16;
-typedef int32_t  i32;
-typedef int64_t  i64;
+using i8	= std::int8_t;
+using i16	= std::int16_t;
+using i32	= std::int32_t;
+using i64	= std::int64_t;
 
-typedef uint8_t   u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
+using u8	= std::uint8_t;
+using u16	= std::uint16_t;
+using u32	= std::uint32_t;
+using u64	= std::uint64_t;
 
-typedef float	 f32;
-typedef double	 f64;
+using f32	= float;
+using f64	= double;
+
+union MemType
+{
+	void* pAsVoidPtr;
+	char* pAsCharPtr;
+	size_t* pAsSizeTPtr;
+	size_t asSizeT;
+};
 
 template<typename Type> constexpr const Type kMin = []() -> auto
 {
@@ -152,5 +177,8 @@ struct BvSourceInfo
 	i32 m_Line;
 };
 
-
-#define BV_SOURCE_INFO BvSourceInfo{ BV_FUNCTION, BV_FILE, BV_LINE }
+#if BV_DEBUG
+#define BV_SOURCE_INFO BvSourceInfo{ BV_FUNCTION, __FILE__, __LINE__ }
+#else
+#define BV_SOURCE_INFO BvSourceInfo{}
+#endif

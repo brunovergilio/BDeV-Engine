@@ -16,7 +16,7 @@
 #include "BvCommandQueueVk.h"
 
 
-constexpr auto kMaxCopyRegions = 14u; // I'm assuming a region per mip, so 2^14 = 16384 - more than I will ever use
+constexpr auto kMaxCopyRegions = 14u; // I'm assuming a region per mip, so 2^14 = 16384 - more than enough for now
 
 
 BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk & device, BvCommandPool * pCommandPool, const VkCommandBuffer commandBuffer)
@@ -191,6 +191,8 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass * const pRenderPass, 
 
 void BvCommandBufferVk::EndRenderPass()
 {
+	BvAssert(m_CurrentState == BvCommandBuffer::CurrentState::kInRenderPass, "Command buffer not in render pass");
+
 	vkCmdEndRenderPass(m_CommandBuffer);
 
 	m_CurrentState = CurrentState::kRecording;
@@ -240,7 +242,7 @@ void BvCommandBufferVk::ClearRenderTargets(u32 renderTargetCount, const ClearCol
 {
 	BvAssert(firstRenderTargetIndex < m_RenderTargets.Size(), "Render Target index out of bounds!");
 
-	auto endIndex = std::min(firstRenderTargetIndex + renderTargetCount, renderTargetCount);
+	auto endIndex = std::min(firstRenderTargetIndex + renderTargetCount, (u32)m_RenderTargets.Size());
 	for (auto i = 0; i < endIndex; i++)
 	{
 		m_RenderTargetClearValues[i + firstRenderTargetIndex] = *((VkClearValue*)(&pClearValues[i]));
@@ -801,7 +803,6 @@ void BvCommandBufferVk::CommitGraphicsData()
 	if (m_VertexBuffersBindNeeded)
 	{
 		vkCmdBindVertexBuffers(m_CommandBuffer, m_FirstVertexBinding, m_VertexBuffers.Size(), m_VertexBuffers.Data(), m_VertexBufferOffsets.Data());
-
 		m_VertexBuffersBindNeeded = false;
 	}
 
@@ -809,7 +810,6 @@ void BvCommandBufferVk::CommitGraphicsData()
 	{
 		auto offset = m_pIndexBufferView->GetDesc().m_Offset;
 		vkCmdBindIndexBuffer(m_CommandBuffer, static_cast<BvBufferVk*>(m_pIndexBufferView->GetBuffer())->GetHandle(), offset, m_IndexFormat);
-
 		m_IndexBufferBindNeeded = false;
 	}
 
@@ -855,7 +855,7 @@ void BvCommandBufferVk::CommitRenderTargets()
 		for (u32 i = 0; i < m_RenderTargets.Size(); i++)
 		{
 			layerCount = std::max(m_RenderTargets[i]->GetDesc().m_SubresourceDesc.layerCount, layerCount);
-			decltype(auto) desc = m_RenderTargets[i]->GetTexture()->GetDesc();
+			auto& desc = m_RenderTargets[i]->GetTexture()->GetDesc();
 
 			if (desc.m_Size.width > renderArea.width) { renderArea.width = desc.m_Size.width; }
 			if (desc.m_Size.height > renderArea.height) { renderArea.height = desc.m_Size.height; }
@@ -864,7 +864,7 @@ void BvCommandBufferVk::CommitRenderTargets()
 			colorAttachments[i].imageView = m_RenderTargets[i]->GetHandle();
 			colorAttachments[i].imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 			colorAttachments[i].loadOp = m_RenderTargetLoadOps[i];
-			colorAttachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			colorAttachments[i].storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
 			if (m_RenderTargetLoadOps[i] == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 			{
 				colorAttachments[i].clearValue.color = m_RenderTargetClearValues[i].color;
@@ -885,12 +885,12 @@ void BvCommandBufferVk::CommitRenderTargets()
 			{
 				// For Dynamic Rendering, if our previous layout happens to be a swap chain presentation,
 				// we use undefined instead
-				if (m_RenderTargetTransitions[i].oldLayout == VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+				if (m_RenderTargetTransitions[j].oldLayout == VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 				{
 					// Presentation layout will instead become undefined
-					m_RenderTargetTransitions[i].oldLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+					m_RenderTargetTransitions[j].oldLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
 					// There will be no access flags
-					m_RenderTargetTransitions[i].srcAccessMask = 0;
+					m_RenderTargetTransitions[j].srcAccessMask = 0;
 					// And the stage is top of pipe, not bottom
 					m_RenderTargetSrcStageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 					m_RenderTargetSrcStageFlags &= ~VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
@@ -910,7 +910,7 @@ void BvCommandBufferVk::CommitRenderTargets()
 				depthAttachment.imageView = m_pDepthStencilTarget->GetHandle();
 				depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 				depthAttachment.loadOp = m_DepthTargetLoadOp;
-				depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				depthAttachment.storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
 				if (m_DepthTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 				{
 					depthAttachment.clearValue.depthStencil = m_DepthStencilTargetClearValue.depthStencil;
@@ -922,7 +922,7 @@ void BvCommandBufferVk::CommitRenderTargets()
 				depthAttachment.imageView = m_pDepthStencilTarget->GetHandle();
 				depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 				depthAttachment.loadOp = m_DepthTargetLoadOp;
-				depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				depthAttachment.storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
 				if (m_DepthTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 				{
 					depthAttachment.clearValue.depthStencil = m_DepthStencilTargetClearValue.depthStencil;
@@ -932,7 +932,7 @@ void BvCommandBufferVk::CommitRenderTargets()
 				stencilAttachment.imageView = m_pDepthStencilTarget->GetHandle();
 				stencilAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 				stencilAttachment.loadOp = m_StencilTargetLoadOp;
-				stencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+				stencilAttachment.storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
 				if (m_StencilTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 				{
 					stencilAttachment.clearValue.depthStencil = m_DepthStencilTargetClearValue.depthStencil;
@@ -994,6 +994,11 @@ void BvCommandBufferVk::CommitRenderTargets()
 			rpd.m_DepthStencilTarget.m_Format = m_pDepthStencilTarget->GetDesc().m_Format;
 			rpd.m_DepthStencilTarget.m_SampleCount = m_pGraphicsPSO->GetDesc().m_MultisampleStateDesc.m_SampleCount;
 			rpd.m_DepthStencilTarget.m_LoadOp = m_DepthTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR ? LoadOp::kClear : LoadOp::kLoad;
+			if (IsStencilFormat(rpd.m_DepthStencilTarget.m_Format))
+			{
+				rpd.m_DepthStencilTarget.m_StencilLoadOp = m_StencilTargetLoadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR ? LoadOp::kClear : LoadOp::kLoad;
+				rpd.m_DepthStencilTarget.m_StencilStoreOp = StoreOp::kStore;
+			}
 		}
 
 		auto pRenderPass = m_Device.GetRenderPassManager()->GetRenderPass(m_Device, rpd);

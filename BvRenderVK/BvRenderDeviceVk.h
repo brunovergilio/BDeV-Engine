@@ -3,8 +3,6 @@
 
 #include "BvRenderVK/BvGPUInfoVk.h"
 #include "BvRenderEngineVk.h"
-#include "BvLoaderVk.h"
-#include <vma/vk_mem_alloc.h>
 
 
 class BvFramebufferManagerVk;

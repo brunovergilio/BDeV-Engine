@@ -4,7 +4,7 @@
 #include "../../BvFloatTypes.h"
 
 
-#if (BV_MATH_USE_TYPE == BV_MATH_TYPE_SIMD)
+#if (BV_MATH_INSTRUCTION == BV_MATH_INSTRUCTION_SIMD)
 
 
 // ==================================
@@ -19,19 +19,19 @@
 // Access
 // ======================
 
-float VectorGetX(vf32 v);
-float VectorGetY(vf32 v);
-float VectorGetZ(vf32 v);
-float VectorGetW(vf32 v);
+f32 VectorGetX(vf32 v);
+f32 VectorGetY(vf32 v);
+f32 VectorGetZ(vf32 v);
+f32 VectorGetW(vf32 v);
 
-vf32 VectorSet(const float x, const float y, const float z, const float w = 0.0f);
+vf32 VectorSet(f32 x, f32 y, f32 z, f32 w = 0.0f);
 
-vf32 VectorReplicate(const float s);
+vf32 VectorReplicate(f32 s);
 vf32 VectorReplicateX(vf32 v);
 vf32 VectorReplicateY(vf32 v);
 vf32 VectorReplicateZ(vf32 v);
 vf32 VectorReplicateW(vf32 v);
-template<unsigned int X, unsigned int Y, unsigned int Z, unsigned int W> vf32 VectorPermute(vf32 v);
+template<u32 X, u32 Y, u32 Z, u32 W> vf32 VectorPermute(vf32 v);
 
 vf32 VectorMax(vf32 v1, vf32 v2);
 vf32 VectorMin(vf32 v1, vf32 v2);
@@ -47,7 +47,7 @@ vf32 VectorNegate(vf32 v);
 vf32 VectorZero();
 
 vf32 VectorEqual(vf32 v1, vf32 v2);
-vf32 VectorNearlyEqual(vf32 v1, vf32 v2, const float epsilon = kEpsilon);
+vf32 VectorNearlyEqual(vf32 v1, vf32 v2, f32 epsilon = kEpsilon);
 vf32 VectorGreater(vf32 v1, vf32 v2);
 vf32 VectorGreaterEqual(vf32 v1, vf32 v2);
 vf32 VectorLess(vf32 v1, vf32 v2);
@@ -57,7 +57,7 @@ vf32 VectorAnd(vf32 v1, vf32 v2);
 vf32 VectorXor(vf32 v1, vf32 v2);
 vf32 VectorAndNot(vf32 v1, vf32 v2);
 
-unsigned int VectorGetMask(vf32 v);
+u32 VectorGetMask(vf32 v);
 
 // ======================
 // Basic Operations
@@ -71,23 +71,23 @@ vf32 VectorDiv(vf32 v1, vf32 v2);
 vf32 VectorMAdd(vf32 v1, vf32 v2, vf32 v3);
 vf32 VectorNMAdd(vf32 v1, vf32 v2, vf32 v3);
 
-vf32 VectorAdd(vf32 v, const float val);
-vf32 VectorSub(vf32 v, const float val);
-vf32 VectorMul(vf32 v, const float val);
-vf32 VectorDiv(vf32 v, const float val);
+vf32 VectorAdd(vf32 v, f32 val);
+vf32 VectorSub(vf32 v, f32 val);
+vf32 VectorMul(vf32 v, f32 val);
+vf32 VectorDiv(vf32 v, f32 val);
 
 vf32 VectorMul(vf32 v, const mf32 & m); // Row-major
 vf32 VectorMul(const mf32 & m, vf32 v); // Col-major
 
-float VectorDot(vf32 v1, vf32 v2);
+f32 VectorDot(vf32 v1, vf32 v2);
 vf32 VectorDotV(vf32 v1, vf32 v2);
 
 vf32 VectorCross(vf32 v1, vf32 v2);
 
-float VectorLengthSqr(vf32 v);
+f32 VectorLengthSqr(vf32 v);
 vf32 VectorLengthSqrV(vf32 v);
 
-float VectorLength(vf32 v);
+f32 VectorLength(vf32 v);
 vf32 VectorLengthV(vf32 v);
 
 vf32 VectorNormalize(vf32 v);
@@ -95,10 +95,10 @@ vf32 VectorNormalize(vf32 v);
 vf32 VectorProject(vf32 v1, vf32 v2);
 vf32 VectorProjectNormal(vf32 v1, vf32 v2);
 
-vf32 VectorLerp(vf32 v1, vf32 v2, float t);
+vf32 VectorLerp(vf32 v1, vf32 v2, f32 t);
 
 vf32 VectorReflection(vf32 i, vf32 n);
-vf32 VectorRefraction(vf32 i, vf32 n, float eta);
+vf32 VectorRefraction(vf32 i, vf32 n, f32 eta);
 
 // ======================
 // Operators
@@ -108,21 +108,21 @@ vf32 operator + (vf32 v);
 vf32 operator - (vf32 v);
 
 vf32 operator + (vf32 v1, vf32 v2);
-vf32 operator + (vf32 v, const float s);
-vf32 operator + (const float s, vf32 v);
+vf32 operator + (vf32 v, f32 s);
+vf32 operator + (f32 s, vf32 v);
 vf32 & operator += (vf32 & v1, vf32 v2);
 
 vf32 operator - (vf32 v1, vf32 v2);
-vf32 operator - (vf32 v, const float s);
-vf32 operator - (const float s, vf32 v);
+vf32 operator - (vf32 v, f32 s);
+vf32 operator - (f32 s, vf32 v);
 vf32 & operator -= (vf32 & v1, vf32 v2);
 
 vf32 operator * (vf32 v1, vf32 v2);
 vf32 & operator *= (vf32 & v1, vf32 v2);
 
-vf32 operator * (vf32 v, const float s);
-vf32 operator * (const float s, vf32 v);
-vf32 & operator *= (vf32 & v, const float s);
+vf32 operator * (vf32 v, f32 s);
+vf32 operator * (f32 s, vf32 v);
+vf32 & operator *= (vf32 & v, f32 s);
 
 vf32 operator * (vf32 v, const mf32 & m);
 vf32 operator * (const mf32 & m, vf32 v);
@@ -131,8 +131,8 @@ vf32 & operator *= (vf32 & v, const mf32 & m);
 vf32 operator / (vf32 v1, vf32 v2);
 vf32 & operator /= (vf32 & v1, vf32 v2);
 
-vf32 operator / (vf32 v, const float s);
-vf32 & operator /= (vf32 & v, const float s);
+vf32 operator / (vf32 v, f32 s);
+vf32 & operator /= (vf32 & v, f32 s);
 
 // ======================
 // Specialized Operations
@@ -149,35 +149,35 @@ vf32 VectorTransformPoint(vf32 v, const mf32 & m);
 // Access
 // ======================
 
-inline float VectorGetX(vf32 v)
+inline f32 VectorGetX(vf32 v)
 {
 	return _mm_cvtss_f32(v);
 }
 
-inline float VectorGetY(vf32 v)
+inline f32 VectorGetY(vf32 v)
 {
 	vf32 y = _mm_shuffle_ps(v, v, _MM_SHUFFLE(1, 1, 1, 1));
 	return _mm_cvtss_f32(y);
 }
 
-inline float VectorGetZ(vf32 v)
+inline f32 VectorGetZ(vf32 v)
 {
 	vf32 z = _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 2, 2, 2));
 	return _mm_cvtss_f32(z);
 }
 
-inline float VectorGetW(vf32 v)
+inline f32 VectorGetW(vf32 v)
 {
 	vf32 w = _mm_shuffle_ps(v, v, _MM_SHUFFLE(3, 3, 3, 3));
 	return _mm_cvtss_f32(w);
 }
 
-inline vf32 VectorSet(const float x, const float y, const float z, const float w)
+inline vf32 VectorSet(f32 x, f32 y, f32 z, f32 w)
 {
 	return _mm_set_ps(w, z, y, x);
 }
 
-inline vf32 VectorReplicate(const float s)
+inline vf32 VectorReplicate(f32 s)
 {
 	return _mm_set1_ps(s);
 }
@@ -202,7 +202,7 @@ inline vf32 VectorReplicateW(vf32 v)
 	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(3, 3, 3, 3));
 }
 
-template<unsigned int X, unsigned int Y, unsigned int Z, unsigned int W>
+template<u32 X, u32 Y, u32 Z, u32 W>
 inline vf32 VectorPermute(vf32 v)
 {
 	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(W, Z, Y, X));
@@ -269,7 +269,7 @@ inline vf32 VectorEqual(vf32 v1, vf32 v2)
 	return _mm_cmpeq_ps(v1, v2);
 }
 
-inline vf32 VectorNearlyEqual(vf32 v1, vf32 v2, const float epsilon)
+inline vf32 VectorNearlyEqual(vf32 v1, vf32 v2, f32 epsilon)
 {
 	vf32 vDiff = VectorAbs(VectorSub(v1, v2));
 	vf32 vE = VectorReplicate(epsilon);
@@ -317,7 +317,7 @@ inline vf32 VectorAndNot(vf32 v1, vf32 v2)
 	return _mm_andnot_ps(v1, v2);
 }
 
-inline unsigned int VectorGetMask(vf32 v)
+inline u32 VectorGetMask(vf32 v)
 {
 	return _mm_movemask_ps(v);
 }
@@ -356,22 +356,22 @@ inline vf32 VectorNMAdd(vf32 v1, vf32 v2, vf32 v3)
 	return _mm_fnmadd_ps(v1, v2, v3);
 }
 
-inline vf32 VectorAdd(vf32 v, const float val)
+inline vf32 VectorAdd(vf32 v, f32 val)
 {
 	return _mm_add_ps(v, _mm_set_ps1(val));
 }
 
-inline vf32 VectorSub(vf32 v, const float val)
+inline vf32 VectorSub(vf32 v, f32 val)
 {
 	return _mm_sub_ps(v, _mm_set_ps1(val));
 }
 
-inline vf32 VectorMul(vf32 v, const float val)
+inline vf32 VectorMul(vf32 v, f32 val)
 {
 	return _mm_mul_ps(v, _mm_set_ps1(val));
 }
 
-inline vf32 VectorDiv(vf32 v, const float val)
+inline vf32 VectorDiv(vf32 v, f32 val)
 {
 	return _mm_div_ps(v, _mm_set_ps1(val));
 }
@@ -426,9 +426,9 @@ inline vf32 VectorMul(const mf32 & m, vf32 v)
 	return r;
 }
 
-inline float VectorDot(vf32 v1, vf32 v2)
+inline f32 VectorDot(vf32 v1, vf32 v2)
 {
-	// _mm_cvtss_f32 gets the value of the lowest float, in this case, X
+	// _mm_cvtss_f32 gets the value of the lowest f32, in this case, X
 	// _mm_store_ss could also be used, but I think it might be slower
 	return _mm_cvtss_f32(VectorDotV(v1, v2));
 }
@@ -465,7 +465,7 @@ inline vf32 VectorCross(vf32 v1, vf32 v2)
 	//return _mm_and_ps(r, _mm_castsi128_ps(w0));
 }
 
-inline float VectorLengthSqr(vf32 v)
+inline f32 VectorLengthSqr(vf32 v)
 {
 	return _mm_cvtss_f32(VectorLengthSqrV(v));
 }
@@ -475,7 +475,7 @@ inline vf32 VectorLengthSqrV(vf32 v)
 	return VectorDotV(v, v);
 }
 
-inline float VectorLength(vf32 v)
+inline f32 VectorLength(vf32 v)
 {
 	return _mm_cvtss_f32(VectorLengthV(v));
 }
@@ -505,7 +505,7 @@ inline vf32 VectorProjectNormal(vf32 v, vf32 p)
 	return VectorMul(vDotP, p);
 }
 
-inline vf32 VectorLerp(vf32 v1, vf32 v2, float t)
+inline vf32 VectorLerp(vf32 v1, vf32 v2, f32 t)
 {
 	// Lerp = V0 + t * (V1 - V0)
 	vf32 vT = _mm_set1_ps(t);
@@ -523,7 +523,7 @@ inline vf32 VectorReflection(vf32 i, vf32 n)
 	return VectorSub(i, twoTimesProj);
 }
 
-inline vf32 VectorRefraction(vf32 i, vf32 n, float eta)
+inline vf32 VectorRefraction(vf32 i, vf32 n, f32 eta)
 {
 	vf32 v1 = VectorReplicate(1.0f);
 	vf32 iDotN = VectorDotV(i, n);
@@ -566,12 +566,12 @@ inline vf32 operator + (vf32 v1, vf32 v2)
 	return VectorAdd(v1, v2);
 }
 
-inline vf32 operator+(vf32 v, const float s)
+inline vf32 operator+(vf32 v, f32 s)
 {
 	return VectorAdd(v, s);
 }
 
-inline vf32 operator+(const float s, vf32 v)
+inline vf32 operator+(f32 s, vf32 v)
 {
 	return VectorAdd(v, s);
 }
@@ -587,12 +587,12 @@ inline vf32 operator - (vf32 v1, vf32 v2)
 	return VectorSub(v1, v2);
 }
 
-inline vf32 operator-(vf32 v, const float s)
+inline vf32 operator-(vf32 v, f32 s)
 {
 	return VectorSub(v, s);
 }
 
-inline vf32 operator-(const float s, vf32 v)
+inline vf32 operator-(f32 s, vf32 v)
 {
 	return VectorSub(VectorReplicate(s), v);
 }
@@ -614,17 +614,17 @@ inline vf32 & operator *= (vf32 & v1, vf32 v2)
 	return v1;
 }
 
-inline vf32 operator * (vf32 v, const float s)
+inline vf32 operator * (vf32 v, f32 s)
 {
 	return VectorMul(v, s);
 }
 
-inline vf32 operator * (const float s, vf32 v)
+inline vf32 operator * (f32 s, vf32 v)
 {
 	return VectorMul(v, s);
 }
 
-inline vf32 & operator *= (vf32 & v, const float s)
+inline vf32 & operator *= (vf32 & v, f32 s)
 {
 	v = VectorMul(v, s);
 	return v;
@@ -657,12 +657,12 @@ inline vf32 & operator /= (vf32 & v1, vf32 v2)
 	return v1;
 }
 
-inline vf32 operator / (vf32 v, const float s)
+inline vf32 operator / (vf32 v, f32 s)
 {
 	return VectorDiv(v, s);
 }
 
-inline vf32 & operator /= (vf32 & v, const float s)
+inline vf32 & operator /= (vf32 & v, f32 s)
 {
 	v = VectorDiv(v, s);
 	return v;

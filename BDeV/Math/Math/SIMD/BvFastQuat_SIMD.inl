@@ -4,7 +4,7 @@
 #include "BvFastVec_SIMD.inl"
 
 
-#if (BV_MATH_USE_TYPE == BV_MATH_TYPE_SIMD)
+#if (BV_MATH_INSTRUCTION == BV_MATH_INSTRUCTION_SIMD)
 
 
 // ==================================
@@ -30,16 +30,16 @@ qf32 QuaternionInverseN(qf32 q);
 
 qf32 QuaternionNormalize(qf32 q);
 
-float QuaternionDot(qf32 q1, qf32 q2);
+f32 QuaternionDot(qf32 q1, qf32 q2);
 qf32 QuaternionDotV(qf32 q1, qf32 q2);
 
-float QuaternionLengthSqr(qf32 q);
+f32 QuaternionLengthSqr(qf32 q);
 qf32 QuaternionLengthSqrV(qf32 q);
 
-float QuaternionLength(qf32 q);
+f32 QuaternionLength(qf32 q);
 qf32 QuaternionLengthV(qf32 q);
 
-qf32 QuaternionRotationAxis(vf32 v, float angle);
+qf32 QuaternionRotationAxis(vf32 v, f32 angle);
 vf32 QuaternionQVQC(qf32 q, vf32 v);
 vf32 QuaternionQCVQ(qf32 q, vf32 v);
 
@@ -49,9 +49,9 @@ vf32 QuaternionQCVQKeenan(qf32 q, vf32 v);
 mf32 QuaternionToMatrix(qf32 q);
 qf32 QuaternionFromMatrix(const mf32 & m);
 
-qf32 QuaternionSlerp(qf32 q1, qf32 q2, const float t, const float epsilon = kEpsilon);
+qf32 QuaternionSlerp(qf32 q1, qf32 q2, f32 t, f32 epsilon = kEpsilon);
 
-float QuaternionAngle(qf32 q);
+f32 QuaternionAngle(qf32 q);
 
 // =================
 // Definitions
@@ -207,9 +207,9 @@ inline qf32 QuaternionNormalize(qf32 q)
 	return _mm_mul_ps(q, _mm_rsqrt_ps(QuaternionLengthSqrV(q)));
 }
 
-inline float QuaternionDot(qf32 q1, qf32 q2)
+inline f32 QuaternionDot(qf32 q1, qf32 q2)
 {
-	// _mm_cvtss_f32 gets the value of the lowest float, in this case, X
+	// _mm_cvtss_f32 gets the value of the lowest f32, in this case, X
 	// _mm_store_ss could also be used, but I think it might be slower
 	return _mm_cvtss_f32(QuaternionDotV(q1, q2));
 }
@@ -225,7 +225,7 @@ inline qf32 QuaternionDotV(qf32 q1, qf32 q2)
 	return _mm_dp_ps(q1, q2, 0xFF);
 }
 
-inline float QuaternionLengthSqr(qf32 q)
+inline f32 QuaternionLengthSqr(qf32 q)
 {
 	return _mm_cvtss_f32(QuaternionLengthSqrV(q));
 }
@@ -235,7 +235,7 @@ inline qf32 QuaternionLengthSqrV(qf32 q)
 	return QuaternionDotV(q, q);
 }
 
-inline float QuaternionLength(qf32 v)
+inline f32 QuaternionLength(qf32 v)
 {
 	return _mm_cvtss_f32(QuaternionLengthV(v));
 }
@@ -245,10 +245,10 @@ inline qf32 QuaternionLengthV(qf32 v)
 	return _mm_sqrt_ps(QuaternionLengthSqrV(v));
 }
 
-inline qf32 QuaternionRotationAxis(vf32 v, float angle)
+inline qf32 QuaternionRotationAxis(vf32 v, f32 angle)
 {
-	float halfAngle = angle * 0.5f;
-	float sinCos[] = { sinf(halfAngle), cosf(halfAngle) };
+	f32 halfAngle = angle * 0.5f;
+	f32 sinCos[] = { sinf(halfAngle), cosf(halfAngle) };
 	vf32 q = VectorSet(sinCos[0], sinCos[0], sinCos[0], sinCos[1]);
 	vf32 n = VectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 	n = _mm_or_ps(v, n);
@@ -556,7 +556,7 @@ inline qf32 QuaternionFromMatrix(const mf32 & m)
 	return QuaternionNormalize(s0);
 }
 
-inline qf32 QuaternionSlerp(qf32 q1, qf32 q2, const float t, const float epsilon)
+inline qf32 QuaternionSlerp(qf32 q1, qf32 q2, f32 t, f32 epsilon)
 {
 	vf32 c0 = QuaternionDotV(q1, q2);
 	vf32 v0 = VectorNegate(c0);
@@ -606,7 +606,7 @@ inline qf32 QuaternionSlerp(qf32 q1, qf32 q2, const float t, const float epsilon
 	return _mm_add_ps(v1, v2);
 }
 
-inline float QuaternionAngle(qf32 q)
+inline f32 QuaternionAngle(qf32 q)
 {
 	return 2.0f * acosf(VectorGetW(q));
 }

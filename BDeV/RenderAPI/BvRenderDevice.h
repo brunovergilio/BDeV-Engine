@@ -17,11 +17,6 @@
 #include <functional>
 
 
-#if defined(CreateSemaphore)
-#undef CreateSemaphore
-#endif
-
-
 class BvSemaphore;
 
 

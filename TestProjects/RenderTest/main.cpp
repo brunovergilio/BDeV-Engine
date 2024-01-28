@@ -40,15 +40,16 @@ int main()
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
 	typedef IBvShaderCompiler* (*pFNGetShaderCompiler)();
 	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("GetShaderCompiler");
-	BvSharedLib renderVkLib("BvRenderGl.dll");
-	typedef BvRenderEngine* (*pFNCreateRenderEngine)();
-	typedef void(*pFNDestroyRenderEngine)();
-	pFNCreateRenderEngine createRenderEngineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
-	pFNDestroyRenderEngine destroyRenderEngineFn = renderVkLib.GetProcAddressT<pFNDestroyRenderEngine>("DestroyRenderEngine");
+	auto pCompiler = compilerFn();
+	ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
+	pCompiler->CompileFromFile("D:\\Bruno\\C++\\test.vert", compDesc);
+	BvSharedLib renderVkLib("BvRenderVk.dll");
+	typedef BvRenderEngine* (*pFNGetRenderEngine)();
+	pFNGetRenderEngine getRenderEngineFn = renderVkLib.GetProcAddressT<pFNGetRenderEngine>("GetRenderEngine");
 
 	g_pCompiler = compilerFn();
 
-	auto pEngine = createRenderEngineFn();
+	auto pEngine = getRenderEngineFn();
 	auto pDevice = pEngine->CreateRenderDevice();
 
 	//BufferDesc bufferDesc;
@@ -237,8 +238,6 @@ int main()
 		pGraphicsQueue->Execute();
 		pSwapChain->Present(false);
 	}
-
-	destroyRenderEngineFn();
 
 	BvPlatform::Shutdown();
 

@@ -23,8 +23,8 @@ public:
 
 	Type & operator *() { return *m_pData; }
 	Type * operator ->() { return m_pData; }
-	Type & operator [](const size_t index) { m_pData[index]; }
-	const Type & operator [](const size_t index) const { m_pData[index]; }
+	Type & operator [](const size_t index) { return m_pData[index]; }
+	const Type & operator [](const size_t index) const { return m_pData[index]; }
 	void Swap(RandomIterator & rhs) { Type pTmp = *m_pData; *m_pData = *rhs.m_pData; *rhs.m_pData = *pTmp; }
 
 	RandomIterator operator++(int) { RandomIterator it(*this); m_pData++; return it; }

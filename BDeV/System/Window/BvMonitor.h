@@ -5,7 +5,7 @@
 #include <BDeV/Container/BvString.h>
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 #endif
 
 
@@ -23,7 +23,12 @@ class BvMonitor
 	BV_NOCOPYMOVE(BvMonitor);
 
 public:
-	friend class BvMonitorStartUp;
+	friend class BvMonitorHelper;
+
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	BvMonitor(HMONITOR hMonitor);
+#endif
+	~BvMonitor();
 
 	struct Rect
 	{
@@ -44,12 +49,6 @@ public:
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 	BV_INLINE HMONITOR GetHandle() const { return m_hMonitor; }
 #endif
-
-private:
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	BvMonitor(HMONITOR hMonitor);
-#endif
-	~BvMonitor();
 
 protected:
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)

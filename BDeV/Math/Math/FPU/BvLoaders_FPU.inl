@@ -4,78 +4,78 @@
 #include "../../BvFloatTypes.h"
 
 
-#if (BV_MATH_USE_TYPE == BV_MATH_TYPE_FPU)
+#if (BV_MATH_INSTRUCTION == BV_MATH_INSTRUCTION_FPU)
 
 
-vf32 Load(const float * const p);
-vf32 Load2(const float * const p);
-vf32 Load3(const float * const p);
-vf32 Load4(const float * const p);
-vf32 Load4A(const float * const p);
+vf32 Load(const f32* p);
+vf32 Load2(const f32* p);
+vf32 Load3(const f32* p);
+vf32 Load4(const f32* p);
+vf32 Load4A(const f32* p);
 
-void Store(const vf32 & v, float * const p);
-void Store2(const vf32 & v, float * const p);
-void Store3(const vf32 & v, float * const p);
-void Store4(const vf32 & v, float * const p);
-void Store4A(const vf32 & v, float * const p);
+void Store(crvf32 v, f32* p);
+void Store2(crvf32 v, f32* p);
+void Store3(crvf32 v, f32* p);
+void Store4(crvf32 v, f32* p);
+void Store4A(crvf32 v, f32* p);
 
-mf32 Load22(const float * const p);
-mf32 Load33(const float * const p);
-mf32 Load43(const float * const p);
-mf32 Load44(const float * const p);
-mf32 Load44A(const float * const p);
+mf32 Load22(const f32* p);
+mf32 Load33(const f32* p);
+mf32 Load43(const f32* p);
+mf32 Load44(const f32* p);
+mf32 Load44A(const f32* p);
 
-void Store22(const mf32 & m, float * const p);
-void Store33(const mf32 & m, float * const p);
-void Store43(const mf32 & m, float * const p);
-void Store44(const mf32 & m, float * const p);
-void Store44A(const mf32 & m, float * const p);
+void Store22(const mf32& m, f32* p);
+void Store33(const mf32& m, f32* p);
+void Store43(const mf32& m, f32* p);
+void Store44(const mf32& m, f32* p);
+void Store44A(const mf32& m, f32* p);
 
 
-inline vf32 Load(const float * const p)
+inline vf32 Load(const f32* p)
 {
 	return vf32(p[0], 0.0f, 0.0f, 0.0f);
 }
 
-inline vf32 Load2(const float * const p)
+inline vf32 Load2(const f32* p)
 {
 	return vf32(p[0], p[1], 0.0f, 0.0f);
 }
 
-inline vf32 Load3(const float * const p)
+inline vf32 Load3(const f32* p)
 {
 	return vf32(p[0], p[1], p[2], 0.0f);
 }
 
-inline vf32 Load4(const float * const p)
+inline vf32 Load4(const f32* p)
 {
 	return vf32(p[0], p[1], p[2], p[3]);
 }
 
-inline vf32 Load4A(const float * const p)
+inline vf32 Load4A(const f32* p)
 {
 	return vf32(p[0], p[1], p[2], p[3]);
 }
 
-inline void Store(const vf32 & v, float * const p)
+inline void Store(crvf32 v, f32* p)
 {
 	p[0] = v.x;
 }
 
-inline void Store2(const vf32 & v, float * const p)
+inline void Store2(crvf32 v, f32* p)
 {
 	p[0] = v.x;
 	p[1] = v.y;
 }
 
-inline void Store3(const vf32 & v, float * const p)
+inline void Store3(crvf32 v, f32* p)
 {
 	p[0] = v.x;
 	p[1] = v.y;
 	p[2] = v.z;
 }
 
-inline void Store4(const vf32 & v, float * const p)
+inline void Store4(crvf32 v, f32* p)
 {
 	p[0] = v.x;
 	p[1] = v.y;
@@ -83,7 +83,7 @@ inline void Store4(const vf32 & v, float * const p)
 	p[3] = v.w;
 }
 
-inline void Store4A(const vf32 & v, float * const p)
+inline void Store4A(crvf32 v, f32* p)
 {
 	p[0] = v.x;
 	p[1] = v.y;
@@ -91,7 +91,7 @@ inline void Store4A(const vf32 & v, float * const p)
 	p[3] = v.w;
 }
 
-inline mf32 Load22(const float * const p)
+inline mf32 Load22(const f32* p)
 {
 	mf32 r;
 	r.r[0] = Load2(p);
@@ -102,7 +102,7 @@ inline mf32 Load22(const float * const p)
 	return r;
 }
 
-inline mf32 Load33(const float * const p)
+inline mf32 Load33(const f32* p)
 {
 	mf32 r;
 	r.r[0] = Load3(p);
@@ -113,7 +113,7 @@ inline mf32 Load33(const float * const p)
 	return r;
 }
 
-inline mf32 Load43(const float * const p)
+inline mf32 Load43(const f32* p)
 {
 	mf32 r;
 	r.r[0] = Load3(p);
@@ -124,7 +124,7 @@ inline mf32 Load43(const float * const p)
 	return r;
 }
 
-inline mf32 Load44(const float * const p)
+inline mf32 Load44(const f32* p)
 {
 	mf32 r;
 	r.r[0] = Load4(p);
@@ -135,7 +135,7 @@ inline mf32 Load44(const float * const p)
 	return r;
 }
 
-inline mf32 Load44A(const float * const p)
+inline mf32 Load44A(const f32* p)
 {
 	mf32 r;
 	r.r[0] = Load4A(p);
@@ -146,20 +146,20 @@ inline mf32 Load44A(const float * const p)
 	return r;
 }
 
-inline void Store22(const mf32 & m, float * const p)
+inline void Store22(const mf32& m, f32* p)
 {
 	Store2(m.r[0], p);
 	Store2(m.r[1], p + 2);
 }
 
-inline void Store33(const mf32 & m, float * const p)
+inline void Store33(const mf32& m, f32* p)
 {
 	Store3(m.r[0], p);
 	Store3(m.r[1], p + 3);
 	Store3(m.r[2], p + 6);
 }
 
-inline void Store43(const mf32 & m, float * const p)
+inline void Store43(const mf32& m, f32* p)
 {
 	Store3(m.r[0], p);
 	Store3(m.r[1], p + 3);
@@ -167,7 +167,7 @@ inline void Store43(const mf32 & m, float * const p)
 	Store3(m.r[3], p + 9);
 }
 
-inline void Store44(const mf32 & m, float * const p)
+inline void Store44(const mf32& m, f32* p)
 {
 	Store4(m.r[0], p);
 	Store4(m.r[1], p + 4);
@@ -175,7 +175,7 @@ inline void Store44(const mf32 & m, float * const p)
 	Store4(m.r[3], p + 12);
 }
 
-inline void Store44A(const mf32 & m, float * const p)
+inline void Store44A(const mf32& m, f32* p)
 {
 	Store4A(m.r[0], p);
 	Store4A(m.r[1], p + 4);

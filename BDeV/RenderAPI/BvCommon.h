@@ -4,7 +4,7 @@
 #include "BDeV/BvCore.h"
 #include "BDeV/Utils/BvEnum.h"
 #include "BDeV/Utils/BvUtils.h"
-#include "BDeV/BvObject.h"
+#include <cmath>
 
 
 class BvBuffer;
@@ -203,7 +203,7 @@ enum class ShaderStage : u16
 	kCompute				= BvBit(5),
 	kMesh					= BvBit(6),
 	kAmplificationOrTask	= BvBit(7),
-	kAll					= BvBit(8) - 1,
+	kAllGraphicsStages		= BvBit(8) - 1,
 };
 BV_USE_ENUM_CLASS_OPERATORS(ShaderStage)
 

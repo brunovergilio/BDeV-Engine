@@ -1,6 +1,5 @@
 #include "BDeV/System/Threading/BvSync.h"
-#include "../BvProcess.h"
-#include <Windows.h>
+#include "BDeV/System/Threading/BvProcess.h"
 
 
 BvMutex::BvMutex()
@@ -120,59 +119,54 @@ BvSignal::BvSignal()
 }
 
 
-BvSignal::BvSignal(const bool manualReset, const bool signaled)
-	: m_hEvent(CreateEvent(nullptr, manualReset, signaled, nullptr))
+BvSignal::BvSignal(ResetType resetType, bool initiallySignaled)
+	: m_ResetType(resetType), m_Signaled(initiallySignaled)
 {
-	BvAssert(m_hEvent != nullptr, "Invalid event handle");
 }
 
 
 BvSignal::~BvSignal()
 {
-	Destroy();
 }
 
 
-BvSignal::BvSignal(BvSignal && rhs) noexcept
+void BvSignal::SetResetType(ResetType resetType)
 {
-	*this = std::move(rhs);
-}
-
-
-BvSignal & BvSignal::operator =(BvSignal && rhs) noexcept
-{
-	if (this != &rhs)
-	{
-		std::swap(m_hEvent, rhs.m_hEvent);
-	}
-
-	return *this;
+	m_ResetType = resetType;
 }
 
 
 void BvSignal::Set()
 {
-	SetEvent(m_hEvent);
+	std::unique_lock<std::mutex> lock(m_Lock);
+	m_Signaled.store(true, std::memory_order::relaxed);
+	m_CV.notify_one();
 }
 
 
 void BvSignal::Reset()
 {
-	ResetEvent(m_hEvent);
+	std::unique_lock<std::mutex> lock(m_Lock);
+	m_Signaled.store(false, std::memory_order::relaxed);
 }
 
 
-bool BvSignal::Wait(const u32 timeout)
+bool BvSignal::Wait(u32 timeout)
 {
-	return WaitForSingleObject(m_hEvent, timeout) == WAIT_OBJECT_0;
-}
-
-
-void BvSignal::Destroy()
-{
-	if (m_hEvent)
+	auto ms = std::chrono::milliseconds(1);
+	std::unique_lock<std::mutex> lock(m_Lock);
+	while (!m_Signaled.load(std::memory_order::relaxed))
 	{
-		CloseHandle(m_hEvent);
-		m_hEvent = nullptr;
+		auto status = m_CV.wait_for(lock, timeout * ms);
+		if (status == std::cv_status::timeout)
+		{
+			return false;
+		}
 	}
+	if (m_ResetType == ResetType::kAuto)
+	{
+		m_Signaled.store(false, std::memory_order::relaxed);
+	}
+
+	return true;
 }

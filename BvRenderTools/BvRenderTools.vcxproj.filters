@@ -4,19 +4,13 @@
     <ClInclude Include="BvShaderCompiler.h" />
     <ClInclude Include="SPIRV\BvSPIRVCompiler.h" />
     <ClInclude Include="BvTextureLoader.h" />
-    <ClInclude Include="SPIRV\BvSPIRVReflector.h" />
-    <ClInclude Include="..\External\SPIRV-Reflect\spirv_reflect.h" />
-    <ClInclude Include="..\External\glslang\glslang\Include\glslang_c_interface.h" />
-    <ClInclude Include="..\External\glslang\glslang\Public\resource_limits_c.h" />
-    <ClInclude Include="..\External\glslang\glslang\Public\ResourceLimits.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvShaderCompiler.cpp" />
     <ClCompile Include="SPIRV\BvSPIRVCompiler.cpp" />
     <ClCompile Include="BvTextureLoader.cpp" />
-    <ClCompile Include="SPIRV\BvSPIRVReflector.cpp" />
-    <ClCompile Include="..\External\SPIRV-Reflect\spirv_reflect.c" />
-    <ClCompile Include="..\External\glslang\glslang\ResourceLimits\ResourceLimits.cpp" />
-    <ClCompile Include="..\External\glslang\glslang\ResourceLimits\resource_limits_c.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BvRenderTools.def" />
   </ItemGroup>
 </Project>

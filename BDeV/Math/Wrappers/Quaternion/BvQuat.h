@@ -13,43 +13,41 @@ class BvQuat
 public:
 	BvQuat();
 
-	BvQuat(const BvQuat & rhs);
-	BvQuat(BvQuat && rhs) noexcept;
-	BvQuat & operator=(const BvQuat & rhs);
-	BvQuat & operator=(BvQuat && rhs) noexcept;
+	BvQuat(const BvQuat& rhs);
+	BvQuat(BvQuat&& rhs) noexcept;
+	BvQuat& operator=(const BvQuat& rhs);
+	BvQuat& operator=(BvQuat&& rhs) noexcept;
 
-	explicit BvQuat(const float x, const float y, const float z, const float w);
-	explicit BvQuat(const Float4 & v);
-	explicit BvQuat(const qf32 & m128);
-	explicit BvQuat(const BvVec & v);
-	explicit BvQuat(const BvVec & axis, const float rad);
-	explicit BvQuat(const BvMat & m);
+	explicit BvQuat(f32 x, f32 y, f32 z, f32 w);
+	explicit BvQuat(const Float4& v);
+	explicit BvQuat(crqf32 m128);
+	explicit BvQuat(CRBvVec v);
+	explicit BvQuat(CRBvVec axis, f32 rad);
+	explicit BvQuat(const BvMat& m);
 
-	void Set(const float x, const float y, const float z, const float w);
-	void Set(const Float4 & v);
-	void Set(const qf32 & q);
-	void Set(const BvVec & v);
-	void Set(const BvVec & axis, const float rad);
-	void Set(const BvMat & m);
+	void Set(f32 x, f32 y, f32 z, f32 w);
+	void Set(const Float4& v);
+	void Set(crqf32 q);
+	void Set(CRBvVec v);
+	void Set(CRBvVec axis, f32 rad);
+	void Set(const BvMat& m);
 	void SetZero();
 
-	float GetX() const;
-	float GetY() const;
-	float GetZ() const;
-	float GetW() const;
-
-	Float4 AsFloat4() const;
+	f32 GetX() const;
+	f32 GetY() const;
+	f32 GetZ() const;
+	f32 GetW() const;
 
 	BvQuat Identity() const;
 
-	BvQuat Mul(const BvVec & v) const;
-	BvQuat Mul(const BvMat & m) const;
-	BvQuat Mul(const BvQuat & q) const;
+	BvQuat Mul(CRBvVec v) const;
+	BvQuat Mul(const BvMat& m) const;
+	BvQuat Mul(CRBvQuat q) const;
 
-	float Dot(const BvQuat & q) const;
+	f32 Dot(CRBvQuat q) const;
 
-	float Length() const;
-	float LengthSqr() const;
+	f32 Length() const;
+	f32 LengthSqr() const;
 
 	void Normalize();
 	BvQuat Normal() const;
@@ -57,37 +55,37 @@ public:
 	BvQuat Conjugate() const;
 	BvQuat Inverse() const;
 
-	BvQuat RotAxis(const BvVec & axis, const float rad) const;
+	BvQuat RotAxis(CRBvVec axis, f32 rad) const;
 
-	float Angle() const;
+	f32 Angle() const;
 
-	BvQuat Slerp(const BvQuat & toQuat, const float t) const;
+	BvQuat Slerp(CRBvQuat toQuat, f32 t) const;
 
 	BvMat ToMatrix() const;
-	BvQuat FromMatrix(const BvMat & m) const;
+	BvQuat FromMatrix(const BvMat& m) const;
 
-	BvQuat QVQC(const BvVec & v) const;
-	BvQuat QCVQ(const BvVec & v) const;
+	BvQuat QVQC(CRBvVec v) const;
+	BvQuat QCVQ(CRBvVec v) const;
 
-	const float & operator[](const unsigned int index) const;
-	float & operator[](const unsigned int index);
+	const f32& operator[](unsigned int index) const;
+	f32& operator[](unsigned int index);
 
-	friend BvQuat operator*(const BvQuat & lhs, const BvVec & rhs);
-	friend BvQuat operator*(const BvVec & lhs, const BvQuat & rhs);
-	friend BvQuat operator*(const BvQuat & lhs, const BvQuat & rhs);
-	BvQuat & operator*=(const BvQuat & q);
-	BvQuat & operator*=(const BvVec & v);
-	BvQuat & operator*=(const BvMat & m);
+	friend BvQuat operator*(CRBvQuat lhs, CRBvVec rhs);
+	friend BvQuat operator*(CRBvVec lhs, CRBvQuat rhs);
+	friend BvQuat operator*(CRBvQuat lhs, CRBvQuat rhs);
+	BvQuat& operator*=(CRBvQuat q);
+	BvQuat& operator*=(CRBvVec v);
+	BvQuat& operator*=(const BvMat& m);
 
 public:
 	union
 	{
 		qf32 m128;
 		Float4 v4;
-		float arr[4];
+		f32 arr[4];
 		struct
 		{
-			float x, y, z, w;
+			f32 x, y, z, w;
 		};
 	};
 };

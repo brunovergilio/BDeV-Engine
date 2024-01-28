@@ -2,7 +2,6 @@
 #include "BvRenderVk/BvRenderDeviceVk.h"
 #include "BvUtilsVk.h"
 #include "BvTypeConversionsVk.h"
-#include <vma/vk_mem_alloc.h>
 
 
 BvTextureVk::BvTextureVk(const BvRenderDeviceVk & device, const TextureDesc & textureDesc)

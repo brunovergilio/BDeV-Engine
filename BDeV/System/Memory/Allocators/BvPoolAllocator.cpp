@@ -2,7 +2,7 @@
 
 
 BvPoolAllocator::BvPoolAllocator(void* pStart, void* pEnd, size_t elementSize, size_t alignment)
-	: m_pHead(AlignMemory(pStart, alignment)), m_ElementSize(elementSize)
+	: m_pHead(BvMemory::AlignMemory(pStart, alignment)), m_ElementSize(elementSize)
 {
 	BvAssert(elementSize >= kPointerSize, "Element size must be at least the size of a pointer");
 
@@ -59,7 +59,7 @@ void BvPoolAllocator::Debug()
 	auto pWalker = (void**)m_pHead;
 	while (pWalker)
 	{
-		PrintF("(0x%p) Block Size: Fixed\n", pWalker);
+		BvConsole::PrintF("(0x%p) Block Size: Fixed\n", pWalker);
 		pWalker = (void**)*pWalker;
 	}
 }

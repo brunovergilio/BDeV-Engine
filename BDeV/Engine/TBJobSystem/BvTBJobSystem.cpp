@@ -1,8 +1,10 @@
 #include "BvTBJobSystem.h"
+#include <bit>
 
 
 class BvTBJobSystemWorker
 {
+public:
 	enum class WorkerResult : u8
 	{
 		kDone,
@@ -10,36 +12,37 @@ class BvTBJobSystemWorker
 		kStalled
 	};
 
-public:
-	BvTBJobSystemWorker(BvTBJobSystem* pJobSystem, const u32 jobListPoolSize, const u32 coreIndex);
-	BvTBJobSystemWorker(const u32 jobListPoolSize);
+	BvTBJobSystemWorker(u32 jobListPoolSize, u32 coreIndex);
 	~BvTBJobSystemWorker();
 
 	void AddJobList(BvTBJobList* pJobList);
+	static WorkerResult RunJobs(BvTBJobList* pCurrJobList, bool runAll = false);
 	void Stop();
 
 private:
 	void Process();
-	WorkerResult RunJobs(const u32 jobListIndex, const bool runAll = false);
+	bool IsActive() const;
 
 private:
-	BvTBJobSystem* m_pJobSystem = nullptr;
 	BvVector<BvTBJobList*> m_JobLists;
-	std::atomic<u32> m_LastJobIndex;
-	u32 m_CurrJobListIndex = 0;
+	std::atomic<u32> m_LastJobListIndex;
+	std::atomic<u32> m_FirstJobListIndex;
 	BvThread m_Thread;
 	BvSignal m_WorkSignal;
-	BvSpinlock m_Lock;
+	BvAdaptiveMutex m_Lock;
+	std::atomic<bool> m_Active;
 };
 
 
-BvTBJobSystemWorker::BvTBJobSystemWorker(BvTBJobSystem* pJobSystem, const u32 jobListPoolSize, const u32 coreIndex)
-	: m_pJobSystem(pJobSystem), m_WorkSignal(BvSignal(false)), m_JobLists(jobListPoolSize),
-	m_Thread(BvThread([this]()
+BvTBJobSystemWorker::BvTBJobSystemWorker(u32 jobListPoolSize, u32 coreIndex)
+	: m_JobLists(std::bit_ceil(jobListPoolSize)),
+	m_Thread(BvThread([this, coreIndex]()
 		{
-			while (m_pJobSystem->IsActive())
+			m_Thread.LockToCore(coreIndex);
+			m_Active.store(1, std::memory_order::relaxed);
+			while (IsActive())
 			{
-				if (m_LastJobIndex == m_CurrJobListIndex)
+				if (m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) == 0)
 				{
 					m_WorkSignal.Wait();
 				}
@@ -47,13 +50,6 @@ BvTBJobSystemWorker::BvTBJobSystemWorker(BvTBJobSystem* pJobSystem, const u32 jo
 				Process();
 			}
 		}))
-{
-	m_Thread.SetAffinity(coreIndex);
-}
-
-
-BvTBJobSystemWorker::BvTBJobSystemWorker(const u32 jobListPoolSize)
-	: m_JobLists(jobListPoolSize)
 {
 }
 
@@ -66,57 +62,158 @@ BvTBJobSystemWorker::~BvTBJobSystemWorker()
 void BvTBJobSystemWorker::AddJobList(BvTBJobList* pJobList)
 {
 	{
-		BvScopedLock<BvSpinlock> lock(m_Lock);
-		auto lastJobIndex = m_LastJobIndex.load(std::memory_order::relaxed);
-		m_JobLists[lastJobIndex] = pJobList;
-		m_LastJobIndex.store((lastJobIndex + 1u) % (u32)m_JobLists.Size(), std::memory_order::relaxed);
+		BvScopedLock lock(m_Lock);
+
+		// This could loop infinitely if the thread that's adding a job list is the same worker thread that owns m_JobLists and the list is full
+		// TODO: Figure out how to best handle this
+		while (m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) >= (u32)m_JobLists.Size())
+		{
+			BvProcess::YieldExecution();
+		}
+
+		auto lastJobListIndex = m_LastJobListIndex.load(std::memory_order::relaxed) & ((u32)m_JobLists.Size() - 1);
+		m_JobLists[lastJobListIndex] = pJobList;
+		m_LastJobListIndex.fetch_add(1, std::memory_order::relaxed);
 	}
 	
-	// If m_pJobSystem is not nullptr, then this is a worker thread
-	if (m_pJobSystem)
+	m_WorkSignal.Set();
+}
+
+
+BvTBJobSystemWorker::WorkerResult BvTBJobSystemWorker::RunJobs(BvTBJobList* pCurrJobList, bool runAll)
+{
+	auto currJobListJobIndex = 0u;
+
+	do
 	{
-		m_WorkSignal.Set();
+		// If currjobListJobIndex is equal to the amount of jobs, that may not mean all jobs are done,
+		// but it means every job is at least being processed
+		currJobListJobIndex = pCurrJobList->m_CurrJob.load(std::memory_order::relaxed);
+		if (currJobListJobIndex >= (u32)pCurrJobList->m_Jobs.Size())
+		{
+			return WorkerResult::kDone;
+		}
+
+		// Do an early-out if there are any sync points or dependencies to be waited on
+		// Can sometimes avoid the atomic lock below
+		if (pCurrJobList->m_Jobs[currJobListJobIndex].m_SyncType == BvTBJobList::JobSyncType::kSyncPoint)
+		{
+			if (currJobListJobIndex > pCurrJobList->m_JobsDone.load(std::memory_order::relaxed))
+			{
+				return WorkerResult::kStalled;
+			}
+		}
+		else if (pCurrJobList->m_Jobs[currJobListJobIndex].m_SyncType == BvTBJobList::JobSyncType::kJobListDependency)
+		{
+			if (!pCurrJobList->m_Jobs[currJobListJobIndex].m_pDependency->IsDone())
+			{
+				return WorkerResult::kStalled;
+			}
+		}
+
+		if (pCurrJobList->m_Lock.TryLock())
+		{
+			currJobListJobIndex = pCurrJobList->m_CurrJob.fetch_add(1);
+			if (currJobListJobIndex >= pCurrJobList->m_Jobs.Size())
+			{
+				pCurrJobList->m_Lock.Unlock();
+				return WorkerResult::kDone;
+			}
+
+			// If it is a sync point
+			if (pCurrJobList->m_Jobs[currJobListJobIndex].m_SyncType == BvTBJobList::JobSyncType::kSyncPoint)
+			{
+				// Check and make sure every previous job is done
+				if (currJobListJobIndex > pCurrJobList->m_JobsDone.load(std::memory_order::relaxed))
+				{
+					pCurrJobList->m_CurrJob.fetch_sub(1);
+					pCurrJobList->m_Lock.Unlock();
+					return WorkerResult::kStalled;
+				}
+			}
+			// If it is a dependency
+			else if (pCurrJobList->m_Jobs[currJobListJobIndex].m_SyncType == BvTBJobList::JobSyncType::kJobListDependency)
+			{
+				// Check if the other joblist is done
+				if (!pCurrJobList->m_Jobs[currJobListJobIndex].m_pDependency->IsDone())
+				{
+					pCurrJobList->m_CurrJob.fetch_sub(1);
+					pCurrJobList->m_Lock.Unlock();
+					return WorkerResult::kStalled;
+				}
+			}
+
+			pCurrJobList->m_Lock.Unlock();
+		}
+		else
+		{
+			return WorkerResult::kStalled;
+		}
+
+		pCurrJobList->m_Jobs[currJobListJobIndex].m_Job.Run();
+
+		pCurrJobList->m_JobsDone.fetch_add(1);
+	} while (runAll);
+
+	if (currJobListJobIndex + 1 >= pCurrJobList->m_Jobs.Size())
+	{
+		return WorkerResult::kDone;
 	}
-	// Otherwise, just process it here
 	else
 	{
-		Process();
+		return WorkerResult::kInProgress;
 	}
 }
 
 
 void BvTBJobSystemWorker::Stop()
 {
-	// If m_pJobSystem is not nullptr, then this is a worker thread
-	if (m_pJobSystem)
-	{
-		m_WorkSignal.Set();
-		m_Thread.Wait();
-	}
+	m_Active.store(false, std::memory_order::relaxed);
+	m_WorkSignal.Set();
+	m_Thread.Wait();
 }
 
 
 void BvTBJobSystemWorker::Process()
 {
-	u32 lastJobIndex = m_LastJobIndex.load(std::memory_order::relaxed);
-	u32 jobListIndex = 0;
+	constexpr u32 kMaxLocalJobLists = 32;
+	BvTBJobList* pJobLists[kMaxLocalJobLists]{};
+
 	// Keep track of the last job list that this worker failed processing
 	u32 lastSkippedJobListIndex = kU32Max;
-	JobListPriority priority = JobListPriority::kLow;
+
 	u32 jobListSize = (u32)m_JobLists.Size();
-	while (m_CurrJobListIndex != lastJobIndex)
+	u32 lastJobListIndex = 0;
+	u32 firstJobListIndex = 0;
+	u32 numJobLists = 0;
+	while (IsActive())
 	{
+		lastJobListIndex = m_LastJobListIndex.load(std::memory_order::relaxed);
+		firstJobListIndex = m_FirstJobListIndex.load(std::memory_order::relaxed);
+
+		if (numJobLists < kMaxLocalJobLists && lastJobListIndex - firstJobListIndex > 0)
+		{
+			pJobLists[numJobLists++] = m_JobLists[firstJobListIndex & (jobListSize - 1)];
+			m_FirstJobListIndex.fetch_add(1, std::memory_order::relaxed);
+		}
+
+		if (numJobLists == 0)
+		{
+			break;
+		}
+
+		u32 jobListIndex = 0;
+		JobListPriority priority = JobListPriority::kLow;
+
 		// Start with the first available index
-		jobListIndex = m_CurrJobListIndex;
-		priority = JobListPriority::kLow;
 		if (lastSkippedJobListIndex == kU32Max)
 		{
-			for (auto i = m_CurrJobListIndex; i != lastJobIndex; i = (i + 1) % jobListSize)
+			for (auto i = 0u; i < numJobLists; i++)
 			{
-				if (m_JobLists[i]->GetPriority() > priority
-					&& !m_JobLists[i]->IsWaitingForDependency())
+				if (pJobLists[i]->GetPriority() > priority
+					&& !pJobLists[i]->IsWaitingForDependency())
 				{
-					priority = m_JobLists[i]->GetPriority();
+					priority = pJobLists[i]->GetPriority();
 					jobListIndex = i;
 					if (priority == JobListPriority::kHigh)
 					{
@@ -128,12 +225,12 @@ void BvTBJobSystemWorker::Process()
 		else
 		{
 			jobListIndex = lastSkippedJobListIndex;
-			for (auto i = m_CurrJobListIndex; i != lastJobIndex; i = (i + 1) % jobListSize)
+			for (auto i = 0u; i < numJobLists; i++)
 			{
-				if (i != lastSkippedJobListIndex && m_JobLists[i]->GetPriority() >= priority
-					&& !m_JobLists[i]->IsWaitingForDependency())
+				if (i != lastSkippedJobListIndex && pJobLists[i]->GetPriority() >= priority
+					&& !pJobLists[i]->IsWaitingForDependency())
 				{
-					priority = m_JobLists[i]->GetPriority();
+					priority = pJobLists[i]->GetPriority();
 					jobListIndex = i;
 					if (priority == JobListPriority::kHigh)
 					{
@@ -143,22 +240,22 @@ void BvTBJobSystemWorker::Process()
 			}
 		}
 
-		auto result = RunJobs(jobListIndex, priority == JobListPriority::kHigh);
+		auto result = RunJobs(pJobLists[jobListIndex], priority == JobListPriority::kHigh);
 		if (result == WorkerResult::kDone)
 		{
 			// Remove the JobList from the pool
-			for (auto i = jobListIndex; i > m_CurrJobListIndex; i--)
+			for (auto i = jobListIndex; i < numJobLists - 1; i++)
 			{
-				m_JobLists[i] = m_JobLists[i - 1];
+				pJobLists[i] = pJobLists[i + 1];
 			}
-			m_CurrJobListIndex = (m_CurrJobListIndex + 1) % jobListSize;
+			--numJobLists;
 			lastSkippedJobListIndex = kU32Max;
 		}
 		else if (result == WorkerResult::kStalled)
 		{
 			if (lastSkippedJobListIndex == jobListIndex)
 			{
-				BvThread::YieldExecution();
+				BvProcess::YieldExecution();
 			}
 			lastSkippedJobListIndex = jobListIndex;
 		}
@@ -170,111 +267,9 @@ void BvTBJobSystemWorker::Process()
 }
 
 
-BvTBJobSystemWorker::WorkerResult BvTBJobSystemWorker::RunJobs(const u32 jobListIndex, const bool runAll)
+bool BvTBJobSystemWorker::IsActive() const
 {
-	auto pCurrJobList = m_JobLists[jobListIndex];
-	auto jobsDone = 0u;
-	auto currJobListJobIndex = 0u;
-
-	do
-	{
-		currJobListJobIndex = pCurrJobList->m_CurrJob.load();
-		// If currjobListJobIndex is equal to the amount of jobs, that may not mean all jobs are done,
-		// but it means every job is at least being processed
-		if (currJobListJobIndex == pCurrJobList->m_JobCount)
-		{
-			return WorkerResult::kDone;
-		}
-		// Do an early-out if there are any sync points or dependencies to be waited on
-		// Can sometimes avoid the atomic lock below
-		if (pCurrJobList->m_Jobs[currJobListJobIndex].second != nullptr)
-		{
-			if (pCurrJobList->m_Jobs[currJobListJobIndex].second == BvTBJobList::kSyncPoint)
-			{
-				if (currJobListJobIndex > pCurrJobList->m_JobsDone.load())
-				{
-					return WorkerResult::kStalled;
-				}
-			}
-			else
-			{
-				if (!pCurrJobList->m_Jobs[currJobListJobIndex].second->IsDone())
-				{
-					return WorkerResult::kStalled;
-				}
-			}
-		}
-
-		if (pCurrJobList->m_Lock.TryLock())
-		{
-			// If there's no data, then this is a job
-			// Move the job pointer forward
-			if (pCurrJobList->m_Jobs[currJobListJobIndex].second == nullptr)
-			{
-				currJobListJobIndex = pCurrJobList->m_CurrJob++;
-			}
-			else
-			{
-				// If it is a sync point
-				if (pCurrJobList->m_Jobs[currJobListJobIndex].second == BvTBJobList::kSyncPoint)
-				{
-					// Check and make sure every previous job is done
-					// and if it is, move the job pointer forward, and mark this job as done
-					// otherwise, quit the function
-					if (currJobListJobIndex > pCurrJobList->m_JobsDone.load())
-					{
-						pCurrJobList->m_Lock.Unlock();
-						return WorkerResult::kStalled;
-					}
-					else
-					{
-						currJobListJobIndex = pCurrJobList->m_CurrJob++;
-						pCurrJobList->m_JobsDone++;
-					}
-				}
-				// If it is a dependency
-				else
-				{
-					// Check if the other joblist is done,
-					// and if it is, move the job pointer forward, and mark this job as done
-					// otherwise, quit the function
-					if (!pCurrJobList->m_Jobs[currJobListJobIndex].second->IsDone())
-					{
-						pCurrJobList->m_Lock.Unlock();
-						return WorkerResult::kStalled;
-					}
-					else
-					{
-						currJobListJobIndex = pCurrJobList->m_CurrJob++;
-						pCurrJobList->m_JobsDone++;
-					}
-				}
-			}
-			pCurrJobList->m_Lock.Unlock();
-		}
-		else
-		{
-			return WorkerResult::kStalled;
-		}
-
-		// If it's a regular job, run it
-		if (pCurrJobList->m_Jobs[currJobListJobIndex].second == nullptr)
-		{
-			pCurrJobList->m_Jobs[currJobListJobIndex].first.Run();
-
-			// Mark the job as done (and add one for the check below)
-			jobsDone = pCurrJobList->m_JobsDone.fetch_add(1) + 1;
-		}
-	} while (runAll);
-
-	if (jobsDone >= pCurrJobList->m_JobCount)
-	{
-		return WorkerResult::kDone;
-	}
-	else
-	{
-		return WorkerResult::kInProgress;
-	}
+	return m_Active.load(std::memory_order::relaxed);
 }
 
 
@@ -291,15 +286,6 @@ BvTBJobSystem::~BvTBJobSystem()
 
 void BvTBJobSystem::Initialize(const JobSystemDesc desc)
 {
-	BvAssert(m_IsActive == false, "Job System has not been initialized yet");
-	m_IsActive = true;
-
-	m_JobListPool.Resize(desc.m_JobListPoolSize);
-	for (auto& jobList : m_JobListPool)
-	{
-		new(&jobList) BvTBJobList(this, JobListPriority::kNormal);
-	}
-
 	auto numWorkerThreads = 0;
 	auto numThreadsPerCore = 1;
 
@@ -310,21 +296,16 @@ void BvTBJobSystem::Initialize(const JobSystemDesc desc)
 	{
 	case JobSystemDesc::Parallelism::kUseThreadCount:
 		numWorkerThreads = sysInfo.m_NumLogicalProcessors;
-		numThreadsPerCore = sysInfo.m_NumCores % sysInfo.m_NumLogicalProcessors;
+		numThreadsPerCore = sysInfo.m_NumLogicalProcessors / sysInfo.m_NumCores;
 		break;
 	case JobSystemDesc::Parallelism::kUseCoreCount:
 		numWorkerThreads = sysInfo.m_NumCores;
-		//numThreadsPerCore = 1;
+		numThreadsPerCore = 1;
 		break;
 	case JobSystemDesc::Parallelism::kCustom:
 		numWorkerThreads = desc.m_NumThreads;
 		// For custom parallelism, the core values will come from JobSystemDesc::m_pThreadCores
 		break;
-	case JobSystemDesc::Parallelism::kSingleThreaded:
-		// For debugging purposes
-		m_Workers.Resize(1);
-		m_Workers[0] = new BvTBJobSystemWorker(desc.m_JobListPoolSize);
-		return;
 	}
 
 	BvAssert(numWorkerThreads > 0, "There must be at least 1 worker thread on the job system!");
@@ -333,7 +314,7 @@ void BvTBJobSystem::Initialize(const JobSystemDesc desc)
 	auto coreCountReset = 0;
 	for (auto i = 0u; i < m_Workers.Size(); i++)
 	{
-		m_Workers[i] = new BvTBJobSystemWorker(this, desc.m_JobListPoolSize, desc.m_pThreadCores == nullptr ? coreIndex : desc.m_pThreadCores[i]);
+		m_Workers[i] = new BvTBJobSystemWorker(desc.m_JobListPoolSize, desc.m_pThreadCores == nullptr ? coreIndex : desc.m_pThreadCores[i]);
 		if (++coreCountReset == numThreadsPerCore)
 		{
 			coreIndex++;
@@ -345,12 +326,6 @@ void BvTBJobSystem::Initialize(const JobSystemDesc desc)
 
 void BvTBJobSystem::Shutdown()
 {
-	bool exp = true;
-	if (!m_IsActive.compare_exchange_strong(exp, false))
-	{
-		return;
-	}
-
 	for (auto&& pWorker : m_Workers)
 	{
 		pWorker->Stop();
@@ -360,24 +335,16 @@ void BvTBJobSystem::Shutdown()
 }
 
 
-BvTBJobList* BvTBJobSystem::AllocJobList(const u32 jobListSize, JobListPriority priority)
+BvTBJobList* BvTBJobSystem::AllocJobList(u32 maxJobs, u32 maxSyncs, JobListPriority priority)
 {
-	for (auto& jobList : m_JobListPool)
-	{
-		if (!jobList.m_InUse.test_and_set())
-		{
-			jobList.Reset();
-			return &jobList;
-		}
-	}
-
-	return nullptr;
+	return new BvTBJobList(maxJobs, maxSyncs, priority);
 }
 
 
-void BvTBJobSystem::FreeJobList(BvTBJobList* pJobList)
+void BvTBJobSystem::FreeJobList(BvTBJobList*& pJobList)
 {
-	pJobList->m_InUse.clear();
+	delete pJobList;
+	pJobList = nullptr;
 }
 
 
@@ -387,4 +354,129 @@ void BvTBJobSystem::Submit(BvTBJobList* pJobList)
 	{
 		pWorker->AddJobList(pJobList);
 	}
+}
+
+
+class BvTBJobSystemInstance
+{
+public:
+	static BvTBJobSystem s_Instance;
+};
+
+
+BvTBJobSystem* g_pJobSystem = &BvTBJobSystemInstance::s_Instance;
+
+
+// Empty stub for sync points and dependencies
+void NoOp()
+{
+}
+
+
+void BvTBJobList::AddSyncPoint()
+{
+	BvAssert(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
+	if (m_Jobs.Size() == 0
+		|| m_Jobs.Size() == (u32)m_Jobs.Capacity() - 1
+		|| m_Jobs[m_Jobs.Size() - 1].m_SyncType == JobSyncType::kSyncPoint)
+	{
+		return;
+	}
+
+	auto& job = AddInternal();
+	job.m_Job.Set(NoOp);
+	job.m_SyncType = JobSyncType::kSyncPoint;
+}
+
+
+void BvTBJobList::AddJobListDependency(BvTBJobList* pDependency)
+{
+	BvAssert(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
+	BvAssert(pDependency != nullptr, "Needs a valid JobList");
+	if (m_Jobs.Size() == (u32)m_Jobs.Capacity() - 1)
+	{
+		return;
+	}
+
+	auto& job = AddInternal();
+	job.m_Job.Set(NoOp);
+	job.m_SyncType = JobSyncType::kJobListDependency;
+	job.m_pDependency = pDependency;
+}
+
+
+void BvTBJobList::Reset(bool resetJobs)
+{
+	if (resetJobs)
+	{
+		m_Jobs.Clear();
+	}
+
+	m_CurrJob.store(0);
+	m_JobsDone.store(0);
+}
+
+
+void BvTBJobList::Submit(bool threaded)
+{
+	if (threaded)
+	{
+		g_pJobSystem->Submit(this);
+	}
+	else
+	{
+		BvTBJobSystemWorker::WorkerResult result = BvTBJobSystemWorker::WorkerResult::kDone;
+		do
+		{
+			result = BvTBJobSystemWorker::RunJobs(this, true);
+		} while (result != BvTBJobSystemWorker::WorkerResult::kDone);
+	}
+}
+
+
+bool BvTBJobList::IsDone() const
+{
+	return m_JobsDone.load(std::memory_order::relaxed) == m_Jobs.Size();
+}
+
+
+bool BvTBJobList::IsWaitingForDependency() const
+{
+	auto index = m_CurrJob.load(std::memory_order::relaxed);
+	return index < m_Jobs.Size()
+		&& m_Jobs[index].m_SyncType == JobSyncType::kJobListDependency
+		&& !m_Jobs[index].m_pDependency->IsDone();
+}
+
+
+void BvTBJobList::Wait() const
+{
+	while (!IsDone())
+	{
+		BvProcess::YieldExecution();
+	}
+}
+
+
+JobListPriority BvTBJobList::GetPriority() const
+{
+	return m_Priority;
+}
+
+
+BvTBJobList::BvTBJobList(u32 maxJobs, u32 maxSyncs, const JobListPriority priority)
+	: m_Priority(priority)
+{
+	m_Jobs.Reserve(maxJobs + maxSyncs);
+}
+
+
+BvTBJobList::~BvTBJobList()
+{
+}
+
+
+BvTBJobList::Job& BvTBJobList::AddInternal()
+{
+	return m_Jobs.EmplaceBack();
 }

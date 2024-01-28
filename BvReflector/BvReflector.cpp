@@ -23,7 +23,7 @@ void BvReflector::Process(const wchar_t* projectDir)
 
 	for (auto&& file : files)
 	{
-		if (file.GetExt() == L".cpp" || file.GetExt() == L".h")
+		if (file.GetExtension() == L".cpp" || file.GetExtension() == L".h")
 		{
 			BvFile hFile(file.AsFile(BvFileAccessMode::kRead));
 			if (hFile.IsValid())

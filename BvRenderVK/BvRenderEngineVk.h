@@ -3,7 +3,6 @@
 
 #include "BDeV/RenderAPI/BvRenderEngine.h"
 #include "BvRenderVk/BvGPUInfoVk.h"
-#include "BvLoaderVk.h"
 
 
 class BvDebugReportVk;
@@ -54,17 +53,8 @@ private:
 
 namespace BvRenderVk
 {
-#if defined (BV_STATIC_LIB)
-	BV_PLUGIN_API BvRenderEngine* GetRenderEngine();
-#else
-#if defined(BV_PLUGIN_DLL_EXPORT)
-	BV_EXTERN_C
-#endif
-	BV_PLUGIN_API BvRenderEngine* CreateRenderEngine();
-
-#if defined(BV_PLUGIN_DLL_EXPORT)
-	BV_EXTERN_C
-#endif
-	BV_PLUGIN_API void DestroyRenderEngine();
-#endif
+	extern "C"
+	{
+		BV_API BvRenderEngine* GetRenderEngine();
+	}
 }

@@ -1,9 +1,10 @@
 #include "BDeV/System/Threading/BvProcess.h"
-#include "BDeV/System/Memory/BvMemory.h"
+#include "BDeV/System/Memory/BvMemoryCommon.h"
 #include "BDeV/Container/BvVector.h"
 #include "BDeV/System/Debug/BvDebug.h"
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 #include <DbgHelp.h>
+#include <bit>
 
 
 const BvSystemInfo& BvProcess::GetSystemInfo()
@@ -12,25 +13,25 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 	{
 		BvSystemInfo systemInfo{};
 
-		void* pBufferData = nullptr;
+		u8* pBufferData = nullptr;
 		PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
 		DWORD bufferSize = 0;
 		DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 		if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 		{
-			pBufferData = malloc(bufferSize);
+			pBufferData = BvNewN(u8, bufferSize);
 			pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
 			result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 			if (result == FALSE)
 			{
-				free(pBufferData);
-				BV_OS_ERROR();
+				BvDeleteN(pBufferData);
+				BvOSCrash();
 				return systemInfo;
 			}
 		}
 		else
 		{
-			BV_OS_ERROR();
+			BvOSCrash();
 		}
 
 		auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
@@ -42,11 +43,17 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 				systemInfo.m_NumCores++;
 
 				// A hyperthreaded core supplies more than one logical processor.
-				systemInfo.m_NumLogicalProcessors += __popcnt(pBuffer[i].ProcessorMask);
+				systemInfo.m_NumLogicalProcessors += std::popcount(pBuffer[i].ProcessorMask);
+			}
+			else if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationCache)
+			{
+				if (pBuffer->Cache.Level == 1) { systemInfo.m_L1CacheCount++; }
+				else if (pBuffer->Cache.Level == 2) { systemInfo.m_L2CacheCount++; }
+				else if (pBuffer->Cache.Level == 3) { systemInfo.m_L3CacheCount++; }
 			}
 		}
 
-		free(pBufferData);
+		BvDeleteN(pBufferData);
 
 		SYSTEM_INFO osInfo;
 		::GetSystemInfo(&osInfo);

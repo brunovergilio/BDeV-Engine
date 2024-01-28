@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="BvObject.h" />
     <ClInclude Include="BvCore.h" />
     <ClInclude Include="System\Debug\BvDebug.h" />
     <ClInclude Include="Utils\BvDelegate.h" />
@@ -52,7 +51,6 @@
     <ClInclude Include="System\File\BvFile.h" />
     <ClInclude Include="System\File\BvFileCommon.h" />
     <ClInclude Include="System\File\BvFileSystem.h" />
-    <ClInclude Include="System\File\Windows\BvFileUtilsWindows.h" />
     <ClInclude Include="System\File\BvMemoryFile.h" />
     <ClInclude Include="System\File\BvPath.h" />
     <ClInclude Include="Engine\HID\BvInput.h" />
@@ -60,7 +58,6 @@
     <ClInclude Include="System\HID\BvKeyboard.h" />
     <ClInclude Include="System\HID\BvMouse.h" />
     <ClInclude Include="System\Library\BvSharedLib.h" />
-    <ClInclude Include="System\Memory\Allocators\BvDefaultAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvHeapAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvLinearAllocator.h" />
     <ClInclude Include="System\Memory\Allocators\BvPoolAllocator.h" />
@@ -85,6 +82,9 @@
     <ClInclude Include="Container\BvRobinSet.h" />
     <ClInclude Include="Engine\JobSystem\BvRingBuffer.h" />
     <ClInclude Include="Engine\MemorySystem\BvMemorySystem.h" />
+    <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
+    <ClInclude Include="RenderAPI\BvColor.h" />
+    <ClInclude Include="System\Windows\BvWindowsHeader.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -97,7 +97,6 @@
     <ClCompile Include="Engine\TBJobSystem\BvTBJobSystem.cpp" />
     <ClCompile Include="System\File\Windows\BvAsyncFileWindows.cpp" />
     <ClCompile Include="System\File\Windows\BvFileSystemWindows.cpp" />
-    <ClCompile Include="System\File\Windows\BvFileUtilsWindows.cpp" />
     <ClCompile Include="System\File\Windows\BvFileWindows.cpp" />
     <ClCompile Include="System\File\Windows\BvPathWindows.cpp" />
     <ClCompile Include="System\File\BvMemoryFile.cpp" />
@@ -105,7 +104,6 @@
     <ClCompile Include="System\HID\Windows\BvMouseWindows.cpp" />
     <ClCompile Include="System\HID\BvHIDCommon.cpp" />
     <ClCompile Include="System\Library\Windows\BvSharedLibWindows.cpp" />
-    <ClCompile Include="System\Memory\Allocators\BvDefaultAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvHeapAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvLinearAllocator.cpp" />
     <ClCompile Include="System\Memory\Allocators\BvPoolAllocator.cpp" />
@@ -118,7 +116,7 @@
     <ClCompile Include="System\Platform\Windows\BvPlatformWindows.cpp" />
     <ClCompile Include="System\Threading\Windows\BvFiberWindows.cpp" />
     <ClCompile Include="System\Threading\Windows\BvProcessWindows.cpp" />
-    <ClCompile Include="System\Threading\Windows\BvSyncWindows.cpp" />
+    <ClCompile Include="System\Threading\BvSync.cpp" />
     <ClCompile Include="System\Threading\Windows\BvThreadWindows.cpp" />
     <ClCompile Include="System\Window\Windows\BvWindowWindows.cpp" />
     <ClCompile Include="System\Debug\Windows\BvDebugWindows.cpp" />
@@ -126,8 +124,9 @@
     <ClCompile Include="Utils\BvTestUnit.cpp" />
     <ClCompile Include="Utils\BvHash.cpp" />
     <ClCompile Include="Container\BvStringId.cpp" />
-    <ClCompile Include="System\Memory\BvMemoryCommon.cpp" />
     <ClCompile Include="Engine\MemorySystem\BvMemorySystem.cpp" />
+    <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
+    <ClCompile Include="RenderAPI\BvColor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Math\Math\FPU\BvFastMat_FPU.inl" />

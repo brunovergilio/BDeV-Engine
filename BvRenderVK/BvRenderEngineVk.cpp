@@ -2,7 +2,6 @@
 #include "BvUtilsVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvDebugReportVk.h"
-#include "BvLoaderVk.h"
 
 
 // For Android
@@ -644,28 +643,9 @@ u32 BvRenderEngineVk::AutoSelectGPU()
 
 namespace BvRenderVk
 {
-#if defined (BV_STATIC_LIB)
 	BvRenderEngine* GetRenderEngine()
 	{
 		static BvRenderEngineVk s_Engine;
 		return &s_Engine;
 	}
-#else
-	static BvRenderEngineVk* s_pRenderEngineVk = nullptr;
-
-	BvRenderEngine* CreateRenderEngine()
-	{
-		if (!s_pRenderEngineVk)
-		{
-			s_pRenderEngineVk = new BvRenderEngineVk();
-		}
-		return s_pRenderEngineVk;
-	}
-
-	void DestroyRenderEngine()
-	{
-		delete s_pRenderEngineVk;
-		s_pRenderEngineVk = nullptr;
-	}
-#endif
 }

@@ -1,6 +1,5 @@
 #include "BDeV/System/File/BvFileSystem.h"
-#include "BDeV/System/File/Windows/BvFileUtilsWindows.h"
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 #include <winioctl.h>
 
 
@@ -21,7 +20,7 @@ bool BvFileSystem::FileExists(const char * pFileName)
 }
 
 
-bool BvFileSystem::DelFile(const char* const pFileName)
+bool BvFileSystem::DeleteFile(const char* const pFileName)
 {
 	if (!DeleteFileA(pFileName))
 	{
@@ -53,7 +52,7 @@ bool BvFileSystem::FileExists(const wchar_t* const pFileName)
 }
 
 
-bool BvFileSystem::DelFile(const wchar_t* const pFileName)
+bool BvFileSystem::DeleteFile(const wchar_t* const pFileName)
 {
 	if (!DeleteFileW(pFileName))
 	{
@@ -68,7 +67,7 @@ bool BvFileSystem::DelFile(const wchar_t* const pFileName)
 }
 
 
-bool BvFileSystem::DirExists(const char * const pDirName)
+bool BvFileSystem::DirectoryExists(const char * const pDirName)
 {
 	auto attrib = GetFileAttributesA(pDirName);
 	if (attrib == INVALID_FILE_ATTRIBUTES)
@@ -85,7 +84,7 @@ bool BvFileSystem::DirExists(const char * const pDirName)
 }
 
 
-bool BvFileSystem::MakeDir(const char* const pDirName)
+bool BvFileSystem::CreateDirectory(const char* const pDirName)
 {
 	if (!CreateDirectoryA(pDirName, nullptr))
 	{
@@ -99,7 +98,7 @@ bool BvFileSystem::MakeDir(const char* const pDirName)
 }
 
 
-bool BvFileSystem::DelDir(const char* const pDirName, bool recurse)
+bool BvFileSystem::DeleteDirectory(const char* const pDirName, bool recurse)
 {
 	if (recurse)
 	{
@@ -109,28 +108,26 @@ bool BvFileSystem::DelDir(const char* const pDirName, bool recurse)
 			// TODO: Handle error
 			return false;
 		}
-		bool isFile = (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+		else if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+		{
+			return false;
+		}
 
 		HANDLE hFind = nullptr;
 		WIN32_FIND_DATAA findData;
 		BvString filePath(pDirName);
-		if (!isFile && filePath[filePath.Size() - 1] != L'\\')
+		if (filePath[filePath.Size() - 1] != '\\')
 		{
-			filePath.Append(R"(\)");
+			filePath.Append("\\");
 		}
+		filePath.Append("*.*");
 
+		hFind = FindFirstFileA(filePath.CStr(), &findData);
+		if (hFind == INVALID_HANDLE_VALUE)
 		{
-			char filePathWithFilter[kMaxPathSize];
-			strncpy_s(filePathWithFilter, filePath.CStr(), kMaxPathSize - 1);
-			strncat_s(filePathWithFilter, R"(*.*)", 4);
-
-			hFind = FindFirstFileA(filePathWithFilter, &findData);
-			if (hFind == INVALID_HANDLE_VALUE)
-			{
-				DWORD error = GetLastError();
-				// TODO: Handle error
-				return false;
-			}
+			DWORD error = GetLastError();
+			// TODO: Handle error
+			return false;
 		}
 
 		do
@@ -139,15 +136,14 @@ bool BvFileSystem::DelDir(const char* const pDirName, bool recurse)
 			if (filename != "." && filename != "..")
 			{
 				filename.Insert(filePath, 0);
-				isFile = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
-				if (isFile)
+				if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 				{
 					DeleteFileA(filename.CStr());
 				}
 				else
 				{
-					filename.Append(R"(\)");
-					DelDir(filename.CStr(), recurse);
+					filename.Append("\\");
+					DeleteDirectory(filename.CStr(), recurse);
 				}
 			}
 		} while (FindNextFileA(hFind, &findData) != FALSE);
@@ -177,7 +173,7 @@ bool BvFileSystem::DelDir(const char* const pDirName, bool recurse)
 }
 
 
-bool BvFileSystem::DirExists(const wchar_t* const pDirName)
+bool BvFileSystem::DirectoryExists(const wchar_t* const pDirName)
 {
 	auto attrib = GetFileAttributesW(pDirName);
 	if (attrib == INVALID_FILE_ATTRIBUTES)
@@ -194,7 +190,7 @@ bool BvFileSystem::DirExists(const wchar_t* const pDirName)
 }
 
 
-bool BvFileSystem::MakeDir(const wchar_t* const pDirName)
+bool BvFileSystem::CreateDirectory(const wchar_t* const pDirName)
 {
 	if (!CreateDirectoryW(pDirName, nullptr))
 	{
@@ -208,7 +204,7 @@ bool BvFileSystem::MakeDir(const wchar_t* const pDirName)
 }
 
 
-bool BvFileSystem::DelDir(const wchar_t* const pDirName, bool recurse)
+bool BvFileSystem::DeleteDirectory(const wchar_t* const pDirName, bool recurse)
 {
 	if (recurse)
 	{
@@ -218,28 +214,26 @@ bool BvFileSystem::DelDir(const wchar_t* const pDirName, bool recurse)
 			// TODO: Handle error
 			return false;
 		}
-		bool isFile = (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+		else if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+		{
+			return false;
+		}
 
 		HANDLE hFind = nullptr;
 		WIN32_FIND_DATAW findData;
 		BvWString filePath(pDirName);
-		if (!isFile && filePath[filePath.Size() - 1] != L'\\')
+		if (filePath[filePath.Size() - 1] != L'\\')
 		{
-			filePath.Append(LR"(\)");
+			filePath.Append(L"\\");
 		}
+		filePath.Append(L"*.*");
 
+		hFind = FindFirstFileW(filePath.CStr(), &findData);
+		if (hFind == INVALID_HANDLE_VALUE)
 		{
-			wchar_t filePathWithFilter[kMaxPathSize];
-			wcsncpy_s(filePathWithFilter, filePath.CStr(), kMaxPathSize - 1);
-			wcsncat_s(filePathWithFilter, LR"(*.*)", 4);
-
-			hFind = FindFirstFileW(filePathWithFilter, &findData);
-			if (hFind == INVALID_HANDLE_VALUE)
-			{
-				DWORD error = GetLastError();
-				// TODO: Handle error
-				return false;
-			}
+			DWORD error = GetLastError();
+			// TODO: Handle error
+			return false;
 		}
 
 		do 
@@ -248,15 +242,14 @@ bool BvFileSystem::DelDir(const wchar_t* const pDirName, bool recurse)
 			if (filename != L"." && filename != L"..")
 			{
 				filename.Insert(filePath, 0);
-				isFile = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
-				if (isFile)
+				if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 				{
 					DeleteFileW(filename.CStr());
 				}
 				else
 				{
-					filename.Append(LR"(\)");
-					DelDir(filename.CStr(), recurse);
+					filename.Append(L"\\");
+					DeleteDirectory(filename.CStr(), recurse);
 				}
 			}
 		} while (FindNextFileW(hFind, &findData) != FALSE);
@@ -290,20 +283,18 @@ u32 BvFileSystem::GetPhysicalSectorSize()
 {
 	static u32 sectorSize = []() -> u32
 	{
-		HANDLE hDevice;
+		auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
+		wchar_t drivePath[8]{};
+		wcsncat_s(drivePath, 8, L"\\\\.\\", 4);
 
-		wchar_t systemPath[kMaxPathSize]{};
-		wcsncat_s(systemPath, kMaxPathSize, LR"(\\.\)", 4);
-
-		if (!GetCurrentDirectoryW(kMaxPathSize - 1, systemPath + 4))
+		if (!GetCurrentDirectoryW(3, drivePath + 4))
 		{
 			DWORD error = GetLastError();
 			// TODO: Handle error
 			return 0;
 		}
 
-		systemPath[6] = 0;
-		hDevice = CreateFileW(systemPath, 0, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+		HANDLE hDevice = CreateFileW(drivePath, 0, 0, nullptr, OPEN_EXISTING, 0, nullptr);
 		if (hDevice == INVALID_HANDLE_VALUE)
 		{
 			DWORD error = GetLastError();
@@ -311,7 +302,7 @@ u32 BvFileSystem::GetPhysicalSectorSize()
 			return 0;
 		}
 
-		// Now that we have the device handle for the disk, let us get disk's metadata
+		// Now that we have the device handle for the disk, let us get the disk's metadata
 		DWORD outsize;
 		STORAGE_PROPERTY_QUERY storageQuery{};
 		storageQuery.PropertyId = StorageAccessAlignmentProperty;

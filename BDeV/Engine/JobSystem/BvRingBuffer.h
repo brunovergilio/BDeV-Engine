@@ -15,14 +15,14 @@ public:
 
 	bool Push(const Type& value)
 	{
-		auto currIndex = m_CurrIndex.load();
+		auto currIndex = m_CurrIndex.load(std::memory_order::acquire);
 		BvScopedLock lock(m_PushLock);
-		u32 lastIndex = m_LastIndex.load();
+		u32 lastIndex = m_LastIndex.load(std::memory_order::acquire);
 		u32 nextIndex = GetNextIndex(lastIndex);
 		if (nextIndex != currIndex)
 		{
 			m_Queue[lastIndex] = value;
-			m_LastIndex.store(nextIndex);
+			m_LastIndex.store(nextIndex, std::memory_order::release);
 			return true;
 		}
 
@@ -31,14 +31,14 @@ public:
 
 	bool Pop(Type*& pValue)
 	{
-		auto lastIndex = m_LastIndex.load();
+		auto lastIndex = m_LastIndex.load(std::memory_order::acquire);
 		BvScopedLock lock(m_PopLock);
-		auto currIndex = m_CurrIndex.load();
+		auto currIndex = m_CurrIndex.load(std::memory_order::acquire);
 		auto nextIndex = GetNextIndex(currIndex);
 		if (currIndex != lastIndex)
 		{
 			pValue = &m_Queue[currIndex];
-			m_CurrIndex.store(nextIndex);
+			m_CurrIndex.store(nextIndex, std::memory_order::release);
 			return true;
 		}
 

@@ -1,7 +1,7 @@
 #include "BDeV/System/Threading/BvFiber.h"
 #include "BDeV/System/Debug/BvDebug.h"
 #include <utility>
-#include <Windows.h>
+#include "BDeV/System/Windows/BvWindowsHeader.h"
 
 
 void __stdcall FiberEntryPoint(void* pData)
@@ -79,6 +79,6 @@ void BvFiber::Destroy()
 	if (m_pFiber && m_pDelegate)
 	{
 		DeleteFiber(m_pFiber);
-		delete m_pDelegate;
+		BvDeleteN((u8*)m_pDelegate);
 	}
 }

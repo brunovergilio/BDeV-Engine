@@ -6,44 +6,23 @@
 #include "BDeV/Utils/BvHash.h"
 #include "BDeV/Container/BvVector.h"
 #include <cstdarg>
-#include <string>
-
-
-template<typename CharT>
-class CharHelper
-{
-public:
-#define BV_CHAR_TYPE_PREFIX(ch)												\
-	if constexpr (std::is_same_v<CharT, char>) { return ch; }				\
-	else if constexpr (std::is_same_v<CharT, wchar_t>) { return L##ch; }	\
-	else { return 0; }														\
-	//else if constexpr (std::is_same_v<CharT, char8_t>) { return u8##ch; }	\
-	//else if constexpr (std::is_same_v<CharT, char16_t>) { return u##ch; }	\
-	//else if constexpr (std::is_same_v<CharT, char32_t>) { return U##ch; }	\
-
-	static constexpr CharT NewLine() { BV_CHAR_TYPE_PREFIX('\n') }
-	static constexpr CharT Tab() { BV_CHAR_TYPE_PREFIX('\t') }
-	static constexpr CharT CarriageReturn() { BV_CHAR_TYPE_PREFIX('\r') }
-	static constexpr CharT NullTerminator() { BV_CHAR_TYPE_PREFIX('\0') }
-#undef BV_CHAR_TYPE_PREFIX
-};
+#include <string_view>
+#include <locale>
 
 
 template<typename CharT>
 class BvStringT
 {
 public:
-	BvCompilerAssert((std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>), "Currently BvStringT only supports char and wchar_t as types!");
-
 	static constexpr u32 kInvalidIndex = kU32Max;
 
 	BvStringT();
 	BvStringT(IBvMemoryAllocator* pAllocator);
-	explicit BvStringT(const u32 size, const CharT c = 0, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
-	explicit BvStringT(const BvStringT & str, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
-	BvStringT(const CharT * const pStr, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
-	explicit BvStringT(const CharT * const pStr, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
-	BvStringT(const CharT c, IBvMemoryAllocator* pAllocator = GetDefaultAllocator());
+	explicit BvStringT(const u32 size, const CharT c = CharT(), IBvMemoryAllocator* pAllocator = nullptr);
+	explicit BvStringT(const BvStringT & str, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator = nullptr);
+	BvStringT(const CharT * const pStr, IBvMemoryAllocator* pAllocator = nullptr);
+	explicit BvStringT(const CharT * const pStr, const u32 start, const u32 count, IBvMemoryAllocator* pAllocator = nullptr);
+	BvStringT(const CharT c, IBvMemoryAllocator* pAllocator = nullptr);
 	BvStringT(const BvStringT & rhs);
 	BvStringT(BvStringT && rhs) noexcept;
 
@@ -76,18 +55,17 @@ public:
 	void Append(const BvStringT & str, const u32 start, const u32 count) { Insert(str, start, count, m_Size); }
 	void Append(const CharT * const pStr, const u32 start, const u32 count) { Insert(pStr, start, count, m_Size); }
 
-	void Replace(const BvStringT & srcStr, const BvStringT dstStr);
+	void Replace(const BvStringT & srcStr, const BvStringT& dstStr);
 	void Replace(const CharT * const pSrcStr, const CharT * const pDstStr);
 	void Replace(const CharT * const pSrcStr, const u32 srcSize, const CharT * const pDstStr, const u32 dstSize);
 
-	const u32 ReadLine(BvStringT& dstStr, const u32 offset = 0) const;
 	const u32 Read(BvStringT& dstStr, const CharT delim, const u32 startIndex = 0) const;
 	const u32 Read(BvStringT& dstStr, const CharT* const pDelim, const u32 size, const u32 startIndex = 0) const;
 	void Format(const CharT * const format, ...);
 
 	void Erase(const u32 start, const u32 count);
 
-	void Resize(u32 size, CharT c = 0);
+	void Resize(u32 size, CharT c = CharT());
 	void Clear();
 
 	void Copy(BvStringT & str) const;
@@ -162,17 +140,21 @@ public:
 	BV_INLINE const CharT Front() const { BvAssert(m_Size > 0, "Index out of bounds"); return m_pStr[0]; }
 	BV_INLINE const CharT Back() const { BvAssert(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
 
-	BV_INLINE const CharT * const CStr() const { return m_pStr; }
+	BV_INLINE const CharT* CStr() const { return m_pStr; }
+	BV_INLINE const CharT* LCStr() const { return m_pStr ? m_pStr + m_Size : nullptr; }
 	BV_INLINE u32 Size() const { return m_Size; }
 	BV_INLINE u32 Capacity() const { return m_Capacity; }
 	BV_INLINE bool Empty() const { return m_Size == 0; }
-	BV_INLINE CharT GetFirstChar() const { return m_Size > 0 ? m_pStr[0] : 0; }
-	BV_INLINE CharT GetLastChar() const { return m_Size > 0 ? m_pStr[m_Size - 1] : 0; }
+	BV_INLINE CharT GetFirstChar() const { return m_Size > 0 ? m_pStr[0] : CharT(); }
+	BV_INLINE CharT GetLastChar() const { return m_Size > 0 ? m_pStr[m_Size - 1] : CharT(); }
 
 	BV_INLINE operator const CharT * const() { return m_pStr; }
 
 	BV_INLINE i32 Compare(const BvStringT & str) const { return Compare(str.m_pStr, str.m_Size); }
-	BV_INLINE i32 Compare(const CharT* const pStr, size_t size) const;
+	BV_INLINE i32 Compare(const CharT* const pStr, u32 size) const;
+
+	BV_INLINE i32 CompareNoCase(const BvStringT& str) const { return CompareNoCase(str.m_pStr, str.m_Size); }
+	BV_INLINE i32 CompareNoCase(const CharT* const pStr, u32 size) const;
 	 
 	BV_INLINE bool operator ==(CharT c) const { return m_Size == 1 && c == m_pStr[0]; }
 	BV_INLINE bool operator ==(const BvStringT & str) const { return Compare(str) == 0; }
@@ -200,7 +182,7 @@ private:
 
 protected:
 	CharT * m_pStr = nullptr;
-	IBvMemoryAllocator* m_pAllocator = GetDefaultAllocator();
+	IBvMemoryAllocator* m_pAllocator = nullptr;
 	u32 m_Size = 0;
 	u32 m_Capacity = 0;
 };
@@ -218,7 +200,6 @@ struct std::hash<BvStringT<CharT>>
 
 template<typename CharT>
 BvStringT<CharT>::BvStringT()
-	: m_pAllocator(GetDefaultAllocator())
 {
 }
 
@@ -307,6 +288,7 @@ BvStringT<CharT>& BvStringT<CharT>::operator=(BvStringT&& rhs) noexcept
 		std::swap(m_pStr, rhs.m_pStr);
 		std::swap(m_Size, rhs.m_Size);
 		std::swap(m_Capacity, rhs.m_Capacity);
+		std::swap(m_pAllocator, rhs.m_pAllocator);
 	}
 
 	return *this;
@@ -361,13 +343,13 @@ void BvStringT<CharT>::SetAllocator(IBvMemoryAllocator* pAllocator)
 
 	if (m_Capacity > 0)
 	{
-		CharT* pNewStr = reinterpret_cast<CharT*>(m_pAllocator->Allocate(m_Capacity * sizeof(CharT), alignof(CharT), 0, BV_SOURCE_INFO));
+		CharT* pNewStr = pAllocator ? BvMNewN(*pAllocator, CharT, m_Capacity) : BvNewN(CharT, m_Capacity);
 		if (m_Size > 0)
 		{
 			std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
-			pNewStr[m_Size] = 0;
+			pNewStr[m_Size] = CharT();
 		}
-		m_pAllocator->Free(m_pStr, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pStr) : BvDeleteN(m_pStr);
 		m_pStr = pNewStr;
 	}
 
@@ -419,7 +401,7 @@ void BvStringT<CharT>::Assign(const CharT* const pStr, const u32 start, const u3
 	}
 
 	std::char_traits<CharT>::copy(m_pStr, pStr + start, count);
-	m_pStr[count] = 0;
+	m_pStr[count] = CharT();
 	m_Size = count;
 }
 
@@ -467,9 +449,9 @@ void BvStringT<CharT>::Insert(const CharT* const pStr, const u32 start, const u3
 	{
 		Resize(newSize);
 	}
-	m_pStr[newSize] = 0;
+	m_pStr[newSize] = CharT();
 
-	if (oldSize > 0)
+	if (oldSize - where > 0)
 	{
 		std::char_traits<CharT>::move(m_pStr + where + count, m_pStr + where, oldSize - where);
 	}
@@ -479,7 +461,7 @@ void BvStringT<CharT>::Insert(const CharT* const pStr, const u32 start, const u3
 
 
 template<typename CharT>
-void BvStringT<CharT>::Replace(const BvStringT& srcStr, const BvStringT dstStr)
+void BvStringT<CharT>::Replace(const BvStringT& srcStr, const BvStringT& dstStr)
 {
 	Replace(srcStr.m_pStr, srcStr.m_Size, dstStr.m_pStr, dstStr.m_Size);
 }
@@ -508,13 +490,6 @@ void BvStringT<CharT>::Replace(const CharT* const pSrcStr, const u32 srcSize, co
 
 
 template<typename CharT>
-const u32 BvStringT<CharT>::ReadLine(BvStringT& dstStr, const u32 offset) const
-{
-	return Read(dstStr.m_pStr, CharHelper<CharT>::NewLine(), offset);
-}
-
-
-template<typename CharT>
 inline const u32 BvStringT<CharT>::Read(BvStringT& dstStr, const CharT delim, const u32 offset) const
 {
 	return Read(dstStr, &delim, 1, offset);
@@ -536,7 +511,7 @@ inline const u32 BvStringT<CharT>::Read(BvStringT& dstStr, const CharT* const pD
 	{
 		for (auto j = 0; j < size; j++)
 		{
-			if (m_pStr[i] = pDelim[j])
+			if (m_pStr[i] == pDelim[j])
 			{
 				found = true;
 				break;
@@ -584,7 +559,7 @@ void BvStringT<CharT>::Format(const CharT* const format, ...)
 	vsnprintf(m_pStr, size, format, args);
 	va_end(args);
 
-	m_pStr[size] = 0;
+	m_pStr[size] = CharT();
 }
 
 
@@ -605,7 +580,7 @@ void BvStringT<CharT>::Erase(const u32 start, const u32 count)
 	}
 
 	m_Size -= removed;
-	m_pStr[m_Size] = 0;
+	m_pStr[m_Size] = CharT();
 }
 
 
@@ -625,13 +600,13 @@ void BvStringT<CharT>::Resize(u32 size, CharT c)
 		{
 			m_pStr[i] = c;
 		}
-		m_pStr[size] = 0;
+		m_pStr[size] = CharT();
 
 		m_Size = size;
 	}
 	else if (size < m_Size)
 	{
-		m_pStr[size] = 0;
+		m_pStr[size] = CharT();
 		m_Size = size;
 	}
 }
@@ -644,7 +619,7 @@ void BvStringT<CharT>::Resize(u32 size, CharT c)
 template<typename CharT>
 void BvStringT<CharT>::Clear()
 {
-	m_pStr[0] = CharHelper<CharT>::NullTerminator();
+	m_pStr[0] = CharT();
 	m_Size = 0;
 }
 
@@ -1067,11 +1042,40 @@ BvStringT<CharT> operator+(const CharT c, const BvStringT<CharT>& str)
 
 
 template<typename CharT>
-i32 BvStringT<CharT>::Compare(const CharT* const pStr, size_t size) const
+i32 BvStringT<CharT>::Compare(const CharT* const pStr, u32 size) const
 {
 	std::basic_string_view view1(m_pStr, m_Size), view2(pStr, size);
 
 	return view1.compare(view2);
+}
+
+
+template<typename CharT>
+i32 BvStringT<CharT>::CompareNoCase(const CharT* const pStr, u32 size) const
+{
+	auto pStr1 = m_pStr, pStr2 = pStr;
+	auto count = std::min(m_Size, size);
+	std::locale loc;
+	for (; 0 < count; --count, ++pStr1, ++pStr2)
+	{
+		CharT c1 = std::tolower(*pStr1, loc), c2 = std::tolower(*pStr2, loc);
+		if (c1 != c2)
+		{
+			return c1 < c2 ? -1 : 1;
+		}
+	}
+
+	if (m_Size < size)
+	{
+		return -1;
+	}
+
+	if (m_Size > size)
+	{
+		return 1;
+	}
+
+	return 0;
 }
 
 
@@ -1084,16 +1088,16 @@ inline void BvStringT<CharT>::Grow(u32 size)
 		return;
 	}
 
-	CharT* pNewStr = reinterpret_cast<CharT*>(m_pAllocator->Allocate(((u64)size + 1) * sizeof(CharT), alignof(CharT), 0, BV_SOURCE_INFO));
+	CharT* pNewStr = m_pAllocator ? BvMNewN(*m_pAllocator, CharT, size + 1) : BvNewN(CharT, size + 1);
 	if (m_Size > 0)
 	{
 		std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
 	}
-	pNewStr[m_Size] = 0;
+	pNewStr[m_Size] = CharT();
 	m_Capacity = size + 1;
 	if (m_pStr)
 	{
-		m_pAllocator->Free(m_pStr, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pStr) : BvDeleteN(m_pStr);
 	}
 	m_pStr = pNewStr;
 }
@@ -1104,7 +1108,7 @@ inline void BvStringT<CharT>::Destroy()
 {
 	if (m_pStr)
 	{
-		m_pAllocator->Free(m_pStr, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pStr) : BvDeleteN(m_pStr);
 		m_pStr = nullptr;
 	}
 

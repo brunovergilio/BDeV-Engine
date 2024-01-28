@@ -11,6 +11,6 @@ public:
 	BvSPIRVCompiler() {}
 	~BvSPIRVCompiler() {}
 
-	void Compile(const u8* const pBlob, const size_t blobSize, const ShaderDesc& shaderDesc,
-		BvVector<u8>& compiledShaderBlob, BvString& errorString);
+	bool Compile(const u8* const pBlob, const size_t blobSize, const ShaderDesc& shaderDesc,
+		BvVector<u8>& compiledShaderBlob, BvString* pErrorString);
 };

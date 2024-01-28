@@ -10,11 +10,16 @@
 
 enum class ShaderLanguage : u8
 {
+	kVKSL, // Same as kGLSL, but for Vulkan
 	kGLSL,
 	kHLSL,
 };
 
 
+//Vulkan 1.0 supports SPIR - V 1.0
+//Vulkan 1.1 supports SPIR - V 1.3 and below
+//Vulkan 1.2 supports SPIR - V 1.5 and below
+//Vulkan 1.3 supports SPIR - V 1.6 and below
 enum class ShaderLanguageTarget : u8
 {
 	kSPIRV_1_0,
@@ -33,6 +38,8 @@ enum class ShaderAPIVersion : u8
 	kVulkan_1_1,
 	kVulkan_1_2,
 	kVulkan_1_3,
+	kDirectX_12,
+	kOpenGL_4_5,
 };
 
 
@@ -40,7 +47,7 @@ struct ShaderDesc
 {
 	BvString entryPoint = "";
 	ShaderStage shaderStage = ShaderStage::kUnknown;
-	ShaderLanguage shaderLanguage = ShaderLanguage::kGLSL;
+	ShaderLanguage shaderLanguage = ShaderLanguage::kVKSL;
 	ShaderAPIVersion apiVersion = ShaderAPIVersion::kVulkan_1_0;
 	ShaderLanguageTarget shaderTarget = ShaderLanguageTarget::kSPIRV_1_0;
 };
@@ -82,11 +89,6 @@ class IBvShaderCompiler
 public:
 	virtual IBvShaderBlob* CompileFromFile(const char * const pFilename, const ShaderDesc& shaderDesc) = 0;
 	virtual IBvShaderBlob* CompileFromMemory(const u8* const pBlob, u32 blobSize, const ShaderDesc& shaderDesc) = 0;
-	virtual IBvShaderReflectionData* ReflectShader(const u8* pBlob, const u32 blobSize, ShaderLanguage shaderLanguage) = 0;
-	IBvShaderReflectionData* ReflectShader(IBvShaderBlob* pBlob, ShaderLanguage shaderLanguage)
-	{
-		return ReflectShader(pBlob->GetShaderBlob().Data(), (u32)pBlob->GetShaderBlob().Size(), shaderLanguage);
-	}
 
 	virtual void DestroyShader(IBvShaderBlob*& pCompiledShader) = 0;
 	virtual void DestroyAllShaders() = 0;
@@ -99,8 +101,8 @@ protected:
 
 namespace BvRenderTools
 {
-#if defined(BV_PLUGIN_DLL_EXPORT)
-	BV_EXTERN_C
-#endif
-	BV_PLUGIN_API IBvShaderCompiler* GetShaderCompiler();
+	extern "C"
+	{
+		BV_API IBvShaderCompiler* GetShaderCompiler();
+	}
 }

@@ -4,5 +4,9 @@
 #include "BDeV/BvCore.h"
 
 
-i64 GetCurrentTimestampInMs();
-i64 GetCurrentTimestampInUs();
+class BvTime
+{
+public:
+	static i64 GetCurrentTimestampInMs();
+	static i64 GetCurrentTimestampInUs();
+};

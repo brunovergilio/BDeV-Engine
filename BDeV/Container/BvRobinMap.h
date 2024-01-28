@@ -20,8 +20,8 @@ public:
 
 	BvRobinMap(); // Default
 	explicit BvRobinMap(IBvMemoryAllocator* pAllocator);
-	explicit BvRobinMap(const size_t capacity, IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Reserve
-	BvRobinMap(std::initializer_list<KeyValue> list, IBvMemoryAllocator* pAllocator = GetDefaultAllocator()); // Initializer List
+	explicit BvRobinMap(const size_t capacity, IBvMemoryAllocator* pAllocator = nullptr); // Reserve
+	BvRobinMap(std::initializer_list<KeyValue> list, IBvMemoryAllocator* pAllocator = nullptr); // Initializer List
 	BvRobinMap(const BvRobinMap& rhs); // Copy
 	BvRobinMap(BvRobinMap&& rhs) noexcept; // Move
 	
@@ -80,7 +80,7 @@ private:
 private:
 	KeyValue * m_pData = nullptr;
 	size_t * m_pHashes = nullptr;
-	IBvMemoryAllocator* m_pAllocator = GetDefaultAllocator();
+	IBvMemoryAllocator* m_pAllocator = nullptr;
 	size_t m_Size = 0;
 	size_t m_Capacity = 0;
 };
@@ -88,7 +88,6 @@ private:
 
 template<typename Key, typename Value, typename Hash, typename Comparer>
 inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap()
-	: m_pAllocator(GetDefaultAllocator())
 {
 }
 
@@ -212,8 +211,8 @@ inline void BvRobinMap<Key, Value, Hash, Comparer>::SetAllocator(IBvMemoryAlloca
 
 	if (m_Capacity > 0)
 	{
-		KeyValue* pNewData = reinterpret_cast<KeyValue*>(pAllocator->Allocate((sizeof(KeyValue) + sizeof(size_t)) * m_Capacity, std::max(alignof(KeyValue), alignof(size_t)), 0, BV_SOURCE_INFO));
-		size_t* pNewHashes = reinterpret_cast<size_t*>(reinterpret_cast<char*>(pNewData) + (sizeof(KeyValue) * m_Capacity));
+		KeyValue* pNewData = pAllocator ? BvMNewN(*pAllocator, KeyValue, m_Capacity) : BvNewN(KeyValue, m_Capacity);
+		size_t* pNewHashes = pAllocator ? BvMNewN(*pAllocator, size_t, m_Capacity) : BvNewN(size_t, m_Capacity);
 		memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 		if (m_Size > 0)
 		{
@@ -229,7 +228,8 @@ inline void BvRobinMap<Key, Value, Hash, Comparer>::SetAllocator(IBvMemoryAlloca
 			}
 		}
 		Clear();
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pHashes) : BvDeleteN(m_pHashes);
 
 		m_pData = pNewData;
 		m_pHashes = pNewHashes;
@@ -250,8 +250,8 @@ inline void BvRobinMap<Key, Value, Hash, Comparer>::ResizeAndRehash(const size_t
 	auto oldCapacity = m_Capacity;
 	m_Capacity = size;
 
-	KeyValue* pNewData = reinterpret_cast<KeyValue *>(m_pAllocator->Allocate((sizeof(KeyValue) + sizeof(size_t)) * m_Capacity, std::max(alignof(KeyValue), alignof(size_t)), 0, BV_SOURCE_INFO));
-	size_t* pNewHashes = reinterpret_cast<size_t *>(reinterpret_cast<char*>(pNewData) + (sizeof(KeyValue) * m_Capacity));
+	KeyValue* pNewData = m_pAllocator ? BvMNewN(*m_pAllocator, KeyValue, m_Capacity) : BvNewN(KeyValue, m_Capacity);
+	size_t* pNewHashes = m_pAllocator ? BvMNewN(*m_pAllocator, size_t, m_Capacity) : BvNewN(size_t, m_Capacity);
 	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 
 	for (size_t i = 0; i < oldCapacity; i++)
@@ -264,7 +264,8 @@ inline void BvRobinMap<Key, Value, Hash, Comparer>::ResizeAndRehash(const size_t
 
 	if (m_pData)
 	{
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pHashes) : BvDeleteN(m_pHashes);
 	}
 
 	m_pData = pNewData;
@@ -579,8 +580,10 @@ void BvRobinMap<Key, Value, Hash, Comparer>::Destroy()
 
 	if (m_pData)
 	{
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
+		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pHashes) : BvDeleteN(m_pHashes);
 		m_pData = nullptr;
+		m_pHashes = nullptr;
 	}
 }
 

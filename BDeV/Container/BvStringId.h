@@ -12,10 +12,9 @@ public:
 	constexpr BvStringId(u64 id) : m_Id(id) {}
 
 	BvStringId(const char* pId);
-	BvStringId(const char* pId, u32 length);
 	BvStringId(const BvStringId& rhs);
-	BvStringId(BvStringId&& rhs) noexcept;
 	BvStringId(const BvString& rhs);
+	BvStringId(BvStringId&& rhs) noexcept;
 
 	BvStringId& operator=(const BvStringId& rhs);
 	BvStringId& operator=(BvStringId&& rhs) noexcept;
@@ -40,9 +39,6 @@ public:
 
 private:
 	u64 m_Id{};
-#if BV_DEBUG
-	const BvString* m_pString{};
-#endif
 };
 
 
