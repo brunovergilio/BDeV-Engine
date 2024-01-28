@@ -2,6 +2,13 @@
 #include <bit>
 
 
+class BvTBJobSystemInstance
+{
+public:
+	static BvTBJobSystem s_TBJobSystem;
+};
+
+
 class BvTBJobSystemWorker
 {
 public:
@@ -18,6 +25,7 @@ public:
 	void AddJobList(BvTBJobList* pJobList);
 	static WorkerResult RunJobs(BvTBJobList* pCurrJobList, bool runAll = false);
 	void Stop();
+	bool IsIdle();
 
 private:
 	void Process();
@@ -47,9 +55,15 @@ BvTBJobSystemWorker::BvTBJobSystemWorker(u32 jobListPoolSize, u32 coreIndex)
 					m_WorkSignal.Wait();
 				}
 
+				while (m_Active.load(std::memory_order::relaxed)
+					&& m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) == 0)
+				{
+					BvProcess::YieldExecution();
+				}
+
 				Process();
 			}
-		}))
+		}) : BvThread())
 {
 }
 
@@ -174,6 +188,12 @@ void BvTBJobSystemWorker::Stop()
 }
 
 
+bool BvTBJobSystemWorker::IsIdle()
+{
+	return m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) == 0;
+}
+
+
 void BvTBJobSystemWorker::Process()
 {
 	constexpr u32 kMaxLocalJobLists = 32;
@@ -263,7 +283,7 @@ void BvTBJobSystemWorker::Process()
 		{
 			lastSkippedJobListIndex = kU32Max;
 		}
-	}
+	} while (m_Active.load(std::memory_order::relaxed));
 }
 
 
@@ -273,9 +293,12 @@ bool BvTBJobSystemWorker::IsActive() const
 }
 
 
-BvTBJobSystem::BvTBJobSystem()
+void BvTBJobSystem::Initialize(const JobSystemDesc desc)
 {
-}
+	if (m_IsActive)
+	{
+		return;
+	}
 
 
 BvTBJobSystem::~BvTBJobSystem()

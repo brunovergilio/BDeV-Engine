@@ -15,7 +15,7 @@ struct JobSystemDesc
 	enum class Parallelism : u8
 	{
 		kUseCoreCount,		// Use one thread per core
-		kUseThreadCount,	// Use as many threads as the OS supports
+		kUseThreadCount,	// Use as many threads as the CPU cores support
 		kCustom,			// Use the specified amount in m_NumThreads
 		kSingleThreaded		// Run all tasks in the same thread
 	};
@@ -36,6 +36,13 @@ enum class JobListPriority : u8
 	kHigh
 };
 
+enum class JobListCategory : u8
+{
+	kGeneral,
+	kRender,
+	kLogic,
+	kAny = kU8Max,
+};
 
 class BvTBJobList;
 class BvTBJobSystemWorker;
@@ -57,6 +64,7 @@ public:
 	BvTBJobList* AllocJobList(u32 maxJobs, u32 maxSyncs, JobListPriority priority = JobListPriority::kNormal);
 	void FreeJobList(BvTBJobList*& pJobList);
 	void Submit(BvTBJobList* pJobList);
+	void Wait();
 
 private:
 	BvVector<BvTBJobSystemWorker *> m_Workers;

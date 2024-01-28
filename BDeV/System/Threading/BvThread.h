@@ -9,6 +9,17 @@
 class BvFiber;
 
 
+enum class ThreadPriority : u8
+{
+	kNormal,
+	kAboveNormal,
+	kHighest,
+	kTimeCritical,
+	kBelowNormal,
+	kLowest,
+};
+
+
 class BvThread
 {
 	BV_NOCOPY(BvThread);
