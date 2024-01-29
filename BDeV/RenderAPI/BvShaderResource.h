@@ -30,47 +30,6 @@ enum class ShaderResourceType : u8
 };
 
 
-struct SRDesc
-{
-	const char* m_pName;
-	u32 m_Binding;
-	u32 m_Count;
-	ShaderResourceType m_ResourceType;
-	ShaderStage m_Stages;
-};
-
-struct SRPDesc
-{
-	u32 index;
-	u32 srCount;
-	SRDesc* pSRDescs;
-};
-
-struct SSDesc
-{
-	const char* m_pName;
-	u32 m_Binding;
-	u32 m_Count;
-	BvSampler** m_pSamplers;
-	ShaderStage m_Stages;
-};
-
-struct PCDesc
-{
-	const char* m_pName;
-	u32 m_Size;
-	ShaderStage m_Stages;
-};
-
-struct SRLDesc
-{
-	u32 srpCount;
-	SRPDesc* m_pSRPDescs;
-	SSDesc m_SamplerDesc;
-	PCDesc m_PushConstantDesc;
-};
-
-
 struct ShaderResourceLayoutDesc
 {
 	struct ConstantDesc

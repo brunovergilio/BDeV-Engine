@@ -5,8 +5,11 @@
 class BvTBJobSystemInstance
 {
 public:
-	static BvTBJobSystem s_TBJobSystem;
+	static BvTBJobSystem s_Instance;
 };
+
+
+BvTBJobSystem* g_pJobSystem = &BvTBJobSystemInstance::s_Instance;
 
 
 class BvTBJobSystemWorker
@@ -63,7 +66,7 @@ BvTBJobSystemWorker::BvTBJobSystemWorker(u32 jobListPoolSize, u32 coreIndex)
 
 				Process();
 			}
-		}) : BvThread())
+		}))
 {
 }
 
@@ -293,21 +296,13 @@ bool BvTBJobSystemWorker::IsActive() const
 }
 
 
-void BvTBJobSystem::Initialize(const JobSystemDesc desc)
-{
-	if (m_IsActive)
-	{
-		return;
-	}
-
-
 BvTBJobSystem::~BvTBJobSystem()
 {
 	Shutdown();
 }
 
 
-void BvTBJobSystem::Initialize(const JobSystemDesc desc)
+void BvTBJobSystem::Initialize(const JobSystemDesc& desc)
 {
 	auto numWorkerThreads = 0;
 	auto numThreadsPerCore = 1;
@@ -378,16 +373,6 @@ void BvTBJobSystem::Submit(BvTBJobList* pJobList)
 		pWorker->AddJobList(pJobList);
 	}
 }
-
-
-class BvTBJobSystemInstance
-{
-public:
-	static BvTBJobSystem s_Instance;
-};
-
-
-BvTBJobSystem* g_pJobSystem = &BvTBJobSystemInstance::s_Instance;
 
 
 // Empty stub for sync points and dependencies

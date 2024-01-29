@@ -257,6 +257,11 @@ void BvWindow::Destroy()
 {
 	if (m_hWnd)
 	{
+		if (m_hDC)
+		{
+			::ReleaseDC(m_hWnd, m_hDC);
+			m_hDC = nullptr;
+		}
 		::DestroyWindow(m_hWnd);
 		m_hWnd = nullptr;
 		m_IsVisible = false;

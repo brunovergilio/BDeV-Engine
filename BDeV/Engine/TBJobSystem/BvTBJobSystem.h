@@ -58,7 +58,7 @@ class BvTBJobSystem
 	friend class BvTBJobSystemInstance;
 
 public:
-	void Initialize(const JobSystemDesc desc = JobSystemDesc());
+	void Initialize(const JobSystemDesc& desc = JobSystemDesc());
 	void Shutdown();
 
 	BvTBJobList* AllocJobList(u32 maxJobs, u32 maxSyncs, JobListPriority priority = JobListPriority::kNormal);
