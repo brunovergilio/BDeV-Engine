@@ -1,0 +1,227 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\TestProjects\glslangbin\glslang\CMakeFiles\MachineIndependent.dir\cmake_pch.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\glslang_tab.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\attribute.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Constant.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\iomapper.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\InfoSink.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Initialize.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\IntermTraverse.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Intermediate.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\ParseContextBase.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\ParseHelper.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\PoolAlloc.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\RemoveTree.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Scan.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\ShaderLang.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\SpirvIntrinsics.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\SymbolTable.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Versions.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\intermOut.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\limits.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\linkValidate.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\parseConst.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\reflection.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\preprocessor\Pp.cpp">
+      <Filter>MachineIndependent\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\preprocessor\PpAtom.cpp">
+      <Filter>MachineIndependent\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\preprocessor\PpContext.cpp">
+      <Filter>MachineIndependent\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\preprocessor\PpScanner.cpp">
+      <Filter>MachineIndependent\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\preprocessor\PpTokens.cpp">
+      <Filter>MachineIndependent\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\propagateNoContraction.cpp">
+      <Filter>MachineIndependent</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslAttributes.cpp">
+      <Filter>HLSL</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslParseHelper.cpp">
+      <Filter>HLSL</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslScanContext.cpp">
+      <Filter>HLSL</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslOpMap.cpp">
+      <Filter>HLSL</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslTokenStream.cpp">
+      <Filter>HLSL</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslGrammar.cpp">
+      <Filter>HLSL</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslParseables.cpp">
+      <Filter>HLSL</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\attribute.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\glslang_tab.cpp.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\gl_types.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Initialize.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\iomapper.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\LiveTraverser.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\localintermediate.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\ParseHelper.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\reflection.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\RemoveTree.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Scan.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\ScanContext.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\SymbolTable.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\Versions.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\parseVersions.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\propagateNoContraction.h">
+      <Filter>MachineIndependent</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\preprocessor\PpContext.h">
+      <Filter>MachineIndependent\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\preprocessor\PpTokens.h">
+      <Filter>MachineIndependent\Preprocessor</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslAttributes.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslParseHelper.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslTokens.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslScanContext.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslOpMap.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslTokenStream.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslGrammar.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\HLSL\hlslParseables.h">
+      <Filter>HLSL</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\TestProjects\glslangbin\glslang\CMakeFiles\MachineIndependent.dir\Debug\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Bruno\C++\BDeV-Engine\TestProjects\glslangbin\glslang\CMakeFiles\MachineIndependent.dir\Release\cmake_pch.hxx">
+      <Filter>Precompile Header File</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\glslang.m4">
+      <Filter>MachineIndependent</Filter>
+    </None>
+    <None Include="D:\Bruno\C++\BDeV-Engine\External\glslang\glslang\MachineIndependent\glslang.y">
+      <Filter>MachineIndependent</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="HLSL">
+      <UniqueIdentifier>{98BBE9F5-47D5-364E-8461-A405E5CA6CA9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MachineIndependent">
+      <UniqueIdentifier>{3BF48CCF-69B1-3D48-AEB7-F5802C99B5E0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MachineIndependent\Preprocessor">
+      <UniqueIdentifier>{107F3EA2-7963-3DA4-8F05-492EE418642C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Precompile Header File">
+      <UniqueIdentifier>{4E62849C-D021-352B-A688-54109F9BACF6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{62291B38-766E-3D38-A819-FA742D873BFF}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

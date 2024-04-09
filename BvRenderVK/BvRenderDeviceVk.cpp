@@ -9,12 +9,12 @@
 #include "BvSemaphoreVk.h"
 #include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
-#include "BvShaderResourceSetPoolVk.h"
+#include "BvDescriptorSetVk.h"
 #include "BvRenderVK/BvFramebufferVk.h"
 #include "BvTypeConversionsVk.h"
 
 
-BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo, const DeviceCreateDesc& deviceDesc)
+BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
 	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory())
 {
 	Create(deviceDesc);
@@ -275,7 +275,7 @@ void BvRenderDeviceVk::SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo,
 }
 
 
-void BvRenderDeviceVk::Create(const DeviceCreateDesc & deviceCreateDesc)
+void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc)
 {
 	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
 		"No device queues");
@@ -514,7 +514,7 @@ BvShaderResourceLayout * BvRenderDeviceVk::CreateShaderResourceLayout(const Shad
 
 BvShaderResourceSetPool* BvRenderDeviceVk::CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc)
 {
-	return m_pFactory->Create<BvShaderResourceSetPoolVk>(*this, shaderResourceSetPoolDesc);
+	return m_pFactory->Create<BvDescriptorPoolVk>(*this, shaderResourceSetPoolDesc);
 }
 
 

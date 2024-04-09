@@ -6,6 +6,16 @@
 
 
 class BvDebugReportVk;
+class BvRenderDeviceVk;
+
+
+struct BvRenderDeviceCreateDescVk
+{
+	u32 m_GraphicsQueueCount = 1;
+	u32 m_ComputeQueueCount = 1;
+	u32 m_TransferQueueCount = 1;
+	// Pool Sizes
+};
 
 
 class BvRenderEngineVk final : public BvRenderEngine
@@ -16,38 +26,31 @@ public:
 	BvRenderEngineVk();
 	~BvRenderEngineVk();
 
-	void GetGPUInfo(const u32 index, BvGPUInfo & info) const override final;
-	BvRenderDevice * const CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex) override final;
+	bool Initialize() override;
+	void Shutdown() override;
+
+	BV_INLINE u32 GetSupportedGPUCount() const override { return m_GPUs.Size(); }
+	void GetGPUInfo(u32 index, BvGPUInfo& info) const override;
+
+	BvRenderDevice* CreateRenderDevice(u32 gpuIndex = 0) override;
+	BvRenderDevice* CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, u32 gpuIndex = 0);
 	
-	BV_INLINE const char * const GetEngineName() const override final { return "BvRenderVk"; }
-	BV_INLINE u32 GetInstanceVersion() const { return m_InstanceVersion; }
+	BV_INLINE const char* GetEngineName() const override { return "BvRenderVk"; }
+
 	BV_INLINE VkInstance GetInstance() const { return m_Instance; }
 
-	bool IsInstanceExtensionSupported(const char* const pExtension);
-	bool IsInstanceExtensionEnabled(const char* const pExtension);
-	bool IsInstanceLayerSupported(const char* const pLayer);
-	bool IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* const pPhysicalDeviceExtension);
+	bool IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* pPhysicalDeviceExtension);
 
 private:
-	void Create();
-	void Destroy();
-
-	bool CreateInstance();
-	bool EnumerateGPUs();
 	void SetupDevicePropertiesAndFeatures(u32 gpuIndex);
 	u32 GetQueueFamilyIndex(const VkQueueFlags queueFlags, const u32 gpuIndex) const;
 	u32 AutoSelectGPU();
 
 private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
-	BvVector<VkExtensionProperties> m_SupportedExtensions;
-	BvVector<VkLayerProperties> m_SupportedLayers;
-	BvVector<const char*> m_EnabledExtensions;
-	BvVector<BvGPUInfoVk> m_GPUs{};
-#if defined(BV_DEBUG)
-	BvDebugReportVk * m_pDebugReport = nullptr;
-#endif
-	u32 m_InstanceVersion = 0;
+	BvVector<BvGPUInfoVk> m_GPUs;
+	BvVector<BvRenderDeviceVk*> m_RenderDevices;
+	BvDebugReportVk* m_pDebugReport = nullptr;
 };
 
 

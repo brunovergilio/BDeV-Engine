@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\Bruno\C++\BDeV-Engine\External\glslang\hlsl\stub.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Bruno\C++\BDeV-Engine\External\glslang\hlsl\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{62291B38-766E-3D38-A819-FA742D873BFF}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

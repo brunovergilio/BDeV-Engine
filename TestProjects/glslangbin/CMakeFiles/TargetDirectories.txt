@@ -1,0 +1,11 @@
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/CMakeFiles/ALL_BUILD.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/CMakeFiles/ZERO_CHECK.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/glslang/CMakeFiles/GenericCodeGen.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/glslang/CMakeFiles/MachineIndependent.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/glslang/CMakeFiles/glslang.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/glslang/CMakeFiles/glslang-default-resource-limits.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/glslang/OSDependent/Windows/CMakeFiles/OSDependent.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/OGLCompilersDLL/CMakeFiles/OGLCompiler.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/SPIRV/CMakeFiles/SPIRV.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/SPIRV/CMakeFiles/SPVRemapper.dir
+D:/Bruno/C++/BDeV-Engine/TestProjects/glslangbin/hlsl/CMakeFiles/HLSL.dir

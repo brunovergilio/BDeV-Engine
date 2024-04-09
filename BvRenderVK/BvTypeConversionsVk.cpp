@@ -795,15 +795,3 @@ VkCommandPoolCreateFlags GetVkCommandPoolCreateFlags(const CommandPoolFlags comm
 
 	return flags;
 }
-
-
-VkDescriptorPoolCreateFlags GetVkDescriptorPoolCreateFlags(const ShaderResourcePoolFlags poolFlags)
-{
-	VkDescriptorPoolCreateFlags flags = 0;
-	if ((poolFlags & ShaderResourcePoolFlags::kRecycleDescriptors) == ShaderResourcePoolFlags::kNone)
-	{
-		flags |= VkDescriptorPoolCreateFlagBits::VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	}
-
-	return flags;
-}

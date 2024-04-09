@@ -24,7 +24,7 @@ class BvBufferViewVk;
 class BvCommandBufferVk final : public BvCommandBuffer
 {
 public:
-	BvCommandBufferVk(const BvRenderDeviceVk & device, BvCommandPool * pCommandPool, const VkCommandBuffer commandBuffer);
+	BvCommandBufferVk(const BvRenderDeviceVk& device, VkCommandBuffer commandBuffer);
 	~BvCommandBufferVk();
 
 	void Reset() override;
@@ -127,5 +127,3 @@ private:
 	bool m_IndexBufferBindNeeded = false;
 	bool m_DescriptorSetBindNeeded = false;
 };
-
-constexpr auto s = sizeof BvCommandBufferVk;

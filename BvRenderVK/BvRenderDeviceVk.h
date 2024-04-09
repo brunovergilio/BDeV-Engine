@@ -13,12 +13,12 @@ class BvCommandQueueVk;
 class BvRenderDeviceVk final : public BvRenderDevice
 {
 public:
-	BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk & gpuInfo, const DeviceCreateDesc& deviceDesc);
+	BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc);
 	~BvRenderDeviceVk();
 
 	void SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo, VkPhysicalDeviceFeatures& enabledFeatures, BvVector<const char*>& enabledExtensions);
 
-	void Create(const DeviceCreateDesc & deviceCreateDesc);
+	void Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc);
 	void Destroy();
 
 	BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue) override final;
@@ -59,7 +59,7 @@ private:
 private:
 	BvRenderEngineVk* m_pEngine = nullptr;
 	VkDevice m_Device = VK_NULL_HANDLE;
-	const BvGPUInfoVk & m_GPUInfo;
+	const BvGPUInfoVk& m_GPUInfo;
 	BvVector<BvCommandQueueVk*> m_GraphicsQueues;
 	BvVector<BvCommandQueueVk*> m_ComputeQueues;
 	BvVector<BvCommandQueueVk*> m_TransferQueues;

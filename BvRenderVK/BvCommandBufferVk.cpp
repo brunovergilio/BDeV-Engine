@@ -19,8 +19,8 @@
 constexpr auto kMaxCopyRegions = 14u; // I'm assuming a region per mip, so 2^14 = 16384 - more than enough for now
 
 
-BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk & device, BvCommandPool * pCommandPool, const VkCommandBuffer commandBuffer)
-	: BvCommandBuffer(pCommandPool), m_Device(device), m_CommandBuffer(commandBuffer)
+BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk & device, VkCommandBuffer commandBuffer)
+	: m_Device(device), m_CommandBuffer(commandBuffer)
 {
 }
 

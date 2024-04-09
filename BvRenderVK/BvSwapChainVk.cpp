@@ -245,7 +245,8 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
 	swapchainCreateInfo.imageArrayLayers = 1;
 
-	swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	swapchainCreateInfo.imageSharingMode = m_Device.GetGPUInfo().m_PresentationQueueIndex == m_Device.GetGPUInfo().m_GraphicsQueueIndex ?
+		VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
 	swapchainCreateInfo.queueFamilyIndexCount = 0;
 	swapchainCreateInfo.pQueueFamilyIndices = nullptr;
 

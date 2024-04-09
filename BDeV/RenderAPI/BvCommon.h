@@ -203,7 +203,7 @@ enum class ShaderStage : u16
 	kCompute				= BvBit(5),
 	kMesh					= BvBit(6),
 	kAmplificationOrTask	= BvBit(7),
-	kAllGraphicsStages		= BvBit(8) - 1,
+	kAllStages				= BvBit(8) - 1,
 };
 BV_USE_ENUM_CLASS_OPERATORS(ShaderStage)
 

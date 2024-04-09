@@ -32,7 +32,7 @@ public:
 	bool operator==(const BvString& rhs) const;
 	bool operator!=(const BvString& rhs) const;
 
-	const BvString* GetString();
+	const BvString& GetString() const;
 
 	constexpr operator u64() const { return m_Id; }
 	constexpr u64 GetId() const { return m_Id; }

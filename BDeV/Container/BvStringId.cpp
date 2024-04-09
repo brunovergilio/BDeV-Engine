@@ -11,24 +11,35 @@ public:
 	BvDebugStringIdTable() {}
 	~BvDebugStringIdTable() {}
 
+	static BvDebugStringIdTable& GetInstance()
+	{
+		static BvDebugStringIdTable stringTable;
+		return stringTable;
+	}
+
+	const BvString& GetEmptyString() const
+	{
+		static BvString emptyString;
+		return emptyString;
+	}
+
 #if BV_DEBUG
 	void AddString(u64 hash, const BvString& str)
 	{
 		auto result = m_Table.Emplace(hash, BvString(str));
-		BvAssert(result.second || (!result.second && result.first->second == str), "Existing String Id found [%llu]:\ncurrent: %s\nnew:%s", hash, result.first->second.CStr(), str.CStr());
+		//BvAssert(result.second || (!result.second && result.first->second == str), "Existing String Id found [%llu]:\ncurrent: %s\nnew:%s", hash, result.first->second.CStr(), str.CStr());
 	}
 
 	void AddString(u64 hash, const char* pStr, u32 length)
 	{
 		auto result = m_Table.Emplace(hash, BvString(pStr, 0, length));
-		BvAssert(result.second || (!result.second && result.first->second == pStr), "Existing String Id found [%llu]:\ncurrent: %s\nnew:%s", hash, result.first->second.CStr(), pStr);
+		//BvAssert(result.second || (!result.second && result.first->second == pStr), "Existing String Id found [%llu]:\ncurrent: %s\nnew:%s", hash, result.first->second.CStr(), pStr);
 	}
 
-	const BvString* GetString(u64 id) const
+	const BvString& GetString(u64 id) const
 	{
-		BvAssert(m_Table.HasKey(id), "String Id not in table");
-
-		return &m_Table.At(id);
+		auto result = m_Table.FindKey(id);
+		return result != m_Table.cend() ? result->second : GetEmptyString();
 	}
 
 private:
@@ -36,17 +47,18 @@ private:
 #else
 	void AddString(u64, const BvString&) {}
 	void AddString(u64, const char*, u32) {}
-	const BvString* GetString(u64) const { return nullptr; }
+	const BvString& GetString(u64) const { return GetEmptyString(); }
 #endif
-} g_StringIdTable;
-
+};
 
 
 BvStringId::BvStringId(const char* pId)
 {
+	BvAssert(pId != nullptr, "String can't be nullptr");
+
 	u32 len = static_cast<u32>(strlen(pId));
 	m_Id = MurmurHash64A(pId, len);
-	g_StringIdTable.AddString(m_Id, pId, strlen(pId));
+	BvDebugStringIdTable::GetInstance().AddString(m_Id, pId, strlen(pId));
 }
 
 
@@ -59,7 +71,8 @@ BvStringId::BvStringId(const BvStringId& rhs)
 BvStringId::BvStringId(const BvString& rhs)
 	: m_Id(rhs.Hash())
 {
-	g_StringIdTable.AddString(m_Id, rhs);
+	BvAssert(rhs.CStr() != nullptr, "String can't be nullptr");
+	BvDebugStringIdTable::GetInstance().AddString(m_Id, rhs);
 }
 
 
@@ -93,9 +106,11 @@ BvStringId& BvStringId::operator=(BvStringId&& rhs) noexcept
 
 BvStringId& BvStringId::operator=(const char* pId)
 {
+	BvAssert(pId != nullptr, "String can't be nullptr");
+
 	u32 len = static_cast<u32>(strlen(pId));
 	m_Id = MurmurHash64A(pId, len);
-	g_StringIdTable.AddString(m_Id, pId, strlen(pId));
+	BvDebugStringIdTable::GetInstance().AddString(m_Id, pId, strlen(pId));
 
 	return *this;
 }
@@ -111,8 +126,10 @@ BvStringId& BvStringId::operator=(u64 id)
 
 BvStringId& BvStringId::operator=(const BvString& rhs)
 {
+	BvAssert(rhs.CStr() != nullptr, "String can't be nullptr");
+
 	m_Id = rhs.Hash();
-	g_StringIdTable.AddString(m_Id, rhs);
+	BvDebugStringIdTable::GetInstance().AddString(m_Id, rhs);
 
 	return *this;
 }
@@ -142,7 +159,7 @@ bool BvStringId::operator!=(const BvString& rhs) const
 }
 
 
-const BvString* BvStringId::GetString()
+const BvString& BvStringId::GetString() const
 {
-	return g_StringIdTable.GetString(m_Id);
+	return BvDebugStringIdTable::GetInstance().GetString(m_Id);
 }

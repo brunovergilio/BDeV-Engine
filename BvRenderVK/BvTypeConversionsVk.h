@@ -53,4 +53,3 @@ VkAccessFlags GetVkAccessFlags(const ResourceState resourceState);
 VkPipelineStageFlags GetVkPipelineStageFlags(const VkAccessFlags accessFlags);
 VkPipelineStageFlags GetVkPipelineStageFlags(const PipelineStage pipelineStage);
 VkCommandPoolCreateFlags GetVkCommandPoolCreateFlags(const CommandPoolFlags commandPoolFlags);
-VkDescriptorPoolCreateFlags GetVkDescriptorPoolCreateFlags(const ShaderResourcePoolFlags poolFlags);

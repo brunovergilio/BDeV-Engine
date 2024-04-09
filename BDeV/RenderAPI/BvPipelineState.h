@@ -271,8 +271,8 @@ struct GraphicsPipelineStateDesc
 	BvShaderResourceLayout*										m_pShaderResourceLayout = nullptr;
 	BvRenderPass*												m_pRenderPass = nullptr;
 	BvFixedVector<Format, kMaxRenderTargets>					m_RenderTargetFormats;
-	u32															m_SampleMask = kMax<u32>;
 	Format														m_DepthStencilFormat = Format::kUnknown;
+	u32															m_SampleMask = kMax<u32>;
 };
 
 

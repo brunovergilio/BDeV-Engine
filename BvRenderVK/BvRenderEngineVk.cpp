@@ -4,172 +4,9 @@
 #include "BvDebugReportVk.h"
 
 
-// For Android
-//constexpr const char * const g_ValidationLayers[] =
-//{
-//	"VK_LAYER_GOOGLE_threading",
-//	"VK_LAYER_LUNARG_parameter_validation",
-//	"VK_LAYER_LUNARG_object_tracker",
-//	"VK_LAYER_LUNARG_core_validation",
-//	"VK_LAYER_LUNARG_swapchain",
-//	"VK_LAYER_GOOGLE_unique_objects"
-//};
-
-
-constexpr const char * const g_ExtensionProperties[] =
+bool IsInstanceExtensionSupported(const BvVector<VkExtensionProperties>& extensions, const char* const pExtension)
 {
-	VK_KHR_SURFACE_EXTENSION_NAME,
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-#endif
-	VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-#if defined(BV_DEBUG)
-	VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-#endif
-};
-
-
-constexpr const char* const g_LayerProperties[] =
-{
-	"VK_LAYER_KHRONOS_validation"
-};
-
-
-BvRenderEngineVk::BvRenderEngineVk()
-{
-	Create();
-}
-
-
-BvRenderEngineVk::~BvRenderEngineVk()
-{
-	Destroy();
-}
-
-
-void BvRenderEngineVk::Create()
-{
-	if (!CreateInstance())
-	{
-		Destroy();
-		return;
-	}
-
-	if (!EnumerateGPUs())
-	{
-		Destroy();
-		return;
-	}
-
-	m_Devices.Resize(m_GPUs.Size());
-
-#if defined(BV_DEBUG)
-	if (IsInstanceExtensionEnabled(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
-	{
-		m_pDebugReport = new BvDebugReportVk(m_Instance);
-	}
-#endif
-}
-
-
-void BvRenderEngineVk::Destroy()
-{
-	for (auto pDevice : m_Devices)
-	{
-		if (pDevice)
-		{
-			auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(pDevice);
-			delete pDeviceVk;
-		}
-	}
-	m_Devices.Clear();
-
-#if defined(BV_DEBUG)
-	if (m_pDebugReport)
-	{
-		delete m_pDebugReport;
-		m_pDebugReport = nullptr;
-	}
-#endif
-
-	if (m_Instance)
-	{
-		vkDestroyInstance(m_Instance, nullptr);
-		m_Instance = VK_NULL_HANDLE;
-	}
-}
-
-
-void BvRenderEngineVk::GetGPUInfo(const u32 index, BvGPUInfo & gpuInfo) const
-{
-	BvAssert(index < m_GPUs.Size(), "Invalid GPU index");
-
-	gpuInfo.m_DeviceName = m_GPUs[index].m_DeviceProperties.deviceName;
-	gpuInfo.m_DeviceId = m_GPUs[index].m_DeviceProperties.deviceID;
-	gpuInfo.m_VendorId = m_GPUs[index].m_DeviceProperties.vendorID;
-
-	switch (gpuInfo.m_VendorId)
-	{
-	case GPUVendorId::kAMD: gpuInfo.m_Vendor = GPUVendorId::kAMD; break;
-	case GPUVendorId::kImgTec: gpuInfo.m_Vendor = GPUVendorId::kImgTec; break;
-	case GPUVendorId::kNvidia: gpuInfo.m_Vendor = GPUVendorId::kNvidia; break;
-	case GPUVendorId::kARM: gpuInfo.m_Vendor = GPUVendorId::kARM; break;
-	case GPUVendorId::kQualcomm: gpuInfo.m_Vendor = GPUVendorId::kQualcomm; break;
-	case GPUVendorId::kIntel: gpuInfo.m_Vendor = GPUVendorId::kIntel; break;
-	}
-	
-	const auto & memoryProperties = m_GPUs[index].m_DeviceMemoryProperties;
-	for (u32 i = 0; i < memoryProperties.memoryTypeCount; i++)
-	{
-		if (memoryProperties.memoryTypes[i].propertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-		{
-			gpuInfo.m_DeviceMemory += memoryProperties.memoryHeaps[memoryProperties.memoryTypes[i].heapIndex].size;
-		}
-	}
-
-	gpuInfo.m_GraphicsQueueCount = m_GPUs[index].m_QueueFamilyProperties[m_GPUs[index].m_GraphicsQueueIndex].queueCount;
-	gpuInfo.m_ComputeQueueCount = m_GPUs[index].m_QueueFamilyProperties[m_GPUs[index].m_ComputeQueueIndex].queueCount;
-	gpuInfo.m_TransferQueueCount = m_GPUs[index].m_QueueFamilyProperties[m_GPUs[index].m_TransferQueueIndex].queueCount;
-}
-
-
-BvRenderDevice * const BvRenderEngineVk::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex)
-{
-	if (gpuIndex >= m_GPUs.Size())
-	{
-		gpuIndex = AutoSelectGPU();
-	}
-
-	BvAssert(m_Devices[gpuIndex] == nullptr, "Render device already created");
-	if (m_Devices[gpuIndex] != nullptr)
-	{
-		return GetRenderDevice(gpuIndex);
-	}
-
-	// We'll choose the best GPU we have
-	if (gpuIndex == kAutoSelectGPU)
-	{
-		for (auto i = 0u; i < m_GPUs.Size(); i++)
-		{
-			// We want a discrete gpu if we can
-			if (m_GPUs[i].m_DeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-			{
-				gpuIndex = i;
-				break;
-			}
-		}
-	}
-
-	auto pDevice = new BvRenderDeviceVk(this, m_GPUs[gpuIndex], deviceDesc);
-	m_Devices[gpuIndex] = pDevice;
-
-	return pDevice;
-}
-
-
-bool BvRenderEngineVk::IsInstanceExtensionSupported(const char* const pExtension)
-{
-	for (auto& extension : m_SupportedExtensions)
+	for (auto& extension : extensions)
 	{
 		if (!strcmp(pExtension, extension.extensionName))
 		{
@@ -181,23 +18,9 @@ bool BvRenderEngineVk::IsInstanceExtensionSupported(const char* const pExtension
 }
 
 
-bool BvRenderEngineVk::IsInstanceExtensionEnabled(const char* const pExtension)
+bool IsInstanceLayerSupported(const BvVector<VkLayerProperties>& layers, const char* const pLayer)
 {
-	for (auto pEnabledExtension : m_EnabledExtensions)
-	{
-		if (!strcmp(pExtension, pEnabledExtension))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-
-bool BvRenderEngineVk::IsInstanceLayerSupported(const char* const pLayer)
-{
-	for (auto& layer : m_SupportedLayers)
+	for (auto& layer : layers)
 	{
 		if (!strcmp(pLayer, layer.layerName))
 		{
@@ -209,21 +32,18 @@ bool BvRenderEngineVk::IsInstanceLayerSupported(const char* const pLayer)
 }
 
 
-bool BvRenderEngineVk::IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* const pPhysicalDeviceExtension)
+BvRenderEngineVk::BvRenderEngineVk()
 {
-	for (auto& physicalDeviceExtension : gpu.m_SupportedExtensions)
-	{
-		if (!strcmp(pPhysicalDeviceExtension, physicalDeviceExtension.extensionName))
-		{
-			return true;
-		}
-	}
-
-	return false;
 }
 
 
-bool BvRenderEngineVk::CreateInstance()
+BvRenderEngineVk::~BvRenderEngineVk()
+{
+	Shutdown();
+}
+
+
+bool BvRenderEngineVk::Initialize()
 {
 	auto result = volkInitialize();
 	if (result != VK_SUCCESS)
@@ -231,56 +51,91 @@ bool BvRenderEngineVk::CreateInstance()
 		return false;
 	}
 
-	m_InstanceVersion = volkGetInstanceVersion();
-	u32 appVersion = m_InstanceVersion >= VK_API_VERSION_1_1 ? m_InstanceVersion : VK_API_VERSION_1_0;
+	auto instanceVersion = volkGetInstanceVersion();
+	if (instanceVersion == 0)
+	{
+		return false;
+	}
+	u32 apiVersion = instanceVersion >= VK_API_VERSION_1_1 ? instanceVersion : VK_API_VERSION_1_0;
 
-	constexpr const char * const pAppName = "BDeV";
+	constexpr const char* const pAppName = "BDeV Application";
+	constexpr const char* const pEngineName = "BDeV Engine";
 	VkApplicationInfo applicationInfo{};
 	applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	applicationInfo.pApplicationName = pAppName;
-	applicationInfo.pEngineName = pAppName;
-	applicationInfo.apiVersion = appVersion;
+	applicationInfo.pEngineName = pEngineName;
+	applicationInfo.apiVersion = apiVersion;
+
 
 	uint32_t extensionPropertyCount{};
 	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, nullptr);
-	m_SupportedExtensions.Resize(extensionPropertyCount);
-	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, m_SupportedExtensions.Data());
+	BvVector<VkExtensionProperties> supportedExtensions(extensionPropertyCount);
+	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, supportedExtensions.Data());
 
 	uint32_t layerPropertyCount{};
 	result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
-	m_SupportedLayers.Resize(layerPropertyCount);
-	result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, m_SupportedLayers.Data());
+	BvVector<VkLayerProperties> supportedLayers(layerPropertyCount);
+	result = vkEnumerateInstanceLayerProperties(&layerPropertyCount, supportedLayers.Data());
 
-	BvVector<const char*> layers;
-	for (auto pExtension : g_ExtensionProperties)
+	struct BvExtensionLayerVk
 	{
-		if (IsInstanceExtensionSupported(pExtension))
+		const char* pName;
+		bool required;
+	};
+
+	constexpr const BvExtensionLayerVk kExtensions[] =
+	{
+		{ VK_KHR_SURFACE_EXTENSION_NAME, true },
+	#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+		{ VK_KHR_WIN32_SURFACE_EXTENSION_NAME, true },
+	#endif
+		{ VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, false },
+		{ VK_EXT_DEBUG_UTILS_EXTENSION_NAME, false },
+	};
+
+	constexpr const BvExtensionLayerVk kLayers[] =
+	{
+		{ "VK_LAYER_KHRONOS_validation", false },
+	};
+
+	BvVector<const char*> enabledExtensions;
+	BvVector<const char*> enabledLayers;
+	for (auto extension : kExtensions)
+	{
+		if (IsInstanceExtensionSupported(supportedExtensions, extension.pName))
 		{
-			m_EnabledExtensions.PushBack(pExtension);
+			enabledExtensions.PushBack(extension.pName);
+		}
+		else if (extension.required)
+		{
+			return false;
 		}
 	}
 
-	for (auto pLayer : g_LayerProperties)
+	for (auto layer : kLayers)
 	{
-		if (IsInstanceLayerSupported(pLayer))
+		if (IsInstanceLayerSupported(supportedLayers, layer.pName))
 		{
-			layers.PushBack(pLayer);
+			enabledLayers.PushBack(layer.pName);
+		}
+		else if (layer.required)
+		{
+			return false;
 		}
 	}
-
 
 	VkInstanceCreateInfo instanceCreateInfo{};
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pApplicationInfo = &applicationInfo;
-	if (m_EnabledExtensions.Size() > 0)
+	if (enabledExtensions.Size() > 0)
 	{
-		instanceCreateInfo.ppEnabledExtensionNames = m_EnabledExtensions.Data();
-		instanceCreateInfo.enabledExtensionCount = (u32)m_EnabledExtensions.Size();
+		instanceCreateInfo.ppEnabledExtensionNames = enabledExtensions.Data();
+		instanceCreateInfo.enabledExtensionCount = (u32)enabledExtensions.Size();
 	}
-	if (layers.Size() > 0)
+	if (enabledLayers.Size() > 0)
 	{
-		instanceCreateInfo.ppEnabledLayerNames = layers.Data();
-		instanceCreateInfo.enabledLayerCount = (u32)layers.Size();
+		instanceCreateInfo.ppEnabledLayerNames = enabledLayers.Data();
+		instanceCreateInfo.enabledLayerCount = (u32)enabledLayers.Size();
 	}
 
 	result = vkCreateInstance(&instanceCreateInfo, nullptr, &m_Instance);
@@ -292,12 +147,16 @@ bool BvRenderEngineVk::CreateInstance()
 
 	volkLoadInstance(m_Instance);
 
-	return true;
-}
+	bool deviceProperties2 = false;
+	if (IsInstanceExtensionSupported(supportedExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
+	{
+		m_pDebugReport = new BvDebugReportVk(m_Instance);
+	}
+	if (IsInstanceExtensionSupported(supportedExtensions, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
+	{
+		deviceProperties2 = true;
+	}
 
-
-bool BvRenderEngineVk::EnumerateGPUs()
-{
 	// ===========================================================
 	// Get a list of the GPUs with support for Vulkan
 	u32 physicalDeviceCount = 0;
@@ -350,6 +209,7 @@ bool BvRenderEngineVk::EnumerateGPUs()
 			return false;
 		}
 
+		m_GPUs[i].m_FeaturesSupported.deviceProperties2 = deviceProperties2;
 		SetupDevicePropertiesAndFeatures(i);
 
 		// =================================
@@ -379,15 +239,120 @@ bool BvRenderEngineVk::EnumerateGPUs()
 		}
 	}
 
+	m_RenderDevices.Resize(m_GPUs.Size());
+
 	return true;
+}
+
+
+void BvRenderEngineVk::Shutdown()
+{
+	for (auto pDevice : m_RenderDevices)
+	{
+		if (pDevice)
+		{
+			auto pDeviceVk = reinterpret_cast<BvRenderDeviceVk*>(pDevice);
+			delete pDeviceVk;
+		}
+	}
+	m_RenderDevices.Clear();
+
+	if (m_pDebugReport)
+	{
+		delete m_pDebugReport;
+		m_pDebugReport = nullptr;
+	}
+
+	if (m_Instance)
+	{
+		vkDestroyInstance(m_Instance, nullptr);
+		m_Instance = VK_NULL_HANDLE;
+	}
+}
+
+
+void BvRenderEngineVk::GetGPUInfo(u32 index, BvGPUInfo& gpuInfo) const
+{
+	BvAssert(index < m_GPUs.Size(), "Invalid GPU index");
+
+	gpuInfo.m_DeviceName = m_GPUs[index].m_DeviceProperties.deviceName;
+	gpuInfo.m_DeviceId = m_GPUs[index].m_DeviceProperties.deviceID;
+	gpuInfo.m_VendorId = m_GPUs[index].m_DeviceProperties.vendorID;
+
+	switch (gpuInfo.m_VendorId)
+	{
+	case 0x1002:
+	case 0x1022:
+		gpuInfo.m_Vendor = GPUVendorId::kAMD; break;
+	case 0x1010:
+		gpuInfo.m_Vendor = GPUVendorId::kImgTec; break;
+	case 0x10DE:
+		gpuInfo.m_Vendor = GPUVendorId::kNvidia; break;
+	case 0x13B5:
+		gpuInfo.m_Vendor = GPUVendorId::kARM; break;
+	case 0x5143:
+		gpuInfo.m_Vendor = GPUVendorId::kQualcomm; break;
+	case 0x163C:
+	case 0x8086:
+	case 0x8087:
+		gpuInfo.m_Vendor = GPUVendorId::kIntel; break;
+	}
+	
+	const auto & memoryProperties = m_GPUs[index].m_DeviceMemoryProperties;
+	for (u32 i = 0; i < memoryProperties.memoryTypeCount; i++)
+	{
+		if (memoryProperties.memoryTypes[i].propertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+		{
+			gpuInfo.m_DeviceMemory += memoryProperties.memoryHeaps[memoryProperties.memoryTypes[i].heapIndex].size;
+		}
+	}
+}
+
+
+BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(u32 gpuIndex)
+{
+	return CreateRenderDevice(BvRenderDeviceCreateDescVk(), gpuIndex);
+}
+
+
+BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, u32 gpuIndex)
+{
+	if (gpuIndex >= m_GPUs.Size())
+	{
+		gpuIndex = AutoSelectGPU();
+	}
+
+	BvAssert(m_RenderDevices[gpuIndex] == nullptr, "Render device already created");
+	if (m_RenderDevices[gpuIndex] != nullptr)
+	{
+		return m_RenderDevices[gpuIndex];
+	}
+
+	auto pDevice = new BvRenderDeviceVk(this, m_GPUs[gpuIndex], deviceDesc);
+	m_RenderDevices[gpuIndex] = pDevice;
+
+	return pDevice;
+}
+
+
+bool BvRenderEngineVk::IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* pPhysicalDeviceExtension)
+{
+	for (auto& physicalDeviceExtension : gpu.m_SupportedExtensions)
+	{
+		if (!strcmp(pPhysicalDeviceExtension, physicalDeviceExtension.extensionName))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 
 void BvRenderEngineVk::SetupDevicePropertiesAndFeatures(u32 gpuIndex)
 {
 	auto& gpu = m_GPUs[gpuIndex];
-	gpu.m_FeaturesSupported.swapChain = IsInstanceExtensionEnabled(VK_KHR_SURFACE_EXTENSION_NAME) && IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	gpu.m_FeaturesSupported.deviceProperties2 = IsInstanceExtensionEnabled(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+	gpu.m_FeaturesSupported.swapChain = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_SWAPCHAIN_EXTENSION_NAME); // Also needs VK_KHR_SURFACE_EXTENSION_NAME
 	gpu.m_FeaturesSupported.memoryRequirements2 = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
 	gpu.m_FeaturesSupported.bindMemory2 = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME);
 	if (gpu.m_FeaturesSupported.deviceProperties2)
@@ -596,7 +561,7 @@ u32 BvRenderEngineVk::GetQueueFamilyIndex(const VkQueueFlags queueFlags, const u
 
 	if (UINT32_MAX == index)
 	{
-		// For other queue types or if no separate compute queue is present, return the first one to support the requested flags
+		// For other queue types or if no separate compute or transfer queue is present, return the first one to support the requested flags
 		for (u32 i = 0; i < static_cast<u32>(queueFamilyProperties.Size()); i++)
 		{
 			if (queueFamilyProperties[i].queueFlags & queueFlags)

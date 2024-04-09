@@ -102,15 +102,10 @@ public:
 
 	virtual void ResourceBarrier(const u32 barrierCount, const ResourceBarrierDesc * const pBarriers) = 0;
 
-	QueueFamilyType GetQueueFamilyType() const { return m_pCommandPool->GetDesc().m_QueueFamilyType; }
-	CommandType GetCommandLevel() const { return m_pCommandPool->GetDesc().m_CommandType; }
-
 protected:
-	BvCommandBuffer(BvCommandPool * pCommandPool)
-		: m_pCommandPool(pCommandPool) {}
+	BvCommandBuffer() {}
 	virtual ~BvCommandBuffer() = 0 {}
 
 protected:
-	BvCommandPool * m_pCommandPool = nullptr;
 	CurrentState m_CurrentState = CurrentState::kReset;
 };
