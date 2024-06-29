@@ -26,14 +26,16 @@ public:
 #if BV_DEBUG
 	void AddString(u64 hash, const BvString& str)
 	{
+		BvAssert(m_Table.FindKey(hash) == m_Table.cend(), "Existing String Id found with hash [%llu]: %s", hash, str.CStr());
+		
 		auto result = m_Table.Emplace(hash, BvString(str));
-		//BvAssert(result.second || (!result.second && result.first->second == str), "Existing String Id found [%llu]:\ncurrent: %s\nnew:%s", hash, result.first->second.CStr(), str.CStr());
 	}
 
 	void AddString(u64 hash, const char* pStr, u32 length)
 	{
+		BvAssert(m_Table.FindKey(hash) == m_Table.cend(), "Existing String Id found with hash [%llu]: %s", hash, pStr);
+
 		auto result = m_Table.Emplace(hash, BvString(pStr, 0, length));
-		//BvAssert(result.second || (!result.second && result.first->second == pStr), "Existing String Id found [%llu]:\ncurrent: %s\nnew:%s", hash, result.first->second.CStr(), pStr);
 	}
 
 	const BvString& GetString(u64 id) const

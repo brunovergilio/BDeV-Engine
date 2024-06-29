@@ -12,12 +12,12 @@
 #include "BvBufferView.h"
 #include "BvTexture.h"
 #include "BvTextureView.h"
+#include "BvSampler.h"
+#include "BvQuery.h"
+#include "BvCommandContext.h"
 #include "BDeV/Reflection/BvRTTI.h"
 #include "BDeV/System/Threading/BvSync.h"
 #include <functional>
-
-
-class BvSemaphore;
 
 
 class BvRenderDevice
@@ -25,30 +25,29 @@ class BvRenderDevice
 	BV_NOCOPYMOVE(BvRenderDevice);
 
 public:
-	virtual BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, BvCommandQueue& commandQueue) = 0;
-	virtual BvBuffer* CreateBuffer(const BufferDesc& desc) = 0;
+	virtual BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, BvCommandContext* pContext) = 0;
+	virtual BvBuffer* CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData = nullptr) = 0;
 	virtual BvBufferView* CreateBufferView(const BufferViewDesc& desc) = 0;
-	virtual BvTexture* CreateTexture(const TextureDesc& desc) = 0;
+	virtual BvTexture* CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData = nullptr) = 0;
 	virtual BvTextureView* CreateTextureView(const TextureViewDesc& desc) = 0;
-	virtual BvSemaphore* CreateSemaphore(const u64 initialValue = 0) = 0;
-	// CreateQueryPool
-	// CreateQuery
+	virtual BvSampler* CreateSampler(const SamplerDesc& desc) = 0;
 	virtual BvRenderPass* CreateRenderPass(const RenderPassDesc& renderPassDesc) = 0;
-	virtual BvCommandPool* CreateCommandPool(const CommandPoolDesc& commandPoolDesc = CommandPoolDesc()) = 0;
-	virtual BvShaderResourceLayout* CreateShaderResourceLayout(const ShaderResourceLayoutDesc& shaderResourceLayoutDesc =
-		ShaderResourceLayoutDesc()) = 0;
-	virtual BvShaderResourceSetPool* CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc =
-		ShaderResourceSetPoolDesc()) = 0;
+	virtual BvShaderResourceLayout* CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
+		const ShaderResourceConstantDesc& shaderResourceConstantDesc) = 0;
 	virtual BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) = 0;
+	virtual BvQuery* CreateQuery(QueryType queryType) = 0;
 
 	virtual void Destroy() = 0;
 
 	virtual void WaitIdle() const = 0;
 
-	virtual BvCommandQueue* GetGraphicsQueue(const u32 index = 0) const = 0;
-	virtual BvCommandQueue* GetComputeQueue(const u32 index = 0) const = 0;
-	virtual BvCommandQueue* GetTransferQueue(const u32 index = 0) const = 0;
-	virtual bool QueueFamilySupportsPresent(const QueueFamilyType queueFamilyType) const = 0;
+	virtual BvCommandContext* GetGraphicsContext(u32 index = 0) const = 0;
+	virtual BvCommandContext* GetComputeContext(u32 index = 0) const = 0;
+	virtual BvCommandContext* GetTransferContext(u32 index = 0) const = 0;
+
+	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr) const = 0;
+
+	virtual bool SupportsQueryType(QueryType queryType, QueueFamilyType commandType) const = 0;
 
 protected:
 	BvRenderDevice() {}

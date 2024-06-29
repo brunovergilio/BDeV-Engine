@@ -45,7 +45,7 @@ VkBool32 VKAPI_PTR BvDebugReportVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsM
 	VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
 	char prefix[64]{};
-	char message[2048]{};
+	char message[4096]{};
 
 	bool triggerAbort = false;
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
@@ -118,7 +118,7 @@ VkBool32 VKAPI_PTR BvDebugReportVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsM
 	BvDebug::PrintF("%s\n", message);
 	if (triggerAbort)
 	{
-		BvCrash(message);
+		BvAssert(false, message);
 	}
 
 	return VK_FALSE;

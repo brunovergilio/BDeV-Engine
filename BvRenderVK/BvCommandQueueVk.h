@@ -7,43 +7,34 @@
 
 
 class BvRenderDeviceVk;
-class BvSwapChainVk;
-class BvFenceVk;
+class BvCommandBufferVk;
 
 
-class BvCommandQueueVk final : public BvCommandQueue
+class BvCommandQueueVk final
 {
-	BV_NOCOPYMOVE(BvCommandQueueVk);
+	BV_NOCOPY(BvCommandQueueVk);
 
 public:
-	BvCommandQueueVk(const BvRenderDeviceVk& device, const QueueFamilyType queueFamilyType, const u32 queueIndex);
+	BvCommandQueueVk();
+	BvCommandQueueVk(const BvRenderDeviceVk* pDevice, QueueFamilyType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex);
+	BvCommandQueueVk(BvCommandQueueVk&& rhs) noexcept;
+	BvCommandQueueVk& operator=(BvCommandQueueVk&& rhs) noexcept;
 	~BvCommandQueueVk();
 
-	void Submit(const SubmitInfo& submitInfo) override;
-	void Execute() override;
-	void WaitIdle() override;
+	void AddWaitSemaphore(VkSemaphore waitSemaphore, u64 value);
+	void Submit(const BvVector<BvCommandBufferVk*>& commandBuffers, VkSemaphore signalSemaphore, u64 value);
+	void WaitIdle();
 
 	BV_INLINE u32 GetFamilyIndex() const { return m_QueueFamilyIndex; }
 	BV_INLINE u32 GetIndex() const { return m_QueueIndex; }
 	BV_INLINE VkQueue GetHandle() const { return m_Queue; }
-
+	
 private:
-	const BvRenderDeviceVk& m_Device;
+	const BvRenderDeviceVk* m_pDevice = nullptr;
 	VkQueue m_Queue = VK_NULL_HANDLE;
 	u32 m_QueueFamilyIndex = 0;
 	u32 m_QueueIndex = 0;
-	BvVector<VkSemaphore> m_ActiveSemaphores;
-
-	struct SubmitInfoData
-	{
-		BvVector<VkSubmitInfo> m_SubmitInfos;
-		BvVector<VkTimelineSemaphoreSubmitInfoKHR> m_TimelineSemaphoreInfos;
-		BvVector<VkSemaphore> m_WaitSemaphores;
-		BvVector<u64> m_WaitSemaphoreValues;
-		BvVector<VkPipelineStageFlags> m_WaitStageFlags;
-		BvVector<VkSemaphore> m_SignalSemaphores;
-		BvVector<u64> m_SignalSemaphoreValues;
-		BvVector<VkCommandBuffer> m_CommandBuffers;
-		BvFenceVk* m_pFence = nullptr;
-	} *m_pSubmitInfo = nullptr;
+	BvVector<VkSemaphoreSubmitInfo> m_WaitSemaphores;
+	BvVector<VkSemaphoreSubmitInfo> m_SignalSemaphores;
+	BvVector<VkCommandBufferSubmitInfo> m_CommandBuffers;
 };

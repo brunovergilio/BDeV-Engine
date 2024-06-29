@@ -25,13 +25,13 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 			if (result == FALSE)
 			{
 				BvDeleteN(pBufferData);
-				BvOSCrash();
+				BvOSCrashIfFailed(result);
 				return systemInfo;
 			}
 		}
 		else
 		{
-			BvOSCrash();
+			BvOSCrashIfFailed(result);
 		}
 
 		auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);

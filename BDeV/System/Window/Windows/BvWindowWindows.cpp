@@ -238,7 +238,7 @@ void BvWindow::Create(const WindowDesc& windowDesc)
 		x, y, width, height, nullptr, nullptr, hModule, this);
 	if (!m_hWnd)
 	{
-		BvOSCrash();
+		BvOSCrashIfFailed(m_hWnd);
 	}
 
 	if (windowDesc.m_HasBorder && !windowDesc.m_CanClose)

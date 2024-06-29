@@ -54,24 +54,11 @@ public:
 	}																						\
 } while (false)
 
-#define BvVerify(cond, msg, ...) do															\
-{																							\
-	if (!(cond))																			\
-	{																						\
-		BvDebug::RaiseAssertionError(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
-	}																						\
-} while (false)
 
 #else
 
 #define BvAssert(cond, msg, ...)
 #define BvAssertOnce(cond, msg, ...)
-#define BvVerify(cond, msg, ...) do	\
-{									\
-	if (!(cond))					\
-	{								\
-	}								\
-} while (false)
 
 #endif // #if BV_DEBUG
 
@@ -93,18 +80,4 @@ public:
 	{											\
 		BvError::RaiseOSError(BV_SOURCE_INFO);	\
 	}											\
-} while (false)
-
-
-// Crash with a custom message
-#define BvCrash(msg, ...) do											\
-{																		\
-	BvError::RaiseError(BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
-} while (false)
-
-
-// Crash with a predefined system message
-#define BvOSCrash() do						\
-{											\
-	BvError::RaiseOSError(BV_SOURCE_INFO);	\
 } while (false)

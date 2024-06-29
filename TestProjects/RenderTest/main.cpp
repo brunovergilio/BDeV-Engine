@@ -44,8 +44,10 @@ int main()
 	ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
 	pCompiler->CompileFromFile("D:\\Bruno\\C++\\test.vert", compDesc);
 	BvSharedLib renderVkLib("BvRenderVk.dll");
-	typedef BvRenderEngine* (*pFNGetRenderEngine)();
-	pFNGetRenderEngine getRenderEngineFn = renderVkLib.GetProcAddressT<pFNGetRenderEngine>("GetRenderEngine");
+	typedef BvRenderEngine* (*pFNCreateRenderEngine)();
+	pFNCreateRenderEngine getRenderEngineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
+	typedef void (*pFNDestroyRenderEngine)();
+	pFNDestroyRenderEngine get2RenderEngineFn = renderVkLib.GetProcAddressT<pFNDestroyRenderEngine>("DestroyRenderEngine");
 
 	g_pCompiler = compilerFn();
 
@@ -64,31 +66,21 @@ int main()
 	auto pWindow = BvPlatform::CreateWindow(windowDesc);
 
 	SwapChainDesc swapChainDesc;
-	swapChainDesc.m_pName = "Test";
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
-	auto pGraphicsQueue = pDevice->GetGraphicsQueue();
-	BvSwapChain* pSwapChain = pDevice->CreateSwapChain(pWindow, swapChainDesc, *pGraphicsQueue);
+	auto pGraphicsContext = pDevice->GetGraphicsContext();
+	BvSwapChain* pSwapChain = pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext);
 
 	// Create uniform buffer
 
 	RenderPassDesc renderPassDesc;
-	RenderPassTargetDesc renderPassTargetDesc;
+	RenderPassAttachmentDesc renderPassTargetDesc;
 	renderPassTargetDesc.m_Format = Format::kRGBA8_UNorm;
 	renderPassTargetDesc.m_StateAfter = ResourceState::kPresent;
 	renderPassDesc.m_RenderTargets.PushBack(renderPassTargetDesc);
 	auto pRenderPass = pDevice->CreateRenderPass(renderPassDesc);
 
-	BvVector<BvCommandPool*> commandPools; commandPools.Resize(pSwapChain->GetDesc().m_SwapChainImageCount);
-	for (auto&& pCommandPool : commandPools) { pCommandPool = pDevice->CreateCommandPool(); }
-	BvVector<BvCommandBuffer*> commandBuffers; commandBuffers.Resize(commandPools.Size());
-	for (auto i = 0; i < commandBuffers.Size(); i++) { commandBuffers[i] = commandPools[i]->AllocateCommandBuffer(); }
-
-	ShaderResourceLayoutDesc shaderResourceLayoutDesc;
-	shaderResourceLayoutDesc.AddResource(ShaderResourceType::kConstantBuffer, ShaderStage::kVertex, 0);
-	auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(shaderResourceLayoutDesc);
-
-	auto pShaderResourceSetPool = pDevice->CreateShaderResourceSetPool();
-	auto pSet = pShaderResourceSetPool->AllocateSet(pShaderResourceLayout);
+	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
+	auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(1, &resourceDesc, ShaderResourceConstantDesc());
 
 	auto pVB = CreateVB(pDevice);
 	BufferViewDesc vbViewDesc;
@@ -103,9 +95,6 @@ int main()
 	ubViewDesc.m_Stride = sizeof(Float44);
 	ubViewDesc.m_ElementCount = 1;
 	auto pUBView = pDevice->CreateBufferView(ubViewDesc);
-
-	pSet->SetBuffer(0, pUBView);
-	pSet->Update();
 
 	GraphicsPipelineStateDesc pipelineDesc;
 	pipelineDesc.m_ShaderStages.PushBack(GetVS());
@@ -130,14 +119,8 @@ int main()
 	g_pCompiler->DestroyShader(g_pVS);
 	g_pCompiler->DestroyShader(g_pPS);
 
-	auto swapChainCount = pSwapChain->GetDesc().m_SwapChainImageCount;
-	BvVector<BvSemaphore*> renderSemaphores;
-	renderSemaphores.Resize(swapChainCount);
-	for (auto&& smr : renderSemaphores) { smr = pDevice->CreateSemaphore(); }
-	
-	BvVector<u64> renderSemaphoreValues;
-	renderSemaphoreValues.Resize(swapChainCount);
-	
+	auto pQuery = pDevice->CreateQuery(QueryType::kTimestamp);
+
 	auto currIndex = 0;
 	u64 frame = 0;
 	while (true)
@@ -186,10 +169,6 @@ int main()
 			continue;
 		}
 
-		currIndex = pSwapChain->GetCurrentImageIndex();
-		renderSemaphores[currIndex]->Wait(renderSemaphoreValues[currIndex]++);
-		commandPools[currIndex]->Reset();
-
 		auto width = pWindow->GetWidth();
 		auto height = pWindow->GetHeight();
 
@@ -203,40 +182,27 @@ int main()
 			0.1f,
 			0.1f,
 			0.3f) };
-		commandBuffers[currIndex]->Reset();
-		commandBuffers[currIndex]->Begin();
 		ResourceBarrierDesc barrier;
-		barrier.pTexture = pRenderTargets[0]->GetTexture();
-		barrier.srcLayout = ResourceState::kPresent;
-		barrier.dstLayout = ResourceState::kRenderTarget;
-		commandBuffers[currIndex]->ResourceBarrier(1, &barrier);
-		//commandBuffers[currIndex]->BeginRenderPass(pRenderPass, pRenderTargets, cl);
-		commandBuffers[currIndex]->SetRenderTargets(1, pRenderTargets, cl);
-		commandBuffers[currIndex]->SetPipeline(pPSO);
-		commandBuffers[currIndex]->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
-		commandBuffers[currIndex]->SetScissor({ 0, 0, width, height });
-		commandBuffers[currIndex]->SetVertexBufferView(pVBView);
-		commandBuffers[currIndex]->SetShaderResourceParams(1, &pSet);
-		commandBuffers[currIndex]->Draw(3);
-		//commandBuffers[currIndex]->EndRenderPass();
-		barrier.srcLayout = ResourceState::kRenderTarget;
-		barrier.dstLayout = ResourceState::kPresent;
-		commandBuffers[currIndex]->ResourceBarrier(1, &barrier);
-		commandBuffers[currIndex]->End();
+		barrier.m_pTexture = pRenderTargets[0]->GetTexture();
+		barrier.m_SrcLayout = ResourceState::kPresent;
+		barrier.m_DstLayout = ResourceState::kRenderTarget;
+		//pGraphicsContext->BeginRenderPass(pRenderPass, pRenderTargets, cl);
+		auto renderTarget = RenderTargetDesc::AsSwapChain(pRenderTargets[0], *cl);
+		pGraphicsContext->BeginQuery(pQuery);
+		pGraphicsContext->SetRenderTarget(renderTarget);
+		pGraphicsContext->SetGraphicsPipeline(pPSO);
+		pGraphicsContext->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
+		pGraphicsContext->SetScissor({ 0, 0, width, height });
+		pGraphicsContext->SetVertexBufferView(pVBView);
+		pGraphicsContext->SetShaderResource(pUBView, 0, 0, 0);
+		pGraphicsContext->Draw(3);
+		pGraphicsContext->EndQuery(pQuery);
+		//pGraphicsContext->EndRenderPass();
+		pGraphicsContext->Signal();
 
-		BvCommandBuffer * pCBs[] = { commandBuffers[currIndex] };
-		BvSemaphore * pSignals[] = { renderSemaphores[currIndex] };
-		u64 pSignalValues[] = { renderSemaphoreValues[currIndex] };
-		SubmitInfo si;
-		si.commandBufferCount = 1;
-		si.ppCommandBuffers = pCBs;
-		si.signalSemaphoreCount = 1;
-		si.ppSignalSemaphores = pSignals;
-		si.pSignalValues = pSignalValues;
-
-		pGraphicsQueue->Submit(si);
-		pGraphicsQueue->Execute();
 		pSwapChain->Present(false);
+
+		pGraphicsContext->Flush();
 	}
 
 	BvPlatform::Shutdown();
@@ -322,33 +288,14 @@ BvBuffer* CreateVB(BvRenderDevice* pDevice)
 		{{ -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f }}
 	};
 
-	BufferDesc stagingBufferDesc;
-	stagingBufferDesc.m_Size = sizeof(PosColorVertex) * 3;
-	stagingBufferDesc.m_MemoryFlags = MemoryFlags::kUpload;
-	stagingBufferDesc.m_UsageFlags = BufferUsage::kTransferSrc;
-	auto pStaging = pDevice->CreateBuffer(stagingBufferDesc);
-	memcpy(pStaging->Map(), verts, stagingBufferDesc.m_Size);
-
 	BufferDesc vbBufferDesc;
-	vbBufferDesc.m_Size = sizeof(PosColorVertex) * 3;
-	vbBufferDesc.m_MemoryFlags = MemoryFlags::kDeviceLocal;
-	vbBufferDesc.m_UsageFlags = BufferUsage::kVertexBuffer | BufferUsage::kTransferDst;
-	auto pVB = pDevice->CreateBuffer(vbBufferDesc);
-
-	auto pCP = pDevice->CreateCommandPool();
-	auto pCB = pCP->AllocateCommandBuffer();
-
-	pCB->Begin();
-	pCB->CopyBuffer(pStaging, pVB);
-	pCB->End();
-
-	auto pQueue = pDevice->GetGraphicsQueue();
-	SubmitInfo submitInfo;
-	submitInfo.ppCommandBuffers = &pCB;
-	submitInfo.commandBufferCount = 1;
-	pQueue->Submit(submitInfo);
-	pQueue->Execute();
-	pQueue->WaitIdle();
+	vbBufferDesc.m_Size = sizeof(verts);
+	vbBufferDesc.m_UsageFlags = BufferUsage::kVertexBuffer;
+	BufferInitData bufferData;
+	bufferData.m_pContext = pDevice->GetGraphicsContext();
+	bufferData.m_pData = verts;
+	bufferData.m_Size = sizeof(verts);
+	auto pVB = pDevice->CreateBuffer(vbBufferDesc, &bufferData);
 
 	return pVB;
 }
@@ -357,7 +304,7 @@ BvBuffer* CreateUB(BvRenderDevice* pDevice)
 {
 	BufferDesc uniformBufferDesc;
 	uniformBufferDesc.m_Size = sizeof(Float44);
-	uniformBufferDesc.m_MemoryFlags = MemoryFlags::kUpload;
+	uniformBufferDesc.m_MemoryType = MemoryType::kUpload;
 	uniformBufferDesc.m_UsageFlags = BufferUsage::kUniformBuffer;
 	auto pUniform = pDevice->CreateBuffer(uniformBufferDesc);
 	pUniform->Map();

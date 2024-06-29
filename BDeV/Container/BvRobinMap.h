@@ -325,7 +325,10 @@ inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool
 	if (iter != cend())
 	{
 		auto index = iter.GetIndex();
-		m_pData[index].second.~Value();
+		if constexpr (!std::is_trivially_destructible_v<Value>)
+		{
+			m_pData[index].second.~Value();
+		}
 		new (&m_pData[index].second) Value(std::forward<Args>(args)...);
 		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
 	}
@@ -350,7 +353,10 @@ inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool
 	if (iter != cend())
 	{
 		auto index = iter.GetIndex();
-		m_pData[index].second.~Value();
+		if constexpr (!std::is_trivially_destructible_v<Value>)
+		{
+			m_pData[index].second.~Value();
+		}
 		new (&m_pData[index].second) Value(std::forward<Args>(args)...);
 		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
 	}
@@ -377,8 +383,14 @@ inline bool BvRobinMap<Key, Value, Hash, Comparer>::Erase(const Key & key)
 	}
 
 	auto currIndex = iter.GetIndex();
-	m_pData[currIndex].first.~Key();
-	m_pData[currIndex].second.~Value();
+	if constexpr (!std::is_trivially_destructible_v<Key>)
+	{
+		m_pData[currIndex].first.~Key();
+	}
+	if constexpr (!std::is_trivially_destructible_v<Value>)
+	{
+		m_pData[currIndex].second.~Value();
+	}
 	m_pHashes[currIndex] = 0;
 	--m_Size;
 
@@ -468,8 +480,15 @@ void BvRobinMap<Key, Value, Hash, Comparer>::Clear()
 	{
 		if (m_pHashes[i])
 		{
-			m_pData[i].first.~Key();
-			m_pData[i].second.~Value();
+			if constexpr (!std::is_trivially_destructible_v<Key>)
+			{
+				m_pData[i].first.~Key();
+			}
+			if constexpr (!std::is_trivially_destructible_v<Value>)
+			{
+				m_pData[i].second.~Value();
+			}
+			m_pHashes[i] = 0;
 		}
 	}
 

@@ -8,215 +8,250 @@
 #include "BvUtilsVk.h"
 
 
-BvResourceBindingState::BvResourceBindingState(u32 set)
+BvResourceBindingStateVk::BvResourceBindingStateVk()
 {
 }
 
 
-BvResourceBindingState::BvResourceBindingState(BvResourceBindingState&& rhs)
-	: m_Bindings(std::move(rhs.m_Bindings)), m_IsDirty(rhs.m_IsDirty)
+BvResourceBindingStateVk::BvResourceBindingStateVk(BvResourceBindingStateVk&& rhs) noexcept
 {
+	*this = std::move(rhs);
 }
 
 
-BvResourceBindingState::~BvResourceBindingState()
+BvResourceBindingStateVk& BvResourceBindingStateVk::operator=(BvResourceBindingStateVk&& rhs) noexcept
 {
-}
-
-
-void BvResourceBindingState::SetResource(const BvBufferViewVk& resource, u32 binding, u32 arrayIndex /*= 0*/)
-{
-	auto it = m_Bindings.FindKey(binding);
-	if (it != m_Bindings.cend())
+	if (this != &rhs)
 	{
-		auto& data = it->second;
-		if (arrayIndex >= data.m_Count)
+		std::swap(m_Bindings, rhs.m_Bindings);
+	}
+
+	return *this;
+}
+
+
+BvResourceBindingStateVk::~BvResourceBindingStateVk()
+{
+}
+
+
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+{
+	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
+
+	switch (descriptorType)
+	{
+	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+		if (data.m_Data.m_BufferView != pResource->GetHandle())
 		{
-			BvAssert(arrayIndex >= data.m_Count, "Trying to set resource in array with index out of bounds");
-			return;
+			data.m_Data.m_BufferView = pResource->GetHandle();
+			data.m_DescriptorType = descriptorType;
 		}
-
-		auto pElement = arrayIndex == 0 ? &data.m_Element : &data.m_Elements[arrayIndex - 1];
-		switch (data.m_DescriptorType)
+		break;
+	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+	{
+		auto& desc = pResource->GetDesc();
+		auto pBuffer = static_cast<const BvBufferVk*>(desc.m_pBuffer);
+		if (data.m_Data.m_BufferInfo.buffer != pBuffer->GetHandle()
+			|| data.m_Data.m_BufferInfo.offset != desc.m_Offset
+			|| data.m_Data.m_BufferInfo.range != desc.m_ElementCount * desc.m_Stride)
 		{
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			if (pElement->bufferView != resource.GetHandle())
-			{
-				pElement->bufferView = resource.GetHandle();
-
-				m_IsDirty = true;
-			}
-			break;
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			auto& desc = resource.GetDesc();
-			auto pBuffer = static_cast<const BvBufferVk*>(desc.m_pBuffer);
-			if (pElement->bufferInfo.buffer != pBuffer->GetHandle()
-				|| pElement->bufferInfo.offset != desc.m_Offset
-				|| pElement->bufferInfo.range != desc.m_ElementCount * desc.m_Stride)
-			{
-				pElement->bufferInfo.buffer = pBuffer->GetHandle();
-				pElement->bufferInfo.offset = desc.m_Offset;
-				pElement->bufferInfo.range = desc.m_ElementCount * desc.m_Stride;
-
-				m_IsDirty = true;
-			}
-		default:
-			BvAssert(nullptr, "Resource doesn't match binding's type");
-			break;
+			data.m_Data.m_BufferInfo.buffer = pBuffer->GetHandle();
+			data.m_Data.m_BufferInfo.offset = desc.m_Offset;
+			data.m_Data.m_BufferInfo.range = desc.m_ElementCount * desc.m_Stride;
+			data.m_DescriptorType = descriptorType;
 		}
+		break;
+	}
+	default:
+		BvAssert(nullptr, "Resource doesn't match binding's type");
+		break;
 	}
 }
 
 
 
-void BvResourceBindingState::SetResource(const BvTextureViewVk& resource, u32 binding, u32 arrayIndex /*= 0*/)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
-	auto it = m_Bindings.FindKey(binding);
-	if (it != m_Bindings.cend())
+	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
+
+	switch (descriptorType)
 	{
-		auto& data = it->second;
-		if (arrayIndex >= data.m_Count)
+	case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		if (data.m_Data.m_ImageInfo.imageView != pResource->GetHandle())
 		{
-			BvAssert(arrayIndex >= data.m_Count, "Trying to set resource in array with index out of bounds");
-			return;
+			data.m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+			data.m_Data.m_ImageInfo.imageView = pResource->GetHandle();
+			data.m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
+			data.m_DescriptorType = descriptorType;
 		}
-
-		auto pElement = arrayIndex == 0 ? &data.m_Element : &data.m_Elements[arrayIndex - 1];
-		switch (data.m_DescriptorType)
+		break;
+	case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+	{
+		auto layout = !IsDepthStencilFormat(pResource->GetDesc().m_Format) ?
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		if (data.m_Data.m_ImageInfo.imageLayout != layout
+			|| data.m_Data.m_ImageInfo.imageView != pResource->GetHandle())
 		{
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			if (pElement->imageInfo.imageView != resource.GetHandle())
-			{
-				pElement->imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-				pElement->imageInfo.imageView = resource.GetHandle();
-				pElement->imageInfo.sampler = VK_NULL_HANDLE;
-
-				m_IsDirty = true;
-			}
-			break;
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			auto layout = !IsDepthStencilFormat(resource.GetDesc().m_Format) ?
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-			if (pElement->imageInfo.imageLayout != layout
-				|| pElement->imageInfo.imageView != resource.GetHandle())
-			{
-				pElement->imageInfo.imageLayout = layout;
-				pElement->imageInfo.imageView = resource.GetHandle();
-				pElement->imageInfo.sampler = VK_NULL_HANDLE;
-
-				m_IsDirty = true;
-			}
-			break;
-		default:
-			BvAssert(nullptr, "Resource doesn't match binding's type");
-			break;
+			data.m_Data.m_ImageInfo.imageLayout = layout;
+			data.m_Data.m_ImageInfo.imageView = pResource->GetHandle();
+			data.m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
+			data.m_DescriptorType = descriptorType;
 		}
+		break;
+	}
+	default:
+		BvAssert(nullptr, "Resource doesn't match binding's type");
+		break;
 	}
 }
 
 
 
-void BvResourceBindingState::SetResource(const BvSamplerVk& resource, u32 binding, u32 arrayIndex /*= 0*/)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
-	auto it = m_Bindings.FindKey(binding);
-	if (it != m_Bindings.cend())
+	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
+
+	switch (descriptorType)
 	{
-		auto& data = it->second;
-		if (arrayIndex >= data.m_Count)
+	case VK_DESCRIPTOR_TYPE_SAMPLER:
+		if (data.m_Data.m_ImageInfo.sampler != pResource->GetHandle())
 		{
-			BvAssert(arrayIndex >= data.m_Count, "Trying to set resource in array with index out of bounds");
-			return;
+			data.m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			data.m_Data.m_ImageInfo.imageView = VK_NULL_HANDLE;
+			data.m_Data.m_ImageInfo.sampler = pResource->GetHandle();
+			data.m_DescriptorType = descriptorType;
 		}
-
-		auto pElement = arrayIndex == 0 ? &data.m_Element : &data.m_Elements[arrayIndex - 1];
-		switch (data.m_DescriptorType)
-		{
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			if (pElement->imageInfo.sampler != resource.GetHandle())
-			{
-				pElement->imageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				pElement->imageInfo.imageView = VK_NULL_HANDLE;
-				pElement->imageInfo.sampler = resource.GetHandle();
-
-				m_IsDirty = true;
-			}
-			break;
-		default:
-			BvAssert(nullptr, "Resource doesn't match binding's type");
-			break;
-		}
+		break;
+	default:
+		BvAssert(nullptr, "Resource doesn't match binding's type");
+		break;
 	}
 }
 
 
-BvDescriptorSetVk::BvDescriptorSetVk(const BvRenderDeviceVk& device, VkDescriptorSet descriptorSet)
-	: m_Device(device), m_DescriptorSet(descriptorSet)
+void BvResourceBindingStateVk::Reset()
+{
+	m_Bindings.Clear();
+	m_Resources.Clear();
+}
+
+
+const BvResourceBindingStateVk::ResourceData* BvResourceBindingStateVk::GetResource(const ResourceId& resId) const
+{
+	auto it = m_Bindings.FindKey(resId);
+	return it != m_Bindings.cend() ? &m_Resources[it->second] : nullptr;
+}
+
+
+BvResourceBindingStateVk::ResourceData& BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex)
+{
+	ResourceId resId{ set, binding, arrayIndex };
+	auto bindingIt = m_Bindings.Emplace(resId, 0);
+	u32 index = 0;
+	if (!bindingIt.second)
+	{
+		index = bindingIt.first->second;
+	}
+	else
+	{
+		m_Resources.EmplaceBack();
+		index = static_cast<u32>(m_Resources.Size()) - 1;
+	}
+
+	return m_Resources[index];
+}
+
+
+BvDescriptorSetVk::BvDescriptorSetVk()
 {
 }
 
 
-BvDescriptorSetVk::BvDescriptorSetVk(BvDescriptorSetVk&& rhs)
-	: m_Device(rhs.m_Device), m_DescriptorSet(rhs.m_DescriptorSet)
+BvDescriptorSetVk::BvDescriptorSetVk(const BvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet)
+	: m_pDevice(pDevice), m_DescriptorSet(descriptorSet)
 {
+}
+
+
+BvDescriptorSetVk::BvDescriptorSetVk(BvDescriptorSetVk&& rhs) noexcept
+{
+	*this = std::move(rhs);
+}
+
+
+BvDescriptorSetVk& BvDescriptorSetVk::operator=(BvDescriptorSetVk&& rhs) noexcept
+{
+	if (this != &rhs)
+	{
+		m_pDevice = rhs.m_pDevice;
+		std::swap(m_DescriptorSet, rhs.m_DescriptorSet);
+	}
+
+	return *this;
 }
 
 
 BvDescriptorSetVk::~BvDescriptorSetVk()
 {
-
 }
 
 
-void BvDescriptorSetVk::Update(const BvResourceBindingState& descriptorData)
+void BvDescriptorSetVk::Update(const BvVector<VkWriteDescriptorSet>& writeSets)
 {
-	BvVector<VkWriteDescriptorSet> writeDescriptors;
-	auto& resources = descriptorData.GetBindings();
-	for (auto& resourcePair : resources)
-	{
-		auto& resource = resourcePair.second;
-		for (auto i = 0; i < resource.m_Count; ++i)
-		{
-			VkWriteDescriptorSet writeDescriptor{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-			//writeDescriptor.pNext = nullptr;
-			writeDescriptor.dstSet = m_DescriptorSet;
-			writeDescriptor.dstBinding = resourcePair.first;
-			writeDescriptor.dstArrayElement = i;
-			writeDescriptor.descriptorCount = 1;
-			writeDescriptor.descriptorType = resource.m_DescriptorType;
-			auto pElement = i == 0 ? &resource.m_Element : &resource.m_Elements[i - 1];
-			switch (resource.m_DescriptorType)
-			{
-			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-				writeDescriptor.pBufferInfo = &pElement->bufferInfo;
-				break;
-			case VK_DESCRIPTOR_TYPE_SAMPLER:
-			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-				writeDescriptor.pImageInfo = &pElement->imageInfo;
-				break;
-			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-				writeDescriptor.pTexelBufferView = &pElement->bufferView;
-				break;
-			}
-		}
-	}
+	//BvVector<VkWriteDescriptorSet> writeDescriptors;
+	//auto& resources = descriptorData.GetBindings();
+	//for (auto& resourcePair : resources)
+	//{
+	//	auto& resource = resourcePair.second;
+	//	for (auto i = 0; i < resource.m_Count; ++i)
+	//	{
+	//		VkWriteDescriptorSet writeDescriptor{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+	//		//writeDescriptor.pNext = nullptr;
+	//		writeDescriptor.dstSet = m_DescriptorSet;
+	//		writeDescriptor.dstBinding = resourcePair.first;
+	//		writeDescriptor.dstArrayElement = i;
+	//		writeDescriptor.descriptorCount = 1;
+	//		writeDescriptor.descriptorType = resource.m_DescriptorType;
+	//		auto pElement = i == 0 ? &resource.m_Element : &resource.m_Elements[i - 1];
+	//		switch (resource.m_DescriptorType)
+	//		{
+	//		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+	//		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+	//			writeDescriptor.pBufferInfo = &pElement->bufferInfo;
+	//			break;
+	//		case VK_DESCRIPTOR_TYPE_SAMPLER:
+	//		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+	//		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+	//			writeDescriptor.pImageInfo = &pElement->imageInfo;
+	//			break;
+	//		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+	//		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+	//			writeDescriptor.pTexelBufferView = &pElement->bufferView;
+	//			break;
+	//		}
+	//	}
+	//}
 
-	vkUpdateDescriptorSets(m_Device.GetHandle(), (u32)writeDescriptors.Size(), writeDescriptors.Data(), 0, nullptr);
+	vkUpdateDescriptorSets(m_pDevice->GetHandle(), (u32)writeSets.Size(), writeSets.Data(), 0, nullptr);
 }
 
 
-BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk& device, const BvShaderResourceLayoutVk& layout, u32 set, u32 maxAllocationsPerPool)
-	: m_Device(device), m_MaxAllocationsPerPool(maxAllocationsPerPool)
+BvDescriptorPoolVk::BvDescriptorPoolVk()
+{
+}
+
+
+BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool)
+	: m_pDevice(pDevice), m_MaxAllocationsPerPool(maxAllocationsPerPool)
 {
 	BvRobinMap<VkDescriptorType, u32> poolSizes;
-	auto it = layout.GetDesc().m_ShaderResources.FindKey(set);
-	BvAssert(it != layout.GetDesc().m_ShaderResources.cend(), "Set not found in current Shader Resource Layout");
+	auto it = pLayout->GetDesc().m_ShaderResources.FindKey(set);
+	BvAssert(it != pLayout->GetDesc().m_ShaderResources.cend(), "Set not found in current Shader Resource Layout");
 	auto& resources = it->second;
-	m_Layout = layout.GetSetLayoutHandles().At(set);
+	m_Layout = pLayout->GetSetLayoutHandles().At(set);
 	for (auto& resource : resources)
 	{
 		auto& poolSize = poolSizes[GetVkDescriptorType(resource.second.m_ShaderResourceType)];
@@ -231,10 +266,25 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk& device, const BvS
 }
 
 
-BvDescriptorPoolVk::BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs)
-	: m_Device(rhs.m_Device), m_Layout(rhs.m_Layout), m_CurrPoolIndex(rhs.m_CurrPoolIndex), m_MaxAllocationsPerPool(rhs.m_MaxAllocationsPerPool),
-	m_DescriptorPools(std::move(rhs.m_DescriptorPools)), m_PoolSizes(std::move(rhs.m_PoolSizes))
+BvDescriptorPoolVk::BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs) noexcept
 {
+	*this = std::move(rhs);
+}
+
+
+BvDescriptorPoolVk& BvDescriptorPoolVk::operator=(BvDescriptorPoolVk&& rhs) noexcept
+{
+	if (this != &rhs)
+	{
+		m_pDevice = rhs.m_pDevice;
+		std::swap(m_Layout, rhs.m_Layout);
+		std::swap(m_CurrPoolIndex, rhs.m_CurrPoolIndex);
+		std::swap(m_MaxAllocationsPerPool, rhs.m_MaxAllocationsPerPool);
+		std::swap(m_DescriptorPools, rhs.m_DescriptorPools);
+		std::swap(m_PoolSizes, rhs.m_PoolSizes);
+	}
+
+	return *this;
 }
 
 
@@ -255,7 +305,8 @@ void BvDescriptorPoolVk::Create()
 	poolCI.pPoolSizes = m_PoolSizes.Data();
 
 	auto& pool = m_DescriptorPools.EmplaceBack();
-	auto result = vkCreateDescriptorPool(m_Device.GetHandle(), &poolCI, nullptr, &pool.pool);
+	auto result = vkCreateDescriptorPool(m_pDevice->GetHandle(), &poolCI, nullptr, &pool.pool);
+	pool.currAllocationCount = 0;
 }
 
 
@@ -263,7 +314,7 @@ void BvDescriptorPoolVk::Destroy()
 {
 	for (auto& pool : m_DescriptorPools)
 	{
-		vkDestroyDescriptorPool(m_Device.GetHandle(), pool.pool, nullptr);
+		vkDestroyDescriptorPool(m_pDevice->GetHandle(), pool.pool, nullptr);
 	}
 
 	m_DescriptorPools.Clear();
@@ -272,31 +323,32 @@ void BvDescriptorPoolVk::Destroy()
 
 VkDescriptorSet BvDescriptorPoolVk::Allocate()
 {
-	u32 poolIndex = -1;
-	for (auto i = m_CurrPoolIndex; i < m_DescriptorPools.Size(); ++i)
-	{
-		if (m_DescriptorPools[i].currAllocationCount < m_MaxAllocationsPerPool)
-		{
-			poolIndex = i;
-			break;
-		}
-	}
-
-	if (poolIndex == -1)
+	if (m_CurrPoolIndex == m_DescriptorPools.Size())
 	{
 		Create();
-		poolIndex = m_CurrPoolIndex++;
+	}
+
+	if (m_DescriptorPools[m_CurrPoolIndex].currAllocationCount == m_MaxAllocationsPerPool)
+	{
+		if (++m_CurrPoolIndex == m_DescriptorPools.Size())
+		{
+			Create();
+		}
 	}
 
 	VkDescriptorSetAllocateInfo allocateInfo{};
 	allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	//allocateInfo.pNext = nullptr;
 	allocateInfo.descriptorSetCount = 1;
-	allocateInfo.descriptorPool = m_DescriptorPools[poolIndex].pool;
+	allocateInfo.descriptorPool = m_DescriptorPools[m_CurrPoolIndex].pool;
 	allocateInfo.pSetLayouts = &m_Layout;
 
 	VkDescriptorSet descriptorSet;
-	auto result = vkAllocateDescriptorSets(m_Device.GetHandle(), &allocateInfo, &descriptorSet);
+	auto result = vkAllocateDescriptorSets(m_pDevice->GetHandle(), &allocateInfo, &descriptorSet);
+
+	++m_DescriptorPools[m_CurrPoolIndex].currAllocationCount;
+
+	return descriptorSet;
 }
 
 
@@ -305,7 +357,7 @@ void BvDescriptorPoolVk::Reset()
 	for (auto& pool : m_DescriptorPools)
 	{
 		pool.currAllocationCount = 0;
-		vkResetDescriptorPool(m_Device.GetHandle(), pool.pool, 0);
+		vkResetDescriptorPool(m_pDevice->GetHandle(), pool.pool, 0);
 	}
 
 	m_CurrPoolIndex = 0;

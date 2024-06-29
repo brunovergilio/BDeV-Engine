@@ -20,7 +20,6 @@ enum class GPUVendorId : u32
 enum GUPCapabilities : u64
 {
 	kShadingRate,
-	kDescriptorIndexing,
 	kMeshShader,
 	kRayTracing,
 	kConservativeRasterization

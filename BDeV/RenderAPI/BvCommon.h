@@ -9,7 +9,8 @@
 
 class BvBuffer;
 class BvTexture;
-class BvCommandQueue;
+class BvTextureView;
+class BvCommandContext;
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -41,16 +42,13 @@ enum class IndexFormat : u8
 	kU32
 };
 
-enum class MemoryFlags : u8
+enum class MemoryType : u8
 {
-	kDeviceLocal	= 0x1,
-	kHostVisible	= 0x2,
-	kHostCoherent	= 0x4,
-	kUpload			= kHostVisible | kHostCoherent,
-	kHostCached		= 0x8,
-	kReadBack		= kHostVisible | kHostCached | kHostCoherent,
+	kDevice,
+	kUpload,
+	kReadBack,
+	kShared
 };
-BV_USE_ENUM_CLASS_OPERATORS(MemoryFlags);
 
 
 // Copy of DXGI formats, so mapping to DirectX is simpler and also because of DDS textures
@@ -123,7 +121,7 @@ enum class Format : u8
 	kR8_SNorm = 63,
 	kR8_SInt = 64,
 	kA8_UNorm = 65,
-	kR1_UNorm = 66,
+	//kR1_UNorm = 66,
 	kRGB9E5_SHAREDEXP = 67,
 	kRG8_BG8_UNorm = 68,
 	kGR8_GB8_UNorm = 69,
@@ -146,7 +144,7 @@ enum class Format : u8
 	kBGR5A1_UNorm = 86,
 	kBGRA8_UNorm = 87,
 	kBGRX8_UNorm = 88,
-	kRGB10_XR_BIAS_A2_UNorm = 89,
+	//kRGB10_XR_BIAS_A2_UNorm = 89,
 	kBGRA8_Typeless = 90,
 	kBGRA8_UNorm_SRGB = 91,
 	kBGRX8_Typeless = 92,
@@ -157,26 +155,182 @@ enum class Format : u8
 	kBC7_Typeless = 97,
 	kBC7_UNorm = 98,
 	kBC7_UNorm_SRGB = 99,
-	kAYUV = 100,
-	kY410 = 101,
-	kY416 = 102,
+	//kAYUV = 100,
+	//kY410 = 101,
+	//kY416 = 102,
 	kNV12 = 103,
-	kP010 = 104,
-	kP016 = 105,
-	k420_OPAQUE = 106,
-	kYUY2 = 107,
-	kY210 = 108,
-	kY216 = 109,
-	kNV11 = 110,
-	kAI44 = 111,
-	kIA44 = 112,
-	kP8 = 113,
-	kA8P8 = 114,
-	kBGRA4_UNorm = 115,
-	kP208 = 130,
-	kV208 = 131,
-	kV408 = 132,
+	//kP010 = 104,
+	//kP016 = 105,
+	//k420_OPAQUE = 106,
+	//kYUY2 = 107,
+	//kY210 = 108,
+	//kY216 = 109,
+	//kNV11 = 110,
+	//kAI44 = 111,
+	//kIA44 = 112,
+	//kP8 = 113,
+	//kA8P8 = 114,
+	//kBGRA4_UNorm = 115,
+	//kP208 = 130,
+	//kV208 = 131,
+	//kV408 = 132,
 };
+
+
+struct FormatInfo
+{
+	u8 m_ElementCount : 3;
+	u8 m_ElementSize : 5;
+	u8 m_BlockWidth : 3;
+	u8 m_BlockHeight : 3;
+	bool m_IsCompressed : 1;
+	bool m_IsSRGBFormat : 1;
+	Format m_SRGBVariant;
+	Format m_NonSRGBVariant;
+};
+
+
+constexpr FormatInfo GetFormatInfo(Format format)
+{
+	constexpr FormatInfo kFormatInfos[] =
+	{
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kUnknown
+		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_Typeless
+		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_Float
+		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_UInt
+		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_SInt
+		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_Typeless
+		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_Float
+		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_UInt
+		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_SInt
+		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_Typeless
+		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_Float
+		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_UNorm
+		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_UInt
+		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_SNorm
+		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_SInt
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_Typeless
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_Float
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_UInt
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_SInt
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32G8X24_Typeless
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD32_Float_S8X24_UInt
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_Float_X8X24_Typeless
+		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kX32_Typeless_G8X24_UInt
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10A2_Typeless
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10A2_UNorm
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10A2_UInt
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG11B10_Float
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_Typeless
+		{ 4, 1, 1, 1, false, false, Format::kRGBA8_UNorm_SRGB, Format::kRGBA8_UNorm },// kRGBA8_UNorm
+		{ 4, 1, 1, 1, false, true, Format::kRGBA8_UNorm_SRGB, Format::kRGBA8_UNorm },// kRGBA8_UNorm_SRGB
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_UInt
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_SNorm
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_SInt
+		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_Typeless
+		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_Float
+		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_UNorm
+		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_UInt
+		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_SNorm
+		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_SInt
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_Typeless
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD32_Float
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_Float
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_UInt
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_SInt
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR24G8_Typeless
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD24_UNorm_S8_UInt
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR24_UNorm_X8_Typeless
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kX24_Typeless_G8_UInt
+		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_Typeless
+		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_UNorm
+		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_UInt
+		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_SNorm
+		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_SInt
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_Typeless
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_Float
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD16_UNorm
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_UNorm
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_UInt
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_SNorm
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_SInt
+		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_Typeless
+		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_UNorm
+		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_UInt
+		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_SNorm
+		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_SInt
+		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kA8_UNorm
+		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR1_UNorm
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB9E5_SHAREDEXP
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_BG8_UNorm
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kGR8_GB8_UNorm
+		{ 3, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC1_Typeless
+		{ 3, 8, 4, 4, true, false, Format::kBC1_UNorm_SRGB, Format::kBC1_UNorm },// kBC1_UNorm
+		{ 3, 8, 4, 4, true, true, Format::kBC1_UNorm_SRGB, Format::kBC1_UNorm },// kBC1_UNorm_SRGB
+		{ 4, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC2_Typeless
+		{ 4, 16, 4, 4, true, false, Format::kBC2_UNorm_SRGB, Format::kBC2_UNorm },// kBC2_UNorm
+		{ 4, 16, 4, 4, true, true, Format::kBC2_UNorm_SRGB, Format::kBC2_UNorm },// kBC2_UNorm_SRGB
+		{ 4, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC3_Typeless
+		{ 4, 16, 4, 4, true, false, Format::kBC3_UNorm_SRGB, Format::kBC3_UNorm },// kBC3_UNorm
+		{ 4, 16, 4, 4, true, true, Format::kBC3_UNorm_SRGB, Format::kBC3_UNorm },// kBC3_UNorm_SRGB
+		{ 1, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC4_Typeless
+		{ 1, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC4_UNorm
+		{ 1, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC4_SNorm
+		{ 2, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC5_Typeless
+		{ 2, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC5_UNorm
+		{ 2, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC5_SNorm
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kB5G6R5_UNorm
+		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kBGR5A1_UNorm
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kBGRA8_UNorm
+		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kBGRX8_UNorm
+		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10_XR_BIAS_A2_UNorm
+		{ 4, 1, 1, 1, false, false, Format::kBGRA8_UNorm_SRGB, Format::kBGRA8_Typeless },// kBGRA8_Typeless
+		{ 4, 1, 1, 1, false, true, Format::kBGRA8_UNorm_SRGB, Format::kBGRA8_Typeless },// kBGRA8_UNorm_SRGB
+		{ 4, 1, 1, 1, false, false, Format::kBGRX8_UNorm_SRGB, Format::kBGRX8_Typeless },// kBGRX8_Typeless
+		{ 4, 1, 1, 1, false, true, Format::kBGRX8_UNorm_SRGB, Format::kBGRX8_Typeless },// kBGRX8_UNorm_SRGB
+		{ 3, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC6H_Typeless
+		{ 3, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC6H_UF16
+		{ 3, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC6H_SF16
+		{ 4, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC7_Typeless
+		{ 4, 16, 4, 4, true, false, Format::kBC7_UNorm_SRGB, Format::kBC7_UNorm },// kBC7_UNorm
+		{ 4, 16, 4, 4, true, true, Format::kBC7_UNorm_SRGB, Format::kBC7_UNorm },// kBC7_UNorm_SRGB
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kAYUV
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY410
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY416
+		{ 3, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kNV12
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP010
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP016
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// k420_OPAQUE
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kYUY2
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY210
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY216
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kNV11
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kAI44
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kIA44
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP8
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kA8P8
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kBGRA4_UNorm
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP208
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kV208
+		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kV408
+	};
+
+	return kFormatInfos[static_cast<u32>(format)];
+}
 
 
 enum class CompareOp : u8
@@ -230,9 +384,6 @@ enum class ResourceState : u8
 	kDepthStencilRead,
 	kDepthStencilWrite,
 	kPresent,
-
-	// For automatic features
-	kUnknown,
 };
 
 
@@ -299,42 +450,210 @@ enum class StoreOp : u8
 };
 
 
-struct Extent
+struct Extent3D
 {
 	union
 	{
-		struct 
+		struct
 		{
 			u32 width;
 			u32 height;
-			u32 depthOrLayerCount;
+			u32 depth;
 		};
-		struct 
+		struct
 		{
 			u32 x;
 			u32 y;
 			u32 z;
 		};
 	};
+
+	friend constexpr bool operator==(const Extent3D& lhs, const Extent3D& rhs)
+	{
+		return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+	}
+};
+
+
+struct Offset3D
+{
+	i32 x;
+	i32 y;
+	i32 z;
+};
+
+
+enum class BufferUsage : u16
+{
+	kNone = 0,
+	kUniformBuffer = BvBit(1),
+	kStorageBuffer = BvBit(2),
+	kUniformTexelBuffer = BvBit(3),
+	kStorageTexelBuffer = BvBit(4),
+	kIndexBuffer = BvBit(5),
+	kVertexBuffer = BvBit(6),
+	kIndirectBuffer = BvBit(7),
+};
+BV_USE_ENUM_CLASS_OPERATORS(BufferUsage);
+
+
+enum class BufferCreateFlags : u8
+{
+	kNone = 0,
+	kCreateMapped = BvBit(0)
+};
+BV_USE_ENUM_CLASS_OPERATORS(BufferCreateFlags);
+
+
+struct BufferDesc
+{
+	u64 m_Size = 0;
+	BufferCreateFlags m_CreateFlags = BufferCreateFlags::kNone;
+	BufferUsage m_UsageFlags = BufferUsage::kNone;
+	MemoryType m_MemoryType = MemoryType::kDevice;
+	ResourceState m_ResourceState = ResourceState::kCommon;
+};
+
+
+struct BufferViewDesc
+{
+	BvBuffer* m_pBuffer = nullptr;
+	u64 m_Offset = 0;
+	u64 m_ElementCount = 0;
+	u64 m_Stride = 0;
+	Format m_Format = Format::kUnknown;
+};
+
+
+enum class TextureType : u8
+{
+	kTexture1D,
+	kTexture2D,
+	kTexture3D,
+};
+
+
+enum class TextureUsage : u8
+{
+	kDefault = 0x0,
+	kTransferSrc = 0x1,
+	kTransferDst = 0x2,
+	kShaderResource = 0x4,
+	kUnorderedAccess = 0x8,
+	kColorTarget = 0x10,
+	kDepthStencilTarget = 0x20,
+};
+BV_USE_ENUM_CLASS_OPERATORS(TextureUsage);
+
+
+enum class TextureCreateFlags : u8
+{
+	kNone = 0,
+	kCreateCubemap = BvBit(0)
+};
+BV_USE_ENUM_CLASS_OPERATORS(TextureCreateFlags);
+
+
+struct TextureDesc
+{
+	Extent3D m_Size{ 1,1,1 };
+	u32 m_Alignment = 0;
+	u8 m_MipLevels = 1;
+	u8 m_LayerCount = 1;
+	u8 m_SampleCount = 1;
+	TextureType m_ImageType = TextureType::kTexture2D;
+	Format m_Format = Format::kUnknown;
+	TextureCreateFlags m_CreateFlags = TextureCreateFlags::kNone;
+	TextureUsage m_UsageFlags = TextureUsage::kDefault;
+	MemoryType m_MemoryType = MemoryType::kDevice;
+	ResourceState m_ResourceState = ResourceState::kShaderResource;
+};
+
+
+enum class TextureViewType : u8
+{
+	kTexture1D,
+	kTexture1DArray,
+	kTexture2D,
+	kTexture2DArray,
+	kTextureCube,
+	kTextureCubeArray,
+	kTexture3D,
 };
 
 
 struct SubresourceDesc
 {
 	u32 firstMip = 0;
-	u32 mipCount = 1;
+	u32 mipCount = kU32Max;
 	u32 firstLayer = 0;
-	u32 layerCount = 1;
+	u32 layerCount = kU32Max;
+};
+
+
+struct TextureSubresource
+{
+	u32 m_Width;
+	u32 m_Height;
+	u32 m_Detph;
+	u32 m_NumRows;
+	u64 m_RowPitch;
+	u64 m_SlicePitch;
+	u64 m_MipSize;
+};
+
+
+struct SubresourceFootprint
+{
+	u64 m_Offset;
+	TextureSubresource m_Subresource;
+};
+
+
+struct SubresourceData
+{
+	const u8* m_pData;
+	u64 m_RowPitch;
+	u64 m_SlicePitch;
+};
+
+
+struct BufferInitData
+{
+	BvCommandContext* m_pContext = nullptr;
+	const void* m_pData;
+	u64 m_Size;
+};
+
+
+struct TextureInitData
+{
+	BvCommandContext* m_pContext = nullptr;
+	u32 m_SubresourceCount = 0;
+	SubresourceData* m_pSubresources = nullptr;
+};
+
+
+struct TextureViewDesc
+{
+	BvTexture* m_pTexture = nullptr;
+	SubresourceDesc m_SubresourceDesc;
+	TextureViewType m_ViewType = TextureViewType::kTexture2D;
+	Format m_Format = Format::kUnknown;
 };
 
 
 struct ClearColorValue
 {
-	ClearColorValue()
+	constexpr ClearColorValue()
 		: r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
-	ClearColorValue(float r, float g, float b, float a = 1.0f)
+	constexpr ClearColorValue(float r, float g, float b, float a = 1.0f)
 		: r(r), g(g), b(b), a(a) {}
-	ClearColorValue(float depth, u8 stencil = 0)
+	constexpr ClearColorValue(const float* pColors)
+	{
+		std::copy(pColors, pColors + 4, colors);
+	}
+	constexpr ClearColorValue(float depth, u8 stencil = 0)
 		: depth(depth), stencil(stencil) {}
 	union
 	{
@@ -344,6 +663,10 @@ struct ClearColorValue
 			float g;
 			float b;
 			float a;
+		};
+		struct
+		{
+			float colors[4];
 		};
 		struct
 		{
@@ -384,65 +707,151 @@ struct Rect
 };
 
 
-struct CopyRegion
+struct BufferCopyDesc
 {
-	union
-	{
-		struct Buffer
-		{
-			u64 srcSize;
-			u64 srcOffset;
-			u64 dstOffset;
-		} buffer;
-		struct BufferTexture
-		{
-			u64 bufferOffset;
-			Extent textureOffset;
-			Extent textureSize;
-			u32 mipLevel;
-		} bufferTexture;
-		struct Texture
-		{
-			Extent srcTextureOffset;
-			u32 srcMipLevel;
-			Extent dstTextureOffset;
-			u32 dstMipLevel;
-			Extent size;
-		} texture;
-	};
+	u64 m_SrcSize = kU64Max;
+	u64 m_SrcOffset = 0;
+	u64 m_DstOffset = 0;
+};
+
+
+struct TextureCopyDesc
+{
+	Offset3D m_SrcTextureOffset{ 0,0,0 };
+	u32 m_SrcMip = 0;
+	u32 m_SrcLayer = 0;
+	Offset3D m_DstTextureOffset{ 0,0,0 };
+	u32 m_DstMip = 0;
+	u32 m_DstLayer = 0;
+	Extent3D m_Size{ kU32Max, kU32Max, kU32Max };
+};
+
+
+struct BufferTextureCopyDesc
+{
+	u64 m_BufferSize = kU64Max;
+	u64 m_BufferOffset = 0;
+	Offset3D m_TextureOffset{ 0,0,0 };
+	Extent3D m_TextureSize{ kU32Max, kU32Max, kU32Max };
+	u32 m_Mip = 0;
+	u32 m_Layer = 0;
 };
 
 
 struct ResourceBarrierDesc
 {
-	BvTexture* pTexture = nullptr;
-	BvBuffer* pBuffer = nullptr;
+	enum class Type : u8
+	{
+		kStateTransition,
+		kMemory,
+	};
 
-	BvCommandQueue* pSrcQueue = nullptr;
-	BvCommandQueue* pDstQueue = nullptr;
+	BvTexture* m_pTexture = nullptr;
+	BvBuffer* m_pBuffer = nullptr;
 
-	ResourceState srcLayout = ResourceState::kCommon;
-	ResourceState dstLayout = ResourceState::kCommon;
+	ResourceState m_SrcLayout = ResourceState::kCommon;
+	ResourceState m_DstLayout = ResourceState::kCommon;
+
+	Type m_Type = Type::kStateTransition;
 
 	// These fields can be used for more detailed barriers (in Vulkan)
-	ResourceAccess srcAccess = ResourceAccess::kAuto;
-	ResourceAccess dstAccess = ResourceAccess::kAuto;
+	QueueFamilyType m_SrcQueue = QueueFamilyType::kGraphics;
+	QueueFamilyType m_DstQueue = QueueFamilyType::kGraphics;
 
-	PipelineStage srcPipelineStage = PipelineStage::kAuto;
-	PipelineStage dstPipelineStage = PipelineStage::kAuto;
+	ResourceAccess m_SrcAccess = ResourceAccess::kAuto;
+	ResourceAccess m_DstAccess = ResourceAccess::kAuto;
 
-	SubresourceDesc subresource;
+	PipelineStage m_SrcPipelineStage = PipelineStage::kAuto;
+	PipelineStage m_DstPipelineStage = PipelineStage::kAuto;
+
+	SubresourceDesc m_Subresource;
 };
 
 
-// Interface that serves as a base class for the render components
-class IBvRenderObject
+enum class RenderTargetType : u8
 {
-	BV_NOCOPYMOVE(IBvRenderObject);
+	kColor,
+	kDepthStencil,
+	kResolve,
+	kShadingRate
+};
 
-public:
-	IBvRenderObject() {}
-	virtual ~IBvRenderObject() {}
 
-	virtual void Destroy() = 0;
+enum class ResolveMode : u8
+{
+	kNone,
+	kAverage,
+	kMin,
+	kMax
+};
+
+
+struct RenderTargetDesc
+{
+	constexpr RenderTargetDesc(BvTextureView* pView, const ClearColorValue& clearValues, RenderTargetType type, LoadOp loadOp, StoreOp storeOp,
+		ResourceState stateBefore, ResourceState state, ResourceState stateAfter)
+		: m_pView(pView), m_ClearValues(clearValues), m_Type(type), m_LoadOp(loadOp), m_StoreOp(storeOp),
+		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter)
+	{
+	}
+
+	static constexpr RenderTargetDesc AsRenderTarget(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
+		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
+	{
+		return RenderTargetDesc(pView, clearValues, RenderTargetType::kColor, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
+	}
+
+	static constexpr RenderTargetDesc AsSwapChain(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
+		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kPresent)
+	{
+		return RenderTargetDesc(pView, clearValues, RenderTargetType::kColor, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
+	}
+
+	static constexpr RenderTargetDesc AsDepthStencil(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(1.0f, 0), LoadOp loadOp = LoadOp::kClear,
+		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
+	{
+		return RenderTargetDesc(pView, clearValues, RenderTargetType::kDepthStencil, loadOp, storeOp, stateBefore, ResourceState::kDepthStencilWrite, stateAfter);
+	}
+
+	static constexpr RenderTargetDesc AsResolve(BvTextureView* pView, ResourceState stateBefore = ResourceState::kShaderResource, ResourceState stateAfter = ResourceState::kShaderResource)
+	{
+		return RenderTargetDesc(pView, ClearColorValue(), RenderTargetType::kResolve, LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kTransferDst, stateAfter);
+	}
+
+	BvTextureView* m_pView = nullptr;
+	ClearColorValue m_ClearValues = ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+	RenderTargetType m_Type = RenderTargetType::kColor;
+	LoadOp m_LoadOp = LoadOp::kClear;
+	StoreOp m_StoreOp = StoreOp::kStore;
+	ResourceState m_StateBefore = ResourceState::kCommon;
+	ResourceState m_State = ResourceState::kRenderTarget;
+	ResourceState m_StateAfter = ResourceState::kShaderResource;
+	ResolveMode m_ResolveMode = ResolveMode::kNone;
+};
+
+
+struct RenderPassTargetDesc
+{
+	constexpr RenderPassTargetDesc(BvTextureView* pView)
+		: m_pView(pView) {}
+
+	constexpr RenderPassTargetDesc(BvTextureView* pView, float r, float g, float b, float a = 1.0f)
+		: m_pView(pView), m_ClearValues(r, g, b, a) {}
+
+	constexpr RenderPassTargetDesc(BvTextureView* pView, const float* pColors)
+		: m_pView(pView), m_ClearValues(pColors) {}
+
+	constexpr RenderPassTargetDesc(BvTextureView* pView, float depth, u8 stencil)
+		: m_pView(pView), m_ClearValues(depth, stencil) {}
+
+	BvTextureView* m_pView = nullptr;
+	ClearColorValue m_ClearValues = ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+};
+
+
+enum class QueryType : u8
+{
+	kTimestamp,
+	kOcclusion,
+	kOcclusionBinary,
 };

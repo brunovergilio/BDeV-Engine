@@ -57,17 +57,18 @@ const char * const VkResultToString(const VkResult result)
 
 bool IsDepthFormat(Format format)
 {
-	return GetVkFormatMap(format).aspectFlags == VK_IMAGE_ASPECT_DEPTH_BIT;
+	return GetVkFormatMap(format).aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT;
 }
 
 
 bool IsStencilFormat(Format format)
 {
-	return GetVkFormatMap(format).aspectFlags == VK_IMAGE_ASPECT_STENCIL_BIT;
+	return GetVkFormatMap(format).aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT;
 }
 
 
 bool IsDepthStencilFormat(Format format)
 {
-	return GetVkFormatMap(format).aspectFlags == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+	VkImageAspectFlags flags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	return (GetVkFormatMap(format).aspectFlags & flags) == flags;
 }

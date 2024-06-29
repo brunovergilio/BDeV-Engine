@@ -25,3 +25,6 @@ private:
 	const BvRenderDeviceVk & m_Device;
 	VkImageView m_View = VK_NULL_HANDLE;
 };
+
+
+BV_CREATE_CAST_TO_VK(BvTextureView)

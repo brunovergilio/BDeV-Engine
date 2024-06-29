@@ -278,7 +278,10 @@ bool BvQueue<Type>::PopFront()
 		return false;
 	}
 
-	m_pData[m_Front].~Type();
+	if constexpr (!std::is_trivially_destructible_v<Type>)
+	{
+		m_pData[m_Front].~Type();
+	}
 	m_Front = (m_Front + 1) % m_Capacity;
 	--m_Size;
 
@@ -311,7 +314,10 @@ bool BvQueue<Type>::PopBack()
 	}
 
 	auto backIndex = (m_Front + --m_Size) % m_Capacity;
-	m_pData[backIndex].~Type();
+	if constexpr (!std::is_trivially_destructible_v<Type>)
+	{
+		m_pData[backIndex].~Type();
+	}
 
 	return true;
 }
@@ -327,7 +333,10 @@ bool BvQueue<Type>::PopBack(Type& value)
 
 	auto backIndex = (m_Front + --m_Size) % m_Capacity;
 	value = std::move(m_pData[backIndex]);
-	m_pData[backIndex].~Type();
+	if constexpr (!std::is_trivially_destructible_v<Type>)
+	{
+		m_pData[backIndex].~Type();
+	}
 
 	return true;
 }
@@ -389,9 +398,16 @@ bool BvQueue<Type>::IsEmpty() const
 template<typename Type>
 inline void BvQueue<Type>::Clear()
 {
-	while (m_Size > 0)
+	if constexpr (!std::is_trivially_destructible_v<Type>)
 	{
-		m_pData[(m_Front + m_Size-- - 1) % m_Capacity].~Type();
+		while (m_Size > 0)
+		{
+			m_pData[(m_Front + m_Size-- - 1) % m_Capacity].~Type();
+		}
+	}
+	else
+	{
+		m_Size = 0;
 	}
 }
 

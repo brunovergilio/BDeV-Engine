@@ -113,6 +113,7 @@
   <ItemGroup>
     <ClCompile Include="BvBufferViewVk.cpp" />
     <ClCompile Include="BvBufferVk.cpp" />
+    <ClCompile Include="BvCommandContextVk.cpp" />
     <ClCompile Include="BvCommandPoolVk.cpp" />
     <ClCompile Include="BvCommandQueueVk.cpp" />
     <ClCompile Include="BvDebugReportVk.cpp" />
@@ -120,6 +121,7 @@
     <ClCompile Include="BvDescriptorSetVk.cpp" />
     <ClCompile Include="BvFramebufferVk.cpp" />
     <ClCompile Include="BvPipelineStateVk.cpp" />
+    <ClCompile Include="BvQueryVk.cpp" />
     <ClCompile Include="BvRenderDeviceVk.cpp" />
     <ClCompile Include="BvSamplerVk.cpp" />
     <ClCompile Include="BvSemaphoreVk.cpp" />
@@ -138,6 +140,7 @@
   <ItemGroup>
     <ClInclude Include="BvBufferViewVk.h" />
     <ClInclude Include="BvBufferVk.h" />
+    <ClInclude Include="BvCommandContextVk.h" />
     <ClInclude Include="BvCommandPoolVk.h" />
     <ClInclude Include="BvCommandQueueVk.h" />
     <ClInclude Include="BvCommonVk.h" />
@@ -147,6 +150,7 @@
     <ClInclude Include="BvFramebufferVk.h" />
     <ClInclude Include="BvGPUInfoVk.h" />
     <ClInclude Include="BvPipelineStateVk.h" />
+    <ClInclude Include="BvQueryVk.h" />
     <ClInclude Include="BvRenderDeviceVk.h" />
     <ClInclude Include="BvSamplerVk.h" />
     <ClInclude Include="BvSemaphoreVk.h" />

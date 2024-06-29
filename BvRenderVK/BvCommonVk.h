@@ -26,3 +26,12 @@
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 #include "BDeV/System/Windows/BvWindowsHeader.h"
 #endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+
+
+#define BV_CREATE_CAST_TO_VK(Type) namespace Internal \
+{ \
+BV_INLINE Type##Vk* ToVk(Type* pObj) { return static_cast<Type##Vk*>(pObj); } \
+BV_INLINE const Type##Vk* ToVk(const Type* pObj) { return static_cast<const Type##Vk*>(pObj); } \
+}
+
+#define TO_VK(pObj) Internal::ToVk(pObj)

@@ -12,56 +12,71 @@ class BvTextureViewVk;
 class BvSamplerVk;
 
 
-class BvResourceBindingState final
+class BvResourceBindingStateVk final
 {
 public:
-	struct DescriptorData
+	struct ResourceId
+	{
+		u32 m_Set;
+		u32 m_Binding;
+		u32 m_ArrayIndex;
+
+		friend bool operator==(const ResourceId& lhs, const ResourceId& rhs)
+		{
+			return lhs.m_Set == rhs.m_Set && lhs.m_Binding == rhs.m_Binding && lhs.m_ArrayIndex == rhs.m_ArrayIndex;
+		}
+	};
+
+	struct ResourceData
 	{
 		union Data
 		{
-			VkDescriptorBufferInfo bufferInfo;
-			VkDescriptorImageInfo imageInfo;
-			VkBufferView bufferView;
+			VkDescriptorBufferInfo m_BufferInfo;
+			VkDescriptorImageInfo m_ImageInfo;
+			VkBufferView m_BufferView;
 		};
 
-		// I'm having one element separate from the vector because I believe that in most cases only one element will be needed,
-		// so I won't have to make another dynamic allocation. If more is needed, I can use the vector for the extra elements
-		Data m_Element;
-		BvVector<Data> m_Elements;
-		u32 m_Count;
+		Data m_Data;
 		VkDescriptorType m_DescriptorType;
 	};
 
-	BvResourceBindingState(u32 set);
-	BvResourceBindingState(BvResourceBindingState&& rhs);
-	~BvResourceBindingState();
+	BvResourceBindingStateVk();
+	BvResourceBindingStateVk(BvResourceBindingStateVk&& rhs) noexcept;
+	BvResourceBindingStateVk& operator=(BvResourceBindingStateVk&& rhs) noexcept;
+	~BvResourceBindingStateVk();
 
-	void SetResource(const BvBufferViewVk& resource, u32 binding, u32 arrayIndex = 0);
-	void SetResource(const BvTextureViewVk& resource, u32 binding, u32 arrayIndex = 0);
-	void SetResource(const BvSamplerVk& resource, u32 binding, u32 arrayIndex = 0);
+	void SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex);
 
-	BV_INLINE auto& GetBindings() const { return m_Bindings; }
-	BV_INLINE bool IsDirty() const { return m_IsDirty; }
+	void Reset();
+
+	const ResourceData* GetResource(const ResourceId& resId) const;
 
 private:
-	BvRobinMap<u32, BvRobinMap<u32, DescriptorData>> m_Bindings;
-	bool m_IsDirty = false;
+	ResourceData& AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex);
+
+private:
+	BvRobinMap<ResourceId, u32> m_Bindings;
+	BvVector<ResourceData> m_Resources;
 };
 
 
 class BvDescriptorSetVk final
 {
 public:
-	BvDescriptorSetVk(const BvRenderDeviceVk& device, VkDescriptorSet descriptorSet);
-	BvDescriptorSetVk(BvDescriptorSetVk&& rhs);
+	BvDescriptorSetVk();
+	BvDescriptorSetVk(const BvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet);
+	BvDescriptorSetVk(BvDescriptorSetVk&& rhs) noexcept;
+	BvDescriptorSetVk& operator=(BvDescriptorSetVk&& rhs) noexcept;
 	~BvDescriptorSetVk();
 
-	void Update(const BvResourceBindingState& descriptorData);
+	void Update(const BvVector<VkWriteDescriptorSet>& writeSets);
 
 	BV_INLINE VkDescriptorSet GetHandle() const { return m_DescriptorSet; }
 
 private:
-	const BvRenderDeviceVk& m_Device;
+	const BvRenderDeviceVk* m_pDevice = nullptr;
 	VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;
 };
 
@@ -69,8 +84,10 @@ private:
 class BvDescriptorPoolVk final
 {
 public:
-	BvDescriptorPoolVk(const BvRenderDeviceVk& device, const BvShaderResourceLayoutVk& layout, u32 set, u32 maxAllocationsPerPool);
-	BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs);
+	BvDescriptorPoolVk();
+	BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool);
+	BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs) noexcept;
+	BvDescriptorPoolVk& operator=(BvDescriptorPoolVk&& rhs) noexcept;
 	~BvDescriptorPoolVk();
 
 	void Create();
@@ -79,6 +96,8 @@ public:
 	VkDescriptorSet Allocate();
 	void Reset();
 
+	BV_INLINE bool IsValid() const { return m_Layout != VK_NULL_HANDLE; }
+
 private:
 	struct PoolData
 	{
@@ -86,10 +105,10 @@ private:
 		u32 currAllocationCount;
 	};
 
-	const BvRenderDeviceVk& m_Device;
-	VkDescriptorSetLayout m_Layout;
+	const BvRenderDeviceVk* m_pDevice = nullptr;
+	VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
 	BvVector<PoolData> m_DescriptorPools;
 	BvVector<VkDescriptorPoolSize> m_PoolSizes;
-	u32 m_MaxAllocationsPerPool;
-	u32 m_CurrPoolIndex;
+	u32 m_MaxAllocationsPerPool = 0;
+	u32 m_CurrPoolIndex = 0;
 };

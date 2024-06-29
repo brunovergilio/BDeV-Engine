@@ -173,26 +173,26 @@ GLenum GetGlBufferUsageFlags(BufferUsage usageFlags)
 }
 
 
-GLenum GetGlBufferMemoryFlags(MemoryFlags memoryFlags)
+GLenum GetGlBufferMemoryFlags(MemoryType memoryFlags)
 {
 	switch (memoryFlags)
 	{
-	case MemoryFlags::kDeviceLocal:		return 0;
-	case MemoryFlags::kHostVisible:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT;
-	case MemoryFlags::kHostCoherent:	return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
-	case MemoryFlags::kUpload:			return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
-	case MemoryFlags::kHostCached:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
-	case MemoryFlags::kReadBack:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
+	case MemoryType::kDeviceLocal:		return 0;
+	case MemoryType::kHostVisible:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT;
+	case MemoryType::kHostCoherent:	return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
+	case MemoryType::kUpload:			return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
+	case MemoryType::kHostCached:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
+	case MemoryType::kReadBack:		return GL_MAP_WRITE_BIT | GL_MAP_READ_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 	}
 
 	return 0;
 }
 
 
-GLenum GetGlBufferMappingFlags(MemoryFlags memoryFlags)
+GLenum GetGlBufferMappingFlags(MemoryType memoryFlags)
 {
 	GLenum mappingFlags = GL_MAP_WRITE_BIT;
-	if ((memoryFlags & MemoryFlags::kHostCached) == MemoryFlags::kHostCached)
+	if ((memoryFlags & MemoryType::kHostCached) == MemoryType::kHostCached)
 	{
 		mappingFlags |= GL_MAP_READ_BIT;
 	}
@@ -219,7 +219,7 @@ GLenum GetGlTextureTarget(const TextureDesc& textureDesc)
 		{
 			if (!textureDesc.m_UseAsCubeMap)
 			{
-				if (textureDesc.m_Size.depthOrLayerCount == 1)
+				if (textureDesc.m_Size.depth == 1)
 				{
 					return GL_TEXTURE_2D;
 				}
@@ -230,7 +230,7 @@ GLenum GetGlTextureTarget(const TextureDesc& textureDesc)
 			}
 			else
 			{
-				if (textureDesc.m_Size.depthOrLayerCount <= 6)
+				if (textureDesc.m_Size.depth <= 6)
 				{
 					return GL_TEXTURE_CUBE_MAP;
 				}
@@ -244,7 +244,7 @@ GLenum GetGlTextureTarget(const TextureDesc& textureDesc)
 		{
 			if (!textureDesc.m_UseAsCubeMap)
 			{
-				if (textureDesc.m_Size.depthOrLayerCount == 1)
+				if (textureDesc.m_Size.depth == 1)
 				{
 					return GL_TEXTURE_2D_MULTISAMPLE;
 				}
@@ -255,7 +255,7 @@ GLenum GetGlTextureTarget(const TextureDesc& textureDesc)
 			}
 			else
 			{
-				if (textureDesc.m_Size.depthOrLayerCount <= 6)
+				if (textureDesc.m_Size.depth <= 6)
 				{
 					return GL_TEXTURE_CUBE_MAP;
 				}

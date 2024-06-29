@@ -91,7 +91,7 @@ void BvRenderPassVk::SetupAttachments(BvFixedVector<VkAttachmentDescription, kMa
 
 		if (attachmentDescs[i].storeOp == VK_ATTACHMENT_STORE_OP_STORE)
 		{
-			if (rt.m_StateAfter == ResourceState::kUnknown)
+			if (rt.m_StateAfter == ResourceState::kCommon)
 			{
 				attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			}
@@ -130,7 +130,7 @@ void BvRenderPassVk::SetupAttachments(BvFixedVector<VkAttachmentDescription, kMa
 
 		if (attachmentDescs[i].storeOp == VK_ATTACHMENT_STORE_OP_STORE)
 		{
-			if (rt.m_StateAfter == ResourceState::kUnknown)
+			if (rt.m_StateAfter == ResourceState::kCommon)
 			{
 				attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			}

@@ -2,7 +2,7 @@
 
 
 // BvFixedVector
-// Container class, with fixed-sized stack memory.
+// Container class, with fixed-size stack memory.
 
 
 #include "BDeV/BvCore.h"
@@ -236,9 +236,12 @@ inline void BvFixedVector<Type, N>::Resize(const size_t size, const Type & value
 	}
 	else
 	{
-		for (auto i = m_Size; i > size; i--)
+		if constexpr (!std::is_trivially_destructible_v<Type>)
 		{
-			m_pData[i - 1].~Type();
+			for (auto i = m_Size; i > size; i--)
+			{
+				m_pData[i - 1].~Type();
+			}
 		}
 
 		m_Size = size;
@@ -384,7 +387,11 @@ inline void BvFixedVector<Type, N>::PopBack()
 {
 	if (m_Size > 0)
 	{
-		m_pData[--m_Size].~Type();
+		if constexpr (!std::is_trivially_destructible_v<Type>)
+		{
+			m_pData[m_Size - 1].~Type();
+		}
+		--m_Size;
 	}
 }
 
@@ -552,7 +559,10 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Erase(C
 		return Iterator(m_pData + m_Size);
 	}
 
-	m_pData[pos].~Type();
+	if constexpr (!std::is_trivially_destructible_v<Type>)
+	{
+		m_pData[pos].~Type();
+	}
 
 	if (pos < m_Size - 1)
 	{
@@ -577,7 +587,10 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Erase(C
 		return Iterator(m_pData + m_Size);
 	}
 
-	m_pData[pos].~Type();
+	if constexpr (!std::is_trivially_destructible_v<Type>)
+	{
+		m_pData[pos].~Type();
+	}
 
 	if (pos < m_Size - 1)
 	{
@@ -595,9 +608,12 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Erase(C
 template<class Type, size_t N>
 inline void BvFixedVector<Type, N>::Clear()
 {
-	for (size_t i = m_Size; i > 0; i--)
+	if constexpr (!std::is_trivially_destructible_v<Type>)
 	{
-		m_pData[i - 1].~Type();
+		for (size_t i = m_Size; i > 0; i--)
+		{
+			m_pData[i - 1].~Type();
+		}
 	}
 
 	m_Size = 0;

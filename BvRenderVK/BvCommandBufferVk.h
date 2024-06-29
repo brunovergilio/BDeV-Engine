@@ -3,7 +3,6 @@
 
 #include "BvRenderVK/BvCommonVk.h"
 #include "BDeV/Container/BvVector.h"
-#include "BDeV/RenderAPI/BvCommandBuffer.h"
 #include "BDeV/RenderAPI/BvCommon.h"
 #include "BDeV/Container/BvFixedVector.h"
 
@@ -11,119 +10,123 @@
 constexpr u32 kMaxSemaphores = 8;
 
 
-class BvCommandPoolVk;
 class BvRenderDeviceVk;
-class BvTextureViewVk;
 class BvSwapChainVk;
 class BvGraphicsPipelineStateVk;
 class BvComputePipelineStateVk;
-class BvRenderPassVk;
-class BvBufferViewVk;
+class BvFrameDataVk;
+class BvSampler;
+class BvBufferView;
+class BvTextureView;
+class BvBufferVk;
+class BvTextureVk;
+class BvQuery;
+class BvRenderPass;
+class BvGraphicsPipelineState;
+class BvComputePipelineState;
+class BvShaderResourceParams;
 
 
-class BvCommandBufferVk final : public BvCommandBuffer
+class BvCommandBufferVk final
 {
+	BV_NOCOPY(BvCommandBufferVk);
+
 public:
-	BvCommandBufferVk(const BvRenderDeviceVk& device, VkCommandBuffer commandBuffer);
+	enum class State : u8
+	{
+		kRecording,
+		kRenderPass,
+		kRenderTarget,
+	};
+
+	BvCommandBufferVk(const BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData);
+	BvCommandBufferVk(BvCommandBufferVk&& rhs) noexcept;
+	BvCommandBufferVk& operator=(BvCommandBufferVk&& rhs) noexcept;
 	~BvCommandBufferVk();
 
-	void Reset() override;
-	void Begin() override;
-	void End() override;
+	void Reset();
+	void Begin();
+	void End();
 
-	void BeginRenderPass(const BvRenderPass * const pRenderPass, BvTextureView * const * const pRenderTargets,
-		const ClearColorValue * const pClearColors, BvTextureView * const pDepthStencilTarget,
-		const ClearColorValue & depthClear) override;
-	void EndRenderPass() override;
+	void BeginRenderPass(const BvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets);
+	void NextSubpass();
+	void EndRenderPass();
 
-	void SetRenderTargets(const u32 renderTargetCount, BvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors,
-		BvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags) override;
-	void ClearRenderTargets(u32 renderTargetCount, const ClearColorValue* const pClearValues, u32 firstRenderTargetIndex = 0) override;
+	void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets);
 
-	void SetViewports(const u32 viewportCount, const Viewport * const pViewports) override;
-	void SetScissors(const u32 scissorCount, const Rect * const pScissors) override;
+	void SetViewports(u32 viewportCount, const Viewport* pViewports);
+	void SetScissors(u32 scissorCount, const Rect* pScissors);
 
-	void SetPipeline(const BvGraphicsPipelineState * const pPipeline) override;
-	void SetPipeline(const BvComputePipelineState * const pPipeline) override;
+	void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline);
+	void SetComputePipeline(const BvComputePipelineState* pPipeline);
 
-	void SetShaderResourceParams(const u32 setCount, BvShaderResourceParams * const * const ppSets, const u32 firstSet) override;
+	void SetShaderResourceParams(u32 setCount, BvShaderResourceParams* const* ppSets, u32 firstSet);
+	void SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex);
 
-	void SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView * const * const pVertexBufferViews,
-		const u32 firstBinding = 0) override;
-	void SetIndexBufferView(const BvBufferView * const pIndexBufferView, const IndexFormat indexFormat) override;
+	void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0);
+	void SetIndexBufferView(const BvBufferView* pIndexBufferView, IndexFormat indexFormat);
 
-	void Draw(const u32 vertexCount, const u32 instanceCount = 1,
-		const u32 firstVertex = 0, const u32 firstInstance = 0) override;
-	void DrawIndexed(const u32 indexCount, const u32 instanceCount = 1, const u32 firstIndex = 0,
-		const i32 vertexOffset = 0, const u32 firstInstance = 0) override;
-	void Dispatch(const u32 x, const u32 y = 1, const u32 z = 1) override;
+	void Draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0);
+	void DrawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, i32 vertexOffset = 0, u32 firstInstance = 0);
+	void Dispatch(u32 x, u32 y = 1, u32 z = 1);
 
-	void DrawIndirect(const BvBuffer * const pBuffer, const u32 drawCount = 1, const u64 offset = 0) override;
-	void DrawIndexedIndirect(const BvBuffer * const pBuffer, const u32 drawCount = 1, const u64 offset = 0) override;
-	void DispatchIndirect(const BvBuffer * const pBuffer, const u64 offset = 0) override;
+	void DrawIndirect(const BvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0);
+	void DrawIndexedIndirect(const BvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0);
+	void DispatchIndirect(const BvBuffer* pBuffer, u64 offset = 0);
 
-	void CopyBuffer(const BvBuffer * const pSrcBuffer, BvBuffer * const pDstBuffer) override;
-	void CopyBufferRegion(const BvBuffer * const pSrcBuffer, BvBuffer * const pDstBuffer, const CopyRegion & copyRegion) override;
+	void DispatchMesh(u32 x, u32 y = 1, u32 z = 1);
+	void DispatchMeshIndirect(const BvBuffer* pBuffer, u64 offset = 0);
+	void DispatchMeshIndirectCount(const BvBuffer* pBuffer, u64 offset, const BvBuffer* pCountBuffer, u64 countOffset, u32 maxCount);
 
-	void CopyTexture(const BvTexture * const pSrcTexture, BvTexture * const pDstTexture) override;
-	void CopyTextureRegion(const BvTexture * const pSrcTexture, BvTexture * const pDstTexture, const CopyRegion & copyRegion) override;
+	void CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion);
+	void CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuffer);
+	void CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuffer, const BufferCopyDesc& copyDesc);
+	
+	void CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDstTexture);
+	void CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDstTexture, const TextureCopyDesc& copyDesc);
 
-	void CopyTextureRegion(const BvBuffer * const pSrcBuffer, BvTexture * const pDstTexture, const CopyRegion & copyRegion) override;
-	void CopyTextureRegion(const BvTexture * const pSrcTexture, BvBuffer * const pDstBuffer, const CopyRegion & copyRegion) override;
+	void CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
+	void CopyBufferToTexture(const BvBuffer* pSrcBuffer, BvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
 
-	void ResourceBarrier(const u32 barrierCount, const ResourceBarrierDesc * const pBarriers) override;
+	void CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
+	void CopyTextureToBuffer(const BvTexture* pSrcTexture, BvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
+
+	void ResourceBarrier(u32 bufferBarrierCount, const VkBufferMemoryBarrier2* pBufferBarriers,
+		u32 imageBarrierCount, const VkImageMemoryBarrier2* pImageBarriers, u32 memoryBarrierCount, const VkMemoryBarrier2* pMemoryBarriers);
+	void ResourceBarrier(u32 barrierCount, const ResourceBarrierDesc* pBarriers);
+
+	void BeginQuery(BvQuery* pQuery);
+	void EndQuery(BvQuery* pQuery);
 
 	BV_INLINE const VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
 	BV_INLINE const BvVector<BvSwapChainVk*>& GetSwapChains() const { return m_SwapChains; }
-	BV_INLINE VkPipelineStageFlags GetWaitStageFlags() const { return m_WaitStageFlags; }
 
 private:
-	void CommitGraphicsData();
-	void CommitComputeData();
-	void CommitRenderTargets();
-	void DecommitRenderTargets();
-	void ClearStateData();
+	void FlushDescriptorSets();
+	void ResetRenderTargets();
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	const BvRenderDeviceVk* m_pDevice = nullptr;
 	VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
-
-	VkPipelineStageFlags m_WaitStageFlags = 0;
+	BvFrameDataVk* m_pFrameData = nullptr;
 
 	BvVector<BvSwapChainVk*> m_SwapChains;
-	BvVector<VkImageMemoryBarrier> m_RenderTargetTransitions;
-	VkPipelineStageFlags m_RenderTargetSrcStageFlags = 0;
-	VkPipelineStageFlags m_RenderTargetDstStageFlags = 0;
-	BvVector<VkMemoryBarrier> m_MemoryBarriers;
-	BvVector<VkBufferMemoryBarrier> m_BufferBarriers;
-	BvVector<VkImageMemoryBarrier> m_ImageBarriers;
 	
-	BvRenderPassVk* m_pRenderPass = nullptr;
-	BvVector<BvTextureViewVk*> m_RenderTargets;
-	BvVector<VkClearValue> m_RenderTargetClearValues;
-	BvVector<VkAttachmentLoadOp> m_RenderTargetLoadOps;
-	BvTextureViewVk* m_pDepthStencilTarget = nullptr;
-	VkClearValue m_DepthStencilTargetClearValue{};
-	VkAttachmentLoadOp m_DepthTargetLoadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_LOAD;
-	VkAttachmentLoadOp m_StencilTargetLoadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_LOAD;
-	const BvGraphicsPipelineStateVk* m_pGraphicsPSO = nullptr;
-	const BvComputePipelineStateVk* m_pComputePSO = nullptr;
-	BvVector<VkViewport> m_Viewports;
-	BvVector<VkRect2D> m_Scissors;
-	BvVector<VkBuffer> m_VertexBuffers;
-	BvVector<VkDeviceSize> m_VertexBufferOffsets;
-	const BvBufferViewVk* m_pIndexBufferView = nullptr;
-	BvVector<VkDescriptorSet> m_DescriptorSets;
-	u32 m_FirstVertexBinding = 0;
-	u32 m_FirstDescriptorSet = 0;
-	VkIndexType m_IndexFormat = VK_INDEX_TYPE_UINT32;
+	BvVector<VkWriteDescriptorSet> m_WriteSets;
 
-	bool m_RenderTargetsBindNeeded = false;
-	bool m_GraphicsPSOBindNeeded = false;
-	bool m_ComputePSOBindNeeded = false;
-	bool m_ViewportsBindNeeded = false;
-	bool m_ScissorsBindNeeded = false;
-	bool m_VertexBuffersBindNeeded = false;
-	bool m_IndexBufferBindNeeded = false;
-	bool m_DescriptorSetBindNeeded = false;
+	BvVector<VkBufferImageCopy> m_BufferImageCopyRegions{};
+	BvVector<VkImageCopy> m_ImageCopyRegions{};
+
+	BvVector<VkImageMemoryBarrier2> m_PreRenderBarriers;
+	BvVector<VkImageMemoryBarrier2> m_PostRenderBarriers;
+	BvVector<VkMemoryBarrier2> m_MemoryBarriers;
+	BvVector<VkBufferMemoryBarrier2> m_BufferBarriers;
+	BvVector<VkImageMemoryBarrier2> m_ImageBarriers;
+
+	const BvGraphicsPipelineStateVk* m_pGraphicsPipeline = nullptr;
+	const BvComputePipelineStateVk* m_pComputePipeline = nullptr;
+
+	State m_CurrentState = State::kRecording;
 };

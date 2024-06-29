@@ -38,7 +38,7 @@ void BvFramebufferVk::Create()
 	VkFramebufferCreateInfo framebufferCI{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebufferCI.width = textureDesc.m_Size.width;
 	framebufferCI.height = textureDesc.m_Size.height;
-	framebufferCI.layers = textureDesc.m_Size.depthOrLayerCount;
+	framebufferCI.layers = textureDesc.m_LayerCount;
 	framebufferCI.renderPass = m_FramebufferDesc.m_RenderPass;
 	framebufferCI.attachmentCount = (u32)imageViews.Size();
 	framebufferCI.pAttachments = imageViews.Data();

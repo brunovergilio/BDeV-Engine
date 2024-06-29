@@ -34,42 +34,24 @@ constexpr u32 ArraySize(Type(&)[N])
 }
 
 
-template<typename Type>
-Type RoundToNearestMultipleP2(const Type value, const Type multiple)
+template<typename Type1, typename Type2>
+constexpr std::conditional_t<(sizeof(Type1) > sizeof(Type2)), Type1, Type2> RoundToNearestPowerOf2(Type1 value, Type2 multiple)
 {
 	BvAssert((multiple & (multiple - 1)) == 0, "Multiple has to be a power of 2");
-	const Type mask = multiple - 1;
+	const std::conditional_t<(sizeof(Type1) > sizeof(Type2)), Type1, Type2> mask = multiple - 1;
 	return (value + mask) & (~mask);
 }
 
 
-template<typename Type>
-Type RoundToNearestMultiple(const Type value, const Type multiple)
+template<typename Type1, typename Type2>
+constexpr std::conditional_t<(sizeof(Type1) > sizeof(Type2)), Type1, Type2> RoundToNearestMultiple(const Type1 value, const Type2 multiple)
 {
 	return ((value + multiple - 1) / multiple) * multiple;
 }
 
 
 template<typename Type>
-Type GetNextPowerOf2(const Type value)
-{
-	Type result = 0;
-	Type count = sizeof(Type) * 8;
-	for (Type i = 0; i < count; i++)
-	{
-		result = static_cast<Type>(1) << i;
-		if (result > value)
-		{
-			return result;
-		}
-	}
-
-	return 0;
-}
-
-
-template<typename Type>
-Type CalculateNewContainerSize(Type value)
+constexpr Type CalculateNewContainerSize(Type value)
 {
 	return value + (value >> 1) + Type(value <= 2);
 }

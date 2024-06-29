@@ -12,14 +12,10 @@ class BvWindow;
 
 struct SwapChainDesc
 {
-	const char* m_pName = nullptr;
 	u32 m_SwapChainImageCount = 3;
 	Format m_Format = Format::kUnknown;
 	bool m_VSync = false;
 };
-
-
-constexpr u32 kMaxWaitSemaphores = 8;
 
 
 class BvSwapChain
@@ -27,14 +23,14 @@ class BvSwapChain
 public:
 	virtual void Present(bool vSync = false) = 0;
 	virtual u32 GetCurrentImageIndex() const = 0;
-	virtual BvTextureView * GetTextureView(const u32 index) const = 0;
+	virtual BvTextureView* GetTextureView(u32 index) const = 0;
 
 	BV_INLINE BvTextureView* GetCurrentTextureView() const { return GetTextureView(GetCurrentImageIndex()); }
 	BV_INLINE BvWindow* GetWindow() { return m_pWindow; }
-	BV_INLINE const SwapChainDesc & GetDesc() const { return m_SwapChainDesc; }
+	BV_INLINE const SwapChainDesc& GetDesc() const { return m_SwapChainDesc; }
 
 protected:
-	BvSwapChain(BvWindow* pWindow, const SwapChainDesc & swapChainDesc)
+	BvSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc)
 		: m_pWindow(pWindow), m_SwapChainDesc(swapChainDesc)
 	{
 	}

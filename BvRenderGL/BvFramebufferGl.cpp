@@ -169,7 +169,7 @@ void BvFramebufferGl::AttachToFramebuffer(GLenum attachment, BvTextureViewGl* pV
 		break;
 	case GL_TEXTURE_2D_ARRAY:
 	case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
-		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depthOrLayerCount)
+		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depth)
 		{
 			glNamedFramebufferTexture(m_Framebuffer, attachment, texture, level);
 		}
@@ -179,7 +179,7 @@ void BvFramebufferGl::AttachToFramebuffer(GLenum attachment, BvTextureViewGl* pV
 		}
 		break;
 	case GL_TEXTURE_CUBE_MAP:
-		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depthOrLayerCount)
+		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depth)
 		{
 			glNamedFramebufferTexture(m_Framebuffer, attachment, texture, level);
 		}
@@ -188,7 +188,7 @@ void BvFramebufferGl::AttachToFramebuffer(GLenum attachment, BvTextureViewGl* pV
 			glNamedFramebufferTextureLayer(m_Framebuffer, attachment, texture, level, layer);
 		}
 	case GL_TEXTURE_CUBE_MAP_ARRAY:
-		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depthOrLayerCount)
+		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depth)
 		{
 			glNamedFramebufferTexture(m_Framebuffer, attachment, texture, level);
 		}
@@ -197,7 +197,7 @@ void BvFramebufferGl::AttachToFramebuffer(GLenum attachment, BvTextureViewGl* pV
 			glNamedFramebufferTextureLayer(m_Framebuffer, attachment, texture, level, layer);
 		}
 	case GL_TEXTURE_3D:
-		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depthOrLayerCount)
+		if (layerCount == (GLint)pTexture->GetDesc().m_Size.depth)
 		{
 			glNamedFramebufferTexture(m_Framebuffer, attachment, texture, level);
 		}

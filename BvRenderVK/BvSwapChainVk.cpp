@@ -2,16 +2,15 @@
 #include "BvCommandQueueVk.h"
 #include "BvUtilsVk.h"
 #include "BvTextureVk.h"
-#include "BvTextureViewVk.h"
 #include "BvTypeConversionsVk.h"
 #include "BvSemaphoreVk.h"
 #include "BDeV/System/Window/BvWindow.h"
 #include "BvFramebufferVk.h"
+#include "BvCommandContextVk.h"
 
 
-BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk & device, BvCommandQueueVk & commandQueue, BvWindow* pWindow, const SwapChainDesc & swapChainParams)
-	: BvSwapChain(pWindow, swapChainParams), m_Device(device), m_CommandQueue(commandQueue),
-	m_PresentationQueueIndex(device.GetGPUInfo().m_PresentationQueueIndex)
+BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk& device, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext)
+	: BvSwapChain(pWindow, swapChainParams), m_Device(device), m_pCommandQueue(static_cast<BvCommandContextVk*>(pContext)->GetCommandQueue())
 {
 	CreateSurface();
 
@@ -41,7 +40,8 @@ bool BvSwapChainVk::Create()
 	auto physicalDevice = m_Device.GetGPUInfo().m_PhysicalDevice;
 
 	VkBool32 presentationSupported = VK_FALSE;
-	auto result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, m_Device.GetGPUInfo().m_PresentationQueueIndex, m_Surface, &presentationSupported);
+	u32 queueFamilyIndex = m_pCommandQueue->GetFamilyIndex();
+	auto result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, m_Surface, &presentationSupported);
 	BvCheckErrorReturnVk(result, false);
 	if (!presentationSupported)
 	{
@@ -114,7 +114,7 @@ bool BvSwapChainVk::Create()
 			// If we still couldn't find anything, then throw an error
 			if (format == VkFormat::VK_FORMAT_UNDEFINED)
 			{
-				BvCrash("Couldn't find a format for Vulkan's SwapChain");
+				BvAssert(false, "Couldn't find a format for Vulkan's SwapChain");
 				return false;
 			}
 		}
@@ -245,7 +245,7 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
 	swapchainCreateInfo.imageArrayLayers = 1;
 
-	swapchainCreateInfo.imageSharingMode = m_Device.GetGPUInfo().m_PresentationQueueIndex == m_Device.GetGPUInfo().m_GraphicsQueueIndex ?
+	swapchainCreateInfo.imageSharingMode = queueFamilyIndex == m_Device.GetGPUInfo().m_GraphicsQueueInfo.m_QueueFamilyIndex ?
 		VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
 	swapchainCreateInfo.queueFamilyIndexCount = 0;
 	swapchainCreateInfo.pQueueFamilyIndices = nullptr;
@@ -322,7 +322,7 @@ bool BvSwapChainVk::Create()
 
 void BvSwapChainVk::Destroy()
 {
-	m_CommandQueue.WaitIdle();
+	m_pCommandQueue->WaitIdle();
 
 	DestroySynchronizationResources();
 
@@ -359,7 +359,7 @@ void BvSwapChainVk::Present(bool vSync)
 	auto result = VK_SUCCESS;
 	if (vSync == m_SwapChainDesc.m_VSync)
 	{
-		result = vkQueuePresentKHR(m_CommandQueue.GetHandle(), &presentInfo);
+		result = vkQueuePresentKHR(m_pCommandQueue->GetHandle(), &presentInfo);
 	}
 	else
 	{
@@ -399,7 +399,7 @@ void BvSwapChainVk::Resize()
 	{
 		return;
 	}
-	m_CommandQueue.WaitIdle();
+	m_pCommandQueue->WaitIdle();
 
 	Create();
 }
@@ -408,7 +408,7 @@ void BvSwapChainVk::Resize()
 void BvSwapChainVk::AcquireImage()
 {
 	auto result = vkAcquireNextImageKHR(m_Device.GetHandle(), m_Swapchain, UINT64_MAX,
-		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]->GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
+		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex].GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
 	if (result != VkResult::VK_SUCCESS)
 	{
 		if (result == VkResult::VK_SUBOPTIMAL_KHR || result == VkResult::VK_ERROR_OUT_OF_DATE_KHR)
@@ -434,31 +434,22 @@ void BvSwapChainVk::CreateSynchronizationResources()
 {
 	DestroySynchronizationResources();
 
-	m_ImageAcquiredSemaphores.Resize(m_SwapChainTextures.Size());
-	for (auto&& pSemaphore : m_ImageAcquiredSemaphores)
+	m_ImageAcquiredSemaphores.Reserve(m_SwapChainTextures.Size());
+	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
 	{
-		pSemaphore = new BvSemaphoreVk(m_Device, false);
+		m_ImageAcquiredSemaphores.EmplaceBack(BvSemaphoreVk(m_Device.GetHandle(), 0, false));
 	}
 
-	m_RenderCompleteSemaphores.Resize(m_SwapChainTextures.Size());
-	for (auto&& pSemaphore : m_RenderCompleteSemaphores)
+	m_RenderCompleteSemaphores.Reserve(m_SwapChainTextures.Size());
+	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
 	{
-		pSemaphore = new BvSemaphoreVk(m_Device, false);
+		m_RenderCompleteSemaphores.EmplaceBack(BvSemaphoreVk(m_Device.GetHandle(), 0, false));
 	}
 }
 
 
 void BvSwapChainVk::DestroySynchronizationResources()
 {
-	for (auto&& pSemaphore : m_ImageAcquiredSemaphores)
-	{
-		delete pSemaphore;
-	}
 	m_ImageAcquiredSemaphores.Clear();
-
-	for (auto&& pSemaphore : m_RenderCompleteSemaphores)
-	{
-		delete pSemaphore;
-	}
 	m_RenderCompleteSemaphores.Clear();
 }

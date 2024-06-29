@@ -18,8 +18,8 @@ struct FormatMapGl
 
 
 GLenum GetGlBufferUsageFlags(BufferUsage usageFlags);
-GLenum GetGlBufferMemoryFlags(MemoryFlags memoryFlags);
-GLenum GetGlBufferMappingFlags(MemoryFlags memoryFlags);
+GLenum GetGlBufferMemoryFlags(MemoryType memoryFlags);
+GLenum GetGlBufferMappingFlags(MemoryType memoryFlags);
 GLenum GetGlTextureTarget(const TextureDesc& textureDesc);
 FormatMapGl GetGlFormatMap(Format format);
 GLenum GetGlFormat(Format format);

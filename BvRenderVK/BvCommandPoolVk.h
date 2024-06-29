@@ -8,25 +8,29 @@
 
 class BvRenderDeviceVk;
 class BvCommandBufferVk;
+class BvFrameDataVk;
 
 
-class BvCommandPoolVk
+class BvCommandPoolVk final
 {
-	BV_NOCOPYMOVE(BvCommandPoolVk);
+	BV_NOCOPY(BvCommandPoolVk);
 
 public:
-	BvCommandPoolVk(const BvRenderDeviceVk& device, u32 queueFamilyIndex);
+	BvCommandPoolVk();
+	BvCommandPoolVk(const BvRenderDeviceVk* pDevice, u32 queueFamilyIndex);
+	BvCommandPoolVk(BvCommandPoolVk&& rhs) noexcept;
+	BvCommandPoolVk& operator=(BvCommandPoolVk&& rhs) noexcept;
 	~BvCommandPoolVk();
 
 	void Create();
 	void Destroy();
 
-	BvCommandBufferVk* GetCommandBuffer();
+	BvCommandBufferVk* GetCommandBuffer(BvFrameDataVk* pFrameData);
 
 	void Reset();
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	const BvRenderDeviceVk* m_pDevice = nullptr;
 	VkCommandPool m_CommandPool = VK_NULL_HANDLE;
 	BvVector<BvCommandBufferVk*> m_CommandBuffers;
 	u32 m_ActiveCommandBufferCount = 0;

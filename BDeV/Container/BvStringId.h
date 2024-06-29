@@ -37,6 +37,11 @@ public:
 	constexpr operator u64() const { return m_Id; }
 	constexpr u64 GetId() const { return m_Id; }
 
+	static constexpr BvStringId Empty()
+	{
+		return Internal::ConstexprMurmurHash64AHelper("", 1);
+	}
+
 private:
 	u64 m_Id{};
 };
@@ -46,3 +51,10 @@ constexpr u64 operator""_sid(const char* pStr, size_t length)
 {
 	return BvStringId(Internal::ConstexprMurmurHash64AHelper(pStr, length));
 }
+
+
+#if BV_DEBUG
+#define BV_NAME_ID(id) BvStringId(id)
+#else
+#define BV_NAME_ID(id) BvStringId(id##_sid)
+#endif

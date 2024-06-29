@@ -4,27 +4,6 @@
 #include "BvTexture.h"
 
 
-enum class TextureViewType : u8
-{
-	kTexture1D,
-	kTexture1DArray,
-	kTexture2D,
-	kTexture2DArray,
-	kTextureCube,
-	kTextureCubeArray,
-	kTexture3D,
-};
-
-
-struct TextureViewDesc
-{
-	BvTexture * m_pTexture = nullptr;
-	SubresourceDesc m_SubresourceDesc;
-	TextureViewType m_ViewType = TextureViewType::kTexture2D;
-	Format m_Format = Format::kUnknown;
-};
-
-
 class BvTextureView
 {
 	BV_NOCOPYMOVE(BvTextureView);

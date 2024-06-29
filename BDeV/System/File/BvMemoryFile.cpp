@@ -67,7 +67,7 @@ u32 BvMemoryFile::Write(const void* const pBuffer, const u32 bufferSize)
 	auto newSize = (u64)(m_Pos + bufferSize);
 	if (newSize >= m_Size)
 	{
-		newSize = GetNextPowerOf2(newSize);
+		newSize = CalculateNewContainerSize(newSize);
 		auto pNewData = new u8[newSize];
 		memcpy(pNewData, m_pData, m_Size);
 		delete[] m_pData;

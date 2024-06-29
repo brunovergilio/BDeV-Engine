@@ -10,16 +10,10 @@ struct TextureDataDesc
 {
 	u32 m_Width;
 	u32 m_Height;
-	u32 m_DepthOrArraySize;
-	u32 m_MipCount;
+	u32 m_Depth;
+	u32 m_MipLevels;
+	u32 m_LayerCount;
 	BvVector<u8> m_Data;
-	struct SubresourceData
-	{
-		const u8* m_pData;
-		size_t m_Offset;
-		size_t m_RowPitch;
-		size_t m_SlicePitch;
-	};
 	BvVector<SubresourceData> m_Subresources;
 	TextureType m_TextureType;
 	Format m_Format;

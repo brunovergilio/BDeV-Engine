@@ -9,7 +9,7 @@ void* BvVirtualMemory::Reserve(size_t size)
 	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS);
 	if (!pMem)
 	{
-		BvOSCrash();
+		BvOSCrashIfFailed(pMem);
 	}
 
 	return pMem;
@@ -21,7 +21,7 @@ void BvVirtualMemory::Commit(void* pAddress, size_t size)
 	auto pMem = VirtualAlloc(pAddress, size, MEM_COMMIT, PAGE_READWRITE);
 	if (!pMem)
 	{
-		BvOSCrash();
+		BvOSCrashIfFailed(pMem);
 	}
 }
 
@@ -31,7 +31,7 @@ void* BvVirtualMemory::ReserveAndCommit(size_t size, bool useLargePage)
 	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT | (useLargePage ? MEM_LARGE_PAGES : 0), PAGE_READWRITE);
 	if (!pMem)
 	{
-		BvOSCrash();
+		BvOSCrashIfFailed(pMem);
 	}
 
 	return pMem;
@@ -49,7 +49,7 @@ void BvVirtualMemory::Decommit(void* pAddress, size_t size)
 #pragma warning(pop)
 	if (!result)
 	{
-		BvOSCrash();
+		BvOSCrashIfFailed(result);
 	}
 }
 
@@ -59,6 +59,6 @@ void BvVirtualMemory::Release(void* pAddress)
 	auto result = VirtualFree(pAddress, 0, MEM_RELEASE);
 	if (!result)
 	{
-		BvOSCrash();
+		BvOSCrashIfFailed(result);
 	}
 }

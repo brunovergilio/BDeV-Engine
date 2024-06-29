@@ -180,12 +180,14 @@
     <ClInclude Include="RenderAPI\BvBuffer.h" />
     <ClInclude Include="RenderAPI\BvBufferView.h" />
     <ClInclude Include="RenderAPI\BvColor.h" />
-    <ClInclude Include="RenderAPI\BvCommandBuffer.h" />
+    <ClInclude Include="RenderAPI\BvCommandContext.h" />
     <ClInclude Include="RenderAPI\BvCommandPool.h" />
     <ClInclude Include="RenderAPI\BvCommandQueue.h" />
     <ClInclude Include="RenderAPI\BvCommon.h" />
     <ClInclude Include="RenderAPI\BvGPUInfo.h" />
     <ClInclude Include="RenderAPI\BvPipelineState.h" />
+    <ClInclude Include="RenderAPI\BvQuery.h" />
+    <ClInclude Include="RenderAPI\BvRenderAPIUtils.h" />
     <ClInclude Include="RenderAPI\BvRenderDevice.h" />
     <ClInclude Include="RenderAPI\BvRenderEngine.h" />
     <ClInclude Include="RenderAPI\BvRenderPass.h" />
@@ -246,6 +248,7 @@
     <ClCompile Include="Engine\JobSystem\BvJobSystem.cpp" />
     <ClCompile Include="Engine\JobSystem\BvJobSystemTLS.cpp" />
     <ClCompile Include="RenderAPI\BvColor.cpp" />
+    <ClCompile Include="RenderAPI\BvRenderAPIUtils.cpp" />
     <ClCompile Include="System\File\BvMemoryFile.cpp" />
     <ClCompile Include="System\File\Windows\BvAsyncFileWindows.cpp" />
     <ClCompile Include="System\File\Windows\BvFileSystemWindows.cpp" />

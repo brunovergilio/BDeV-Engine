@@ -12,9 +12,9 @@ class BvRenderDeviceVk;
 struct BvRenderDeviceCreateDescVk
 {
 	u32 m_GraphicsQueueCount = 1;
-	u32 m_ComputeQueueCount = 1;
-	u32 m_TransferQueueCount = 1;
-	// Pool Sizes
+	u32 m_ComputeQueueCount = 0;
+	u32 m_TransferQueueCount = 0;
+	bool m_UseDebug = true;
 };
 
 
@@ -39,17 +39,19 @@ public:
 
 	BV_INLINE VkInstance GetInstance() const { return m_Instance; }
 
-	bool IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* pPhysicalDeviceExtension);
 
 private:
-	void SetupDevicePropertiesAndFeatures(u32 gpuIndex);
-	u32 GetQueueFamilyIndex(const VkQueueFlags queueFlags, const u32 gpuIndex) const;
+	bool IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* pPhysicalDeviceExtension);
+	bool SetupDeviceExtraPropertiesAndFeatures(BvGPUInfoVk& gpu);
+	void SetupQueueInfo(BvGPUInfoVk& gpu);
+	u32 GetQueueFamilyIndex(BvGPUInfoVk& gpu, VkQueueFlags queueFlags, bool& isAsync) const;
+	bool QueueSupportsPresent(BvGPUInfoVk& gpu, u32 index) const;
 	u32 AutoSelectGPU();
 
 private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
 	BvVector<BvGPUInfoVk> m_GPUs;
-	BvVector<BvRenderDeviceVk*> m_RenderDevices;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvDebugReportVk* m_pDebugReport = nullptr;
 };
 
@@ -58,6 +60,7 @@ namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API BvRenderEngine* GetRenderEngine();
+		BV_API BvRenderEngine* CreateRenderEngine();
+		BV_API void DestroyRenderEngine();
 	}
 }

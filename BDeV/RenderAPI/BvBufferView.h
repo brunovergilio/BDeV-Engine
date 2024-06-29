@@ -5,16 +5,6 @@
 #include "BDeV/Utils/BvUtils.h"
 
 
-struct BufferViewDesc
-{
-	BvBuffer * m_pBuffer = nullptr;
-	u64 m_Offset = 0;
-	u64 m_ElementCount = 0;
-	u64 m_Stride = 0;
-	Format m_Format = Format::kUnknown;
-};
-
-
 class BvBufferView
 {
 	BV_NOCOPYMOVE(BvBufferView);

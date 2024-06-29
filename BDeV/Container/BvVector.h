@@ -296,9 +296,12 @@ inline void BvVector<Type>::Resize(const size_t size, const Type & value)
 	}
 	else if (size < m_Size)
 	{
-		for (auto i = m_Size; i > size; i--)
+		if constexpr (!std::is_trivially_destructible_v<Type>)
 		{
-			m_pData[i - 1].~Type();
+			for (auto i = m_Size; i > size; i--)
+			{
+				m_pData[i - 1].~Type();
+			}
 		}
 
 		m_Size = size;
@@ -440,7 +443,11 @@ inline void BvVector<Type>::PopBack()
 {
 	if (m_Size > 0)
 	{
-		m_pData[--m_Size].~Type();
+		if constexpr (!std::is_trivially_destructible_v<Type>)
+		{
+			m_pData[m_Size - 1].~Type();
+		}
+		--m_Size;
 	}
 }
 
@@ -624,7 +631,10 @@ inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(ConstIterator pos
 		return Iterator(m_pData + m_Size);
 	}
 
-	m_pData[pos].~Type();
+	if constexpr (!std::is_trivially_destructible_v<Type>)
+	{
+		m_pData[pos].~Type();
+	}
 
 	if (pos < m_Size - 1)
 	{
@@ -649,9 +659,12 @@ inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(ConstIterator fir
 		return Iterator(m_pData + m_Size);
 	}
 
-	for (auto i = pos; i < pos + count; i++)
+	if constexpr (!std::is_trivially_destructible_v<Type>)
 	{
-		m_pData[pos].~Type();
+		for (auto i = pos; i < pos + count; i++)
+		{
+			m_pData[pos].~Type();
+		}
 	}
 
 	if (pos < m_Size - 1)
@@ -678,20 +691,22 @@ template<class Type>
 inline void BvVector<Type>::EraseAndSwapWithLast(size_t index)
 {
 	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
-	m_pData[index].~Type();
 	if (index < m_Size - 1)
 	{
-		m_pData[index] = std::move(m_pData[m_Size - 1]);
+		std::swap(m_pData[index], m_pData[m_Size - 1]);
 	}
-	m_Size--;
+	PopBack();
 }
 
 template<class Type>
 inline void BvVector<Type>::Clear()
 {
-	for (size_t i = m_Size; i > 0; i--)
+	if constexpr (!std::is_trivially_destructible_v<Type>)
 	{
-		m_pData[i - 1].~Type();
+		for (size_t i = m_Size; i > 0; i--)
+		{
+			m_pData[i - 1].~Type();
+		}
 	}
 
 	m_Size = 0;
@@ -732,7 +747,7 @@ inline Type& BvVector<Type>::EmplaceBack(Args&& ...args)
 {
 	if (m_Size == m_Capacity)
 	{
-		Grow(CalculateNewContainerSize(m_Capacity));
+		Grow(m_Capacity + (m_Capacity >> 1) + (m_Capacity <= 2));
 	}
 
 	new (&m_pData[m_Size]) Type(std::forward<Args>(args)...);
@@ -766,7 +781,10 @@ inline void BvVector<Type>::Grow(const size_t size)
 	for (auto i = 0u; i < m_Size; i++)
 	{
 		new (&pNewData[i]) Type(std::move(m_pData[i]));
-		m_pData[i].~Type();
+		if constexpr (!std::is_trivially_destructible_v<Type>)
+		{
+			m_pData[i].~Type();
+		}
 	}
 
 	m_Capacity = size;

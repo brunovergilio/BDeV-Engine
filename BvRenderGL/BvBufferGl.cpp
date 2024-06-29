@@ -17,7 +17,7 @@ BvBufferGl::~BvBufferGl()
 
 void BvBufferGl::Create()
 {
-	GLenum flags = GetGlBufferMemoryFlags(m_BufferDesc.m_MemoryFlags);
+	GLenum flags = GetGlBufferMemoryFlags(m_BufferDesc.m_MemoryType);
 	GLsizeiptr size = (GLsizeiptr)m_BufferDesc.m_Size;
 
 	auto [target, usage] = GetBufferUsageFlags();
@@ -46,7 +46,7 @@ void BvBufferGl::Destroy()
 
 void* const BvBufferGl::Map(const u64 size, const u64 offset)
 {
-	m_pMapped = glMapNamedBufferRange(m_Buffer, offset, size == 0 ? m_BufferDesc.m_Size : size, GetGlBufferMappingFlags(m_BufferDesc.m_MemoryFlags));
+	m_pMapped = glMapNamedBufferRange(m_Buffer, offset, size == 0 ? m_BufferDesc.m_Size : size, GetGlBufferMappingFlags(m_BufferDesc.m_MemoryType));
 
 	return m_pMapped;
 }

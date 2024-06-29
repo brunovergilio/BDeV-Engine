@@ -339,8 +339,10 @@ inline bool BvRobinSet<Key, Hash, Comparer>::Erase(const Key& key)
 	}
 
 	auto currIndex = iter.GetIndex();
-	m_pData[currIndex].first.~Key();
-	m_pData[currIndex].second.~Value();
+	if constexpr (!std::is_trivially_destructible_v<Key>)
+	{
+		m_pData[currIndex].first.~Key();
+	}
 	m_pHashes[currIndex] = 0;
 	--m_Size;
 
@@ -430,7 +432,11 @@ void BvRobinSet<Key, Hash, Comparer>::Clear()
 	{
 		if (m_pHashes[i])
 		{
-			m_pData[i].~Key();
+			if constexpr (!std::is_trivially_destructible_v<Key>)
+			{
+				m_pData[i].~Key();
+			}
+			m_pHashes[i] = 0;
 		}
 	}
 

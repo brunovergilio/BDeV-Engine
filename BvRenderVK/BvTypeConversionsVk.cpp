@@ -23,8 +23,8 @@ constexpr FormatMapVk kFormats[] =
 	{ VK_FORMAT_R32G32_SFLOAT,				VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kRG32_Float,
 	{ VK_FORMAT_R32G32_UINT,				VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kRG32_UInt,
 	{ VK_FORMAT_R32G32_SINT,				VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kRG32_SInt,
-	{ VK_FORMAT_D32_SFLOAT_S8_UINT,			VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,	{} },	// Format::kR32G8X24_Typeless,
-	{ VK_FORMAT_D32_SFLOAT_S8_UINT,			VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,	{} },	// Format::kD32_Float_S8X24_UInt,
+	{ VK_FORMAT_D32_SFLOAT_S8_UINT,			VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, {} },	// Format::kR32G8X24_Typeless,
+	{ VK_FORMAT_D32_SFLOAT_S8_UINT,			VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, {} },	// Format::kD32_Float_S8X24_UInt,
 	{ VK_FORMAT_D32_SFLOAT_S8_UINT,			VK_IMAGE_ASPECT_DEPTH_BIT, {} },	// Format::kR32_Float_X8X24_Typeless,
 	{ VK_FORMAT_D32_SFLOAT_S8_UINT,			VK_IMAGE_ASPECT_STENCIL_BIT, {} },	// Format::kX32_Typeless_G8X24_UInt,
 	{ VK_FORMAT_A2B10G10R10_UNORM_PACK32,	VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kRGB10A2_Typeless,
@@ -211,72 +211,72 @@ static BvRobinMap<VkFormat, Format> s_VkFormatToFormatMap =
 	{ VK_FORMAT_BC6H_SFLOAT_BLOCK,			Format::kBC6H_SF16 },
 	{ VK_FORMAT_BC7_UNORM_BLOCK,			Format::kBC7_UNorm },
 	{ VK_FORMAT_BC7_SRGB_BLOCK,				Format::kBC7_UNorm_SRGB },
-	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	Format::k420_OPAQUE },
-	{ VK_FORMAT_A4R4G4B4_UNORM_PACK16,		Format::kBGRA4_UNorm },
+	//{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	Format::k420_OPAQUE },
+	//{ VK_FORMAT_A4R4G4B4_UNORM_PACK16,		Format::kBGRA4_UNorm },
 };
 
 
 constexpr VkImageType kImageTypes[] =
 {
-	VkImageType::VK_IMAGE_TYPE_1D,
-	VkImageType::VK_IMAGE_TYPE_2D,
-	VkImageType::VK_IMAGE_TYPE_3D,
+	VK_IMAGE_TYPE_1D,
+	VK_IMAGE_TYPE_2D,
+	VK_IMAGE_TYPE_3D,
 };
 
 
 constexpr VkImageViewType kImageViewTypes[] =
 {
-	VkImageViewType::VK_IMAGE_VIEW_TYPE_1D,
-	VkImageViewType::VK_IMAGE_VIEW_TYPE_1D_ARRAY,
-	VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
-	VkImageViewType::VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-	VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE,
-	VkImageViewType::VK_IMAGE_VIEW_TYPE_CUBE_ARRAY,
-	VkImageViewType::VK_IMAGE_VIEW_TYPE_3D,
+	VK_IMAGE_VIEW_TYPE_1D,
+	VK_IMAGE_VIEW_TYPE_1D_ARRAY,
+	VK_IMAGE_VIEW_TYPE_2D,
+	VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+	VK_IMAGE_VIEW_TYPE_CUBE,
+	VK_IMAGE_VIEW_TYPE_CUBE_ARRAY,
+	VK_IMAGE_VIEW_TYPE_3D,
 };
 
 
 constexpr VkFilter kFilters[] =
 {
-	VkFilter::VK_FILTER_NEAREST,
-	VkFilter::VK_FILTER_LINEAR,
+	VK_FILTER_NEAREST,
+	VK_FILTER_LINEAR,
 };
 
 
 constexpr VkSamplerMipmapMode kMipMapModes[] =
 {
-	VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_NEAREST,
-	VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_LINEAR,
+	VK_SAMPLER_MIPMAP_MODE_NEAREST,
+	VK_SAMPLER_MIPMAP_MODE_LINEAR,
 };
 
 
 constexpr VkSamplerAddressMode kSamplerAddressModes[] =
 {
-	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
-	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
-	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-	VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
+	VK_SAMPLER_ADDRESS_MODE_REPEAT,
+	VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+	VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+	VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+	VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
 };
 
 
 constexpr VkCompareOp kCompareOps[] =
 {
-	VkCompareOp::VK_COMPARE_OP_NEVER,
-	VkCompareOp::VK_COMPARE_OP_LESS,
-	VkCompareOp::VK_COMPARE_OP_EQUAL,
-	VkCompareOp::VK_COMPARE_OP_LESS_OR_EQUAL,
-	VkCompareOp::VK_COMPARE_OP_GREATER,
-	VkCompareOp::VK_COMPARE_OP_NOT_EQUAL,
-	VkCompareOp::VK_COMPARE_OP_GREATER_OR_EQUAL,
-	VkCompareOp::VK_COMPARE_OP_ALWAYS,
+	VK_COMPARE_OP_NEVER,
+	VK_COMPARE_OP_LESS,
+	VK_COMPARE_OP_EQUAL,
+	VK_COMPARE_OP_LESS_OR_EQUAL,
+	VK_COMPARE_OP_GREATER,
+	VK_COMPARE_OP_NOT_EQUAL,
+	VK_COMPARE_OP_GREATER_OR_EQUAL,
+	VK_COMPARE_OP_ALWAYS,
 };
 
 
 constexpr VkVertexInputRate kVertexInputRates[] =
 {
-	VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX,
-	VkVertexInputRate::VK_VERTEX_INPUT_RATE_INSTANCE,
+	VK_VERTEX_INPUT_RATE_VERTEX,
+	VK_VERTEX_INPUT_RATE_INSTANCE,
 };
 
 
@@ -319,43 +319,55 @@ Format GetFormat(const VkFormat format)
 VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags)
 {
 	VkBufferUsageFlags bufferUsageFlags = 0;
-	if ((usageFlags & BufferUsage::kTransferSrc			) == BufferUsage::kTransferSrc			)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT; }
-	if ((usageFlags & BufferUsage::kTransferDst			) == BufferUsage::kTransferDst			)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT; }
-	if ((usageFlags & BufferUsage::kUniformBuffer		) == BufferUsage::kUniformBuffer		)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kStorageBuffer		) == BufferUsage::kStorageBuffer		)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kUniformTexelBuffer	) == BufferUsage::kUniformTexelBuffer	)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kStorageTexelBuffer	) == BufferUsage::kStorageTexelBuffer	)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kVertexBuffer		) == BufferUsage::kVertexBuffer			)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kIndexBuffer			) == BufferUsage::kIndexBuffer			)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_INDEX_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kIndirectBuffer		) == BufferUsage::kIndirectBuffer		)	{ bufferUsageFlags |= VkBufferUsageFlagBits::VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT; }
+	if ((usageFlags & BufferUsage::kUniformBuffer		) == BufferUsage::kUniformBuffer		)	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT; }
+	if ((usageFlags & BufferUsage::kStorageBuffer		) == BufferUsage::kStorageBuffer		)	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; }
+	if ((usageFlags & BufferUsage::kUniformTexelBuffer	) == BufferUsage::kUniformTexelBuffer	)	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT; }
+	if ((usageFlags & BufferUsage::kStorageTexelBuffer	) == BufferUsage::kStorageTexelBuffer	)	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT; }
+	if ((usageFlags & BufferUsage::kVertexBuffer		) == BufferUsage::kVertexBuffer			)	{ bufferUsageFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
+	if ((usageFlags & BufferUsage::kIndexBuffer			) == BufferUsage::kIndexBuffer			)	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT; }
+	if ((usageFlags & BufferUsage::kIndirectBuffer		) == BufferUsage::kIndirectBuffer		)	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT; }
 
-	return bufferUsageFlags;
+	return bufferUsageFlags | (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 }
 
 
 VkImageUsageFlags GetVkImageUsageFlags(const TextureUsage usageFlags)
 {
 	VkImageUsageFlags imageUsageFlags = 0;
-	if ((usageFlags & TextureUsage::kTransferSrc		) == TextureUsage::kTransferSrc			)	{ imageUsageFlags |= VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT; }
-	if ((usageFlags & TextureUsage::kTransferDst		) == TextureUsage::kTransferDst			)	{ imageUsageFlags |= VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_DST_BIT; }
-	if ((usageFlags & TextureUsage::kShaderResource		) == TextureUsage::kShaderResource		)	{ imageUsageFlags |= VkImageUsageFlagBits::VK_IMAGE_USAGE_SAMPLED_BIT; }
-	if ((usageFlags & TextureUsage::kUnorderedAccess	) == TextureUsage::kUnorderedAccess		)	{ imageUsageFlags |= VkImageUsageFlagBits::VK_IMAGE_USAGE_STORAGE_BIT; }
-	if ((usageFlags & TextureUsage::kColorTarget		) == TextureUsage::kColorTarget			)	{ imageUsageFlags |= VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; }
-	if ((usageFlags & TextureUsage::kDepthStencilTarget	) == TextureUsage::kDepthStencilTarget	)	{ imageUsageFlags |= VkImageUsageFlagBits::VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; }
+	if ((usageFlags & TextureUsage::kTransferSrc		) == TextureUsage::kTransferSrc			)	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; }
+	if ((usageFlags & TextureUsage::kTransferDst		) == TextureUsage::kTransferDst			)	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; }
+	if ((usageFlags & TextureUsage::kShaderResource		) == TextureUsage::kShaderResource		)	{ imageUsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT; }
+	if ((usageFlags & TextureUsage::kUnorderedAccess	) == TextureUsage::kUnorderedAccess		)	{ imageUsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT; }
+	if ((usageFlags & TextureUsage::kColorTarget		) == TextureUsage::kColorTarget			)	{ imageUsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; }
+	if ((usageFlags & TextureUsage::kDepthStencilTarget	) == TextureUsage::kDepthStencilTarget	)	{ imageUsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; }
 
-	return imageUsageFlags;
+	return imageUsageFlags != 0 ? imageUsageFlags : (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 }
 
 
-VkMemoryPropertyFlags GetVkMemoryPropertyFlags(const MemoryFlags memoryFlags)
+VkMemoryPropertyFlags GetVkMemoryPropertyFlags(const MemoryType memoryFlags)
 {
-	VkMemoryPropertyFlags memoryPropertyFlags = 0;
-	if ((memoryFlags & MemoryFlags::kDeviceLocal	) == MemoryFlags::kDeviceLocal	)	{ memoryPropertyFlags |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT; }
-	if ((memoryFlags & MemoryFlags::kHostVisible	) == MemoryFlags::kHostVisible	)	{ memoryPropertyFlags |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; }
-	if ((memoryFlags & MemoryFlags::kHostCoherent	) == MemoryFlags::kHostCoherent	)	{ memoryPropertyFlags |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; }
-	if ((memoryFlags & MemoryFlags::kHostCached		) == MemoryFlags::kHostCached	)	{ memoryPropertyFlags |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_CACHED_BIT; }
+	switch (memoryFlags)
+	{
+	case MemoryType::kDevice: return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	case MemoryType::kUpload: return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	case MemoryType::kReadBack: return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	case MemoryType::kShared: return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	default: return 0;
+	}
+}
 
-	return memoryPropertyFlags;
+
+VkMemoryPropertyFlags GetPreferredVkMemoryPropertyFlags(const MemoryType memoryFlags)
+{
+	switch (memoryFlags)
+	{
+	case MemoryType::kUpload: return VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	case MemoryType::kReadBack: return VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+	case MemoryType::kShared: return VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	case MemoryType::kDevice:
+	default: return 0;
+	}
 }
 
 
@@ -387,11 +399,11 @@ VkCommandBufferLevel GetVkCommandBufferLevel(const CommandType commandLevel)
 {
 	switch (commandLevel)
 	{
-	case CommandType::kPrimary:	return VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	case CommandType::kSecondary:	return VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+	case CommandType::kPrimary: return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	case CommandType::kSecondary: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	}
 
-	return VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 }
 
 
@@ -405,18 +417,18 @@ VkPrimitiveTopology GetVkPrimitiveTopology(const Topology topology)
 {
 	switch (topology)
 	{
-	case Topology::kPointList:			return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-	case Topology::kLineList:			return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-	case Topology::kLineStrip:			return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-	case Topology::kTriangleList:		return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	case Topology::kTriangleStrip:		return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-	case Topology::kLineListAdj:		return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
-	case Topology::kLineStripAdj:		return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
-	case Topology::kTriangleListAdj:	return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
-	case Topology::kTriangleStripAdj:	return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
+	case Topology::kPointList:			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	case Topology::kLineList:			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	case Topology::kLineStrip:			return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+	case Topology::kTriangleList:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	case Topology::kTriangleStrip:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+	case Topology::kLineListAdj:		return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+	case Topology::kLineStripAdj:		return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+	case Topology::kTriangleListAdj:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+	case Topology::kTriangleStripAdj:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
 	}
 
-	return VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+	return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 }
 
 
@@ -424,11 +436,11 @@ VkPolygonMode GetVkPolygonMode(const FillMode fillMode)
 {
 	switch (fillMode)
 	{
-	case FillMode::kSolid:		return VkPolygonMode::VK_POLYGON_MODE_FILL;
-	case FillMode::kWireframe:	return VkPolygonMode::VK_POLYGON_MODE_LINE;
+	case FillMode::kSolid:		return VK_POLYGON_MODE_FILL;
+	case FillMode::kWireframe:	return VK_POLYGON_MODE_LINE;
 	}
 
-	return VkPolygonMode::VK_POLYGON_MODE_FILL;
+	return VK_POLYGON_MODE_FILL;
 }
 
 
@@ -436,13 +448,13 @@ VkCullModeFlags GetVkCullModeFlags(const CullMode cullMode)
 {
 	switch (cullMode)
 	{
-	case CullMode::kNone:			return VkCullModeFlagBits::VK_CULL_MODE_NONE;
-	case CullMode::kFront:			return VkCullModeFlagBits::VK_CULL_MODE_FRONT_BIT;
-	case CullMode::kBack:			return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
-	case CullMode::kFrontAndBack:	return VkCullModeFlagBits::VK_CULL_MODE_FRONT_AND_BACK;
+	case CullMode::kNone:			return VK_CULL_MODE_NONE;
+	case CullMode::kFront:			return VK_CULL_MODE_FRONT_BIT;
+	case CullMode::kBack:			return VK_CULL_MODE_BACK_BIT;
+	case CullMode::kFrontAndBack:	return VK_CULL_MODE_FRONT_AND_BACK;
 	}
 
-	return VkCullModeFlagBits::VK_CULL_MODE_NONE;
+	return VK_CULL_MODE_NONE;
 }
 
 
@@ -450,11 +462,11 @@ VkFrontFace GetVkFrontFace(const FrontFace frontFace)
 {
 	switch (frontFace)
 	{
-	case FrontFace::kClockwise:			return VkFrontFace::VK_FRONT_FACE_CLOCKWISE;
-	case FrontFace::kCounterClockwise:	return VkFrontFace::VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	case FrontFace::kClockwise:			return VK_FRONT_FACE_CLOCKWISE;
+	case FrontFace::kCounterClockwise:	return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	}
 
-	return VkFrontFace::VK_FRONT_FACE_CLOCKWISE;
+	return VK_FRONT_FACE_CLOCKWISE;
 }
 
 
@@ -462,17 +474,17 @@ VkStencilOp GetVkStencilOp(const StencilOp stencilOp)
 {
 	switch (stencilOp)
 	{
-	case StencilOp::kKeep:		return VkStencilOp::VK_STENCIL_OP_KEEP;
-	case StencilOp::kZero:		return VkStencilOp::VK_STENCIL_OP_ZERO;
-	case StencilOp::kReplace:	return VkStencilOp::VK_STENCIL_OP_REPLACE;
-	case StencilOp::kIncrSat:	return VkStencilOp::VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-	case StencilOp::kDecrSat:	return VkStencilOp::VK_STENCIL_OP_DECREMENT_AND_CLAMP;
-	case StencilOp::kInvert:	return VkStencilOp::VK_STENCIL_OP_INVERT;
-	case StencilOp::kIncrWrap:	return VkStencilOp::VK_STENCIL_OP_INCREMENT_AND_WRAP;
-	case StencilOp::kDecrWrap:	return VkStencilOp::VK_STENCIL_OP_DECREMENT_AND_WRAP;
+	case StencilOp::kKeep:		return VK_STENCIL_OP_KEEP;
+	case StencilOp::kZero:		return VK_STENCIL_OP_ZERO;
+	case StencilOp::kReplace:	return VK_STENCIL_OP_REPLACE;
+	case StencilOp::kIncrSat:	return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	case StencilOp::kDecrSat:	return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+	case StencilOp::kInvert:	return VK_STENCIL_OP_INVERT;
+	case StencilOp::kIncrWrap:	return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+	case StencilOp::kDecrWrap:	return VK_STENCIL_OP_DECREMENT_AND_WRAP;
 	}
 
-	return VkStencilOp::VK_STENCIL_OP_KEEP;
+	return VK_STENCIL_OP_KEEP;
 }
 
 
@@ -481,16 +493,16 @@ VkSampleCountFlagBits GetVkSampleCountFlagBits(const u8 sampleCount)
 	BvAssert((sampleCount & (sampleCount - 1)) == 0, "Sample count must be a power of 2");
 	switch (sampleCount)
 	{
-	case 1:		return VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
-	case 2:		return VkSampleCountFlagBits::VK_SAMPLE_COUNT_2_BIT;
-	case 4:		return VkSampleCountFlagBits::VK_SAMPLE_COUNT_4_BIT;
-	case 8:		return VkSampleCountFlagBits::VK_SAMPLE_COUNT_8_BIT;
-	case 16:	return VkSampleCountFlagBits::VK_SAMPLE_COUNT_16_BIT;
-	case 32:	return VkSampleCountFlagBits::VK_SAMPLE_COUNT_32_BIT;
-	//case 64:	return VkSampleCountFlagBits::VK_SAMPLE_COUNT_64_BIT; Supporting up to 32
+	case 1:		return VK_SAMPLE_COUNT_1_BIT;
+	case 2:		return VK_SAMPLE_COUNT_2_BIT;
+	case 4:		return VK_SAMPLE_COUNT_4_BIT;
+	case 8:		return VK_SAMPLE_COUNT_8_BIT;
+	case 16:	return VK_SAMPLE_COUNT_16_BIT;
+	case 32:	return VK_SAMPLE_COUNT_32_BIT;
+	//case 64:	return VK_SAMPLE_COUNT_64_BIT; Supporting up to 32
 	}
 
-	return VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
+	return VK_SAMPLE_COUNT_1_BIT;
 }
 
 
@@ -498,14 +510,14 @@ VkBlendOp GetVkBlendOp(const BlendOp blendOp)
 {
 	switch (blendOp)
 	{
-	case BlendOp::kAdd:			return VkBlendOp::VK_BLEND_OP_ADD;
-	case BlendOp::kSubtract:	return VkBlendOp::VK_BLEND_OP_SUBTRACT;
-	case BlendOp::kRevSubtract:	return VkBlendOp::VK_BLEND_OP_REVERSE_SUBTRACT;
-	case BlendOp::kMin:			return VkBlendOp::VK_BLEND_OP_MIN;
-	case BlendOp::kMax:			return VkBlendOp::VK_BLEND_OP_MAX;
+	case BlendOp::kAdd:			return VK_BLEND_OP_ADD;
+	case BlendOp::kSubtract:	return VK_BLEND_OP_SUBTRACT;
+	case BlendOp::kRevSubtract:	return VK_BLEND_OP_REVERSE_SUBTRACT;
+	case BlendOp::kMin:			return VK_BLEND_OP_MIN;
+	case BlendOp::kMax:			return VK_BLEND_OP_MAX;
 	}
 
-	return VkBlendOp::VK_BLEND_OP_ADD;
+	return VK_BLEND_OP_ADD;
 }
 
 
@@ -513,28 +525,28 @@ VkBlendFactor GetVkBlendFactor(const BlendFactor blendFactor)
 {
 	switch (blendFactor)
 	{
-	case BlendFactor::kZero:			return VkBlendFactor::VK_BLEND_FACTOR_ZERO;
-	case BlendFactor::kOne:				return VkBlendFactor::VK_BLEND_FACTOR_ONE;
-	case BlendFactor::kSrcColor:		return VkBlendFactor::VK_BLEND_FACTOR_SRC_COLOR;
-	case BlendFactor::kInvSrcColor:		return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-	case BlendFactor::kDstColor:		return VkBlendFactor::VK_BLEND_FACTOR_DST_COLOR;
-	case BlendFactor::kInvDstColor:		return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-	case BlendFactor::kSrcAlpha:		return VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA;
-	case BlendFactor::kInvkSrcAlpha:	return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	case BlendFactor::kDstAlpha:		return VkBlendFactor::VK_BLEND_FACTOR_DST_ALPHA;
-	case BlendFactor::kInvDstAlpha:		return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-	case BlendFactor::kBlendFactor:		return VkBlendFactor::VK_BLEND_FACTOR_CONSTANT_COLOR;
-	case BlendFactor::kInvBlendFactor:	return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-	case BlendFactor::kAlphaFactor:		return VkBlendFactor::VK_BLEND_FACTOR_CONSTANT_ALPHA;
-	case BlendFactor::kInvAlphaFactor:	return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
-	case BlendFactor::kSrcAlphaSat:		return VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-	case BlendFactor::kSrc1Color:		return VkBlendFactor::VK_BLEND_FACTOR_SRC1_COLOR;
-	case BlendFactor::kInvSrc1Color:	return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
-	case BlendFactor::kSrc1Alpha:		return VkBlendFactor::VK_BLEND_FACTOR_SRC1_ALPHA;
-	case BlendFactor::kInvkSrc1Alpha:	return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+	case BlendFactor::kZero:			return VK_BLEND_FACTOR_ZERO;
+	case BlendFactor::kOne:				return VK_BLEND_FACTOR_ONE;
+	case BlendFactor::kSrcColor:		return VK_BLEND_FACTOR_SRC_COLOR;
+	case BlendFactor::kInvSrcColor:		return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+	case BlendFactor::kDstColor:		return VK_BLEND_FACTOR_DST_COLOR;
+	case BlendFactor::kInvDstColor:		return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+	case BlendFactor::kSrcAlpha:		return VK_BLEND_FACTOR_SRC_ALPHA;
+	case BlendFactor::kInvkSrcAlpha:	return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	case BlendFactor::kDstAlpha:		return VK_BLEND_FACTOR_DST_ALPHA;
+	case BlendFactor::kInvDstAlpha:		return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+	case BlendFactor::kBlendFactor:		return VK_BLEND_FACTOR_CONSTANT_COLOR;
+	case BlendFactor::kInvBlendFactor:	return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+	case BlendFactor::kAlphaFactor:		return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+	case BlendFactor::kInvAlphaFactor:	return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+	case BlendFactor::kSrcAlphaSat:		return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+	case BlendFactor::kSrc1Color:		return VK_BLEND_FACTOR_SRC1_COLOR;
+	case BlendFactor::kInvSrc1Color:	return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+	case BlendFactor::kSrc1Alpha:		return VK_BLEND_FACTOR_SRC1_ALPHA;
+	case BlendFactor::kInvkSrc1Alpha:	return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
 	}
 
-	return VkBlendFactor::VK_BLEND_FACTOR_ZERO;
+	return VK_BLEND_FACTOR_ZERO;
 }
 
 
@@ -542,22 +554,22 @@ VkLogicOp GetVkLogicOp(const LogicOp logicOp)
 {
 	switch (logicOp)
 	{
-	case LogicOp::kClear:			return VkLogicOp::VK_LOGIC_OP_CLEAR;
-	case LogicOp::kSet:				return VkLogicOp::VK_LOGIC_OP_SET;
-	case LogicOp::kCopy:			return VkLogicOp::VK_LOGIC_OP_COPY;
-	case LogicOp::kCopyInverted:	return VkLogicOp::VK_LOGIC_OP_COPY_INVERTED;
-	case LogicOp::kNoOp:			return VkLogicOp::VK_LOGIC_OP_NO_OP;
-	case LogicOp::kInvert:			return VkLogicOp::VK_LOGIC_OP_INVERT;
-	case LogicOp::kAnd:				return VkLogicOp::VK_LOGIC_OP_AND;
-	case LogicOp::kNand:			return VkLogicOp::VK_LOGIC_OP_NAND;
-	case LogicOp::kOr:				return VkLogicOp::VK_LOGIC_OP_OR;
-	case LogicOp::kNor:				return VkLogicOp::VK_LOGIC_OP_NOR;
-	case LogicOp::kXor:				return VkLogicOp::VK_LOGIC_OP_XOR;
-	case LogicOp::kEquiv:			return VkLogicOp::VK_LOGIC_OP_EQUIVALENT;
-	case LogicOp::kAndReverse:		return VkLogicOp::VK_LOGIC_OP_AND_REVERSE;
-	case LogicOp::kAndInverted:		return VkLogicOp::VK_LOGIC_OP_AND_INVERTED;
-	case LogicOp::kOrReverse:		return VkLogicOp::VK_LOGIC_OP_OR_REVERSE;
-	case LogicOp::kOrInverted:		return VkLogicOp::VK_LOGIC_OP_OR_INVERTED;
+	case LogicOp::kClear:			return VK_LOGIC_OP_CLEAR;
+	case LogicOp::kSet:				return VK_LOGIC_OP_SET;
+	case LogicOp::kCopy:			return VK_LOGIC_OP_COPY;
+	case LogicOp::kCopyInverted:	return VK_LOGIC_OP_COPY_INVERTED;
+	case LogicOp::kNoOp:			return VK_LOGIC_OP_NO_OP;
+	case LogicOp::kInvert:			return VK_LOGIC_OP_INVERT;
+	case LogicOp::kAnd:				return VK_LOGIC_OP_AND;
+	case LogicOp::kNand:			return VK_LOGIC_OP_NAND;
+	case LogicOp::kOr:				return VK_LOGIC_OP_OR;
+	case LogicOp::kNor:				return VK_LOGIC_OP_NOR;
+	case LogicOp::kXor:				return VK_LOGIC_OP_XOR;
+	case LogicOp::kEquiv:			return VK_LOGIC_OP_EQUIVALENT;
+	case LogicOp::kAndReverse:		return VK_LOGIC_OP_AND_REVERSE;
+	case LogicOp::kAndInverted:		return VK_LOGIC_OP_AND_INVERTED;
+	case LogicOp::kOrReverse:		return VK_LOGIC_OP_OR_REVERSE;
+	case LogicOp::kOrInverted:		return VK_LOGIC_OP_OR_INVERTED;
 	}
 
 	return VkLogicOp::VK_LOGIC_OP_CLEAR;
@@ -568,15 +580,15 @@ VkShaderStageFlagBits GetVkShaderStageFlagBits(const ShaderStage shaderStage)
 {
 	switch (shaderStage)
 	{
-	case ShaderStage::kVertex:				return VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
-	case ShaderStage::kHullOrControl:		return VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-	case ShaderStage::kDomainOrEvaluation:	return VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-	case ShaderStage::kGeometry:			return VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT;
-	case ShaderStage::kPixelOrFragment:				return VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
-	case ShaderStage::kCompute:				return VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
+	case ShaderStage::kVertex:				return VK_SHADER_STAGE_VERTEX_BIT;
+	case ShaderStage::kHullOrControl:		return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+	case ShaderStage::kDomainOrEvaluation:	return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+	case ShaderStage::kGeometry:			return VK_SHADER_STAGE_GEOMETRY_BIT;
+	case ShaderStage::kPixelOrFragment:		return VK_SHADER_STAGE_FRAGMENT_BIT;
+	case ShaderStage::kCompute:				return VK_SHADER_STAGE_COMPUTE_BIT;
 	}
 
-	return VkShaderStageFlagBits::VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+	return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 }
 
 
@@ -584,29 +596,29 @@ VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType)
 {
 	switch (resourceType)
 	{
-	case ShaderResourceType::kConstantBuffer:		return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	case ShaderResourceType::kStructuredBuffer:		return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	case ShaderResourceType::kRWStructuredBuffer:	return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	case ShaderResourceType::kFormattedBuffer:		return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-	case ShaderResourceType::kRWFormattedBuffer:	return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-	case ShaderResourceType::kTexture:				return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	case ShaderResourceType::kRWTexture:			return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	case ShaderResourceType::kSampler:				return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
+	case ShaderResourceType::kConstantBuffer:		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	case ShaderResourceType::kStructuredBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case ShaderResourceType::kRWStructuredBuffer:	return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case ShaderResourceType::kFormattedBuffer:		return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+	case ShaderResourceType::kRWFormattedBuffer:	return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+	case ShaderResourceType::kTexture:				return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	case ShaderResourceType::kRWTexture:			return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	case ShaderResourceType::kSampler:				return VK_DESCRIPTOR_TYPE_SAMPLER;
 	}
 
-	return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
+	return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 }
 
 
 VkShaderStageFlags GetVkShaderStageFlags(const ShaderStage stages)
 {
 	VkShaderStageFlags shaderStages = 0;
-	if ((stages & ShaderStage::kVertex				) == ShaderStage::kVertex				) { shaderStages |= VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;					}
-	if ((stages & ShaderStage::kHullOrControl		) == ShaderStage::kHullOrControl		) { shaderStages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;	}
-	if ((stages & ShaderStage::kDomainOrEvaluation	) == ShaderStage::kDomainOrEvaluation	) { shaderStages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; }
-	if ((stages & ShaderStage::kGeometry			) == ShaderStage::kGeometry				) { shaderStages |= VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT;				}
-	if ((stages & ShaderStage::kPixelOrFragment				) == ShaderStage::kPixelOrFragment				) { shaderStages |= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;				}
-	if ((stages & ShaderStage::kCompute				) == ShaderStage::kCompute				) { shaderStages |= VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;					}
+	if ((stages & ShaderStage::kVertex				) == ShaderStage::kVertex				) { shaderStages |= VK_SHADER_STAGE_VERTEX_BIT;					}
+	if ((stages & ShaderStage::kHullOrControl		) == ShaderStage::kHullOrControl		) { shaderStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;	}
+	if ((stages & ShaderStage::kDomainOrEvaluation	) == ShaderStage::kDomainOrEvaluation	) { shaderStages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; }
+	if ((stages & ShaderStage::kGeometry			) == ShaderStage::kGeometry				) { shaderStages |= VK_SHADER_STAGE_GEOMETRY_BIT;				}
+	if ((stages & ShaderStage::kPixelOrFragment		) == ShaderStage::kPixelOrFragment		) { shaderStages |= VK_SHADER_STAGE_FRAGMENT_BIT;				}
+	if ((stages & ShaderStage::kCompute				) == ShaderStage::kCompute				) { shaderStages |= VK_SHADER_STAGE_COMPUTE_BIT;				}
 
 	return shaderStages;
 }
@@ -616,11 +628,11 @@ VkAttachmentLoadOp GetVkAttachmentLoadOp(const LoadOp loadOp)
 {
 	switch (loadOp)
 	{
-	case LoadOp::kClear:	return VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR;
-	case LoadOp::kLoad:		return VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_LOAD;
+	case LoadOp::kClear:	return VK_ATTACHMENT_LOAD_OP_CLEAR;
+	case LoadOp::kLoad:		return VK_ATTACHMENT_LOAD_OP_LOAD;
 	}
 
-	return VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 }
 
 
@@ -628,10 +640,10 @@ VkAttachmentStoreOp GetVkAttachmentStoreOp(const StoreOp storeOp)
 {
 	switch (storeOp)
 	{
-	case StoreOp::kStore:	return VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
+	case StoreOp::kStore:	return VK_ATTACHMENT_STORE_OP_STORE;
 	}
 
-	return VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 }
 
 
@@ -640,10 +652,10 @@ VkIndexType GetVkIndexType(const IndexFormat indexFormat)
 	switch (indexFormat)
 	{
 	//case IndexFormat::kU16:
-	case IndexFormat::kU32:	return VkIndexType::VK_INDEX_TYPE_UINT32;
+	case IndexFormat::kU32:	return VK_INDEX_TYPE_UINT32;
 	}
 
-	return VkIndexType::VK_INDEX_TYPE_UINT16;
+	return VK_INDEX_TYPE_UINT16;
 }
 
 
@@ -651,135 +663,150 @@ VkImageLayout GetVkImageLayout(const ResourceState resourceState)
 {
 	switch (resourceState)
 	{
-	case ResourceState::kTransferSrc:		return VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	case ResourceState::kTransferDst:		return VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	case ResourceState::kShaderResource:	return VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	case ResourceState::kRWResource:		return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
-	case ResourceState::kRenderTarget:		return VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	case ResourceState::kDepthStencilRead:	return VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-	case ResourceState::kDepthStencilWrite:	return VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	case ResourceState::kPresent:			return VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	case ResourceState::kTransferSrc:		return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	case ResourceState::kTransferDst:		return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	case ResourceState::kShaderResource:	return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	case ResourceState::kRWResource:		return VK_IMAGE_LAYOUT_GENERAL;
+	case ResourceState::kRenderTarget:		return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	case ResourceState::kDepthStencilRead:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+	case ResourceState::kDepthStencilWrite:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	case ResourceState::kPresent:			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	}
 
 	return VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
 
-VkAccessFlags GetVkAccessFlags(const ResourceAccess resourceAccess)
+VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess)
 {
-	VkAccessFlags accessFlags = 0;
+	VkAccessFlags2 accessFlags = 0;
 
-	if ((resourceAccess & ResourceAccess::kIndirectRead		) == ResourceAccess::kIndirectRead		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_INDIRECT_COMMAND_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kIndexRead		) == ResourceAccess::kIndexRead			)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_INDEX_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kVertexInputRead	) == ResourceAccess::kVertexInputRead	)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kUniformRead		) == ResourceAccess::kUniformRead		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_UNIFORM_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kShaderRead		) == ResourceAccess::kShaderRead		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_SHADER_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kShaderWrite		) == ResourceAccess::kShaderWrite		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_SHADER_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kRenderTargetRead	) == ResourceAccess::kRenderTargetRead	)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kRenderTargetWrite) == ResourceAccess::kRenderTargetWrite	)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kDepthStencilRead	) == ResourceAccess::kDepthStencilRead	)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kDepthStencilWrite) == ResourceAccess::kDepthStencilWrite	)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kTransferRead		) == ResourceAccess::kTransferRead		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kTransferWrite	) == ResourceAccess::kTransferWrite		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kHostRead			) == ResourceAccess::kHostRead			)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kHostWrite		) == ResourceAccess::kHostWrite			)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_HOST_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kMemoryRead		) == ResourceAccess::kMemoryRead		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kMemoryWrite		) == ResourceAccess::kMemoryWrite		)	{ accessFlags |= VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT; }
+	if ((resourceAccess & ResourceAccess::kIndirectRead		) == ResourceAccess::kIndirectRead		)	{ accessFlags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kIndexRead		) == ResourceAccess::kIndexRead			)	{ accessFlags |= VK_ACCESS_2_INDEX_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kVertexInputRead	) == ResourceAccess::kVertexInputRead	)	{ accessFlags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kUniformRead		) == ResourceAccess::kUniformRead		)	{ accessFlags |= VK_ACCESS_2_UNIFORM_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kShaderRead		) == ResourceAccess::kShaderRead		)	{ accessFlags |= VK_ACCESS_2_SHADER_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kShaderWrite		) == ResourceAccess::kShaderWrite		)	{ accessFlags |= VK_ACCESS_2_SHADER_WRITE_BIT; }
+	if ((resourceAccess & ResourceAccess::kRenderTargetRead	) == ResourceAccess::kRenderTargetRead	)	{ accessFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kRenderTargetWrite) == ResourceAccess::kRenderTargetWrite	)	{ accessFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT; }
+	if ((resourceAccess & ResourceAccess::kDepthStencilRead	) == ResourceAccess::kDepthStencilRead	)	{ accessFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kDepthStencilWrite) == ResourceAccess::kDepthStencilWrite	)	{ accessFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT; }
+	if ((resourceAccess & ResourceAccess::kTransferRead		) == ResourceAccess::kTransferRead		)	{ accessFlags |= VK_ACCESS_2_TRANSFER_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kTransferWrite	) == ResourceAccess::kTransferWrite		)	{ accessFlags |= VK_ACCESS_2_TRANSFER_WRITE_BIT; }
+	if ((resourceAccess & ResourceAccess::kHostRead			) == ResourceAccess::kHostRead			)	{ accessFlags |= VK_ACCESS_2_HOST_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kHostWrite		) == ResourceAccess::kHostWrite			)	{ accessFlags |= VK_ACCESS_2_HOST_WRITE_BIT; }
+	if ((resourceAccess & ResourceAccess::kMemoryRead		) == ResourceAccess::kMemoryRead		)	{ accessFlags |= VK_ACCESS_2_MEMORY_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kMemoryWrite		) == ResourceAccess::kMemoryWrite		)	{ accessFlags |= VK_ACCESS_2_MEMORY_WRITE_BIT; }
 
 	return accessFlags;
 }
 
 
-VkAccessFlags GetVkAccessFlags(const ResourceState resourceState)
+VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 {
 	switch (resourceState)
 	{
-	case ResourceState::kVertexBuffer:		return VkAccessFlagBits::VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-	case ResourceState::kIndexBuffer:		return VkAccessFlagBits::VK_ACCESS_INDEX_READ_BIT;
-	case ResourceState::kIndirectBuffer:	return VkAccessFlagBits::VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-	case ResourceState::kUniformBuffer:		return VkAccessFlagBits::VK_ACCESS_UNIFORM_READ_BIT;
-	case ResourceState::kShaderResource:	return VkAccessFlagBits::VK_ACCESS_SHADER_READ_BIT;
-	case ResourceState::kRWResource:		return VkAccessFlagBits::VK_ACCESS_SHADER_READ_BIT | VkAccessFlagBits::VK_ACCESS_SHADER_WRITE_BIT;
-	case ResourceState::kTransferSrc:		return VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
-	case ResourceState::kTransferDst:		return VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT;
-	case ResourceState::kRenderTarget:		return VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	case ResourceState::kDepthStencilRead:	return VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-	case ResourceState::kDepthStencilWrite:	return VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	case ResourceState::kPresent:			return VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT;
+	case ResourceState::kVertexBuffer:		return VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+	case ResourceState::kIndexBuffer:		return VK_ACCESS_2_INDEX_READ_BIT;
+	case ResourceState::kIndirectBuffer:	return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+	case ResourceState::kUniformBuffer:		return VK_ACCESS_2_UNIFORM_READ_BIT;
+	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT;
+	case ResourceState::kRWResource:		return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+	case ResourceState::kTransferSrc:		return VK_ACCESS_2_TRANSFER_READ_BIT;
+	case ResourceState::kTransferDst:		return VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	case ResourceState::kRenderTarget:		return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+	case ResourceState::kDepthStencilRead:	return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+	case ResourceState::kDepthStencilWrite:	return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	case ResourceState::kPresent:			return VK_ACCESS_2_MEMORY_READ_BIT;
 	}
 
 	return 0;
 }
 
 
-VkPipelineStageFlags GetVkPipelineStageFlags(const VkAccessFlags accessFlags)
+VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags)
+{
+	VkAccessFlags2 flags = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	if ((usageFlags & BufferUsage::kUniformBuffer) == BufferUsage::kUniformBuffer) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
+	if ((usageFlags & BufferUsage::kStorageBuffer) == BufferUsage::kStorageBuffer) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
+	if ((usageFlags & BufferUsage::kUniformTexelBuffer) == BufferUsage::kUniformTexelBuffer) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
+	if ((usageFlags & BufferUsage::kStorageTexelBuffer) == BufferUsage::kStorageTexelBuffer) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
+	if ((usageFlags & BufferUsage::kVertexBuffer) == BufferUsage::kVertexBuffer) { flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
+	if ((usageFlags & BufferUsage::kIndexBuffer) == BufferUsage::kIndexBuffer) { flags |= VK_ACCESS_2_INDEX_READ_BIT; }
+	if ((usageFlags & BufferUsage::kIndirectBuffer) == BufferUsage::kIndirectBuffer) { flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }
+
+	return flags;
+}
+
+
+VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 {
 	if (accessFlags == 0)
 	{
-		return VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		return VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
 	}
 
-	VkPipelineStageFlags stageFlags = 0;
-	if (accessFlags & VkAccessFlagBits::VK_ACCESS_INDIRECT_COMMAND_READ_BIT)
+	VkPipelineStageFlags2 stageFlags = 0;
+	if (accessFlags & VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT)
 	{
-		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 	}
-	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_INDEX_READ_BIT | VkAccessFlagBits::VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT))
+	if (accessFlags & (VK_ACCESS_2_INDEX_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT))
 	{
-		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
 	}
-	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_UNIFORM_READ_BIT | VkAccessFlagBits::VK_ACCESS_SHADER_READ_BIT | VkAccessFlagBits::VK_ACCESS_SHADER_WRITE_BIT))
+	if (accessFlags & (VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT))
 	{
-		stageFlags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-			| VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
-			| VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-			| VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
-			| VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-			| VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT
+			| VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT
+			| VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT
+			| VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT
+			| VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
+			| VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 	}
-	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT))
+	if (accessFlags & (VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT))
 	{
-		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 	}
-	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT))
+	if (accessFlags & (VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT))
 	{
-		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-			| VkPipelineStageFlagBits::VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT
+			| VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
 	}
-	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT | VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT))
+	if (accessFlags & (VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT))
 	{
-		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT;
 	}
-	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT | VkAccessFlagBits::VK_ACCESS_HOST_WRITE_BIT))
+	if (accessFlags & (VK_ACCESS_2_HOST_READ_BIT | VK_ACCESS_2_HOST_WRITE_BIT))
 	{
-		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_HOST_BIT;
 	}
-	if (accessFlags & (VkAccessFlagBits::VK_ACCESS_MEMORY_READ_BIT))
+	if (accessFlags & (VK_ACCESS_2_MEMORY_READ_BIT))
 	{
-		stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
 	}
 
 	return stageFlags;
 }
 
 
-VkPipelineStageFlags GetVkPipelineStageFlags(const PipelineStage pipelineStage)
+VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage)
 {
-	VkPipelineStageFlags stageFlags = 0;
+	VkPipelineStageFlags2 stageFlags = 0;
 
-	if ((pipelineStage & PipelineStage::kBeginning				) == PipelineStage::kBeginning				) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; }
-	if ((pipelineStage & PipelineStage::kIndirectDraw			) == PipelineStage::kIndirectDraw			) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT; }
-	if ((pipelineStage & PipelineStage::kVertexInput			) == PipelineStage::kVertexInput			) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_INPUT_BIT; }
-	if ((pipelineStage & PipelineStage::kVertexShader			) == PipelineStage::kVertexShader			) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kTessHullOrControlShader) == PipelineStage::kTessHullOrControlShader) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kTessDomainOrEvalShader	) == PipelineStage::kTessDomainOrEvalShader	) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kGeometryShader			) == PipelineStage::kGeometryShader			) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kPixelOrFragmentShader	) == PipelineStage::kPixelOrFragmentShader	) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kDepth					) == PipelineStage::kDepth					) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VkPipelineStageFlagBits::VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT; }
-	if ((pipelineStage & PipelineStage::kRenderTarget			) == PipelineStage::kRenderTarget			) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; }
-	if ((pipelineStage & PipelineStage::kComputeShader			) == PipelineStage::kComputeShader			) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kTransfer				) == PipelineStage::kTransfer				) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT; }
-	if ((pipelineStage & PipelineStage::kEnd					) == PipelineStage::kEnd					) { stageFlags |= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; }
+	if ((pipelineStage & PipelineStage::kBeginning				) == PipelineStage::kBeginning				) { stageFlags |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT; }
+	if ((pipelineStage & PipelineStage::kIndirectDraw			) == PipelineStage::kIndirectDraw			) { stageFlags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT; }
+	if ((pipelineStage & PipelineStage::kVertexInput			) == PipelineStage::kVertexInput			) { stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT; }
+	if ((pipelineStage & PipelineStage::kVertexShader			) == PipelineStage::kVertexShader			) { stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT; }
+	if ((pipelineStage & PipelineStage::kTessHullOrControlShader) == PipelineStage::kTessHullOrControlShader) { stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT; }
+	if ((pipelineStage & PipelineStage::kTessDomainOrEvalShader	) == PipelineStage::kTessDomainOrEvalShader	) { stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT; }
+	if ((pipelineStage & PipelineStage::kGeometryShader			) == PipelineStage::kGeometryShader			) { stageFlags |= VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT; }
+	if ((pipelineStage & PipelineStage::kPixelOrFragmentShader	) == PipelineStage::kPixelOrFragmentShader	) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT; }
+	if ((pipelineStage & PipelineStage::kDepth					) == PipelineStage::kDepth					) { stageFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT; }
+	if ((pipelineStage & PipelineStage::kRenderTarget			) == PipelineStage::kRenderTarget			) { stageFlags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT; }
+	if ((pipelineStage & PipelineStage::kComputeShader			) == PipelineStage::kComputeShader			) { stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT; }
+	if ((pipelineStage & PipelineStage::kTransfer				) == PipelineStage::kTransfer				) { stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT; }
+	if ((pipelineStage & PipelineStage::kEnd					) == PipelineStage::kEnd					) { stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT; }
 
 	return stageFlags;
 }
@@ -790,8 +817,20 @@ VkCommandPoolCreateFlags GetVkCommandPoolCreateFlags(const CommandPoolFlags comm
 	VkCommandPoolCreateFlags flags = 0;
 	if ((commandPoolFlags & CommandPoolFlags::kTransient) == CommandPoolFlags::kTransient)
 	{
-		flags |= VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+		flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
 	}
 
 	return flags;
+}
+
+
+VkQueryType GetVkQueryType(QueryType queryHeapType)
+{
+	switch (queryHeapType)
+	{
+	case QueryType::kTimestamp: return VK_QUERY_TYPE_TIMESTAMP;
+	case QueryType::kOcclusion:
+	case QueryType::kOcclusionBinary: return VK_QUERY_TYPE_OCCLUSION;
+	default: return VK_QUERY_TYPE_TIMESTAMP;
+	}
 }

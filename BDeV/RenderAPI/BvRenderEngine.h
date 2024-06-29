@@ -18,7 +18,7 @@ public:
 	virtual u32 GetSupportedGPUCount() const = 0;
 	virtual void GetGPUInfo(u32 index, BvGPUInfo& info) const = 0;
 
-	virtual BvRenderDevice* CreateRenderDevice(u32 gpuIndex = 0) = 0;
+	virtual BvRenderDevice* CreateRenderDevice(u32 gpuIndex = kU32Max) = 0;
 	
 	virtual const char* GetEngineName() const = 0;
 

@@ -44,3 +44,7 @@ private:
 	VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	VkPipelineCache m_PipelineCache = VK_NULL_HANDLE;
 };
+
+
+BV_CREATE_CAST_TO_VK(BvGraphicsPipelineState)
+BV_CREATE_CAST_TO_VK(BvComputePipelineState)

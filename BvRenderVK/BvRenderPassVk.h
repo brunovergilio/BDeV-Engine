@@ -33,6 +33,9 @@ private:
 };
 
 
+BV_CREATE_CAST_TO_VK(BvRenderPass)
+
+
 template<>
 struct BvHash<RenderPassDesc>
 {

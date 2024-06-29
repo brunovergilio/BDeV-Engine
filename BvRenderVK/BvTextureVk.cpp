@@ -2,12 +2,15 @@
 #include "BvRenderVk/BvRenderDeviceVk.h"
 #include "BvUtilsVk.h"
 #include "BvTypeConversionsVk.h"
+#include "BvCommandContextVk.h"
+#include "BvBufferVk.h"
+#include "BDeV/RenderAPI/BvRenderAPIUtils.h"
 
 
-BvTextureVk::BvTextureVk(const BvRenderDeviceVk & device, const TextureDesc & textureDesc)
+BvTextureVk::BvTextureVk(const BvRenderDeviceVk& device, const TextureDesc& textureDesc, const TextureInitData* pInitData)
 	: BvTexture(textureDesc), m_Device(device)
 {
-	Create();
+	Create(pInitData);
 }
 
 
@@ -17,32 +20,18 @@ BvTextureVk::~BvTextureVk()
 }
 
 
-void BvTextureVk::Create()
+void BvTextureVk::Create(const TextureInitData* pInitData)
 {
-	VkImageCreateFlags imageCreateFlags = 0;
-	if (m_TextureDesc.m_UseAsCubeMap)
+	if (pInitData && m_TextureDesc.m_MemoryType != MemoryType::kDevice)
 	{
-		imageCreateFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		// TODO: Use a VkBuffer instead
+		BvAssert(false, "Not supported");
 	}
 
-	auto device = m_Device.GetHandle();
-
-	u32 layerCount = 0;
-	u32 depth = 0;
-	switch (m_TextureDesc.m_ImageType)
+	VkImageCreateFlags imageCreateFlags = 0;
+	if ((m_TextureDesc.m_CreateFlags & TextureCreateFlags::kCreateCubemap) == TextureCreateFlags::kCreateCubemap)
 	{
-	case TextureType::kTexture1D:
-		layerCount = m_TextureDesc.m_Size.height;
-		depth = 1;
-		break;
-	case TextureType::kTexture2D:
-		layerCount = m_TextureDesc.m_Size.depthOrLayerCount;
-		depth = 1;
-		break;
-	case TextureType::kTexture3D:
-		layerCount = 1;
-		depth = m_TextureDesc.m_Size.depthOrLayerCount;
-		break;
+		imageCreateFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 	}
 
 	VkImageCreateInfo imageCreateInfo{};
@@ -51,16 +40,18 @@ void BvTextureVk::Create()
 	imageCreateInfo.flags = imageCreateFlags;
 	imageCreateInfo.imageType = GetVkImageType(m_TextureDesc.m_ImageType);
 	imageCreateInfo.format = GetVkFormat(m_TextureDesc.m_Format);
-	imageCreateInfo.extent = { m_TextureDesc.m_Size.width, m_TextureDesc.m_Size.height, depth };
+	imageCreateInfo.extent = { m_TextureDesc.m_Size.width, m_TextureDesc.m_Size.height, m_TextureDesc.m_Size.depth };
 	imageCreateInfo.mipLevels = m_TextureDesc.m_MipLevels;
-	imageCreateInfo.arrayLayers = layerCount;
-	imageCreateInfo.samples = (VkSampleCountFlagBits)m_TextureDesc.m_SampleCount;
+	imageCreateInfo.arrayLayers = m_TextureDesc.m_LayerCount;
+	imageCreateInfo.samples = GetVkSampleCountFlagBits(m_TextureDesc.m_SampleCount);
 	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCreateInfo.usage = GetVkImageUsageFlags(m_TextureDesc.m_UsageFlags);
 	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageCreateInfo.queueFamilyIndexCount = 0;
 	imageCreateInfo.pQueueFamilyIndices = nullptr;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	auto device = m_Device.GetHandle();
 
 	auto result = vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
 	if (result != VK_SUCCESS)
@@ -71,7 +62,8 @@ void BvTextureVk::Create()
 
 	auto vma = m_Device.GetAllocator();
 	VmaAllocationCreateInfo vmaACI = {};
-	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_TextureDesc.m_MemoryFlags);
+	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType);
+	vmaACI.preferredFlags = GetPreferredVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType);
 
 	VmaAllocationInfo vmaAI;
 	VmaAllocation vmaA;
@@ -91,6 +83,13 @@ void BvTextureVk::Create()
 		vmaFreeMemory(vma, m_VMAAllocation);
 	}
 	m_VMAAllocation = vmaA;
+
+	auto info = GetFormatInfo(m_TextureDesc.m_Format);
+	if (m_TextureDesc.m_ResourceState != ResourceState::kCommon && pInitData)
+	{
+		BvAssert(pInitData->m_pContext != nullptr, "Invalid command context");
+		CopyInitDataAndTransitionState(pInitData);
+	}
 }
 
 
@@ -103,6 +102,98 @@ void BvTextureVk::Destroy()
 		vkDestroyImage(device, m_Image, nullptr);
 	}
 	vmaFreeMemory(m_Device.GetAllocator(), m_VMAAllocation);
+}
+
+
+void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitData)
+{
+	auto pContext = static_cast<BvCommandContextVk*>(pInitData->m_pContext);
+
+	ResourceState currState = ResourceState::kCommon;
+	bool isValidTextureData = pInitData->m_SubresourceCount == (u32)m_TextureDesc.m_LayerCount * m_TextureDesc.m_MipLevels
+		&& pInitData->m_pSubresources != nullptr;
+	if (isValidTextureData)
+	{
+		BvVector<VkBufferImageCopy> copyRegions(pInitData->m_SubresourceCount);
+		u32 index = 0;
+		u64 bufferSize = 0;
+		// Calculate copy regions
+		for (auto layer = 0u; layer < m_TextureDesc.m_LayerCount; ++layer)
+		{
+			for (auto mip = 0u; mip < m_TextureDesc.m_MipLevels; ++mip, ++index)
+			{
+				auto& copyRegion = copyRegions[index];
+				copyRegion.bufferOffset = bufferSize;
+				copyRegion.bufferImageHeight = 0;
+				copyRegion.bufferRowLength = 0;
+
+				TextureSubresource subresource;
+				GetTextureSubresourceData(m_TextureDesc, mip, subresource);
+
+				copyRegion.imageOffset = { 0, 0, 0 };
+				copyRegion.imageExtent = { subresource.m_Width, subresource.m_Detph, subresource.m_Height };
+				copyRegion.imageSubresource.aspectMask = GetVkFormatMap(m_TextureDesc.m_Format).aspectFlags;
+				copyRegion.imageSubresource.mipLevel = mip;
+				copyRegion.imageSubresource.baseArrayLayer = layer;
+				copyRegion.imageSubresource.layerCount = 1;
+
+				bufferSize = RoundToNearestMultiple(bufferSize, 4u);
+			}
+		}
+
+		BufferDesc bufferDesc;
+		bufferDesc.m_MemoryType = MemoryType::kUpload;
+		bufferDesc.m_Size = bufferSize;
+		bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
+
+		BvBufferVk buffer(m_Device, bufferDesc, nullptr);
+		auto pDstData = static_cast<u8*>(buffer.GetMappedData());
+
+		// Copy initial data to staging buffer
+		index = 0;
+		for (auto layer = 0u; layer < m_TextureDesc.m_LayerCount; ++layer)
+		{
+			for (auto mip = 0u; mip < m_TextureDesc.m_MipLevels; ++mip, ++index)
+			{
+				auto& copyRegion = copyRegions[index];
+				auto& srcSubresource = pInitData->m_pSubresources[index];
+				
+				TextureSubresource dstSubresource;
+				GetTextureSubresourceData(m_TextureDesc, mip, dstSubresource);
+
+				for (auto z = 0u; z < dstSubresource.m_Detph; ++z)
+				{
+					for (auto y = 0u; y < dstSubresource.m_NumRows; ++y)
+					{
+						auto pSrc = srcSubresource.m_pData + y * srcSubresource.m_RowPitch + srcSubresource.m_SlicePitch * z;
+						auto pDst = pDstData + copyRegion.bufferOffset + y * dstSubresource.m_RowPitch + dstSubresource.m_SlicePitch * z;
+						memcpy(pDst, pSrc, dstSubresource.m_RowPitch);
+					}
+				}
+			}
+		}
+
+		ResourceBarrierDesc copyDstBarrier;
+		copyDstBarrier.m_pTexture = this;
+		copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
+
+		pContext->ResourceBarrier(1, &copyDstBarrier);
+		pContext->CopyBufferToTexture(&buffer, this, (u32)copyRegions.Size(), copyRegions.Data());
+
+		currState = ResourceState::kTransferDst;
+	}
+
+	if (currState != m_TextureDesc.m_ResourceState)
+	{
+		ResourceBarrierDesc barrier;
+		barrier.m_pTexture = this;
+		barrier.m_SrcLayout = currState;
+		barrier.m_DstLayout = m_TextureDesc.m_ResourceState;
+
+		pContext->ResourceBarrier(1, &barrier);
+	}
+	pContext->Signal();
+	pContext->WaitForGPU();
 }
 
 

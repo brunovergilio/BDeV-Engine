@@ -134,9 +134,9 @@ enum class ColorMask : u8
 
 struct ShaderByteCodeDesc
 {
-	const u8 * m_pByteCode = nullptr;
+	const u8* m_pByteCode = nullptr;
 	size_t m_ByteCodeSize = 0;
-	BvString m_EntryPoint{};
+	BvString m_EntryPoint;
 	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
 };
 
@@ -229,12 +229,6 @@ struct DepthStencilDesc
 };
 
 
-struct MultisampleStateDesc
-{
-	u8 m_SampleCount = 1;
-};
-
-
 struct BlendAttachmentStateDesc
 {
 	bool m_BlendEnable = false;
@@ -266,8 +260,8 @@ struct GraphicsPipelineStateDesc
 	ViewportStateDesc											m_ViewportStateDesc;
 	RasterizerStateDesc											m_RasterizerStateDesc;
 	DepthStencilDesc											m_DepthStencilDesc;
-	MultisampleStateDesc										m_MultisampleStateDesc;
 	BlendStateDesc												m_BlendStateDesc;
+	u32															m_SampleCount = 1;
 	BvShaderResourceLayout*										m_pShaderResourceLayout = nullptr;
 	BvRenderPass*												m_pRenderPass = nullptr;
 	BvFixedVector<Format, kMaxRenderTargets>					m_RenderTargetFormats;

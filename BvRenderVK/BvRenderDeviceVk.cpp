@@ -9,12 +9,19 @@
 #include "BvSemaphoreVk.h"
 #include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
+#include "BvTextureVk.h"
+#include "BvTextureViewVk.h"
+#include "BvSamplerVk.h"
 #include "BvDescriptorSetVk.h"
+#include "BvQueryVk.h"
 #include "BvRenderVK/BvFramebufferVk.h"
 #include "BvTypeConversionsVk.h"
+#include "BvCommandContextVk.h"
+#include "BvQueryVk.h"
+#include "BDeV/RenderAPI/BvRenderAPIUtils.h"
 
 
-BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfoVk& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
+BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, BvGPUInfoVk& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
 	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory())
 {
 	Create(deviceDesc);
@@ -27,265 +34,12 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 }
 
 
-void BvRenderDeviceVk::SetupDeviceFeatures(VkDeviceCreateInfo& deviceCreateInfo, VkPhysicalDeviceFeatures& enabledFeatures, BvVector<const char*>& enabledExtensions)
-{
-	// ===================================================
-	// Default features
-#define VK_ADD_FEATURE_IF_SUPPORTED(feature) if (m_GPUInfo.m_DeviceFeatures.feature) enabledFeatures.feature = VK_TRUE;
-	//VK_ADD_FEATURE_IF_SUPPORTED(robustBufferAccess);
-	VK_ADD_FEATURE_IF_SUPPORTED(fullDrawIndexUint32);
-	VK_ADD_FEATURE_IF_SUPPORTED(imageCubeArray);
-	//VK_ADD_FEATURE_IF_SUPPORTED(independentBlend);
-	VK_ADD_FEATURE_IF_SUPPORTED(geometryShader);
-	VK_ADD_FEATURE_IF_SUPPORTED(tessellationShader);
-	VK_ADD_FEATURE_IF_SUPPORTED(sampleRateShading);
-	VK_ADD_FEATURE_IF_SUPPORTED(dualSrcBlend);
-	//VK_ADD_FEATURE_IF_SUPPORTED(logicOp);
-	VK_ADD_FEATURE_IF_SUPPORTED(multiDrawIndirect);
-	//VK_ADD_FEATURE_IF_SUPPORTED(drawIndirectFirstInstance);
-	VK_ADD_FEATURE_IF_SUPPORTED(depthClamp);
-	VK_ADD_FEATURE_IF_SUPPORTED(depthBiasClamp);
-	VK_ADD_FEATURE_IF_SUPPORTED(fillModeNonSolid);
-	VK_ADD_FEATURE_IF_SUPPORTED(depthBounds);
-	//VK_ADD_FEATURE_IF_SUPPORTED(wideLines);
-	//VK_ADD_FEATURE_IF_SUPPORTED(largePoints);
-	//VK_ADD_FEATURE_IF_SUPPORTED(alphaToOne);
-	VK_ADD_FEATURE_IF_SUPPORTED(multiViewport);
-	VK_ADD_FEATURE_IF_SUPPORTED(samplerAnisotropy);
-	VK_ADD_FEATURE_IF_SUPPORTED(textureCompressionETC2);
-	VK_ADD_FEATURE_IF_SUPPORTED(textureCompressionASTC_LDR);
-	VK_ADD_FEATURE_IF_SUPPORTED(textureCompressionBC);
-	VK_ADD_FEATURE_IF_SUPPORTED(occlusionQueryPrecise);
-	VK_ADD_FEATURE_IF_SUPPORTED(pipelineStatisticsQuery);
-	VK_ADD_FEATURE_IF_SUPPORTED(vertexPipelineStoresAndAtomics);
-	VK_ADD_FEATURE_IF_SUPPORTED(fragmentStoresAndAtomics);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderTessellationAndGeometryPointSize);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderImageGatherExtended);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageExtendedFormats);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageMultisample);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageReadWithoutFormat);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageWriteWithoutFormat);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderUniformBufferArrayDynamicIndexing);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderSampledImageArrayDynamicIndexing);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageBufferArrayDynamicIndexing);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderStorageImageArrayDynamicIndexing);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderClipDistance);
-	VK_ADD_FEATURE_IF_SUPPORTED(shaderCullDistance);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderFloat64);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderInt64);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderInt16);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderResourceResidency);
-	//VK_ADD_FEATURE_IF_SUPPORTED(shaderResourceMinLod);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseBinding);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyBuffer);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyImage2D);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyImage3D);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency2Samples);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency4Samples);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency8Samples);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidency16Samples);
-	VK_ADD_FEATURE_IF_SUPPORTED(sparseResidencyAliased);
-	VK_ADD_FEATURE_IF_SUPPORTED(variableMultisampleRate);
-	//VK_ADD_FEATURE_IF_SUPPORTED(inheritedQueries);
-#undef VK_ADD_FEATURE_IF_SUPPORTED
-
-	// ===================================================
-	// Extended features
-	if (m_GPUInfo.m_FeaturesSupported.swapChain)
-	{
-		enabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-	}
-
-	if (!m_GPUInfo.m_FeaturesSupported.deviceProperties2)
-	{
-		return;
-	}
-
-	void** pNextFeature = const_cast<void**>(&deviceCreateInfo.pNext);
-	BvGPUInfoVk& gpuInfo = const_cast<BvGPUInfoVk&>(m_GPUInfo);
-
-	if (m_GPUInfo.m_FeaturesSupported.vertexAttributeDivisor)
-	{
-		enabledExtensions.PushBack(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.memoryRequirements2)
-	{
-		enabledExtensions.PushBack(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.bindMemory2)
-	{
-		enabledExtensions.PushBack(VK_KHR_BIND_MEMORY_2_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.maintenance1)
-	{
-		enabledExtensions.PushBack(VK_KHR_MAINTENANCE1_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.maintenance2)
-	{
-		enabledExtensions.PushBack(VK_KHR_MAINTENANCE2_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.multiview)
-	{
-		enabledExtensions.PushBack(VK_KHR_MULTIVIEW_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.multiviewFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.multiviewFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.renderpass2)
-	{
-		enabledExtensions.PushBack(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.dynamicRendering)
-	{
-		enabledExtensions.PushBack(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.dynamicRenderingFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.dynamicRenderingFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.fragmentShading)
-	{
-		enabledExtensions.PushBack(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.fragmentShadingRateFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.fragmentShadingRateFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.maintenance3)
-	{
-		enabledExtensions.PushBack(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.descriptorIndexing)
-	{
-		enabledExtensions.PushBack(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.descriptorIndexingFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.descriptorIndexingFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.bufferDeviceAddress)
-	{
-		enabledExtensions.PushBack(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.bufferDeviceAddressFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.bufferDeviceAddressFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.deferredHostOperations)
-	{
-		enabledExtensions.PushBack(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.shaderFloatControls)
-	{
-		enabledExtensions.PushBack(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.spirv1_4)
-	{
-		enabledExtensions.PushBack(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.meshShader)
-	{
-		enabledExtensions.PushBack(VK_EXT_MESH_SHADER_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.meshShaderFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.meshShaderFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.accelerationStructure)
-	{
-		enabledExtensions.PushBack(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.accelerationStructureFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.accelerationStructureFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.rayTracingPipeline)
-	{
-		enabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.rayTracingPipelineFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.rayTracingPipelineFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.rayQuery)
-	{
-		enabledExtensions.PushBack(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.rayQueryFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.rayQueryFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.pipelineLibrary)
-	{
-		enabledExtensions.PushBack(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.conservativeRasterization)
-	{
-		enabledExtensions.PushBack(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.customBorderColor)
-	{
-		enabledExtensions.PushBack(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.customBorderColorFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.customBorderColorFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.timelineSemaphore)
-	{
-		enabledExtensions.PushBack(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.timelineSemaphoreFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.timelineSemaphoreFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.imageFormatList)
-	{
-		enabledExtensions.PushBack(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.imagelessFrameBuffer)
-	{
-		enabledExtensions.PushBack(VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME);
-
-		*pNextFeature = &gpuInfo.m_ExtendedFeatures.imagelessFrameBufferFeatures;
-		pNextFeature = &gpuInfo.m_ExtendedFeatures.imagelessFrameBufferFeatures.pNext;
-	}
-
-	if (m_GPUInfo.m_FeaturesSupported.memoryBudget)
-	{
-		enabledExtensions.PushBack(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-	}
-}
-
-
 void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc)
 {
 	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
 		"No device queues");
 
-	// ===========================================================
-	// Prepare Device Queues and create the logical device
-	BvVector<VkDeviceQueueCreateInfo> queueInfos;
-	VkDeviceQueueCreateInfo queueCreateInfo{};
-
-	constexpr u32 kMaxQueueCount = 64;
+	constexpr u32 kMaxQueueCount = 16;
 	BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount, "Graphics queue count greater than limit");
 	BvAssert(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount, "Compute queue count greater than limit");
 	BvAssert(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount, "Transfer queue count greater than limit");
@@ -294,85 +48,57 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	{
 		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
 		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
 	};
 
+	// ===========================================================
+	// Prepare Device Queues and create the logical device
+	constexpr auto kMaxQueueTypes = 3;
+	BvFixedVector<VkDeviceQueueCreateInfo, kMaxQueueTypes> queueInfos;
+
+	VkDeviceQueueCreateInfo queueCreateInfo{};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo.pQueuePriorities = queuePriorities;
-	queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_GraphicsQueueIndex;
 	if (deviceCreateDesc.m_GraphicsQueueCount > 0)
 	{
-		queueCreateInfo.queueCount = deviceCreateDesc.m_GraphicsQueueCount;
+		BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount, "Not enough graphics queues available");
+		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex;
+		queueCreateInfo.queueCount = m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount;
 		queueInfos.PushBack(queueCreateInfo);
+		
+		m_GraphicsContexts.Resize(deviceCreateDesc.m_GraphicsQueueCount);
 	}
-	if (m_GPUInfo.m_GraphicsQueueIndex != m_GPUInfo.m_ComputeQueueIndex
-		&& deviceCreateDesc.m_ComputeQueueCount > 0)
+	if (deviceCreateDesc.m_ComputeQueueCount > 0)
 	{
-		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_ComputeQueueIndex;
-		queueCreateInfo.queueCount = deviceCreateDesc.m_ComputeQueueCount;
+		BvAssert(deviceCreateDesc.m_ComputeQueueCount <= m_GPUInfo.m_ComputeQueueInfo.m_QueueCount, "Not enough compute queues available");
+		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex;
+		queueCreateInfo.queueCount = m_GPUInfo.m_ComputeQueueInfo.m_QueueCount;
 		queueInfos.PushBack(queueCreateInfo);
+		
+		m_ComputeContexts.Resize(deviceCreateDesc.m_ComputeQueueCount);
 	}
-	if (m_GPUInfo.m_GraphicsQueueIndex != m_GPUInfo.m_TransferQueueIndex
-		&& m_GPUInfo.m_ComputeQueueIndex != m_GPUInfo.m_TransferQueueIndex
-		&& deviceCreateDesc.m_TransferQueueCount > 0)
+	if (deviceCreateDesc.m_TransferQueueCount > 0)
 	{
-		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_TransferQueueIndex;
-		queueCreateInfo.queueCount = deviceCreateDesc.m_TransferQueueCount;
+		BvAssert(deviceCreateDesc.m_TransferQueueCount <= m_GPUInfo.m_TransferQueueInfo.m_QueueCount, "Not enough transfer queues available");
+		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex;
+		queueCreateInfo.queueCount = m_GPUInfo.m_TransferQueueInfo.m_QueueCount;
 		queueInfos.PushBack(queueCreateInfo);
+		
+		m_TransferContexts.Resize(deviceCreateDesc.m_TransferQueueCount);
 	}
 
-
-	// Check if queues are the same and use the highest queueCount from the ones set in the DeviceDesc
-	// Also check whether a presentation queue has been included
-	bool hasPresentationQueue = false;
-	for (auto && queueInfo : queueInfos)
-	{
-		if (queueInfo.queueFamilyIndex == m_GPUInfo.m_GraphicsQueueIndex
-			&& deviceCreateDesc.m_GraphicsQueueCount > queueInfo.queueCount)
-		{
-			queueInfo.queueCount = deviceCreateDesc.m_GraphicsQueueCount;
-		}
-		if (queueInfo.queueFamilyIndex == m_GPUInfo.m_ComputeQueueIndex
-			&& deviceCreateDesc.m_ComputeQueueCount > queueInfo.queueCount)
-		{
-			queueInfo.queueCount = deviceCreateDesc.m_ComputeQueueCount;
-		}
-		if (queueInfo.queueFamilyIndex == m_GPUInfo.m_TransferQueueIndex
-			&& deviceCreateDesc.m_TransferQueueCount > queueInfo.queueCount)
-		{
-			queueInfo.queueCount = deviceCreateDesc.m_TransferQueueCount;
-		}
-		if (queueInfo.queueFamilyIndex == m_GPUInfo.m_PresentationQueueIndex)
-		{
-			hasPresentationQueue = true;
-		}
-	}
-
-	BvVector<const char *> enabledExtensions;
-	if (deviceCreateDesc.m_GraphicsQueueCount > 0)
-	{
-		// If we have at least one graphics queue, and we still don't have a presentation queue, add one
-		if (!hasPresentationQueue)
-		{
-			queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_PresentationQueueIndex;
-			queueCreateInfo.queueCount = 1;
-			queueInfos.PushBack(queueCreateInfo);
-		}
-	}
-
-	VkPhysicalDeviceFeatures enabledFeatures{};
-	VkDeviceCreateInfo deviceCreateInfo{};
-	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	//deviceCreateInfo.pEnabledFeatures = nullptr;
+	deviceCreateInfo.pNext = &m_GPUInfo.m_DeviceFeatures;
 	deviceCreateInfo.pQueueCreateInfos = queueInfos.Data();
 	deviceCreateInfo.queueCreateInfoCount = static_cast<u32>(queueInfos.Size());
-	SetupDeviceFeatures(deviceCreateInfo, enabledFeatures, enabledExtensions);
-	deviceCreateInfo.ppEnabledExtensionNames = enabledExtensions.Data();
-	deviceCreateInfo.enabledExtensionCount = static_cast<u32>(enabledExtensions.Size());
+	deviceCreateInfo.ppEnabledExtensionNames = m_GPUInfo.m_EnabledExtensions.Data();
+	deviceCreateInfo.enabledExtensionCount = static_cast<u32>(m_GPUInfo.m_EnabledExtensions.Size());
 
 	VkResult result = vkCreateDevice(m_GPUInfo.m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
 	BvAssert(result == VK_SUCCESS, "Couldn't create a logical device");
@@ -384,26 +110,30 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 	volkLoadDevice(m_Device);
 
-	m_GraphicsQueues.Resize(deviceCreateDesc.m_GraphicsQueueCount);
-	m_ComputeQueues.Resize(deviceCreateDesc.m_ComputeQueueCount);
-	m_TransferQueues.Resize(deviceCreateDesc.m_TransferQueueCount);
+	m_GPUInfo.m_QueueFamilyIndices.Reserve(3);
 	for (auto i = 0; i < deviceCreateDesc.m_GraphicsQueueCount; i++)
 	{
-		m_GraphicsQueues[i] = new BvCommandQueueVk(*this, QueueFamilyType::kGraphics, i);
+		m_GraphicsContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kGraphics, m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex, i);
+		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex);
 	}
 	for (auto i = 0; i < deviceCreateDesc.m_ComputeQueueCount; i++)
 	{
-		m_ComputeQueues[i] = new BvCommandQueueVk(*this, QueueFamilyType::kCompute, i);
+		m_ComputeContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kCompute, m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex, i);
+		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex);
 	}
 	for (auto i = 0; i < deviceCreateDesc.m_TransferQueueCount; i++)
 	{
-		m_TransferQueues[i] = new BvCommandQueueVk(*this, QueueFamilyType::kTransfer, i);
+		m_TransferContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kTransfer, m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex, i);
+		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex);
 	}
 
 	CreateVMA();
 
 	m_pRenderPassManager = new BvRenderPassManagerVk();
 	m_pFramebufferManager = new BvFramebufferManagerVk();
+
+	u32 querySizes[kQueryTypeCount]{ 16, 16, 16 };
+	m_pQueryHeapManager = new BvQueryHeapManagerVk(this, querySizes, 3);
 }
 
 
@@ -412,11 +142,8 @@ void BvRenderDeviceVk::Destroy()
 	vkDeviceWaitIdle(m_Device);
 
 	//m_pFactory->DestroyAllOfType<BvGraphicsPipelineStateVk>();
-	//m_pFactory->DestroyAllOfType<BvShaderResourceSetPoolVk>();
 	//m_pFactory->DestroyAllOfType<BvShaderResourceLayoutVk>();
-	//m_pFactory->DestroyAllOfType<BvCommandPoolVk>();
 	//m_pFactory->DestroyAllOfType<BvRenderPassVk>();
-	//m_pFactory->DestroyAllOfType<BvSemaphoreVk>();
 	//m_pFactory->DestroyAllOfType<BvTextureViewVk>();
 	//m_pFactory->DestroyAllOfType<BvTextureVk>();
 	//m_pFactory->DestroyAllOfType<BvBufferViewVk>();
@@ -432,19 +159,6 @@ void BvRenderDeviceVk::Destroy()
 	delete m_pFramebufferManager;
 	delete m_pRenderPassManager;
 
-	for (auto&& pQueue : m_GraphicsQueues)
-	{
-		delete pQueue;
-	}
-	for (auto&& pQueue : m_ComputeQueues)
-	{
-		delete pQueue;
-	}
-	for (auto&& pQueue : m_TransferQueues)
-	{
-		delete pQueue;
-	}
-
 	DestroyVMA();
 
 	if (m_Device)
@@ -455,17 +169,15 @@ void BvRenderDeviceVk::Destroy()
 }
 
 
-BvSwapChain * BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc & swapChainDesc, BvCommandQueue & commandQueue)
+BvSwapChain * BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext)
 {
-	auto pQueue = static_cast<BvCommandQueueVk *>(&commandQueue);
-
-	return m_pFactory->Create<BvSwapChainVk>(*this, *pQueue, pWindow, swapChainDesc);
+	return m_pFactory->Create<BvSwapChainVk>(*this, pWindow, swapChainDesc, pContext);
 }
 
 
-BvBuffer* BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc)
+BvBuffer* BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData)
 {
-	return m_pFactory->Create<BvBufferVk>(*this, desc);
+	return m_pFactory->Create<BvBufferVk>(*this, desc, pInitData);
 }
 
 
@@ -475,9 +187,9 @@ BvBufferView* BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc)
 }
 
 
-BvTexture* BvRenderDeviceVk::CreateTexture(const TextureDesc& desc)
+BvTexture* BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData)
 {
-	return m_pFactory->Create<BvTextureVk>(*this, desc);
+	return m_pFactory->Create<BvTextureVk>(*this, desc, pInitData);
 }
 
 
@@ -487,10 +199,9 @@ BvTextureView* BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc)
 }
 
 
-BvSemaphore * BvRenderDeviceVk::CreateSemaphore(const u64 initialValue)
+BvSampler* BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc)
 {
-	// Always use timeline semaphores when available
-	return m_pFactory->Create<BvSemaphoreVk>(*this, m_GPUInfo.m_FeaturesSupported.timelineSemaphore, initialValue);
+	return m_pFactory->Create<BvSamplerVk>(*this, desc);
 }
 
 
@@ -500,27 +211,22 @@ BvRenderPass * BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc & renderP
 }
 
 
-BvCommandPool * BvRenderDeviceVk::CreateCommandPool(const CommandPoolDesc & commandPoolDesc)
+BvShaderResourceLayout* BvRenderDeviceVk::CreateShaderResourceLayout(u32 shaderResourceCount,
+	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc)
 {
-	return m_pFactory->Create<BvCommandPoolVk>(*this, commandPoolDesc);
-}
-
-
-BvShaderResourceLayout * BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc & shaderResourceLayoutDesc)
-{
-	return m_pFactory->Create<BvShaderResourceLayoutVk>(*this, shaderResourceLayoutDesc);
-}
-
-
-BvShaderResourceSetPool* BvRenderDeviceVk::CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc)
-{
-	return m_pFactory->Create<BvDescriptorPoolVk>(*this, shaderResourceSetPoolDesc);
+	return m_pFactory->Create<BvShaderResourceLayoutVk>(*this, shaderResourceCount, pShaderResourceDescs, shaderResourceConstantDesc);
 }
 
 
 BvGraphicsPipelineState * BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc)
 {
 	return m_pFactory->Create<BvGraphicsPipelineStateVk>(*this, graphicsPipelineStateDesc, VkPipelineCache(VK_NULL_HANDLE));
+}
+
+
+BvQuery* BvRenderDeviceVk::CreateQuery(QueryType queryType)
+{
+	return m_pFactory->Create<BvQueryVk>(queryType, 3);
 }
 
 
@@ -536,12 +242,11 @@ const u32 BvRenderDeviceVk::GetMemoryTypeIndex(const u32 memoryTypeBits, const V
 	u32 typeBits = memoryTypeBits;
 
 	auto & memoryProperties = m_GPUInfo.m_DeviceMemoryProperties;
-	// Iterate over all memory types available for the device used in this example
-	for (u32 i = 0; i < memoryProperties.memoryTypeCount; i++)
+	for (u32 i = 0; i < memoryProperties.memoryProperties.memoryTypeCount; i++)
 	{
 		if ((typeBits & 1) == 1)
 		{
-			if ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			if ((memoryProperties.memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
 			{
 				index = i;
 				break;
@@ -559,7 +264,6 @@ const VkFormat BvRenderDeviceVk::GetBestDepthFormat(const VkFormat format /*= VK
 	VkFormat chosenFormat = VK_FORMAT_UNDEFINED;
 
 	// Since all depth formats may be optional, we need to find a suitable depth format to use
-	// Start with the highest precision packed format
 	VkFormat depthFormats[] =
 	{
 		VK_FORMAT_D24_UNORM_S8_UINT, // 24-bit depths are better for optimal performance
@@ -588,25 +292,7 @@ const VkFormat BvRenderDeviceVk::GetBestDepthFormat(const VkFormat format /*= VK
 }
 
 
-bool BvRenderDeviceVk::QueueFamilySupportsPresent(const QueueFamilyType queueFamilyType) const
-{
-	u32 queueFamilyIndex = UINT32_MAX;
-
-	switch (queueFamilyType)
-	{
-	case QueueFamilyType::kGraphics:	queueFamilyIndex = m_GPUInfo.m_GraphicsQueueIndex; break;
-	case QueueFamilyType::kCompute:		queueFamilyIndex = m_GPUInfo.m_ComputeQueueIndex; break;
-	case QueueFamilyType::kTransfer:	queueFamilyIndex = m_GPUInfo.m_TransferQueueIndex; break;
-	}
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	return vkGetPhysicalDeviceWin32PresentationSupportKHR(m_GPUInfo.m_PhysicalDevice, queueFamilyIndex) == VK_TRUE;
-#else
-#endif
-}
-
-
-bool BvRenderDeviceVk::HasImageSupport(Format format)
+bool BvRenderDeviceVk::HasFormatSupport(Format format)
 {
 	const auto& vkFormatMap = GetVkFormatMap(format);
 
@@ -628,21 +314,90 @@ bool BvRenderDeviceVk::HasImageSupport(Format format)
 }
 
 
-BvCommandQueue* BvRenderDeviceVk::GetGraphicsQueue(const u32 index) const
+BvCommandContext* BvRenderDeviceVk::GetGraphicsContext(u32 index) const
 {
-	return m_GraphicsQueues[index];
+	return index < m_GraphicsContexts.Size() ? m_GraphicsContexts[index] : nullptr;
 }
 
 
-BvCommandQueue* BvRenderDeviceVk::GetComputeQueue(const u32 index) const
+BvCommandContext* BvRenderDeviceVk::GetComputeContext(u32 index) const
 {
-	return m_ComputeQueues[index];
+	return index < m_ComputeContexts.Size() ? m_ComputeContexts[index] : nullptr;
 }
 
 
-BvCommandQueue* BvRenderDeviceVk::GetTransferQueue(const u32 index) const
+BvCommandContext* BvRenderDeviceVk::GetTransferContext(u32 index) const
 {
-	return m_TransferQueues[index];
+	return index < m_TransferContexts.Size() ? m_TransferContexts[index] : nullptr;
+}
+
+
+void BvRenderDeviceVk::GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize) const
+{
+	u64 totalSize = 0;
+	u64 offset = 0;
+	u32 subresourceIndex = 0;
+	for (auto layer = 0u; layer < textureDesc.m_LayerCount; ++layer)
+	{
+		for (auto mip = 0u; mip < textureDesc.m_MipLevels; ++mip)
+		{
+			offset = totalSize;
+			
+			TextureSubresource subresource;
+			GetTextureSubresourceData(textureDesc, mip, subresource);
+			if (pSubresources)
+			{
+				pSubresources[subresourceIndex].m_Subresource = subresource;
+				pSubresources[subresourceIndex].m_Offset = offset;
+			}
+			totalSize += RoundToNearestPowerOf2(subresource.m_MipSize, 4);
+
+			++subresourceIndex;
+		}
+	}
+
+	if (pTotalSize)
+	{
+		*pTotalSize = totalSize;
+	}
+}
+
+
+bool BvRenderDeviceVk::SupportsQueryType(QueryType queryType, QueueFamilyType commandType) const
+{
+	if (queryType == QueryType::kTimestamp)
+	{
+		if (m_GPUInfo.m_DeviceProperties.properties.limits.timestampPeriod == 0)
+		{
+			return false;
+		}
+
+		if (m_GPUInfo.m_DeviceProperties.properties.limits.timestampComputeAndGraphics
+			&& (commandType == QueueFamilyType::kGraphics || commandType == QueueFamilyType::kCompute))
+		{
+			return true;
+		}
+		else
+		{
+			const VkQueueFamilyProperties* pProperties = nullptr;
+			switch (commandType)
+			{
+			case QueueFamilyType::kGraphics:
+				pProperties = &m_GPUInfo.m_QueueFamilyProperties[m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex].queueFamilyProperties;
+				break;
+			case QueueFamilyType::kCompute:
+				pProperties = &m_GPUInfo.m_QueueFamilyProperties[m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex].queueFamilyProperties;
+				break;
+			case QueueFamilyType::kTransfer:
+				pProperties = &m_GPUInfo.m_QueueFamilyProperties[m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex].queueFamilyProperties;
+				break;
+			}
+
+			return pProperties->timestampValidBits != 0;
+		}
+	}
+
+	return commandType == QueueFamilyType::kGraphics;
 }
 
 
@@ -652,9 +407,9 @@ void BvRenderDeviceVk::CreateVMA()
 	vmaACI.instance = m_pEngine->GetInstance();
 	vmaACI.device = m_Device;
 	vmaACI.physicalDevice = m_GPUInfo.m_PhysicalDevice;
-	vmaACI.vulkanApiVersion = m_GPUInfo.m_DeviceProperties.apiVersion;
+	vmaACI.vulkanApiVersion = m_GPUInfo.m_DeviceProperties.properties.apiVersion;
 
-	if (m_GPUInfo.m_FeaturesSupported.bufferDeviceAddress)
+	if (m_GPUInfo.m_DeviceFeatures1_2.bufferDeviceAddress)
 	{
 		vmaACI.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 	}
@@ -684,15 +439,15 @@ void BvRenderDeviceVk::CreateVMA()
 	functions.vkDestroyImage = vkDestroyImage;
 	functions.vkCmdCopyBuffer = vkCmdCopyBuffer;
 #if VMA_DEDICATED_ALLOCATION || VMA_VULKAN_VERSION >= 1001000
-	functions.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2KHR;
-	functions.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR;
+	functions.vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2;
+	functions.vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2;
 #endif
 #if VMA_BIND_MEMORY2 || VMA_VULKAN_VERSION >= 1001000
-	functions.vkBindBufferMemory2KHR = vkBindBufferMemory2KHR;
-	functions.vkBindImageMemory2KHR = vkBindImageMemory2KHR;
+	functions.vkBindBufferMemory2KHR = vkBindBufferMemory2;
+	functions.vkBindImageMemory2KHR = vkBindImageMemory2;
 #endif
 #if VMA_MEMORY_BUDGET || VMA_VULKAN_VERSION >= 1001000
-	functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR;
+	functions.vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2;
 #endif
 #if VMA_VULKAN_VERSION >= 1003000
 	functions.vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements;

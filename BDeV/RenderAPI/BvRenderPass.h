@@ -6,10 +6,10 @@
 #include "BDeV/Container/BvFixedVector.h"
 
 
-struct RenderPassTargetDesc
+struct RenderPassAttachmentDesc
 {
-	RenderPassTargetDesc()
-		: m_Format(Format::kUnknown), m_StateAfter(ResourceState::kUnknown), m_SampleCount(1),
+	RenderPassAttachmentDesc()
+		: m_Format(Format::kUnknown), m_StateBefore(ResourceState::kCommon), m_StateAfter(ResourceState::kCommon), m_SampleCount(1),
 		m_LoadOp(LoadOp::kClear), m_StoreOp(StoreOp::kStore),
 		m_StencilLoadOp(LoadOp::kDontCare), m_StencilStoreOp(StoreOp::kDontCare),
 		m_IsReadOnlyDepth(false), m_IsReadOnlyStencil(false) {}
@@ -17,6 +17,7 @@ struct RenderPassTargetDesc
 	Format m_Format;
 	// Render Passes will perform a transition on the resource to the specified state.
 	// If left as kUnknown, the Render Pass will choose the state automatically.
+	ResourceState m_StateBefore;
 	ResourceState m_StateAfter;
 	u8 m_SampleCount : 5;
 
@@ -31,7 +32,7 @@ struct RenderPassTargetDesc
 	// Determines whether the stencil part is read-only
 	bool m_IsReadOnlyStencil : 1;
 
-	bool operator==(const RenderPassTargetDesc& rhs) const noexcept
+	bool operator==(const RenderPassAttachmentDesc& rhs) const noexcept
 	{
 		return m_Format == rhs.m_Format &&
 			m_StateAfter == rhs.m_StateAfter &&
@@ -44,7 +45,7 @@ struct RenderPassTargetDesc
 			m_IsReadOnlyStencil == rhs.m_IsReadOnlyStencil;
 	}
 
-	bool operator!=(const RenderPassTargetDesc& rhs) const noexcept
+	bool operator!=(const RenderPassAttachmentDesc& rhs) const noexcept
 	{
 		return !(*this == rhs);
 	}
@@ -53,8 +54,8 @@ struct RenderPassTargetDesc
 
 struct RenderPassDesc
 {
-	BvFixedVector<RenderPassTargetDesc, kMaxRenderTargets> m_RenderTargets;
-	RenderPassTargetDesc m_DepthStencilTarget;
+	BvFixedVector<RenderPassAttachmentDesc, kMaxRenderTargets> m_RenderTargets;
+	RenderPassAttachmentDesc m_DepthStencilTarget;
 	bool m_HasDepth = false;
 
 	bool operator==(const RenderPassDesc& rhs) const noexcept
@@ -92,7 +93,7 @@ class BvRenderPass
 	BV_NOCOPYMOVE(BvRenderPass);
 
 public:
-	BV_INLINE const RenderPassDesc & GetRenderTargetDesc() const { return m_RenderPassDesc; }
+	BV_INLINE const RenderPassDesc & GetDesc() const { return m_RenderPassDesc; }
 
 protected:
 	BvRenderPass(const RenderPassDesc & renderPassDesc)

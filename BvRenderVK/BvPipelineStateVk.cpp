@@ -76,8 +76,8 @@ void BvGraphicsPipelineStateVk::Create()
 	tessCI.patchControlPoints = m_PipelineStateDesc.m_TessellationStateDesc.m_PatchControlPoints;
 
 	VkPipelineViewportStateCreateInfo viewportCI{ VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-	viewportCI.viewportCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxViewportCount;
-	viewportCI.scissorCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxScissorCount;
+	//viewportCI.viewportCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxViewportCount;
+	//viewportCI.scissorCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxScissorCount;
 
 	VkPipelineRasterizationStateCreateInfo rasterizerCI{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 	rasterizerCI.polygonMode = GetVkPolygonMode(m_PipelineStateDesc.m_RasterizerStateDesc.m_FillMode);
@@ -133,7 +133,7 @@ void BvGraphicsPipelineStateVk::Create()
 
 	u32 sampleMask[] = { m_PipelineStateDesc.m_SampleMask, 0 };
 	VkPipelineMultisampleStateCreateInfo msCI{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-	msCI.rasterizationSamples = GetVkSampleCountFlagBits(m_PipelineStateDesc.m_MultisampleStateDesc.m_SampleCount);
+	msCI.rasterizationSamples = GetVkSampleCountFlagBits(m_PipelineStateDesc.m_SampleCount);
 	msCI.pSampleMask = sampleMask;
 
 	BvFixedVector<VkFormat, kMaxRenderTargets> rtvFormats(m_PipelineStateDesc.m_RenderTargetFormats.Size());
@@ -142,44 +142,14 @@ void BvGraphicsPipelineStateVk::Create()
 		rtvFormats[i] = GetVkFormat(m_PipelineStateDesc.m_RenderTargetFormats[i]);
 	}
 
-	auto dynamicRenderingSupported = m_Device.GetGPUInfo().m_ExtendedFeatures.dynamicRenderingFeatures.dynamicRendering;
 	VkPipelineRenderingCreateInfoKHR pipelineRenderingCI{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
 	VkRenderPass renderPass = m_PipelineStateDesc.m_pRenderPass ? static_cast<BvRenderPassVk*>(m_PipelineStateDesc.m_pRenderPass)->GetHandle() : VK_NULL_HANDLE;
 	if (renderPass == VK_NULL_HANDLE)
 	{
-		if (dynamicRenderingSupported)
-		{
-			pipelineRenderingCI.colorAttachmentCount = m_PipelineStateDesc.m_RenderTargetFormats.Size();
-			pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
-			pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
-			pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
-		}
-		else
-		{
-			// In the event we don't provide a render pass and we also don't support dynamic rendering, we'll have
-			// to create a default pass for this pipeline, based on the formats provided
-			RenderPassDesc rpd;
-			rpd.m_RenderTargets.Resize(rtvFormats.Size());
-			for (auto i = 0; i < rpd.m_RenderTargets.Size(); i++)
-			{
-				rpd.m_RenderTargets[i].m_Format = m_PipelineStateDesc.m_RenderTargetFormats[i];
-				rpd.m_RenderTargets[i].m_SampleCount = m_PipelineStateDesc.m_MultisampleStateDesc.m_SampleCount;
-			}
-			if (m_PipelineStateDesc.m_DepthStencilFormat != Format::kUnknown)
-			{
-				rpd.m_HasDepth = true;
-				rpd.m_DepthStencilTarget.m_Format = m_PipelineStateDesc.m_DepthStencilFormat;
-				rpd.m_DepthStencilTarget.m_SampleCount = m_PipelineStateDesc.m_MultisampleStateDesc.m_SampleCount;
-				if (IsStencilFormat(m_PipelineStateDesc.m_DepthStencilFormat))
-				{
-					rpd.m_DepthStencilTarget.m_StencilLoadOp = LoadOp::kClear;
-					rpd.m_DepthStencilTarget.m_StencilStoreOp = StoreOp::kStore;
-				}
-			}
-
-			auto pRenderPass = m_Device.GetRenderPassManager()->GetRenderPass(m_Device, rpd);
-			renderPass = pRenderPass->GetHandle();
-		}
+		pipelineRenderingCI.colorAttachmentCount = m_PipelineStateDesc.m_RenderTargetFormats.Size();
+		pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
+		pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
+		pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
 	}
 
 	BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets>
@@ -213,8 +183,8 @@ void BvGraphicsPipelineStateVk::Create()
 
 	constexpr u32 kMaxDynamicStates = 4; // Change as needed
 	BvFixedVector<VkDynamicState, kMaxDynamicStates> dynamicStates{};
-	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_VIEWPORT);
-	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_SCISSOR);
+	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
+	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
 	if (m_PipelineStateDesc.m_DepthStencilDesc.m_StencilTestEnable)
 	{
 		dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_STENCIL_REFERENCE);
@@ -239,7 +209,7 @@ void BvGraphicsPipelineStateVk::Create()
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-	pipelineCI.pNext = !m_PipelineStateDesc.m_pRenderPass && dynamicRenderingSupported ? &pipelineRenderingCI : nullptr;
+	pipelineCI.pNext = !m_PipelineStateDesc.m_pRenderPass ? &pipelineRenderingCI : nullptr;
 	//pipelineCI.flags = 0;
 	pipelineCI.stageCount = (u32)m_PipelineStateDesc.m_ShaderStages.Size();
 	pipelineCI.pStages = shaderStages.Data();

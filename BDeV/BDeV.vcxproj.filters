@@ -20,7 +20,6 @@
     <ClInclude Include="RenderAPI\BvTextureView.h" />
     <ClInclude Include="RenderAPI\BvBuffer.h" />
     <ClInclude Include="RenderAPI\BvBufferView.h" />
-    <ClInclude Include="RenderAPI\BvCommandBuffer.h" />
     <ClInclude Include="RenderAPI\BvCommandPool.h" />
     <ClInclude Include="RenderAPI\BvCommandQueue.h" />
     <ClInclude Include="RenderAPI\BvCommon.h" />
@@ -85,6 +84,9 @@
     <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
     <ClInclude Include="RenderAPI\BvColor.h" />
     <ClInclude Include="System\Windows\BvWindowsHeader.h" />
+    <ClInclude Include="RenderAPI\BvCommandContext.h" />
+    <ClInclude Include="RenderAPI\BvRenderAPIUtils.h" />
+    <ClInclude Include="RenderAPI\BvQuery.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -127,6 +129,7 @@
     <ClCompile Include="Engine\MemorySystem\BvMemorySystem.cpp" />
     <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
     <ClCompile Include="RenderAPI\BvColor.cpp" />
+    <ClCompile Include="RenderAPI\BvRenderAPIUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Math\Math\FPU\BvFastMat_FPU.inl" />
