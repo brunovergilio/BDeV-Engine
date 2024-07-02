@@ -30,7 +30,7 @@ bool BvSwapChainVk::Create()
 {
 	for (auto pView : m_SwapChainTextureViews)
 	{
-		m_Device.GetFramebufferManager()->RemoveFramebuffer(pView);
+		m_Device.GetFramebufferManager()->RemoveFramebuffersWithView(pView->GetHandle());
 	}
 
 	u32 width = m_pWindow->GetWidth();

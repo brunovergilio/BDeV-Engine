@@ -129,7 +129,6 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 	CreateVMA();
 
-	m_pRenderPassManager = new BvRenderPassManagerVk();
 	m_pFramebufferManager = new BvFramebufferManagerVk();
 
 	u32 querySizes[kQueryTypeCount]{ 16, 16, 16 };
@@ -157,7 +156,6 @@ void BvRenderDeviceVk::Destroy()
 	}
 
 	delete m_pFramebufferManager;
-	delete m_pRenderPassManager;
 
 	DestroyVMA();
 
@@ -207,7 +205,7 @@ BvSampler* BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc)
 
 BvRenderPass * BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc & renderPassDesc)
 {
-	return m_pRenderPassManager->GetRenderPass(*this, renderPassDesc);
+	return m_pFactory->Create<BvRenderPassVk>(*this, renderPassDesc);
 }
 
 

@@ -267,6 +267,7 @@ struct GraphicsPipelineStateDesc
 	BvFixedVector<Format, kMaxRenderTargets>					m_RenderTargetFormats;
 	Format														m_DepthStencilFormat = Format::kUnknown;
 	u32															m_SampleMask = kMax<u32>;
+	u32															m_SubpassIndex = 0;
 };
 
 

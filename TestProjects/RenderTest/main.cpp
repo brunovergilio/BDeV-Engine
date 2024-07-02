@@ -6,7 +6,6 @@
 #include "BDeV/RenderAPI/BvRenderPass.h"
 #include "BDeV/RenderAPI/BvTextureView.h"
 #include "BDeV/RenderAPI/BvSemaphore.h"
-#include "BDeV/RenderAPI/BvCommandBuffer.h"
 #include "BDeV/System/File/BvFileSystem.h"
 #include "BvRenderTools/BvShaderCompiler.h"
 #include "BDeV/System/HID/BvKeyboard.h"
@@ -71,13 +70,6 @@ int main()
 	BvSwapChain* pSwapChain = pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext);
 
 	// Create uniform buffer
-
-	RenderPassDesc renderPassDesc;
-	RenderPassAttachmentDesc renderPassTargetDesc;
-	renderPassTargetDesc.m_Format = Format::kRGBA8_UNorm;
-	renderPassTargetDesc.m_StateAfter = ResourceState::kPresent;
-	renderPassDesc.m_RenderTargets.PushBack(renderPassTargetDesc);
-	auto pRenderPass = pDevice->CreateRenderPass(renderPassDesc);
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
 	auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(1, &resourceDesc, ShaderResourceConstantDesc());

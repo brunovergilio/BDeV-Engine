@@ -89,7 +89,7 @@ public:
 	template <class... Args>
 	Iterator Emplace(ConstIterator position, Args&&... args);
 	template <class... Args>
-	void EmplaceBack(Args&&... args);
+	Type& EmplaceBack(Args&&... args);
 
 private:
 	Type m_pData[N]{};
@@ -650,12 +650,14 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Emplace
 
 template<class Type, size_t N>
 template<class ...Args>
-inline void BvFixedVector<Type, N>::EmplaceBack(Args && ...args)
+inline Type& BvFixedVector<Type, N>::EmplaceBack(Args && ...args)
 {
 	if (m_Size == N)
 	{
-		return;
+		return m_pData[m_Size - 1];
 	}
 
 	new (&m_pData[m_Size++]) Type(std::forward<Args>(args)...);
+
+	return m_pData[m_Size - 1];
 }

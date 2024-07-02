@@ -154,7 +154,6 @@ void BvGraphicsPipelineStateVk::Create()
 
 	BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets>
 		blendAttachments(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments.Size(), {});
-	bool anyTargetWithBlendEnabled = false;
 	for (auto i = 0u; i < blendAttachments.Size(); i++)
 	{
 		blendAttachments[i].blendEnable = m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_BlendEnable;
@@ -165,11 +164,6 @@ void BvGraphicsPipelineStateVk::Create()
 		blendAttachments[i].dstAlphaBlendFactor = GetVkBlendFactor(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_DstBlendAlpha);
 		blendAttachments[i].alphaBlendOp = GetVkBlendOp(m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_AlphaBlendOp);
 		blendAttachments[i].colorWriteMask = m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_RenderTargetWriteMask;
-
-		if (blendAttachments[i].blendEnable)
-		{
-			anyTargetWithBlendEnabled = true;
-		}
 	}
 
 	VkPipelineColorBlendStateCreateInfo blendCI{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
@@ -181,17 +175,19 @@ void BvGraphicsPipelineStateVk::Create()
 	blendCI.logicOpEnable = m_PipelineStateDesc.m_BlendStateDesc.m_LogicEnable;
 	blendCI.logicOp = GetVkLogicOp(m_PipelineStateDesc.m_BlendStateDesc.m_LogicOp);
 
-	constexpr u32 kMaxDynamicStates = 4; // Change as needed
+	constexpr u32 kMaxDynamicStates = 8; // Change as needed
 	BvFixedVector<VkDynamicState, kMaxDynamicStates> dynamicStates{};
-	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
-	dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
-	if (m_PipelineStateDesc.m_DepthStencilDesc.m_StencilTestEnable)
+	dynamicStates.PushBack(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
+	dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
+	dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+	dynamicStates.PushBack(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
+	if (m_Device.GetGPUInfo().m_DeviceFeatures.features.depthBounds)
 	{
-		dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+		dynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
 	}
-	if (anyTargetWithBlendEnabled)
+	if (m_Device.GetGPUInfo().m_FeaturesSupported.fragmentShading)
 	{
-		dynamicStates.PushBack(VkDynamicState::VK_DYNAMIC_STATE_BLEND_CONSTANTS);
+		dynamicStates.PushBack(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
 	}
 
 	VkPipelineDynamicStateCreateInfo dynamicStateCI{ VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
@@ -223,8 +219,8 @@ void BvGraphicsPipelineStateVk::Create()
 	pipelineCI.pColorBlendState = &blendCI;
 	pipelineCI.pDynamicState = &dynamicStateCI;
 	pipelineCI.renderPass = renderPass;
-	pipelineCI.layout = static_cast<BvShaderResourceLayoutVk *>(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
-	pipelineCI.subpass = 0;
+	pipelineCI.layout = static_cast<BvShaderResourceLayoutVk*>(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
+	pipelineCI.subpass = m_PipelineStateDesc.m_SubpassIndex;
 	pipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineCI.basePipelineIndex = -1;
 

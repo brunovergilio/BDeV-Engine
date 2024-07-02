@@ -17,3 +17,4 @@ const char * const VkResultToString(const VkResult result);
 bool IsDepthFormat(Format format);
 bool IsStencilFormat(Format format);
 bool IsDepthStencilFormat(Format format);
+bool IsDepthOrStencilFormat(Format format);

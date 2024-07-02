@@ -16,28 +16,25 @@ class BvRenderDeviceVk;
 
 struct FramebufferDesc
 {
-	BvFixedVector<BvTextureViewVk*, kMaxRenderTargets> m_RenderTargetViews{};
-	BvTextureViewVk* m_pDepthStencilView = VK_NULL_HANDLE;
+	BvFixedVector<VkImageView, kMaxRenderTargetsWithDepth> m_Views;
 	VkRenderPass m_RenderPass = VK_NULL_HANDLE;
+	u32 m_Width = 0;
+	u32 m_Height = 0;
+	u32 m_LayerCount = 0;
 
 	bool operator==(const FramebufferDesc& rhs) const
 	{
-		if (m_RenderTargetViews.Size() != rhs.m_RenderTargetViews.Size())
+		if (m_Views.Size() != rhs.m_Views.Size())
 		{
 			return false;
 		}
 
-		for (auto i = 0u; i < m_RenderTargetViews.Size(); i++)
+		for (auto i = 0u; i < m_Views.Size(); i++)
 		{
-			if (m_RenderTargetViews[i] != rhs.m_RenderTargetViews[i])
+			if (m_Views[i] != rhs.m_Views[i])
 			{
 				return false;
 			}
-		}
-
-		if (m_pDepthStencilView != rhs.m_pDepthStencilView)
-		{
-			return false;
 		}
 
 		if (m_RenderPass != rhs.m_RenderPass)
@@ -53,41 +50,22 @@ struct FramebufferDesc
 template<>
 struct BvHash<FramebufferDesc>
 {
-	u64 operator()(const FramebufferDesc & val) const
+	u64 operator()(const FramebufferDesc& val) const
 	{
 		u64 hash = 0;
-		HashCombine(hash, val.m_RenderTargetViews.Size());
-		for (auto pTarget : val.m_RenderTargetViews)
+		HashCombine(hash, val.m_Views.Size());
+		for (auto view : val.m_Views)
 		{
-			HashCombine(hash, pTarget);
+			HashCombine(hash, view);
 		}
 
-		if (val.m_pDepthStencilView)
-		{
-			HashCombine(hash, val.m_pDepthStencilView);
-		}
+		HashCombine(hash, val.m_RenderPass);
+		HashCombine(hash, val.m_Width);
+		HashCombine(hash, val.m_Height);
+		HashCombine(hash, val.m_LayerCount);
 
 		return hash;
 	}
-};
-
-
-class BvFramebufferVk
-{
-public:
-	BvFramebufferVk(const BvRenderDeviceVk & device, const FramebufferDesc& framebufferDesc);
-	~BvFramebufferVk();
-
-	void Create();
-	void Destroy();
-
-	BV_INLINE const FramebufferDesc & GetDesc() const { return m_FramebufferDesc; }
-	BV_INLINE VkFramebuffer GetHandle() const { return m_Framebuffer; }
-
-private:
-	FramebufferDesc m_FramebufferDesc;
-	const BvRenderDeviceVk & m_Device;
-	VkFramebuffer m_Framebuffer = VK_NULL_HANDLE;
 };
 
 
@@ -97,11 +75,9 @@ public:
 	BvFramebufferManagerVk();
 	~BvFramebufferManagerVk();
 
-	BvFramebufferVk * GetFramebuffer(const BvRenderDeviceVk & device, const FramebufferDesc& desc);
-	void RemoveFramebuffer(const BvTextureViewVk * const pTextureView);
-	void Destroy();
+	VkFramebuffer GetFramebuffer(VkDevice device, const FramebufferDesc& framebufferDesc);
+	void RemoveFramebuffersWithView(VkImageView view);
 
 private:
-	BvRobinMap<FramebufferDesc, BvFramebufferVk *> m_Framebuffers;
-	BvSpinlock m_Lock;
+	BvRobinMap<FramebufferDesc, VkFramebuffer> m_Framebuffers;
 };

@@ -137,6 +137,12 @@ BvQueryHeapManagerVk* BvFrameDataVk::GetQueryHeapManager() const
 }
 
 
+VkFramebuffer BvFrameDataVk::GetFramebuffer(const FramebufferDesc& fbDesc) const
+{
+	return m_pDevice->GetFramebufferManager()->GetFramebuffer(m_pDevice->GetHandle(), fbDesc);
+}
+
+
 BvCommandContextVk::BvCommandContextVk(const BvRenderDeviceVk* pDevice, u32 frameCount, QueueFamilyType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex)
 	: m_Queue(pDevice, queueFamilyType, queueFamilyIndex, queueIndex)
 {

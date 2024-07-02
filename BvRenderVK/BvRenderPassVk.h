@@ -5,6 +5,7 @@
 #include "BDeV/RenderAPI/BvRenderPass.h"
 #include "BDeV/Utils/BvHash.h"
 #include "BDeV/System/Threading/BvSync.h"
+#include "BDeV/Container/BvVector.h"
 #include "BDeV/Container/BvRobinMap.h"
 
 
@@ -14,7 +15,7 @@ class BvRenderDeviceVk;
 class BvRenderPassVk final : public BvRenderPass
 {
 public:
-	BvRenderPassVk(const BvRenderDeviceVk & device, const RenderPassDesc & renderPassDesc);
+	BvRenderPassVk(const BvRenderDeviceVk& device, const RenderPassDesc& renderPassDesc);
 	~BvRenderPassVk();
 
 	void Create();
@@ -23,9 +24,12 @@ public:
 	BV_INLINE const VkRenderPass GetHandle() const { return m_RenderPass; }
 
 private:
-	void SetupAttachments(BvFixedVector<VkAttachmentDescription, kMaxRenderTargetsWithDepth> & attachmentDescs,
-		BvFixedVector<VkAttachmentReference, kMaxRenderTargetsWithDepth> & attachmentReferences);
-	void SetupDependencies(BvFixedVector<VkSubpassDependency, 2> & dependencies);
+	void SetupAttachments(BvVector<VkAttachmentDescription2>& attachments);
+	void SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses, BvVector<VkAttachmentReference2>& attachmentRefs,
+		VkFragmentShadingRateAttachmentInfoKHR& shadingRateRef);
+	void SetupDependencies(BvVector<VkSubpassDependency2>& dependencies, BvVector<VkMemoryBarrier2>& barriers);
+
+	void GetVkFlags(u32 subpassIndex, VkAccessFlags2& accessFlags, VkPipelineStageFlags2& stageFlags);
 
 private:
 	const BvRenderDeviceVk & m_Device;
@@ -34,38 +38,3 @@ private:
 
 
 BV_CREATE_CAST_TO_VK(BvRenderPass)
-
-
-template<>
-struct BvHash<RenderPassDesc>
-{
-	size_t operator()(const RenderPassDesc& renderPassDesc) const
-	{
-		u64 hash = 0;
-		HashCombine(hash, renderPassDesc.m_RenderTargets.Size());
-		for (const auto& rt : renderPassDesc.m_RenderTargets)
-		{
-			HashCombine(hash, rt.m_Format, rt.m_SampleCount, rt.m_StateAfter);
-		}
-		HashCombine(hash, (u32)renderPassDesc.m_HasDepth);
-		if (renderPassDesc.m_HasDepth)
-		{
-			HashCombine(hash, renderPassDesc.m_DepthStencilTarget.m_Format, renderPassDesc.m_DepthStencilTarget.m_SampleCount, renderPassDesc.m_DepthStencilTarget.m_StateAfter);
-		}
-	}
-};
-
-
-class BvRenderPassManagerVk
-{
-public:
-	BvRenderPassManagerVk();
-	~BvRenderPassManagerVk();
-
-	BvRenderPassVk* GetRenderPass(const BvRenderDeviceVk& device, const RenderPassDesc& desc);
-	void Destroy();
-
-private:
-	BvRobinMap<RenderPassDesc, BvRenderPassVk*> m_RenderPasses;
-	BvSpinlock m_Lock;
-};

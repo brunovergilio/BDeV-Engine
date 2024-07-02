@@ -9,6 +9,7 @@
 #include "BvDescriptorSetVk.h"
 #include "BvSemaphoreVk.h"
 #include "BvCommandQueueVk.h"
+#include "BvFramebufferVk.h"
 
 
 class BvRenderDeviceVk;
@@ -37,6 +38,7 @@ public:
 	void ClearActiveCommandBuffers();
 	void AddQuery(BvQueryVk* pQuery);
 	BvQueryHeapManagerVk* GetQueryHeapManager() const;
+	VkFramebuffer GetFramebuffer(const FramebufferDesc& fbDesc) const;
 	
 	BV_INLINE const auto& GetCommandBuffers() const { return m_CommandBuffers; }
 	BV_INLINE auto& GetResourceBindingState() { return m_ResourceBindingState; }

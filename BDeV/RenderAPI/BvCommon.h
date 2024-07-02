@@ -384,29 +384,33 @@ enum class ResourceState : u8
 	kDepthStencilRead,
 	kDepthStencilWrite,
 	kPresent,
+
+	kShadingRate,
 };
 
 
 enum class ResourceAccess : u32
 {
-	kNone				= 0,
-	kIndirectRead		= BvBit(0),
-	kIndexRead			= BvBit(1),
-	kVertexInputRead	= BvBit(2),
-	kUniformRead		= BvBit(3),
-	kShaderRead			= BvBit(4),
-	kShaderWrite		= BvBit(5),
-	kRenderTargetRead	= BvBit(6),
-	kRenderTargetWrite	= BvBit(7),
-	kDepthStencilRead	= BvBit(8),
-	kDepthStencilWrite	= BvBit(9),
-	kTransferRead		= BvBit(10),
-	kTransferWrite		= BvBit(11),
-	kHostRead			= BvBit(12),
-	kHostWrite			= BvBit(13),
-	kMemoryRead			= BvBit(14),
-	kMemoryWrite		= BvBit(15),
-	kAuto				= BvBit(16)
+	kNone					= 0,
+	kIndirectRead			= BvBit(0),
+	kIndexRead				= BvBit(1),
+	kVertexInputRead		= BvBit(2),
+	kUniformRead			= BvBit(3),
+	kShaderRead				= BvBit(4),
+	kShaderWrite			= BvBit(5),
+	kRenderTargetRead		= BvBit(6),
+	kRenderTargetWrite		= BvBit(7),
+	kDepthStencilRead		= BvBit(8),
+	kDepthStencilWrite		= BvBit(9),
+	kTransferRead			= BvBit(10),
+	kTransferWrite			= BvBit(11),
+	kHostRead				= BvBit(12),
+	kHostWrite				= BvBit(13),
+	kMemoryRead				= BvBit(14),
+	kMemoryWrite			= BvBit(15),
+	kInputAttachmentRead	= BvBit(16),
+	kShadingRateRead		= BvBit(17),
+	kAuto					= BvBit(18)
 };
 BV_USE_ENUM_CLASS_OPERATORS(ResourceAccess);
 
@@ -430,7 +434,8 @@ enum class PipelineStage : u32
 	kEnd						= BvBit(13),
 	kAllShaderStages			= kVertexShader | kTessHullOrControlShader | kTessDomainOrEvalShader
 		| kGeometryShader | kPixelOrFragmentShader | kComputeShader,
-	kAuto						= BvBit(14)
+	kShadingRate				= BvBit(14),
+	kAuto						= BvBit(15)
 };
 BV_USE_ENUM_CLASS_OPERATORS(PipelineStage);
 
@@ -768,15 +773,6 @@ struct ResourceBarrierDesc
 };
 
 
-enum class RenderTargetType : u8
-{
-	kColor,
-	kDepthStencil,
-	kResolve,
-	kShadingRate
-};
-
-
 enum class ResolveMode : u8
 {
 	kNone,
@@ -786,47 +782,68 @@ enum class ResolveMode : u8
 };
 
 
+enum class ShadingRateDimensions : u8
+{
+	k1x1,
+	k1x2,
+	k2x1,
+	k2x2,
+	k2x4,
+	k4x2,
+	k4x4
+};
+
+
+enum class ShadingRateCombinerOp : u8
+{
+	kKeep,
+	kReplace,
+	kMin,
+	kMax,
+};
+
+
 struct RenderTargetDesc
 {
-	constexpr RenderTargetDesc(BvTextureView* pView, const ClearColorValue& clearValues, RenderTargetType type, LoadOp loadOp, StoreOp storeOp,
+	constexpr RenderTargetDesc(BvTextureView* pView, const ClearColorValue& clearValues, LoadOp loadOp, StoreOp storeOp,
 		ResourceState stateBefore, ResourceState state, ResourceState stateAfter)
-		: m_pView(pView), m_ClearValues(clearValues), m_Type(type), m_LoadOp(loadOp), m_StoreOp(storeOp),
-		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter)
+		: m_pView(pView), m_ClearValues(clearValues), m_LoadOp(loadOp), m_StoreOp(storeOp),
+		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter), m_ShadingRateTexelSizes{}
 	{
 	}
 
 	static constexpr RenderTargetDesc AsRenderTarget(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
 		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
 	{
-		return RenderTargetDesc(pView, clearValues, RenderTargetType::kColor, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
+		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
 	}
 
 	static constexpr RenderTargetDesc AsSwapChain(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
 		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kPresent)
 	{
-		return RenderTargetDesc(pView, clearValues, RenderTargetType::kColor, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
+		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
 	}
 
 	static constexpr RenderTargetDesc AsDepthStencil(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(1.0f, 0), LoadOp loadOp = LoadOp::kClear,
 		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
 	{
-		return RenderTargetDesc(pView, clearValues, RenderTargetType::kDepthStencil, loadOp, storeOp, stateBefore, ResourceState::kDepthStencilWrite, stateAfter);
+		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kDepthStencilWrite, stateAfter);
 	}
 
 	static constexpr RenderTargetDesc AsResolve(BvTextureView* pView, ResourceState stateBefore = ResourceState::kShaderResource, ResourceState stateAfter = ResourceState::kShaderResource)
 	{
-		return RenderTargetDesc(pView, ClearColorValue(), RenderTargetType::kResolve, LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kTransferDst, stateAfter);
+		return RenderTargetDesc(pView, ClearColorValue(), LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kTransferDst, stateAfter);
 	}
 
 	BvTextureView* m_pView = nullptr;
 	ClearColorValue m_ClearValues = ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-	RenderTargetType m_Type = RenderTargetType::kColor;
 	LoadOp m_LoadOp = LoadOp::kClear;
 	StoreOp m_StoreOp = StoreOp::kStore;
 	ResourceState m_StateBefore = ResourceState::kCommon;
 	ResourceState m_State = ResourceState::kRenderTarget;
 	ResourceState m_StateAfter = ResourceState::kShaderResource;
 	ResolveMode m_ResolveMode = ResolveMode::kNone;
+	u32 m_ShadingRateTexelSizes[2]{};
 };
 
 

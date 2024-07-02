@@ -68,6 +68,11 @@ public:
 	void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0);
 	void SetIndexBufferView(const BvBufferView* pIndexBufferView, IndexFormat indexFormat);
 
+	void SetDepthBounds(float min, float max);
+	void SetStencilRef(u32 stencilRef);
+	void SetBlendConstants(const float (pColors[4]));
+	void SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp (pCombinerOps[2]));
+
 	void Draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0);
 	void DrawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, i32 vertexOffset = 0, u32 firstInstance = 0);
 	void Dispatch(u32 x, u32 y = 1, u32 z = 1);

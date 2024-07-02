@@ -23,7 +23,6 @@
     <ClCompile Include="BvDebugReportVk.cpp" />
     <ClCompile Include="BvDescriptorSetVk.cpp" />
     <ClCompile Include="BvCommonVk.cpp" />
-    <ClCompile Include="BvFenceVk.cpp" />
     <ClCompile Include="BvCommandContextVk.cpp" />
     <ClCompile Include="BvQueryVk.cpp" />
   </ItemGroup>
@@ -50,7 +49,6 @@
     <ClInclude Include="BvFramebufferVk.h" />
     <ClInclude Include="BvDebugReportVk.h" />
     <ClInclude Include="BvDescriptorSetVk.h" />
-    <ClInclude Include="BvFenceVk.h" />
     <ClInclude Include="BvCommandContextVk.h" />
     <ClInclude Include="BvQueryVk.h" />
   </ItemGroup>

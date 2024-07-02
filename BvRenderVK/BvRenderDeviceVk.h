@@ -6,7 +6,6 @@
 
 
 class BvFramebufferManagerVk;
-class BvRenderPassManagerVk;
 class BvCommandContextVk;
 class BvQueryHeapManagerVk;
 
@@ -48,7 +47,6 @@ public:
 	BV_INLINE const VkInstance GetInstanceHandle() const { return m_pEngine->GetInstance(); }
 	BV_INLINE const BvGPUInfoVk& GetGPUInfo() const { return m_GPUInfo; }
 	BV_INLINE VmaAllocator GetAllocator() const { return m_VMA; }
-	BV_INLINE BvRenderPassManagerVk* GetRenderPassManager() const { return m_pRenderPassManager; }
 	BV_INLINE BvFramebufferManagerVk* GetFramebufferManager() const { return m_pFramebufferManager; }
 	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pQueryHeapManager; }
 
@@ -63,7 +61,6 @@ private:
 	BvVector<BvCommandContextVk*> m_GraphicsContexts;
 	BvVector<BvCommandContextVk*> m_ComputeContexts;
 	BvVector<BvCommandContextVk*> m_TransferContexts;
-	BvRenderPassManagerVk* m_pRenderPassManager;
 	BvFramebufferManagerVk* m_pFramebufferManager;
 	BvQueryHeapManagerVk* m_pQueryHeapManager;
 	BvRenderDeviceFactory* m_pFactory = nullptr;

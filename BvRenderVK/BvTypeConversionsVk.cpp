@@ -659,18 +659,19 @@ VkIndexType GetVkIndexType(const IndexFormat indexFormat)
 }
 
 
-VkImageLayout GetVkImageLayout(const ResourceState resourceState)
+VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthStencilFormat)
 {
 	switch (resourceState)
 	{
 	case ResourceState::kTransferSrc:		return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	case ResourceState::kTransferDst:		return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	case ResourceState::kShaderResource:	return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	case ResourceState::kShaderResource:	return !isDepthStencilFormat ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 	case ResourceState::kRWResource:		return VK_IMAGE_LAYOUT_GENERAL;
 	case ResourceState::kRenderTarget:		return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	case ResourceState::kDepthStencilRead:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 	case ResourceState::kDepthStencilWrite:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	case ResourceState::kPresent:			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	case ResourceState::kShadingRate:		return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
 	}
 
 	return VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
@@ -697,6 +698,8 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess)
 	if ((resourceAccess & ResourceAccess::kHostWrite		) == ResourceAccess::kHostWrite			)	{ accessFlags |= VK_ACCESS_2_HOST_WRITE_BIT; }
 	if ((resourceAccess & ResourceAccess::kMemoryRead		) == ResourceAccess::kMemoryRead		)	{ accessFlags |= VK_ACCESS_2_MEMORY_READ_BIT; }
 	if ((resourceAccess & ResourceAccess::kMemoryWrite		) == ResourceAccess::kMemoryWrite		)	{ accessFlags |= VK_ACCESS_2_MEMORY_WRITE_BIT; }
+	if ((resourceAccess & ResourceAccess::kInputAttachmentRead) == ResourceAccess::kInputAttachmentRead) { accessFlags |= VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT; }
+	if ((resourceAccess & ResourceAccess::kShadingRateRead) == ResourceAccess::kShadingRateRead) { accessFlags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR; }
 
 	return accessFlags;
 }
@@ -718,6 +721,7 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kDepthStencilRead:	return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 	case ResourceState::kDepthStencilWrite:	return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	case ResourceState::kPresent:			return VK_ACCESS_2_MEMORY_READ_BIT;
+	case ResourceState::kShadingRate:		return VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
 	}
 
 	return 0;
@@ -785,6 +789,14 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 	{
 		stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
 	}
+	if (accessFlags & (VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT))
+	{
+		stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+	}
+	if (accessFlags & (VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR))
+	{
+		stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+	}
 
 	return stageFlags;
 }
@@ -807,6 +819,7 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage)
 	if ((pipelineStage & PipelineStage::kComputeShader			) == PipelineStage::kComputeShader			) { stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT; }
 	if ((pipelineStage & PipelineStage::kTransfer				) == PipelineStage::kTransfer				) { stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT; }
 	if ((pipelineStage & PipelineStage::kEnd					) == PipelineStage::kEnd					) { stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT; }
+	if ((pipelineStage & PipelineStage::kShadingRate			) == PipelineStage::kShadingRate			) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR; }
 
 	return stageFlags;
 }
@@ -831,6 +844,32 @@ VkQueryType GetVkQueryType(QueryType queryHeapType)
 	case QueryType::kTimestamp: return VK_QUERY_TYPE_TIMESTAMP;
 	case QueryType::kOcclusion:
 	case QueryType::kOcclusionBinary: return VK_QUERY_TYPE_OCCLUSION;
-	default: return VK_QUERY_TYPE_TIMESTAMP;
+	}
+
+	return VK_QUERY_TYPE_TIMESTAMP;
+}
+
+
+VkResolveModeFlagBits GetVkResolveMode(ResolveMode resolveMode)
+{
+	switch (resolveMode)
+	{
+	case ResolveMode::kAverage: return VK_RESOLVE_MODE_AVERAGE_BIT;
+	case ResolveMode::kMin: return VK_RESOLVE_MODE_MIN_BIT;
+	case ResolveMode::kMax: return VK_RESOLVE_MODE_MAX_BIT;
+	default: return VK_RESOLVE_MODE_NONE;
+	}
+}
+
+
+VkFragmentShadingRateCombinerOpKHR GetVkShadingRateCombinerOp(ShadingRateCombinerOp op)
+{
+	switch (op)
+	{
+	case ShadingRateCombinerOp::kKeep:		return VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+	case ShadingRateCombinerOp::kReplace:	return VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR;
+	case ShadingRateCombinerOp::kMin:		return VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MIN_KHR;
+	case ShadingRateCombinerOp::kMax:		return VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
+	default:								return VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
 	}
 }

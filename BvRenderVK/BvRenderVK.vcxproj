@@ -117,7 +117,6 @@
     <ClCompile Include="BvCommandPoolVk.cpp" />
     <ClCompile Include="BvCommandQueueVk.cpp" />
     <ClCompile Include="BvDebugReportVk.cpp" />
-    <ClCompile Include="BvFenceVk.cpp" />
     <ClCompile Include="BvDescriptorSetVk.cpp" />
     <ClCompile Include="BvFramebufferVk.cpp" />
     <ClCompile Include="BvPipelineStateVk.cpp" />
@@ -145,7 +144,6 @@
     <ClInclude Include="BvCommandQueueVk.h" />
     <ClInclude Include="BvCommonVk.h" />
     <ClInclude Include="BvDebugReportVk.h" />
-    <ClInclude Include="BvFenceVk.h" />
     <ClInclude Include="BvDescriptorSetVk.h" />
     <ClInclude Include="BvFramebufferVk.h" />
     <ClInclude Include="BvGPUInfoVk.h" />

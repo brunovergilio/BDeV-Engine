@@ -80,79 +80,55 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass* pRenderPass, u32 ren
 {
 	BvAssert(pRenderPass != nullptr, "Invalid render pass");
 	BvAssert(pRenderPassTargets != nullptr, "No render / depth targets");
-	
+	BvAssert(renderPassTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
+
 	ResetRenderTargets();
 
-	VkExtent2D renderArea{};
-
-	auto & renderPassDesc = pRenderPass->GetDesc();
-	BvFixedVector<VkClearValue, kMaxRenderTargetsWithDepth> clearValues(renderPassDesc.m_RenderTargets.Size() + (renderPassDesc.m_HasDepth ? 1 : 0));
-	BvFixedVector<VkImageView, kMaxRenderTargetsWithDepth> views(clearValues.Size());
-	FramebufferDesc frameBufferDesc;
-	u32 numIgnoredBarrierTransitions = 0;
-	for (u32 i = 0; i < renderPassDesc.m_RenderTargets.Size(); i++)
+	BvFixedVector<VkClearValue, kMaxRenderTargetsWithDepth> clearValues;
+	VkRect2D renderArea{};
+	VkRenderPass renderPass = TO_VK(pRenderPass)->GetHandle();
+	FramebufferDesc fbDesc;
+	fbDesc.m_RenderPass = renderPass;
+	fbDesc.m_Width = kU32Max;
+	fbDesc.m_Height = kU32Max;
+	fbDesc.m_LayerCount = kU32Max;
+	for (auto i = 0u; i < renderPassTargetCount; ++i)
 	{
-		auto pViewVk = static_cast<BvTextureViewVk * const>(pRenderPassTargets[i].m_pView);
-		auto & desc = pViewVk->GetTexture()->GetDesc();
-		frameBufferDesc.m_RenderTargetViews.PushBack(pViewVk);
-		std::copy(pRenderPassTargets[i].m_ClearValues.colors, pRenderPassTargets[i].m_ClearValues.colors + 4, clearValues[i].color.float32);
+		auto viewVk = TO_VK(pRenderPassTargets->m_pView);
+		auto& viewDesc = viewVk->GetDesc();
+		auto& desc = viewDesc.m_pTexture->GetDesc();
+		fbDesc.m_Width = std::min(desc.m_Size.width, fbDesc.m_Width);
+		fbDesc.m_Height = std::min(desc.m_Size.height, fbDesc.m_Height);
+		fbDesc.m_LayerCount = std::min((viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_LayerCount : viewDesc.m_SubresourceDesc.layerCount)
+			- viewDesc.m_SubresourceDesc.firstLayer - 1, fbDesc.m_LayerCount);
 
-		renderArea.width = std::max(renderArea.width, desc.m_Size.width);
-		renderArea.height = std::max(renderArea.height, desc.m_Size.height);
-
-		views[i] = pViewVk->GetHandle();
-
-		// If any of the view objects happen to be a swap chain texture, we need to request
-		// a semaphore from the swap chain
-		if (pViewVk->GetTexture()->GetClassType() == BvTexture::ClassType::kSwapChainTexture)
-		{
-			auto pSwapChain = static_cast<BvSwapChainTextureVk *>(pViewVk->GetTexture())->GetSwapChain();
-			m_SwapChains.EmplaceBack(pSwapChain);
-		}
+		fbDesc.m_Views.EmplaceBack(viewVk->GetHandle());
+		memcpy(clearValues.EmplaceBack().color.float32, pRenderPassTargets[i].m_ClearValues.colors, sizeof(float) * 4);
 	}
 
-	//if (renderPassDesc.m_HasDepth)
-	//{
-	//	VkClearValue clearValue;
-	//	clearValue.depthStencil = { pDepthStencilTarget->m_ClearValue.depth, pDepthStencilTarget->m_ClearValue.stencil };
-	//	clearValues[clearValues.Size() - 1] = clearValue;
-	//	frameBufferDesc.m_pDepthStencilView = static_cast<BvTextureViewVk * const>(pDepthStencilTarget->m_pView);
+	renderArea.extent.width = fbDesc.m_Width;
+	renderArea.extent.height = fbDesc.m_Height;
 
-	//	// We do the same as above, but for depth
-	//	for (auto i = 0; i < m_RenderTargetTransitions.Size(); i++)
-	//	{
-	//		VkImage image = static_cast<BvTextureVk *>(frameBufferDesc.m_pDepthStencilView->GetTexture())->GetHandle();
+	VkSubpassBeginInfo spBeginInfo{ VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO, nullptr, VK_SUBPASS_CONTENTS_INLINE };
+	VkRenderPassBeginInfo rpBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+	//rpBeginInfo.pNext = nullptr;
+	rpBeginInfo.renderPass = renderPass;
+	rpBeginInfo.framebuffer = m_pFrameData->GetFramebuffer(fbDesc);
+	rpBeginInfo.renderArea = renderArea;
+	rpBeginInfo.clearValueCount = (u32)clearValues.Size();
+	rpBeginInfo.pClearValues = clearValues.Data();
 
-	//		if (m_RenderTargetTransitions[i].image == image
-	//			&& pRenderPass->GetDesc().m_RenderTargets[i].m_LoadOp != LoadOp::kLoad)
-	//		{
-	//			std::swap(m_RenderTargetTransitions[i], m_RenderTargetTransitions[m_RenderTargetTransitions.Size() - 1 - numIgnoredBarrierTransitions++]);
-	//			break;
-	//		}
-	//	}
-	//}
+	vkCmdBeginRenderPass2(m_CommandBuffer, &rpBeginInfo, &spBeginInfo);
 
-	//auto renderPass = static_cast<const BvRenderPassVk * const>(pRenderPass)->GetHandle();
-	//frameBufferDesc.m_RenderPass = renderPass;
-
-	//auto pFramebuffer = m_Device.GetFramebufferManager()->GetFramebuffer(m_Device, frameBufferDesc);
-
-	//VkRenderPassBeginInfo renderPassBI{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	//renderPassBI.renderPass = renderPass;
-	//renderPassBI.framebuffer = pFramebuffer->GetHandle();
-	//renderPassBI.renderArea.extent = renderArea;
-	//renderPassBI.clearValueCount = (u32)clearValues.Size();
-	//renderPassBI.pClearValues = clearValues.Data();
-
-	//vkCmdBeginRenderPass(m_CommandBuffer, &renderPassBI, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
-
-	//m_CurrentState = State::kRenderPass;
+	m_CurrentState = State::kRenderPass;
 }
 
 
 void BvCommandBufferVk::NextSubpass()
 {
-	BvAssert(false, "Not implemented");
+	VkSubpassBeginInfo beginInfo{ VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO, nullptr, VK_SUBPASS_CONTENTS_INLINE };
+	VkSubpassEndInfo endInfo{ VK_STRUCTURE_TYPE_SUBPASS_END_INFO, nullptr };
+	vkCmdNextSubpass2(m_CommandBuffer, &beginInfo, &endInfo);
 }
 
 
@@ -160,7 +136,8 @@ void BvCommandBufferVk::EndRenderPass()
 {
 	BvAssert(m_CurrentState == State::kRenderPass, "Command buffer not in render pass");
 
-	vkCmdEndRenderPass(m_CommandBuffer);
+	VkSubpassEndInfo endInfo{ VK_STRUCTURE_TYPE_SUBPASS_END_INFO, nullptr };
+	vkCmdEndRenderPass2(m_CommandBuffer, &endInfo);
 
 	m_CurrentState = State::kRecording;
 }
@@ -175,19 +152,23 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		return;
 	}
 
-	VkExtent2D renderArea{};
+	BvAssert(renderTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
+
+	VkExtent2D renderArea{ kU32Max, kU32Max };
 
 	VkRenderingAttachmentInfo colorAttachments[kMaxRenderTargets]{};
 	VkRenderingAttachmentInfo depthAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 	VkRenderingAttachmentInfo stencilAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-	
+	VkRenderingFragmentShadingRateAttachmentInfoKHR shadingRateAttachment{ VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR };
+	VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
+
 	u32 colorAttachmentCount = 0;
 	u32 resolveCount = 0;
 	bool hasDepth = false;
 	bool hasStencil = true;
 	bool hasShadingRate = false;
 
-	u32 layerCount = 1;
+	u32 layerCount = kU32Max;
 	for (u32 i = 0; i < renderTargetCount; i++)
 	{
 		if (colorAttachmentCount >= 8)
@@ -201,69 +182,106 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		auto& desc = renderTarget.m_pView->GetTexture()->GetDesc();
 		auto& viewDesc = renderTarget.m_pView->GetDesc();
 
-		layerCount = std::min(viewDesc.m_SubresourceDesc.layerCount, layerCount);
-		renderArea.width = std::max(renderArea.width, desc.m_Size.width);
-		renderArea.height = std::max(renderArea.height, desc.m_Size.height);
+		layerCount = std::min(layerCount, (viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_LayerCount : viewDesc.m_SubresourceDesc.layerCount)
+			 - viewDesc.m_SubresourceDesc.firstLayer - 1);
+		renderArea.width = std::min(renderArea.width, desc.m_Size.width);
+		renderArea.height = std::min(renderArea.height, desc.m_Size.height);
 
 		auto loadOp = GetVkAttachmentLoadOp(renderTarget.m_LoadOp);
 		auto storeOp = GetVkAttachmentStoreOp(renderTarget.m_StoreOp);
 
-		switch (renderTarget.m_Type)
+		auto aspectFlags = GetVkFormatMap(viewDesc.m_Format).aspectFlags;
+		bool isColorTarget = (aspectFlags & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
+		bool isDepthTarget = (aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
+		bool isStencilTarget = (aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT) != 0;
+		bool isShadingRate = renderTarget.m_State == ResourceState::kShadingRate;
+		bool isResolveImage = renderTarget.m_ResolveMode != ResolveMode::kNone;
+
+		if (isShadingRate)
 		{
-		case RenderTargetType::kColor:
-			colorAttachments[colorAttachmentCount].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-			colorAttachments[colorAttachmentCount].imageView = pView->GetHandle();
-			colorAttachments[colorAttachmentCount].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			colorAttachments[colorAttachmentCount].loadOp = loadOp;
-			colorAttachments[colorAttachmentCount].storeOp = storeOp;
-			if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
+			shadingRateAttachment.imageView = pView->GetHandle();
+			shadingRateAttachment.imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+			shadingRateAttachment.shadingRateAttachmentTexelSize.width = renderTarget.m_ShadingRateTexelSizes[0];
+			shadingRateAttachment.shadingRateAttachmentTexelSize.height = renderTarget.m_ShadingRateTexelSizes[1];
+			renderingInfo.pNext = &shadingRateAttachment;
+		}
+		else if (isColorTarget)
+		{
+			if (!isResolveImage)
 			{
-				std::copy(renderTarget.m_ClearValues.colors, renderTarget.m_ClearValues.colors + 4, colorAttachments[colorAttachmentCount].clearValue.color.float32);
-			}
-
-			// If any of the view objects happen to be a swap chain texture, we need to request
-			// a semaphore from the swap chain
-			if (pTexture->GetClassType() == BvTexture::ClassType::kSwapChainTexture)
-			{
-				auto pSwapChain = static_cast<BvSwapChainTextureVk*>(pTexture)->GetSwapChain();
-				m_SwapChains.EmplaceBack(pSwapChain);
-			}
-			++colorAttachmentCount;
-			break;
-		case RenderTargetType::kDepthStencil:
-			depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-			depthAttachment.imageView = pView->GetHandle();
-			depthAttachment.imageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-				: VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
-			depthAttachment.loadOp = loadOp;
-			depthAttachment.storeOp = storeOp;
-			if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
-			{
-				depthAttachment.clearValue.depthStencil.depth = renderTarget.m_ClearValues.depth;
-			}
-			hasDepth = true;
-
-			if (IsDepthStencilFormat(desc.m_Format))
-			{
-				stencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-				stencilAttachment.imageView = pView->GetHandle();
-				stencilAttachment.imageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
-					: VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
-				stencilAttachment.loadOp = loadOp;
-				stencilAttachment.storeOp = storeOp;
+				colorAttachments[colorAttachmentCount].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+				colorAttachments[colorAttachmentCount].imageView = pView->GetHandle();
+				colorAttachments[colorAttachmentCount].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				colorAttachments[colorAttachmentCount].loadOp = loadOp;
+				colorAttachments[colorAttachmentCount].storeOp = storeOp;
 				if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 				{
-					stencilAttachment.clearValue.depthStencil.stencil = renderTarget.m_ClearValues.stencil;
+					memcpy(colorAttachments[colorAttachmentCount].clearValue.color.float32, renderTarget.m_ClearValues.colors, sizeof(float) * 4);
 				}
-				hasStencil = true;
+
+				// If any of the view objects happen to be a swap chain texture, we need to request
+				// a semaphore from the swap chain
+				if (pTexture->GetClassType() == BvTexture::ClassType::kSwapChainTexture)
+				{
+					auto pSwapChain = static_cast<BvSwapChainTextureVk*>(pTexture)->GetSwapChain();
+					m_SwapChains.EmplaceBack(pSwapChain);
+				}
+				++colorAttachmentCount;
 			}
-			break;
-		case RenderTargetType::kResolve:
-			BvAssert(false, "Not implemented");
-			break;
-		case RenderTargetType::kShadingRate:
-			BvAssert(false, "Not implemented");
-			break;
+			else
+			{
+				colorAttachments[resolveCount].resolveImageView = pView->GetHandle();
+				colorAttachments[resolveCount].resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				colorAttachments[resolveCount].resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
+				++resolveCount;
+			}
+		}
+		else if (isDepthTarget)
+		{
+			if (!isResolveImage)
+			{
+				depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+				depthAttachment.imageView = pView->GetHandle();
+				depthAttachment.imageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+					: VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+				depthAttachment.loadOp = loadOp;
+				depthAttachment.storeOp = storeOp;
+				if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
+				{
+					depthAttachment.clearValue.depthStencil.depth = renderTarget.m_ClearValues.depth;
+				}
+				hasDepth = true;
+
+				if (isStencilTarget)
+				{
+					stencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+					stencilAttachment.imageView = pView->GetHandle();
+					stencilAttachment.imageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
+						: VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
+					stencilAttachment.loadOp = loadOp;
+					stencilAttachment.storeOp = storeOp;
+					if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
+					{
+						stencilAttachment.clearValue.depthStencil.stencil = renderTarget.m_ClearValues.stencil;
+					}
+					hasStencil = true;
+				}
+			}
+			else
+			{
+				depthAttachment.resolveImageView = pView->GetHandle();
+				depthAttachment.resolveImageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+					: VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+				depthAttachment.resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
+
+				if (isStencilTarget)
+				{
+					stencilAttachment.resolveImageView = depthAttachment.resolveImageView;
+					stencilAttachment.resolveImageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
+						: VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
+					stencilAttachment.resolveMode = depthAttachment.resolveMode;
+				}
+			}
 		}
 
 		auto pTextureVk = static_cast<BvTextureVk*>(pTexture);
@@ -272,10 +290,10 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			auto& barrier = m_PreRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
 			barrier.image = pTextureVk->GetHandle();
-			barrier.subresourceRange.aspectMask = GetVkFormatMap(pTextureVk->GetDesc().m_Format).aspectFlags;
-			barrier.subresourceRange.baseMipLevel = 0;
-			barrier.subresourceRange.levelCount = desc.m_MipLevels;
-			barrier.subresourceRange.baseArrayLayer = 0;
+			barrier.subresourceRange.aspectMask = aspectFlags;
+			barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
+			barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;
+			barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
 			barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
 
 			barrier.oldLayout = GetVkImageLayout(renderTarget.m_StateBefore);
@@ -295,11 +313,11 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			auto& barrier = m_PostRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
 			barrier.image = pTextureVk->GetHandle();
-			barrier.subresourceRange.aspectMask = GetVkFormatMap(pTextureVk->GetDesc().m_Format).aspectFlags;
-			barrier.subresourceRange.baseMipLevel = 0;
-			barrier.subresourceRange.levelCount = desc.m_MipLevels;
-			barrier.subresourceRange.baseArrayLayer = 0;
-			barrier.subresourceRange.layerCount = desc.m_LayerCount;
+			barrier.subresourceRange.aspectMask = aspectFlags;
+			barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
+			barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;
+			barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
+			barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
 
 			barrier.oldLayout = GetVkImageLayout(renderTarget.m_State);
 			barrier.newLayout = GetVkImageLayout(renderTarget.m_StateAfter);
@@ -326,8 +344,6 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		m_PreRenderBarriers.Clear();
 	}
 
-	VkRenderingInfoKHR renderingInfo{};
-	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 	renderingInfo.renderArea = { 0, 0, renderArea.width, renderArea.height };
 	renderingInfo.layerCount = layerCount;
 	if (colorAttachmentCount > 0)
@@ -469,6 +485,48 @@ void BvCommandBufferVk::SetIndexBufferView(const BvBufferView* pIndexBufferView,
 	auto formatVk = GetVkIndexType(indexFormat);
 	
 	vkCmdBindIndexBuffer(m_CommandBuffer, static_cast<BvBufferVk*>(pIndexBufferView->GetBuffer())->GetHandle(), pIndexBufferView->GetDesc().m_Offset, formatVk);
+}
+
+
+void BvCommandBufferVk::SetDepthBounds(float min, float max)
+{
+	vkCmdSetDepthBounds(m_CommandBuffer, min, max);
+}
+
+
+void BvCommandBufferVk::SetStencilRef(u32 stencilRef)
+{
+	vkCmdSetStencilReference(m_CommandBuffer, VK_STENCIL_FACE_FRONT_AND_BACK, stencilRef);
+}
+
+
+void BvCommandBufferVk::SetBlendConstants(const float(pColors[4]))
+{
+	vkCmdSetBlendConstants(m_CommandBuffer, pColors);
+}
+
+
+void BvCommandBufferVk::SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp (pCombinerOps[2]))
+{
+	VkExtent2D fragmentSize{ 1, 1 };
+
+	switch (dimensions)
+	{
+	case ShadingRateDimensions::k1x2: fragmentSize = { 1, 2 }; break;
+	case ShadingRateDimensions::k2x1: fragmentSize = { 2, 1 }; break;
+	case ShadingRateDimensions::k2x2: fragmentSize = { 2, 2 }; break;
+	case ShadingRateDimensions::k2x4: fragmentSize = { 2, 4 }; break;
+	case ShadingRateDimensions::k4x2: fragmentSize = { 4, 2 }; break;
+	case ShadingRateDimensions::k4x4: fragmentSize = { 4, 4 }; break;
+	}
+
+	VkFragmentShadingRateCombinerOpKHR combinerOps[] =
+	{
+		GetVkShadingRateCombinerOp(pCombinerOps[0]),
+		GetVkShadingRateCombinerOp(pCombinerOps[1]),
+	};
+
+	vkCmdSetFragmentShadingRateKHR(m_CommandBuffer, &fragmentSize, combinerOps);
 }
 
 
@@ -936,14 +994,17 @@ void BvCommandBufferVk::ResetRenderTargets()
 	{
 		vkCmdEndRendering(m_CommandBuffer);
 
-		VkDependencyInfo dependencyInfo{ VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-		dependencyInfo.imageMemoryBarrierCount = static_cast<u32>(m_PostRenderBarriers.Size());
-		dependencyInfo.pImageMemoryBarriers = m_PostRenderBarriers.Data();
+		if (m_PostRenderBarriers.Size() > 0)
+		{
+			VkDependencyInfo dependencyInfo{ VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+			dependencyInfo.imageMemoryBarrierCount = static_cast<u32>(m_PostRenderBarriers.Size());
+			dependencyInfo.pImageMemoryBarriers = m_PostRenderBarriers.Data();
 
-		vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+			vkCmdPipelineBarrier2(m_CommandBuffer, &dependencyInfo);
+		}
 
 		m_PostRenderBarriers.Clear();
-	}
 
-	m_CurrentState = State::kRecording;
+		m_CurrentState = State::kRecording;
+	}
 }
