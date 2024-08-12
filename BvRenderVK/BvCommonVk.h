@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include "BDeV/BvCore.h"
-#include "BDeV/System/Debug/BvDebug.h"
+#include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/System/Debug/BvDebug.h"
 
 // Platform-dependent stuff
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
@@ -24,7 +24,7 @@
 // Have to re-include this again because the CreateSemaphore macro
 // conflicts with the BvRenderEngine::CreateSemaphore function
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include "BDeV/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
 #endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 
 

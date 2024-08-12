@@ -5,11 +5,12 @@
 class BvTBJobSystemInstance
 {
 public:
-	static BvTBJobSystem s_Instance;
+	static BvTBJobSystem* GetInstance()
+	{
+		static BvTBJobSystem s_Instance;
+		return &s_Instance;
+	}
 };
-
-
-BvTBJobSystem* g_pJobSystem = &BvTBJobSystemInstance::s_Instance;
 
 
 class BvTBJobSystemWorker
@@ -36,11 +37,12 @@ private:
 
 private:
 	BvVector<BvTBJobList*> m_JobLists;
-	std::atomic<u32> m_LastJobListIndex;
-	std::atomic<u32> m_FirstJobListIndex;
 	BvThread m_Thread;
 	BvSignal m_WorkSignal;
 	BvAdaptiveMutex m_Lock;
+	std::atomic<u32> m_LastJobListIndex;
+	std::atomic<u32> m_FirstJobListIndex;
+	std::atomic<bool> m_IsIdle;
 	std::atomic<bool> m_Active;
 };
 
@@ -51,21 +53,17 @@ BvTBJobSystemWorker::BvTBJobSystemWorker(u32 jobListPoolSize, u32 coreIndex)
 		{
 			m_Thread.LockToCore(coreIndex);
 			m_Active.store(1, std::memory_order::relaxed);
-			while (IsActive())
+			do
 			{
 				if (m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) == 0)
 				{
+					m_IsIdle.store(true, std::memory_order::relaxed);
 					m_WorkSignal.Wait();
-				}
-
-				while (m_Active.load(std::memory_order::relaxed)
-					&& m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) == 0)
-				{
-					BvProcess::YieldExecution();
+					m_IsIdle.store(false, std::memory_order::relaxed);
 				}
 
 				Process();
-			}
+			} while (IsActive());
 		}))
 {
 }
@@ -81,8 +79,8 @@ void BvTBJobSystemWorker::AddJobList(BvTBJobList* pJobList)
 	{
 		BvScopedLock lock(m_Lock);
 
-		// This could loop infinitely if the thread that's adding a job list is the same worker thread that owns m_JobLists and the list is full
-		// TODO: Figure out how to best handle this
+		// This could loop infinitely if the thread that's adding a job list is the same worker thread that owns m_JobLists,
+		// and the list happens to be already full. If that's ever the case, increase the job list size.
 		while (m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) >= (u32)m_JobLists.Size())
 		{
 			BvProcess::YieldExecution();
@@ -128,12 +126,12 @@ BvTBJobSystemWorker::WorkerResult BvTBJobSystemWorker::RunJobs(BvTBJobList* pCur
 			}
 		}
 
-		if (pCurrJobList->m_Lock.TryLock())
+		if (!pCurrJobList->m_Lock.test_and_set())
 		{
 			currJobListJobIndex = pCurrJobList->m_CurrJob.fetch_add(1);
 			if (currJobListJobIndex >= pCurrJobList->m_Jobs.Size())
 			{
-				pCurrJobList->m_Lock.Unlock();
+				pCurrJobList->m_Lock.clear();
 				return WorkerResult::kDone;
 			}
 
@@ -144,7 +142,7 @@ BvTBJobSystemWorker::WorkerResult BvTBJobSystemWorker::RunJobs(BvTBJobList* pCur
 				if (currJobListJobIndex > pCurrJobList->m_JobsDone.load(std::memory_order::relaxed))
 				{
 					pCurrJobList->m_CurrJob.fetch_sub(1);
-					pCurrJobList->m_Lock.Unlock();
+					pCurrJobList->m_Lock.clear();
 					return WorkerResult::kStalled;
 				}
 			}
@@ -155,12 +153,12 @@ BvTBJobSystemWorker::WorkerResult BvTBJobSystemWorker::RunJobs(BvTBJobList* pCur
 				if (!pCurrJobList->m_Jobs[currJobListJobIndex].m_pDependency->IsDone())
 				{
 					pCurrJobList->m_CurrJob.fetch_sub(1);
-					pCurrJobList->m_Lock.Unlock();
+					pCurrJobList->m_Lock.clear();
 					return WorkerResult::kStalled;
 				}
 			}
 
-			pCurrJobList->m_Lock.Unlock();
+			pCurrJobList->m_Lock.clear();
 		}
 		else
 		{
@@ -169,7 +167,7 @@ BvTBJobSystemWorker::WorkerResult BvTBJobSystemWorker::RunJobs(BvTBJobList* pCur
 
 		pCurrJobList->m_Jobs[currJobListJobIndex].m_Job.Run();
 
-		pCurrJobList->m_JobsDone.fetch_add(1);
+		pCurrJobList->m_JobsDone.fetch_add(1, std::memory_order::relaxed);
 	} while (runAll);
 
 	if (currJobListJobIndex + 1 >= pCurrJobList->m_Jobs.Size())
@@ -193,7 +191,7 @@ void BvTBJobSystemWorker::Stop()
 
 bool BvTBJobSystemWorker::IsIdle()
 {
-	return m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) == 0;
+	return m_IsIdle.load(std::memory_order::relaxed);
 }
 
 
@@ -202,14 +200,14 @@ void BvTBJobSystemWorker::Process()
 	constexpr u32 kMaxLocalJobLists = 32;
 	BvTBJobList* pJobLists[kMaxLocalJobLists]{};
 
-	// Keep track of the last job list that this worker failed processing
+	// Keep track of the last job list that this worker stalled on
 	u32 lastSkippedJobListIndex = kU32Max;
 
 	u32 jobListSize = (u32)m_JobLists.Size();
 	u32 lastJobListIndex = 0;
 	u32 firstJobListIndex = 0;
 	u32 numJobLists = 0;
-	while (IsActive())
+	while (m_Active.load(std::memory_order::relaxed))
 	{
 		lastJobListIndex = m_LastJobListIndex.load(std::memory_order::relaxed);
 		firstJobListIndex = m_FirstJobListIndex.load(std::memory_order::relaxed);
@@ -226,7 +224,7 @@ void BvTBJobSystemWorker::Process()
 		}
 
 		u32 jobListIndex = 0;
-		JobListPriority priority = JobListPriority::kLow;
+		BvTBJobList::Priority priority = BvTBJobList::Priority::kLow;
 
 		// Start with the first available index
 		if (lastSkippedJobListIndex == kU32Max)
@@ -238,7 +236,7 @@ void BvTBJobSystemWorker::Process()
 				{
 					priority = pJobLists[i]->GetPriority();
 					jobListIndex = i;
-					if (priority == JobListPriority::kHigh)
+					if (priority == BvTBJobList::Priority::kHigh)
 					{
 						break;
 					}
@@ -255,7 +253,7 @@ void BvTBJobSystemWorker::Process()
 				{
 					priority = pJobLists[i]->GetPriority();
 					jobListIndex = i;
-					if (priority == JobListPriority::kHigh)
+					if (priority == BvTBJobList::Priority::kHigh)
 					{
 						break;
 					}
@@ -263,7 +261,7 @@ void BvTBJobSystemWorker::Process()
 			}
 		}
 
-		auto result = RunJobs(pJobLists[jobListIndex], priority == JobListPriority::kHigh);
+		auto result = RunJobs(pJobLists[jobListIndex], priority == BvTBJobList::Priority::kHigh);
 		if (result == WorkerResult::kDone)
 		{
 			// Remove the JobList from the pool
@@ -286,13 +284,18 @@ void BvTBJobSystemWorker::Process()
 		{
 			lastSkippedJobListIndex = kU32Max;
 		}
-	} while (m_Active.load(std::memory_order::relaxed));
+	}
 }
 
 
 bool BvTBJobSystemWorker::IsActive() const
 {
 	return m_Active.load(std::memory_order::relaxed);
+}
+
+
+BvTBJobSystem::BvTBJobSystem()
+{
 }
 
 
@@ -304,11 +307,11 @@ BvTBJobSystem::~BvTBJobSystem()
 
 void BvTBJobSystem::Initialize(const JobSystemDesc& desc)
 {
-	auto numWorkerThreads = 0;
-	auto numThreadsPerCore = 1;
+	auto numWorkerThreads = 0u;
+	auto numThreadsPerCore = 1u;
 
 	const auto& sysInfo = BvProcess::GetSystemInfo();
-	BvAssert(desc.m_NumThreads <= sysInfo.m_NumLogicalProcessors, "Not enough logical processors for the worker threads");
+	BvAssert(desc.m_NumWorkerThreads <= sysInfo.m_NumLogicalProcessors, "Not enough logical processors for the worker threads");
 
 	switch (desc.m_Parallelism)
 	{
@@ -321,18 +324,20 @@ void BvTBJobSystem::Initialize(const JobSystemDesc& desc)
 		numThreadsPerCore = 1;
 		break;
 	case JobSystemDesc::Parallelism::kCustom:
-		numWorkerThreads = desc.m_NumThreads;
+		numWorkerThreads = desc.m_NumWorkerThreads;
 		// For custom parallelism, the core values will come from JobSystemDesc::m_pThreadCores
 		break;
+	case JobSystemDesc::Parallelism::kSingleThreaded:
+		return;
 	}
 
 	BvAssert(numWorkerThreads > 0, "There must be at least 1 worker thread on the job system!");
 	m_Workers.Resize(numWorkerThreads);
-	auto coreIndex = 0;
-	auto coreCountReset = 0;
+	auto coreIndex = 0u;
+	auto coreCountReset = 0u;
 	for (auto i = 0u; i < m_Workers.Size(); i++)
 	{
-		m_Workers[i] = new BvTBJobSystemWorker(desc.m_JobListPoolSize, desc.m_pThreadCores == nullptr ? coreIndex : desc.m_pThreadCores[i]);
+		m_Workers[i] = new BvTBJobSystemWorker(desc.m_JobListPoolSize, desc.m_pWorkerThreadDescs == nullptr ? coreIndex : desc.m_pWorkerThreadDescs[i].m_CoreIndex);
 		if (++coreCountReset == numThreadsPerCore)
 		{
 			coreIndex++;
@@ -344,18 +349,19 @@ void BvTBJobSystem::Initialize(const JobSystemDesc& desc)
 
 void BvTBJobSystem::Shutdown()
 {
-	for (auto&& pWorker : m_Workers)
+	for (auto pWorker : m_Workers)
 	{
 		pWorker->Stop();
 
 		delete pWorker;
 	}
+	m_Workers.Clear();
 }
 
 
-BvTBJobList* BvTBJobSystem::AllocJobList(u32 maxJobs, u32 maxSyncs, JobListPriority priority)
+BvTBJobList* BvTBJobSystem::AllocJobList(u32 maxJobs, u32 maxSyncs, BvTBJobList::Priority priority)
 {
-	return new BvTBJobList(maxJobs, maxSyncs, priority);
+	return new BvTBJobList(this, maxJobs, maxSyncs, priority);
 }
 
 
@@ -371,6 +377,18 @@ void BvTBJobSystem::Submit(BvTBJobList* pJobList)
 	for (auto pWorker : m_Workers)
 	{
 		pWorker->AddJobList(pJobList);
+	}
+}
+
+
+void BvTBJobSystem::Wait()
+{
+	for (auto pWorker : m_Workers)
+	{
+		while (!pWorker->IsIdle())
+		{
+			BvProcess::YieldExecution();
+		}
 	}
 }
 
@@ -429,7 +447,7 @@ void BvTBJobList::Submit(bool threaded)
 {
 	if (threaded)
 	{
-		g_pJobSystem->Submit(this);
+		m_pJobSystem->Submit(this);
 	}
 	else
 	{
@@ -466,14 +484,20 @@ void BvTBJobList::Wait() const
 }
 
 
-JobListPriority BvTBJobList::GetPriority() const
+BvTBJobList::Priority BvTBJobList::GetPriority() const
 {
 	return m_Priority;
 }
 
 
-BvTBJobList::BvTBJobList(u32 maxJobs, u32 maxSyncs, const JobListPriority priority)
-	: m_Priority(priority)
+BvTBJobList::Category BvTBJobList::GetCategory() const
+{
+	return m_Category;
+}
+
+
+BvTBJobList::BvTBJobList(BvTBJobSystem* pJobSystem, u32 maxJobs, u32 maxSyncs, BvTBJobList::Priority priority)
+	: m_pJobSystem(pJobSystem), m_Priority(priority)
 {
 	m_Jobs.Reserve(maxJobs + maxSyncs);
 }
@@ -487,4 +511,10 @@ BvTBJobList::~BvTBJobList()
 BvTBJobList::Job& BvTBJobList::AddInternal()
 {
 	return m_Jobs.EmplaceBack();
+}
+
+
+BvTBJobSystem* GetJobSystem()
+{
+	return BvTBJobSystemInstance::GetInstance();
 }

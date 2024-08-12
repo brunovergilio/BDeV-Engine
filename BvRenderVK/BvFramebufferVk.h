@@ -1,13 +1,11 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvCommon.h"
 #include "BvRenderVk/BvCommonVk.h"
-#include "BDeV/Container/BvFixedVector.h"
+#include "BDeV/Core/Container/BvFixedVector.h"
 #include "BvTextureViewVk.h"
-#include "BDeV/Utils/BvHash.h"
-#include "BDeV/Container/BvRobinMap.h"
-#include "BDeV/System/Threading/BvSync.h"
+#include "BDeV/Core/Utils/BvHash.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
 #include "BvRenderPassVk.h"
 
 

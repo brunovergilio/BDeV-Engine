@@ -32,7 +32,8 @@ bool IsInstanceLayerSupported(const BvVector<VkLayerProperties>& layers, const c
 }
 
 
-BvRenderEngineVk::BvRenderEngineVk()
+BvRenderEngineVk::BvRenderEngineVk(IBvMemoryArena* pArena)
+	: BvRenderEngine(pArena)
 {
 	Initialize();
 }
@@ -337,6 +338,8 @@ bool BvRenderEngineVk::SetupDeviceExtraPropertiesAndFeatures(BvGPUInfoVk& gpu)
 	gpu.m_FeaturesSupported.customBorderColor = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 	gpu.m_FeaturesSupported.memoryBudget = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 	gpu.m_FeaturesSupported.deferredHostOperations = IsPhysicalDeviceExtensionSupported(gpu, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+	gpu.m_FeaturesSupported.predication = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
+	gpu.m_FeaturesSupported.depthClipEnable = IsPhysicalDeviceExtensionSupported(gpu, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
 
 	if (gpu.m_FeaturesSupported.vertexAttributeDivisor)
 	{
@@ -380,25 +383,25 @@ bool BvRenderEngineVk::SetupDeviceExtraPropertiesAndFeatures(BvGPUInfoVk& gpu)
 		pNextFeature = &gpu.m_ExtendedFeatures.accelerationStructureFeatures.pNext;
 
 		gpu.m_EnabledExtensions.PushBack(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-	}
 
-	if (gpu.m_FeaturesSupported.rayTracingPipeline)
-	{
-		*pNextProperty = &gpu.m_ExtendedProperties.rayTracingPipelineProps;
-		pNextProperty = &gpu.m_ExtendedProperties.rayTracingPipelineProps.pNext;
+		if (gpu.m_FeaturesSupported.rayTracingPipeline)
+		{
+			*pNextProperty = &gpu.m_ExtendedProperties.rayTracingPipelineProps;
+			pNextProperty = &gpu.m_ExtendedProperties.rayTracingPipelineProps.pNext;
 
-		*pNextFeature = &gpu.m_ExtendedFeatures.rayTracingPipelineFeatures;
-		pNextFeature = &gpu.m_ExtendedFeatures.rayTracingPipelineFeatures.pNext;
+			*pNextFeature = &gpu.m_ExtendedFeatures.rayTracingPipelineFeatures;
+			pNextFeature = &gpu.m_ExtendedFeatures.rayTracingPipelineFeatures.pNext;
 
-		gpu.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-	}
+			gpu.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+		}
 
-	if (gpu.m_FeaturesSupported.rayQuery)
-	{
-		*pNextFeature = &gpu.m_ExtendedFeatures.rayQueryFeatures;
-		pNextFeature = &gpu.m_ExtendedFeatures.rayQueryFeatures.pNext;
+		if (gpu.m_FeaturesSupported.rayQuery)
+		{
+			*pNextFeature = &gpu.m_ExtendedFeatures.rayQueryFeatures;
+			pNextFeature = &gpu.m_ExtendedFeatures.rayQueryFeatures.pNext;
 
-		gpu.m_EnabledExtensions.PushBack(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+			gpu.m_EnabledExtensions.PushBack(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+		}
 	}
 
 	if (gpu.m_FeaturesSupported.conservativeRasterization)
@@ -431,6 +434,22 @@ bool BvRenderEngineVk::SetupDeviceExtraPropertiesAndFeatures(BvGPUInfoVk& gpu)
 	if (gpu.m_FeaturesSupported.deferredHostOperations)
 	{
 		gpu.m_EnabledExtensions.PushBack(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+	}
+
+	if (gpu.m_FeaturesSupported.predication)
+	{
+		*pNextFeature = &gpu.m_ExtendedFeatures.conditionalRenderingFeatures;
+		pNextFeature = &gpu.m_ExtendedFeatures.conditionalRenderingFeatures.pNext;
+
+		gpu.m_EnabledExtensions.PushBack(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
+	}
+
+	if (gpu.m_FeaturesSupported.depthClipEnable)
+	{
+		*pNextFeature = &gpu.m_ExtendedFeatures.depthClibEnableFeature;
+		pNextFeature = &gpu.m_ExtendedFeatures.depthClibEnableFeature.pNext;
+
+		gpu.m_EnabledExtensions.PushBack(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
 	}
 
 	gpu.m_EnabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -572,27 +591,15 @@ u32 BvRenderEngineVk::AutoSelectGPU()
 
 namespace BvRenderVk
 {
-	static BvRenderEngineVk* s_pEngine = nullptr;
-
 	BvRenderEngine* CreateRenderEngine()
 	{
-		if (s_pEngine)
+		auto pEngine = new BvRenderEngineVk(nullptr);
+		if (pEngine->GetSupportedGPUCount() == 0)
 		{
-			return s_pEngine;
-		}
-
-		s_pEngine = new BvRenderEngineVk();
-		if (s_pEngine->GetSupportedGPUCount() == 0)
-		{
-			DestroyRenderEngine();
+			pEngine->Release();
 			return nullptr;
 		}
 
-		return s_pEngine;
-	}
-
-	void DestroyRenderEngine()
-	{
-		delete s_pEngine;
+		return pEngine;
 	}
 }

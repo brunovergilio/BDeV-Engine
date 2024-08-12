@@ -1,6 +1,6 @@
 #include "BvRenderVK/BvUtilsVk.h"
-#include "BDeV/Container/BvRobinMap.h"
-#include "BDeV/Container/BvString.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
+#include "BDeV/Core/Container/BvString.h"
 #include "BvTypeConversionsVk.h"
 
 

@@ -2,15 +2,14 @@
 
 
 #include "BvRenderVK/BvCommonVk.h"
-#include "BDeV/Utils/BvUtils.h"
-#include "BDeV/RenderAPI/BvSemaphore.h"
-#include "BDeV/Container/BvVector.h"
+#include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/Container/BvVector.h"
 
 
 class BvRenderDeviceVk;
 
 
-class BvSemaphoreVk final : public BvSemaphore
+class BvSemaphoreVk final
 {
 	BV_NOCOPY(BvSemaphoreVk);
 
@@ -24,9 +23,9 @@ public:
 	void Create(u64 initialValue, bool isTimelineSemaphore);
 	void Destroy();
 
-	void Signal(u64 value) override;
-	WaitStatus Wait(u64 value, u64 timeout = kU64Max) override;
-	u64 GetCompletedValue() override;
+	void Signal(u64 value);
+	bool Wait(u64 value, u64 timeout = kU64Max);
+	u64 GetCompletedValue();
 
 	BV_INLINE VkSemaphore GetHandle() const { return m_Semaphore; }
 	

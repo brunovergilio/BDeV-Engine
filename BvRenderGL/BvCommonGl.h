@@ -2,7 +2,7 @@
 
 
 #include "BDeV/Utils/BvUtils.h"
-#include "BDeV/RenderAPI/BvCommon.h"
+#include "BDeV/RenderAPI/BvRenderCommon.h"
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 #include <Windows.h>

@@ -79,7 +79,7 @@ void BvSemaphoreVk::Signal(u64 value)
 }
 
 
-BvSemaphore::WaitStatus BvSemaphoreVk::Wait(u64 value, u64 timeout)
+bool BvSemaphoreVk::Wait(u64 value, u64 timeout)
 {
 	VkSemaphoreWaitInfo waitInfo{};
 	waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
@@ -91,7 +91,7 @@ BvSemaphore::WaitStatus BvSemaphoreVk::Wait(u64 value, u64 timeout)
 
 	auto result = vkWaitSemaphores(m_Device, &waitInfo, timeout);
 
-	return result == VK_SUCCESS ? WaitStatus::kSuccess : WaitStatus::kTimeout;
+	return result == VK_SUCCESS ? true : false;
 }
 
 

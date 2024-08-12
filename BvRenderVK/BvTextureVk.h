@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvTexture.h"
+#include "BDeV/Core/RenderAPI/BvTexture.h"
 #include "BvCommonVk.h"
 
 
@@ -25,7 +25,7 @@ public:
 	BV_INLINE ClassType GetClassType() const override { return ClassType::kTexture; }
 
 private:
-	void CopyInitDataAndTransitionState(const TextureInitData* pInitData);
+	void CopyInitDataAndTransitionState(const TextureInitData* pInitData, u32 mipCount);
 
 protected:
 	const BvRenderDeviceVk& m_Device;

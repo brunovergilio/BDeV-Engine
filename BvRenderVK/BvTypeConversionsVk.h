@@ -2,12 +2,11 @@
 
 
 #include "BvCommonVk.h"
-#include "BDeV/RenderAPI/BvTexture.h"
-#include "BDeV/RenderAPI/BvTextureView.h"
-#include "BDeV/RenderAPI/BvBuffer.h"
-#include "BDeV/RenderAPI/BvSampler.h"
-#include "BDeV/RenderAPI/BvPipelineState.h"
-#include "BDeV/RenderAPI/BvCommandPool.h"
+#include "BDeV/Core/RenderAPI/BvTexture.h"
+#include "BDeV/Core/RenderAPI/BvTextureView.h"
+#include "BDeV/Core/RenderAPI/BvBuffer.h"
+#include "BDeV/Core/RenderAPI/BvSampler.h"
+#include "BDeV/Core/RenderAPI/BvPipelineState.h"
 
 
 struct FormatMapVk
@@ -54,7 +53,6 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState);
 VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags);
 VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags);
 VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage);
-VkCommandPoolCreateFlags GetVkCommandPoolCreateFlags(const CommandPoolFlags commandPoolFlags);
 VkQueryType GetVkQueryType(QueryType queryHeapType);
 VkResolveModeFlagBits GetVkResolveMode(ResolveMode resolveMode);
 VkFragmentShadingRateCombinerOpKHR GetVkShadingRateCombinerOp(ShadingRateCombinerOp op);

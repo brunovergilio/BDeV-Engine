@@ -2,7 +2,7 @@
 
 
 #include "BvCommonVk.h"
-#include "BDeV/Utils/BvUtils.h"
+#include "BDeV/Core/Utils/BvUtils.h"
 
 
 class BvDebugReportVk

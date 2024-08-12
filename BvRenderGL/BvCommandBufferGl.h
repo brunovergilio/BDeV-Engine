@@ -4,7 +4,7 @@
 #include "BvRenderGl/BvCommonGl.h"
 #include "BDeV/Container/BvVector.h"
 #include "BDeV/RenderAPI/BvCommandBuffer.h"
-#include "BDeV/RenderAPI/BvCommon.h"
+#include "BDeV/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Container/BvFixedVector.h"
 
 

@@ -1,18 +1,5 @@
-#include "BDeV/RenderAPI/BvRenderEngine.h"
-#include "BDeV/System/Window/BvWindow.h"
-#include "BDeV/RenderAPI/BvSwapChain.h"
-#include "BDeV/RenderAPI/BvShaderResource.h"
-#include "BDeV/System/File/BvFile.h"
-#include "BDeV/RenderAPI/BvRenderPass.h"
-#include "BDeV/RenderAPI/BvTextureView.h"
-#include "BDeV/RenderAPI/BvSemaphore.h"
-#include "BDeV/System/File/BvFileSystem.h"
-#include "BvRenderTools/BvShaderCompiler.h"
-#include "BDeV/System/HID/BvKeyboard.h"
-#include "BDeV/Math/BvMath.h"
-#include "BDeV/System/Platform/BvPlatform.h"
-#include "BDeV/System/Library/BvSharedLib.h"
-#include "BDeV/Container/BvRobinSet.h"
+#include "BDeV/BDeV.h"
+#include "BvRenderTools/ShaderCompiler/BvShaderCompiler.h"
 
 
 struct PosColorVertex
@@ -34,35 +21,32 @@ BvBuffer* CreateUB(BvRenderDevice* pDevice);
 
 int main()
 {
-	BvPlatform::Initialize();
+	BvApplication::Initialize();
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
 	typedef IBvShaderCompiler* (*pFNGetShaderCompiler)();
 	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("GetShaderCompiler");
 	auto pCompiler = compilerFn();
-	ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
-	pCompiler->CompileFromFile("D:\\Bruno\\C++\\test.vert", compDesc);
+	//ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
+	//pCompiler->CompileFromFile("D:\\Bruno\\C++\\test.vert", compDesc);
 	BvSharedLib renderVkLib("BvRenderVk.dll");
 	typedef BvRenderEngine* (*pFNCreateRenderEngine)();
-	pFNCreateRenderEngine getRenderEngineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
+	pFNCreateRenderEngine createeRenderEngineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
 	typedef void (*pFNDestroyRenderEngine)();
-	pFNDestroyRenderEngine get2RenderEngineFn = renderVkLib.GetProcAddressT<pFNDestroyRenderEngine>("DestroyRenderEngine");
+	pFNDestroyRenderEngine destroyRenderEngineFn = renderVkLib.GetProcAddressT<pFNDestroyRenderEngine>("DestroyRenderEngine");
 
 	g_pCompiler = compilerFn();
 
-	auto pEngine = getRenderEngineFn();
+	auto pEngine = createeRenderEngineFn();
 	auto pDevice = pEngine->CreateRenderDevice();
 
-	//BufferDesc bufferDesc;
-	//bufferDesc.m_UsageFlags = BufferUsage::kVertexBuffer | BufferUsage::kTransferDst;
-	//auto pBuffer = pDevice->CreateBuffer(bufferDesc);
-
-	auto pKeyboard = Input::GetKeyboard();
+	BvKeyboard keyboard;
+	auto pKeyboard = &keyboard;
 
 	WindowDesc windowDesc;
 	windowDesc.m_X += 100;
 	windowDesc.m_Y += 100;
-	auto pWindow = BvPlatform::CreateWindow(windowDesc);
+	auto pWindow = BvApplication::CreateWindow(windowDesc);
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
@@ -120,7 +104,7 @@ int main()
 		frame++;
 		//PrintF(ConsoleColor::kLightGreen, "Frame %d:\n", frame);
 		//PrintF(ConsoleColor::kAqua, "Image index aquired: %d\n", pSwapChain->GetCurrentImageIndex());
-		BvPlatform::ProcessOSEvents();
+		BvApplication::ProcessOSEvents();
 		if (!pWindow->IsValid())
 		{
 			break;
@@ -174,11 +158,6 @@ int main()
 			0.1f,
 			0.1f,
 			0.3f) };
-		ResourceBarrierDesc barrier;
-		barrier.m_pTexture = pRenderTargets[0]->GetTexture();
-		barrier.m_SrcLayout = ResourceState::kPresent;
-		barrier.m_DstLayout = ResourceState::kRenderTarget;
-		//pGraphicsContext->BeginRenderPass(pRenderPass, pRenderTargets, cl);
 		auto renderTarget = RenderTargetDesc::AsSwapChain(pRenderTargets[0], *cl);
 		pGraphicsContext->BeginQuery(pQuery);
 		pGraphicsContext->SetRenderTarget(renderTarget);
@@ -189,7 +168,6 @@ int main()
 		pGraphicsContext->SetShaderResource(pUBView, 0, 0, 0);
 		pGraphicsContext->Draw(3);
 		pGraphicsContext->EndQuery(pQuery);
-		//pGraphicsContext->EndRenderPass();
 		pGraphicsContext->Signal();
 
 		pSwapChain->Present(false);
@@ -197,7 +175,7 @@ int main()
 		pGraphicsContext->Flush();
 	}
 
-	BvPlatform::Shutdown();
+	BvApplication::Shutdown();
 
 	return 0;
 }
@@ -228,13 +206,13 @@ ShaderByteCodeDesc GetVS()
 
 	ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
 	BvString errBlob;
-	g_pVS = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc);
-	BvAssert(g_pVS->IsValid(), "Invalid Shader");
+	auto result = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc, g_pVS);
+	BvAssert(result, "Invalid Shader");
 
 	ShaderByteCodeDesc desc;
-	desc.m_pByteCode = g_pVS->GetShaderBlob().Data();
-	desc.m_ByteCodeSize = g_pVS->GetShaderBlob().Size();
-	desc.m_EntryPoint = "main";
+	desc.m_pByteCode = g_pVS->GetBufferPointer();
+	desc.m_ByteCodeSize = g_pVS->GetBufferSize();
+	desc.m_pEntryPoint = "main";
 	desc.m_ShaderStage = ShaderStage::kVertex;
 
 	return desc;
@@ -259,13 +237,13 @@ ShaderByteCodeDesc GetPS()
 
 	ShaderDesc compDesc = { "main", ShaderStage::kPixelOrFragment, ShaderLanguage::kGLSL };
 	BvString errBlob;
-	g_pPS = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc);
-	BvAssert(g_pPS->IsValid(), "Invalid Shader");
+	auto result = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc, g_pPS);
+	BvAssert(result, "Invalid Shader");
 
 	ShaderByteCodeDesc desc;
-	desc.m_pByteCode = g_pPS->GetShaderBlob().Data();
-	desc.m_ByteCodeSize = g_pPS->GetShaderBlob().Size();
-	desc.m_EntryPoint = "main";
+	desc.m_pByteCode = g_pPS->GetBufferPointer();
+	desc.m_ByteCodeSize = g_pPS->GetBufferSize();
+	desc.m_pEntryPoint = "main";
 	desc.m_ShaderStage = ShaderStage::kPixelOrFragment;
 
 	return desc;

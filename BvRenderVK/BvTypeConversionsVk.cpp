@@ -1,5 +1,5 @@
 #include "BvTypeConversionsVk.h"
-#include "BDeV/Container/BvRobinMap.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
 
 
 constexpr FormatMapVk kFormats[] =
@@ -105,15 +105,15 @@ constexpr FormatMapVk kFormats[] =
 	{ VK_FORMAT_BC7_UNORM_BLOCK,			VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kBC7_UNorm,
 	{ VK_FORMAT_BC7_SRGB_BLOCK,				VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kBC7_UNorm_SRGB,
 	{ VK_FORMAT_R8G8B8A8_UNORM,				VK_IMAGE_ASPECT_COLOR_BIT, { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_ONE } },	// Format::kAYUV,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY410,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY416,
+	{ VK_FORMAT_A2B10G10R10_UNORM_PACK32,	VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kY410,
+	{ VK_FORMAT_R16G16B16A16_UNORM,			VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kY416,
 	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::kNV12,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kP010,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kP016,
+	{ VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::kP010,
+	{ VK_FORMAT_G16_B16R16_2PLANE_420_UNORM, VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::kP016,
 	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::k420_OPAQUE,
 	{ VK_FORMAT_G8B8G8R8_422_UNORM,			VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kYUY2,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY210,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kY216,
+	{ VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16, VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kY210,
+	{ VK_FORMAT_G16B16G16R16_422_UNORM,		VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kY216,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kNV11,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kAI44,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kIA44,
@@ -134,9 +134,9 @@ constexpr FormatMapVk kFormats[] =
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kUnknown,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kUnknown,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kUnknown,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kP208,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kV208,
-	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kV408,
+	{ VK_FORMAT_G8_B8R8_2PLANE_422_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::kP208,
+	{ VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT, {} },	// Format::kV208,
+	{ VK_FORMAT_R8G8B8A8_UNORM,				VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kV408,
 };
 
 
@@ -211,8 +211,8 @@ static BvRobinMap<VkFormat, Format> s_VkFormatToFormatMap =
 	{ VK_FORMAT_BC6H_SFLOAT_BLOCK,			Format::kBC6H_SF16 },
 	{ VK_FORMAT_BC7_UNORM_BLOCK,			Format::kBC7_UNorm },
 	{ VK_FORMAT_BC7_SRGB_BLOCK,				Format::kBC7_UNorm_SRGB },
-	//{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	Format::k420_OPAQUE },
-	//{ VK_FORMAT_A4R4G4B4_UNORM_PACK16,		Format::kBGRA4_UNorm },
+	{ VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,	Format::k420_OPAQUE },
+	{ VK_FORMAT_A4R4G4B4_UNORM_PACK16,		Format::kBGRA4_UNorm },
 };
 
 
@@ -499,7 +499,7 @@ VkSampleCountFlagBits GetVkSampleCountFlagBits(const u8 sampleCount)
 	case 8:		return VK_SAMPLE_COUNT_8_BIT;
 	case 16:	return VK_SAMPLE_COUNT_16_BIT;
 	case 32:	return VK_SAMPLE_COUNT_32_BIT;
-	//case 64:	return VK_SAMPLE_COUNT_64_BIT; Supporting up to 32
+	case 64:	return VK_SAMPLE_COUNT_64_BIT;
 	}
 
 	return VK_SAMPLE_COUNT_1_BIT;
@@ -713,8 +713,8 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kIndexBuffer:		return VK_ACCESS_2_INDEX_READ_BIT;
 	case ResourceState::kIndirectBuffer:	return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
 	case ResourceState::kUniformBuffer:		return VK_ACCESS_2_UNIFORM_READ_BIT;
-	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT;
-	case ResourceState::kRWResource:		return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+	case ResourceState::kRWResource:		return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
 	case ResourceState::kTransferSrc:		return VK_ACCESS_2_TRANSFER_READ_BIT;
 	case ResourceState::kTransferDst:		return VK_ACCESS_2_TRANSFER_WRITE_BIT;
 	case ResourceState::kRenderTarget:		return VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -766,7 +766,9 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 			| VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT
 			| VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT
 			| VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
-			| VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+			| VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+			| VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT
+			| VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
 	}
 	if (accessFlags & (VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT))
 	{
@@ -822,18 +824,6 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage)
 	if ((pipelineStage & PipelineStage::kShadingRate			) == PipelineStage::kShadingRate			) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR; }
 
 	return stageFlags;
-}
-
-
-VkCommandPoolCreateFlags GetVkCommandPoolCreateFlags(const CommandPoolFlags commandPoolFlags)
-{
-	VkCommandPoolCreateFlags flags = 0;
-	if ((commandPoolFlags & CommandPoolFlags::kTransient) == CommandPoolFlags::kTransient)
-	{
-		flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-	}
-
-	return flags;
 }
 
 

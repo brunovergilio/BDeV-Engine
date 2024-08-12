@@ -173,15 +173,12 @@ void BvCommandContextVk::Signal()
 void BvCommandContextVk::Signal(u64 value)
 {
 	// Submit active command buffers
-	auto& commandBuffers = m_Frames[m_ActiveFrameIndex].GetCommandBuffers();
-	for (auto pCB : commandBuffers)
-	{
-		pCB->End();
-	}
+	m_pCurrCommandBuffer->End();
 	
 	// Update semaphore value
 	m_Frames[m_ActiveFrameIndex].UpdateSignalIndex(value);
 	auto [signalValue, index] = m_Frames[m_ActiveFrameIndex].GetSemaphoreValueIndex();
+	auto& commandBuffers = m_Frames[m_ActiveFrameIndex].GetCommandBuffers();
 	m_Queue.Submit(commandBuffers, GetSemaphore()->GetHandle(), signalValue + index);
 
 	m_Frames[m_ActiveFrameIndex].ClearActiveCommandBuffers();
@@ -303,6 +300,14 @@ void BvCommandContextVk::SetShaderResource(const BvSampler* pResource, u32 set, 
 	SetupCommandBufferIfNotReady();
 
 	m_pCurrCommandBuffer->SetShaderResource(pResource, set, binding, arrayIndex);
+}
+
+
+void BvCommandContextVk::SetShaderConstants(u32 size, const void* pData, u32 offset)
+{
+	SetupCommandBufferIfNotReady();
+
+	m_pCurrCommandBuffer->SetShaderConstants(size, pData, offset);
 }
 
 
@@ -477,6 +482,14 @@ void BvCommandContextVk::ResourceBarrier(u32 barrierCount, const ResourceBarrier
 	SetupCommandBufferIfNotReady();
 
 	m_pCurrCommandBuffer->ResourceBarrier(barrierCount, pBarriers);
+}
+
+
+void BvCommandContextVk::SetPredication(const BvBuffer* pBuffer, u64 offset, PredicationOp predicationOp)
+{
+	SetupCommandBufferIfNotReady();
+
+	m_pCurrCommandBuffer->SetPredication(pBuffer, offset, predicationOp);
 }
 
 

@@ -4,7 +4,7 @@
 #include "BvTypeConversionsVk.h"
 #include "BvCommandContextVk.h"
 #include "BvBufferVk.h"
-#include "BDeV/RenderAPI/BvRenderAPIUtils.h"
+#include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
 BvTextureVk::BvTextureVk(const BvRenderDeviceVk& device, const TextureDesc& textureDesc, const TextureInitData* pInitData)
@@ -29,9 +29,15 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	}
 
 	VkImageCreateFlags imageCreateFlags = 0;
-	if ((m_TextureDesc.m_CreateFlags & TextureCreateFlags::kCreateCubemap) == TextureCreateFlags::kCreateCubemap)
+	if (EHasFlag(m_TextureDesc.m_CreateFlags, TextureCreateFlags::kCreateCubemap))
 	{
 		imageCreateFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+	}
+
+	u32 mipCount = m_TextureDesc.m_MipLevels;
+	if (m_TextureDesc.m_MipLevels == 1 && EHasFlag(m_TextureDesc.m_CreateFlags, TextureCreateFlags::kReserveMips))
+	{
+		m_TextureDesc.m_MipLevels = GetMipCount(m_TextureDesc.m_Size.width, m_TextureDesc.m_Size.height, m_TextureDesc.m_Size.depth);
 	}
 
 	VkImageCreateInfo imageCreateInfo{};
@@ -84,11 +90,10 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	}
 	m_VMAAllocation = vmaA;
 
-	auto info = GetFormatInfo(m_TextureDesc.m_Format);
 	if (m_TextureDesc.m_ResourceState != ResourceState::kCommon && pInitData)
 	{
 		BvAssert(pInitData->m_pContext != nullptr, "Invalid command context");
-		CopyInitDataAndTransitionState(pInitData);
+		CopyInitDataAndTransitionState(pInitData, mipCount);
 	}
 }
 
@@ -105,13 +110,12 @@ void BvTextureVk::Destroy()
 }
 
 
-void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitData)
+void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitData, u32 mipCount)
 {
-	auto pContext = static_cast<BvCommandContextVk*>(pInitData->m_pContext);
+	auto pContext = TO_VK(pInitData->m_pContext);
 
 	ResourceState currState = ResourceState::kCommon;
-	bool isValidTextureData = pInitData->m_SubresourceCount == (u32)m_TextureDesc.m_LayerCount * m_TextureDesc.m_MipLevels
-		&& pInitData->m_pSubresources != nullptr;
+	bool isValidTextureData = pInitData->m_SubresourceCount == (u32)m_TextureDesc.m_LayerCount * mipCount && pInitData->m_pSubresources != nullptr;
 	if (isValidTextureData)
 	{
 		BvVector<VkBufferImageCopy> copyRegions(pInitData->m_SubresourceCount);
@@ -120,7 +124,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		// Calculate copy regions
 		for (auto layer = 0u; layer < m_TextureDesc.m_LayerCount; ++layer)
 		{
-			for (auto mip = 0u; mip < m_TextureDesc.m_MipLevels; ++mip, ++index)
+			for (auto mip = 0u; mip < mipCount; ++mip, ++index)
 			{
 				auto& copyRegion = copyRegions[index];
 				copyRegion.bufferOffset = bufferSize;
@@ -137,7 +141,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 				copyRegion.imageSubresource.baseArrayLayer = layer;
 				copyRegion.imageSubresource.layerCount = 1;
 
-				bufferSize = RoundToNearestMultiple(bufferSize, 4u);
+				bufferSize += RoundToNearestMultiple(bufferSize, 4u);
 			}
 		}
 
@@ -153,7 +157,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		index = 0;
 		for (auto layer = 0u; layer < m_TextureDesc.m_LayerCount; ++layer)
 		{
-			for (auto mip = 0u; mip < m_TextureDesc.m_MipLevels; ++mip, ++index)
+			for (auto mip = 0u; mip < mipCount; ++mip, ++index)
 			{
 				auto& copyRegion = copyRegions[index];
 				auto& srcSubresource = pInitData->m_pSubresources[index];

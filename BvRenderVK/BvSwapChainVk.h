@@ -1,9 +1,9 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvSwapChain.h"
+#include "BDeV/Core/RenderAPI/BvSwapChain.h"
 #include "BvRenderDeviceVk.h"
-#include "BDeV/System/Threading/BvSync.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
 #include "BvSemaphoreVk.h"
 #include "BvTextureViewVk.h"
 

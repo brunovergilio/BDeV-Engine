@@ -2,9 +2,9 @@
 
 
 #include "BvRenderVK/BvCommonVk.h"
-#include "BDeV/Container/BvVector.h"
-#include "BDeV/RenderAPI/BvCommon.h"
-#include "BDeV/Container/BvFixedVector.h"
+#include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/RenderAPI/BvRenderCommon.h"
+#include "BDeV/Core/Container/BvFixedVector.h"
 
 
 constexpr u32 kMaxSemaphores = 8;
@@ -64,6 +64,7 @@ public:
 	void SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex);
 	void SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex);
 	void SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetShaderConstants(u32 size, const void* pData, u32 offset);
 
 	void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0);
 	void SetIndexBufferView(const BvBufferView* pIndexBufferView, IndexFormat indexFormat);
@@ -101,6 +102,8 @@ public:
 	void ResourceBarrier(u32 bufferBarrierCount, const VkBufferMemoryBarrier2* pBufferBarriers,
 		u32 imageBarrierCount, const VkImageMemoryBarrier2* pImageBarriers, u32 memoryBarrierCount, const VkMemoryBarrier2* pMemoryBarriers);
 	void ResourceBarrier(u32 barrierCount, const ResourceBarrierDesc* pBarriers);
+
+	void SetPredication(const BvBuffer* pBuffer, u64 offset, PredicationOp predicationOp);
 
 	void BeginQuery(BvQuery* pQuery);
 	void EndQuery(BvQuery* pQuery);

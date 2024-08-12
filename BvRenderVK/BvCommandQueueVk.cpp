@@ -3,7 +3,7 @@
 #include "BvCommandBufferVk.h"
 #include "BvSemaphoreVk.h"
 #include "BvSwapChainVk.h"
-#include "BDeV/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Debug/BvDebug.h"
 
 
 BvCommandQueueVk::BvCommandQueueVk()

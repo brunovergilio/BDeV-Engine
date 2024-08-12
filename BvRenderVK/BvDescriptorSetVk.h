@@ -2,7 +2,7 @@
 
 
 #include "BvCommonVk.h"
-#include "BDeV/RenderAPI/BvShaderResource.h"
+#include "BDeV/Core/RenderAPI/BvShaderResource.h"
 
 
 class BvRenderDeviceVk;

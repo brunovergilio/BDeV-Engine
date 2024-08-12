@@ -90,6 +90,13 @@ void BvGraphicsPipelineStateVk::Create()
 	rasterizerCI.depthClampEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthClip;
 	rasterizerCI.lineWidth = 1.0f;
 
+	VkPipelineRasterizationDepthClipStateCreateInfoEXT depthClip{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
+	if (m_Device.GetGPUInfo().m_ExtendedFeatures.depthClibEnableFeature.depthClipEnable)
+	{
+		depthClip.depthClipEnable = VK_TRUE;
+		rasterizerCI.pNext = &depthClip;
+	}
+
 	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
 	if (m_Device.GetGPUInfo().m_FeaturesSupported.conservativeRasterization && m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
 	{
@@ -198,7 +205,7 @@ void BvGraphicsPipelineStateVk::Create()
 	for (auto i = 0u; i < shaderStages.Size(); i++)
 	{
 		shaderStages[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStages[i].pName = m_PipelineStateDesc.m_ShaderStages[i].m_EntryPoint.CStr();
+		shaderStages[i].pName = m_PipelineStateDesc.m_ShaderStages[i].m_pEntryPoint;
 		shaderStages[i].stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_ShaderStages[i].m_ShaderStage);
 		shaderStages[i].module = CreateShaderModule(m_Device, m_PipelineStateDesc.m_ShaderStages[i].m_ByteCodeSize,
 			m_PipelineStateDesc.m_ShaderStages[i].m_pByteCode, shaderStages[i].stage);
@@ -263,7 +270,7 @@ void BvComputePipelineStateVk::Create()
 	VkComputePipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
 	pipelineCI.layout = static_cast<BvShaderResourceLayoutVk *>(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
 	pipelineCI.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	pipelineCI.stage.pName = m_PipelineStateDesc.m_ShaderByteCodeDesc.m_EntryPoint.CStr();
+	pipelineCI.stage.pName = m_PipelineStateDesc.m_ShaderByteCodeDesc.m_pEntryPoint;
 	pipelineCI.stage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_ShaderByteCodeDesc.m_ShaderStage);
 	pipelineCI.stage.module = CreateShaderModule(m_Device, m_PipelineStateDesc.m_ShaderByteCodeDesc.m_ByteCodeSize,
 	m_PipelineStateDesc.m_ShaderByteCodeDesc.m_pByteCode, pipelineCI.stage.stage);

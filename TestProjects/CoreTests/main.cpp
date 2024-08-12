@@ -1,25 +1,6 @@
-#include "BDeV/Container/BvFixedVector.h"
-#include "BDeV/Container/BvVector.h"
-#include "BDeV/Container/BvRobinMap.h"
-#include "BDeV/System/File/BvAsyncFile.h"
-#include "BDeV/System/File/BvFileSystem.h"
-#include "BDeV/Utils/BvUtils.h"
-#include "BDeV/Engine/JobSystem/BvJobSystem.h"
-#include "BDeV/Engine/TBJobSystem/BvTBJobSystem.h"
-#include <functional>
-#include "BDeV/System/Memory/BvMemory.h"
-#include "BDeV/Utils/BvHash.h"
-#include "BDeV/BvCore.h"
-#include "BDeV/Reflection/BvObjectInfo.h"
-#include "BDeV/System/File/BvPath.h"
-#include "BDeV/System/Window/BvMonitor.h"
-#include "BDeV/Reflection/BvRTTI.h"
-#include "BDeV/System/Debug/BvDebug.h"
-#include "BDeV/Utils/BvTestUnit.h"
-#include "BDeV/System/Memory/BvMemory.h"
-#include "BDeV/Engine/MemorySystem/BvMemorySystem.h"
-#include "BDeV/System/Library/BvSharedLib.h"
-#include "BDeV/RenderAPI/BvRenderEngine.h"
+﻿#include "BDeV/BDeV.h"
+#include <iostream>
+#include <fstream>
 
 
 char stack[1024];
@@ -136,111 +117,93 @@ struct Func : public BvDelegateBase
 };
 
 
-BV_JOB_FUNCTION(DoSleep)
-{
-	auto id = (u32)BV_JOB_DATA;
-	auto ms = rand() % 30;
-	printf("Job #%u in Thread #%llu sleeping for %d ms\n", id, BvThread::GetCurrentThread().GetId(), ms);
-	BvThread::Sleep(ms);
-}
-
-
 struct alignas(64) MyStruct
 {
 	char c[64];
 };
 
+constexpr BvUUID fa1 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a562ba2b");
+constexpr BvUUID fa2 = MakeUUIDv4("7b134b6e-b092-465f-9c00-a127a562ba2b");
+constexpr BvUUID fa3 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a5cdba2b");
+
+
+void Tryme()
+{
+	class ExType : public BvQueryable
+	{
+	public:
+		ExType() {}
+		~ExType()
+		{
+			printf("bye!\n");
+		}
+
+		void PrintMe(const char* p)
+		{
+			printf("%s\n", p);
+		}
+	};
+
+	auto* pObj = BvNew(ExType);
+	BvObjectPtr<ExType> ptr;
+	ptr.Attach(pObj);
+	ptr->PrintMe("huhuh");
+	auto g = ptr->GetInterfaceId();
+	ptr.Reset();
+}
+
+BvVector<BvString> locales;
 
 int main()
 {
-	//BvThread g(DoSleep, nullptr);
-	//BvConsole::PrintF(0x1f2b4fff, "Hello\n");
-	//for (auto i = 0; i < 12; i++)
-	//{
-	//	BvConsole::PrintF({ 0, u8(30 + i * 20), u8(i * 10)}, "Testing\n");
-	//}
+	//SetConsoleOutputCP(CP_UTF8); // Set console code page to UTF-8
+	//SetConsoleCP(CP_UTF8); // Set input code page to UTF-8
+	const wchar_t* faj = L"На берегу пустынных волн";
+	const char* faj2 = "На берегу пустынных волн";
+	auto ftt = BvTextUtilities::ConvertWideCharToUTF8Char(faj, 0, nullptr, 0);
+	auto ggg = new char[ftt];
+	BvTextUtilities::ConvertWideCharToUTF8Char(faj, 0, ggg, ftt);
+	printf("%s\n", faj2);
 
-	//BvConsole::PrintF({ 20, 60, 120 }, { 244, 200, 210 }, "Test\n");
-	//BvConsole::PrintF({ 100, 240, 20 }, "Test2\n");
-	//BvConsole::PrintF("Test3\n");
-	//BvConsole::PrintF({ 0, 255, 86 }, "Test4\n");
-	//BvConsole::PrintF({ 40, 170, 0 }, "Test5\n");
-
-	//i32* uu = BvNew(i32);
-	//MyStruct* my = BvNew(MyStruct);
-	//i32* uuc = BvNewN(i32, 10);
-	//MyStruct* mcy = BvNewN(MyStruct, 10);
-
-	//BvDelete(uu);
-	//BvDelete(my);
-	//BvDeleteN(uuc);
-	//BvDeleteN(mcy);
-
-	//BvTaskT<24> f;
-	//f.Set([](int c, int b) {}, 2, 4);
-
-	//JS::JobSystemDesc desc;
-	//desc.m_NumWorkerThreads = 1;
-	//JS::Initialize(desc);
-
-	//constexpr auto kJobCount = 129;
-	//JS::Job jobs[kJobCount]{};
-	//srand(time(nullptr));
-	//for (auto i = 0; i < kJobCount; i++)
-	//{
-	//	jobs[i].m_Job.Set(DoSleep, (void*)i);
-	//}
-
-	//JS::Counter* pCounter = nullptr;
-	//JS::RunJobs(kJobCount, jobs, pCounter);
-	//JS::WaitForCounter(pCounter);
-
-	//getchar();
-
-	//JS::Shutdown();
-
-	//BvRobinMap<int, char> mm;
-	//mm.Emplace(1, 'c');
-	//mm.Emplace(4, 'd');
-	//mm.Emplace(6, 'e');
-	//mm.Emplace(12, 'f');
-
-	//const auto i = mm.FindKey(1);
-
-	//mm.Erase(1);
-	//mm.Erase(4);
+	auto enumLocaleFn = [](LPWSTR pName, DWORD flags, LPARAM pUserData)
+		{
+			auto sizeNeeded = BvTextUtilities::ConvertWideCharToASCII(pName, 0, nullptr, 0);
+			BvStackArea(strMem, sizeNeeded + 5);
+			char* pStr = strMem.GetStart();
+			BvTextUtilities::ConvertWideCharToASCII(pName, 0, pStr, sizeNeeded);
+			auto& loc = locales.EmplaceBack(pStr);
+			loc.Append(".UTF8", 0, 5);
+			//printf("%ls\n", pName);
+			return 0;
+		};
+	EnumSystemLocalesEx(enumLocaleFn, 0, 0, nullptr);
 
 
-	//BV_RUN_TEST_UNITS();
-
-	//BvVector<int> a(10, 3);
-	//const BvVector<BvMonitor*>& monitors = GetMonitors();
-	//auto pMonitor = GetMonitorFromPoint(-10, 30);
-
-	BvPath paths[3];
-	paths[0] = BvPath::FromCurrentDirectory();
-	auto list = paths[0].GetFileList(L"*");
-	paths[1] = BvPath(LR"(D:\Bruno\C++\BDeV-Engine\BDeV.sln)");
-	paths[2] = BvPath(LR"(main.cpp)");
-
-	for (auto&& path : paths)
 	{
-		auto name = path.GetName();
-		auto ext = path.GetExtension();
-		auto nameAndExt = path.GetNameAndExtension();
-		auto root = path.GetRoot();
-		auto relativeRoot = path.GetRelativePath();
-		auto absolute = path.GetAbsolutePath();
-		printf("Name: %ls\n", name.CStr());
-		printf("Ext: %ls\n", ext.CStr());
-		printf("NameAndExt: %ls\n", nameAndExt.CStr());
-		printf("Relative Path (With Root): %ls\n", relativeRoot.CStr());
-		printf("Absolute Path: %ls\n", absolute.CStr());
-		printf("Root: %ls\n", root.CStr());
+		BvPath paths[3];
+		paths[0] = BvPath::FromCurrentDirectory();
+		auto list = paths[0].GetFileList("*");
+		paths[1] = BvPath(R"(D:\Bruno\C++\BDeV-Engine\BDeV.sln)");
+		paths[2] = BvPath(R"(main.cpp)");
 
-		printf("\n");
+		for (auto&& path : paths)
+		{
+			auto name = path.GetName();
+			auto ext = path.GetExtension();
+			auto nameAndExt = path.GetNameAndExtension();
+			auto root = path.GetRoot();
+			auto relativeRoot = path.GetRelativePath();
+			auto absolute = path.GetAbsolutePath();
+			printf("Name: %s\n", name.CStr());
+			printf("Ext: %s\n", ext.CStr());
+			printf("NameAndExt: %s\n", nameAndExt.CStr());
+			printf("Relative Path (With Root): %s\n", relativeRoot.GetStr().CStr());
+			printf("Absolute Path: %s\n", absolute.GetStr().CStr());
+			printf("Root: %s\n", root.CStr());
+
+			printf("\n");
+		}
 	}
-
 	////BvFileSystem::DeleteDirectory(LR"(C:\Programming\C++\MiscTests\x64)");
 
 	//return 0;

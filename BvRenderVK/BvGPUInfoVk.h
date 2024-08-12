@@ -2,8 +2,8 @@
 
 
 #include "BvRenderVK/BvCommonVk.h"
-#include "BDeV/Container/BvVector.h"
-#include "BDeV/Container/BvString.h"
+#include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/Container/BvString.h"
 
 
 struct BvGPUInfoVk
@@ -24,6 +24,8 @@ struct BvGPUInfoVk
 		VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT };
 		VkPhysicalDeviceCustomBorderColorFeaturesEXT customBorderColorFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT };
 		VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertexAttributeDivisorFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT };
+		VkPhysicalDeviceConditionalRenderingFeaturesEXT conditionalRenderingFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT };
+		VkPhysicalDeviceDepthClipEnableFeaturesEXT depthClibEnableFeature{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT };
 	} m_ExtendedFeatures;
 
 	VkPhysicalDeviceProperties2 m_DeviceProperties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
@@ -72,6 +74,8 @@ struct BvGPUInfoVk
 		bool customBorderColor : 1;
 		bool memoryBudget : 1;
 		bool deferredHostOperations : 1;
+		bool predication : 1;
+		bool depthClipEnable : 1;
 	} m_FeaturesSupported{};
 
 	inline u32 GetGPUVersion() { return m_DeviceVersion & (~VK_API_VERSION_PATCH(0xFFFFFFFF)); }

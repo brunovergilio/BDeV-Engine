@@ -45,13 +45,11 @@ void BvSamplerVk::Create()
 		|| m_SamplerDesc.m_BorderColor[2] != 0.0f
 		|| m_SamplerDesc.m_BorderColor[3] != 0.0f;
 
-	if (usesCustomBorderColor && gpuInfo.m_FeaturesSupported.customBorderColor
-		&& gpuInfo.m_ExtendedFeatures.customBorderColorFeatures.customBorderColorWithoutFormat)
+	VkSamplerCustomBorderColorCreateInfoEXT customBorderColorCI{ VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
+	if (usesCustomBorderColor && gpuInfo.m_ExtendedFeatures.customBorderColorFeatures.customBorderColorWithoutFormat)
 	{
 		// TODO: Maybe use gpuInfo.m_ExtendedProperties.customBorderColorProps.maxCustomBorderColorSamplers
 		// and track number of samplers using it
-		VkSamplerCustomBorderColorCreateInfoEXT customBorderColorCI{};
-		customBorderColorCI.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
 		customBorderColorCI.customBorderColor.float32[0] = m_SamplerDesc.m_BorderColor[0];
 		customBorderColorCI.customBorderColor.float32[1] = m_SamplerDesc.m_BorderColor[1];
 		customBorderColorCI.customBorderColor.float32[2] = m_SamplerDesc.m_BorderColor[2];

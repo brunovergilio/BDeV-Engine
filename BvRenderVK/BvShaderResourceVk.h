@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvShaderResource.h"
+#include "BDeV/Core/RenderAPI/BvShaderResource.h"
 #include "BvCommonVk.h"
 
 
@@ -50,3 +50,7 @@ private:
 	const BvShaderResourceLayoutVk& m_Layout;
 	u32 m_Set = 0;
 };
+
+
+BV_CREATE_CAST_TO_VK(BvShaderResourceLayout)
+BV_CREATE_CAST_TO_VK(BvShaderResourceParams)

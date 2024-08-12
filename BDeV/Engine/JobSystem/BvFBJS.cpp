@@ -1,7 +1,7 @@
 #include "BvFBJS.h"
-#include "BDeV/System/Threading/BvThread.h"
-#include "BDeV/System/Threading/BvSync.h"
-#include "BDeV/System/Threading/BvProcess.h"
+#include "BDeV/Core/System/Threading/BvThread.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
+#include "BDeV/Core/System/Threading/BvProcess.h"
 #include <bit>
 
 

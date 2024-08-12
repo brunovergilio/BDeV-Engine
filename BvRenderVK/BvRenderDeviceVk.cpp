@@ -18,7 +18,7 @@
 #include "BvTypeConversionsVk.h"
 #include "BvCommandContextVk.h"
 #include "BvQueryVk.h"
-#include "BDeV/RenderAPI/BvRenderAPIUtils.h"
+#include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
 BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, BvGPUInfoVk& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
@@ -396,6 +396,12 @@ bool BvRenderDeviceVk::SupportsQueryType(QueryType queryType, QueueFamilyType co
 	}
 
 	return commandType == QueueFamilyType::kGraphics;
+}
+
+
+bool BvRenderDeviceVk::IsFormatSupported(Format format) const
+{
+	return GetVkFormat(format) != VK_FORMAT_UNDEFINED;
 }
 
 

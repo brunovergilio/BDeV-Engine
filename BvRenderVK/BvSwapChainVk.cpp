@@ -4,7 +4,7 @@
 #include "BvTextureVk.h"
 #include "BvTypeConversionsVk.h"
 #include "BvSemaphoreVk.h"
-#include "BDeV/System/Window/BvWindow.h"
+#include "BDeV/Core/System/Window/BvWindow.h"
 #include "BvFramebufferVk.h"
 #include "BvCommandContextVk.h"
 

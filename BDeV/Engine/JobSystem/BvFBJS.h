@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include "BDeV/BvCore.h"
-#include "BDeV/Utils/BvDelegate.h"
+#include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/Utils/BvDelegate.h"
 #include <atomic>
 
 

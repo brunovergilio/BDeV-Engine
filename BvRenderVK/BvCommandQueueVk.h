@@ -1,9 +1,9 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvCommandQueue.h"
 #include "BvCommonVk.h"
-#include "BDeV/Container/BvVector.h"
+#include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 
 
 class BvRenderDeviceVk;

@@ -1,10 +1,10 @@
 #include "BvJobSystem.h"
 #include "BvJobSystemTLS.h"
-#include "BDeV/Container/BvVector.h"
-#include "BDeV/System/Threading/BvThread.h"
-#include "BDeV/System/Threading/BvFiber.h"
-#include "BDeV/System/Threading/BvSync.h"
-#include "BDeV/System/Threading/BvProcess.h"
+#include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/System/Threading/BvThread.h"
+#include "BDeV/Core/System/Threading/BvFiber.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
+#include "BDeV/Core/System/Threading/BvProcess.h"
 #include "BvRingBuffer.h"
 
 

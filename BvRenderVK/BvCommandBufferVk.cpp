@@ -18,7 +18,7 @@
 #include "BvQueryVk.h"
 #include "BvCommandQueueVk.h"
 #include "BvCommandContextVk.h"
-#include "BDeV/RenderAPI/BvRenderAPIUtils.h"
+#include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
 BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
@@ -100,7 +100,7 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass* pRenderPass, u32 ren
 		fbDesc.m_Width = std::min(desc.m_Size.width, fbDesc.m_Width);
 		fbDesc.m_Height = std::min(desc.m_Size.height, fbDesc.m_Height);
 		fbDesc.m_LayerCount = std::min((viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_LayerCount : viewDesc.m_SubresourceDesc.layerCount)
-			- viewDesc.m_SubresourceDesc.firstLayer - 1, fbDesc.m_LayerCount);
+			- viewDesc.m_SubresourceDesc.firstLayer, fbDesc.m_LayerCount);
 
 		fbDesc.m_Views.EmplaceBack(viewVk->GetHandle());
 		memcpy(clearValues.EmplaceBack().color.float32, pRenderPassTargets[i].m_ClearValues.colors, sizeof(float) * 4);
@@ -183,7 +183,7 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		auto& viewDesc = renderTarget.m_pView->GetDesc();
 
 		layerCount = std::min(layerCount, (viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_LayerCount : viewDesc.m_SubresourceDesc.layerCount)
-			 - viewDesc.m_SubresourceDesc.firstLayer - 1);
+			 - viewDesc.m_SubresourceDesc.firstLayer);
 		renderArea.width = std::min(renderArea.width, desc.m_Size.width);
 		renderArea.height = std::min(renderArea.height, desc.m_Size.height);
 
@@ -368,19 +368,37 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 
 void BvCommandBufferVk::SetViewports(u32 viewportCount, const Viewport* pViewports)
 {
-	constexpr u32 kMaxViewports = 8;
+	constexpr u32 kMaxViewports = 16;
 	BvAssert(viewportCount <= kMaxViewports, "Viewport count greater than limit");
+	VkViewport vps[kMaxViewports];
+	for (auto i = 0u; i < viewportCount; ++i)
+	{
+		vps[i].x = pViewports[i].x;
+		vps[i].y = pViewports[i].y + pViewports[i].height; // Flip viewport
+		vps[i].width = pViewports[i].width;
+		vps[i].height = -pViewports[i].height; // Flip viewport
+		vps[i].minDepth = pViewports[i].minDepth;
+		vps[i].maxDepth = pViewports[i].maxDepth;
+	}
 	
-	vkCmdSetViewportWithCount(m_CommandBuffer, viewportCount, reinterpret_cast<const VkViewport*>(pViewports));
+	vkCmdSetViewportWithCount(m_CommandBuffer, viewportCount, vps);
 }
 
 
 void BvCommandBufferVk::SetScissors(u32 scissorCount, const Rect* pScissors)
 {
-	constexpr u32 kMaxScissors = 8;
+	constexpr u32 kMaxScissors = 16;
 	BvAssert(scissorCount <= kMaxScissors, "Scissor count greater than limit");
+	VkRect2D scissors[kMaxScissors];
+	for (auto i = 0u; i < scissorCount; ++i)
+	{
+		scissors[i].offset.x = pScissors[i].x;
+		scissors[i].offset.y = pScissors[i].y;
+		scissors[i].extent.width = pScissors[i].width;
+		scissors[i].extent.height = pScissors[i].height;
+	}
 
-	vkCmdSetScissorWithCount(m_CommandBuffer, scissorCount, reinterpret_cast<const VkRect2D*>(pScissors));
+	vkCmdSetScissorWithCount(m_CommandBuffer, scissorCount, scissors);
 }
 
 
@@ -464,19 +482,31 @@ void BvCommandBufferVk::SetShaderResource(const BvSampler* pResource, u32 set, u
 }
 
 
+void BvCommandBufferVk::SetShaderConstants(u32 size, const void* pData, u32 offset)
+{
+	auto pSRL = TO_VK(m_pGraphicsPipeline ? m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout :
+		m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
+
+	auto stageFlags = GetVkShaderStageFlags(pSRL->GetDesc().m_ShaderResourceConstant.m_ShaderStages);
+
+	vkCmdPushConstants(m_CommandBuffer, pSRL->GetPipelineLayoutHandle(), stageFlags, offset, size, pData);
+}
+
+
 void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding)
 {
 	constexpr u32 kMaxVertexBufferViews = 16;
+	BvAssert(vertexBufferCount <= kMaxVertexBufferViews, "Vertex buffer view count greater than limit");
 
-	BvFixedVector<VkBuffer, kMaxVertexBufferViews> vertexBuffers(vertexBufferCount);
-	BvFixedVector<VkDeviceSize, kMaxVertexBufferViews> vertexBufferOffsets(vertexBufferCount);
+	VkBuffer vertexBuffers[kMaxVertexBufferViews];
+	VkDeviceSize vertexBufferOffsets[kMaxVertexBufferViews];
 	for (auto i = 0u; i < vertexBufferCount; i++)
 	{
-		vertexBuffers[i] = static_cast<BvBufferVk*>(pVertexBufferViews[i]->GetBuffer())->GetHandle();
+		vertexBuffers[i] = TO_VK(pVertexBufferViews[i]->GetBuffer())->GetHandle();
 		vertexBufferOffsets[i] = pVertexBufferViews[i]->GetDesc().m_Offset;
 	}
 
-	vkCmdBindVertexBuffers(m_CommandBuffer, firstBinding, vertexBuffers.Size(), vertexBuffers.Data(), vertexBufferOffsets.Data());
+	vkCmdBindVertexBuffers(m_CommandBuffer, firstBinding, vertexBufferCount, vertexBuffers, vertexBufferOffsets);
 }
 
 
@@ -509,15 +539,16 @@ void BvCommandBufferVk::SetBlendConstants(const float(pColors[4]))
 void BvCommandBufferVk::SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp (pCombinerOps[2]))
 {
 	VkExtent2D fragmentSize{ 1, 1 };
-
-	switch (dimensions)
+	fragmentSize.width = ((((u32)dimensions) >> 2) & 0x3) << 1u;
+	if (!fragmentSize.width)
 	{
-	case ShadingRateDimensions::k1x2: fragmentSize = { 1, 2 }; break;
-	case ShadingRateDimensions::k2x1: fragmentSize = { 2, 1 }; break;
-	case ShadingRateDimensions::k2x2: fragmentSize = { 2, 2 }; break;
-	case ShadingRateDimensions::k2x4: fragmentSize = { 2, 4 }; break;
-	case ShadingRateDimensions::k4x2: fragmentSize = { 4, 2 }; break;
-	case ShadingRateDimensions::k4x4: fragmentSize = { 4, 4 }; break;
+		fragmentSize.width = 1;
+	}
+	
+	fragmentSize.height = (((u32)dimensions) & 0x3) << 1u;
+	if (!fragmentSize.height)
+	{
+		fragmentSize.height = 1;
 	}
 
 	VkFragmentShadingRateCombinerOpKHR combinerOps[] =
@@ -821,7 +852,21 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 {
 	for (auto i = 0u; i < barrierCount; i++)
 	{
-		if (pBarriers[i].m_pBuffer)
+		if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kMemory)
+		{
+			auto& barrier = m_MemoryBarriers.EmplaceBack(VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 });
+			//barrier.pNext = nullptr;
+			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
+				GetVkAccessFlags(pBarriers[i].m_SrcLayout) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
+			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
+				GetVkAccessFlags(pBarriers[i].m_DstLayout) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
+
+			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
+				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
+				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+		}
+		else if (pBarriers[i].m_pBuffer)
 		{
 			auto& barrier = m_BufferBarriers.EmplaceBack(VkBufferMemoryBarrier2{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
@@ -869,29 +914,40 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		}
-		else if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kMemory)
-		{
-			auto& barrier = m_MemoryBarriers.EmplaceBack(VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 });
-			//barrier.pNext = nullptr;
-			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_SrcLayout) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstLayout) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-
-			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
-			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
-		}
 	}
 
-	ResourceBarrier(static_cast<u32>(m_BufferBarriers.Size()), m_BufferBarriers.Data(),
-		static_cast<u32>(m_ImageBarriers.Size()), m_ImageBarriers.Data(),
-		static_cast<u32>(m_MemoryBarriers.Size()), m_MemoryBarriers.Data());
+	if (m_BufferBarriers.Size() > 0 || m_ImageBarriers.Size() > 0 || m_MemoryBarriers.Size() > 0)
+	{
+		ResourceBarrier(static_cast<u32>(m_BufferBarriers.Size()), m_BufferBarriers.Data(),
+			static_cast<u32>(m_ImageBarriers.Size()), m_ImageBarriers.Data(),
+			static_cast<u32>(m_MemoryBarriers.Size()), m_MemoryBarriers.Data());
+	}
 
 	m_MemoryBarriers.Clear();
 	m_BufferBarriers.Clear();
 	m_ImageBarriers.Clear();
+}
+
+
+void BvCommandBufferVk::SetPredication(const BvBuffer* pBuffer, u64 offset, PredicationOp predicationOp)
+{
+	if (pBuffer)
+	{
+		auto pBufferVk = TO_VK(pBuffer);
+
+		VkConditionalRenderingBeginInfoEXT info{ VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT };
+		if (predicationOp == PredicationOp::kNotEqualZero)
+		{
+			info.flags = VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
+		}
+		info.offset = offset;
+		info.buffer = pBufferVk->GetHandle();
+		vkCmdBeginConditionalRenderingEXT(m_CommandBuffer, &info);
+	}
+	else
+	{
+		vkCmdEndConditionalRenderingEXT(m_CommandBuffer);
+	}
 }
 
 

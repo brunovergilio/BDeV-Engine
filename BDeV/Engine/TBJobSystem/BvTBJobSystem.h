@@ -1,51 +1,122 @@
 #pragma once
 
 
-#include "BDeV/System/Debug/BvDebug.h"
-#include "BDeV/System/Threading/BvThread.h"
-#include "BDeV/System/Threading/BvFiber.h"
-#include "BDeV/System/Threading/BvSync.h"
-#include "BDeV/System/Threading/BvProcess.h"
-#include "BDeV/Utils/BvUtils.h"
-#include "BDeV/Container/BvVector.h"
+#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Threading/BvThread.h"
+#include "BDeV/Core/System/Threading/BvFiber.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
+#include "BDeV/Core/System/Threading/BvProcess.h"
+#include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/Container/BvVector.h"
+
+
+class BvTBJobSystem;
+class BvTBJobSystemWorker;
+
+
+class BvTBJobList
+{
+	friend BvTBJobSystem;
+	friend BvTBJobSystemWorker;
+
+	enum class JobSyncType : u8
+	{
+		kNone,
+		kSyncPoint,
+		kJobListDependency,
+	};
+
+	struct alignas(64) Job
+	{
+		BvTaskT<48> m_Job{};
+		BvTBJobList* m_pDependency{};
+		JobSyncType m_SyncType{};
+	};
+
+public:
+	enum class Priority : u8
+	{
+		kLow,
+		kNormal,
+		kHigh
+	};
+
+	enum class Category : u8
+	{
+		kAny,
+		kGeneral,
+		kRender,
+		kGameplay,
+		kPhysics,
+		kAudio,
+	};
+
+	template<typename Fn, typename... Args>
+	void AddJob(Fn&& fn, Args&&... args)
+	{
+		BvAssert(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
+		auto& job = AddInternal();
+		job.m_Job.Set(std::forward<Fn>(fn), std::forward<std::decay_t<Args>>(args)...);
+	}
+
+	void AddSyncPoint();
+	void AddJobListDependency(BvTBJobList* pDependency);
+	void Reset(bool resetJobs = false);
+
+	void Submit(bool threaded = true);
+
+	bool IsDone() const;
+	bool IsWaitingForDependency() const;
+	void Wait() const;
+
+	Priority GetPriority() const;
+	Category GetCategory() const;
+
+private:
+	BvTBJobList(BvTBJobSystem* pJobSystem, u32 maxJobs, u32 maxSyncs, Priority priority);
+	~BvTBJobList();
+
+	Job& AddInternal();
+
+private:
+	BvTBJobSystem* m_pJobSystem = nullptr;
+	BvVector<Job> m_Jobs;
+	std::atomic<u32> m_CurrJob;
+	std::atomic<u32> m_JobsDone;
+	std::atomic_flag m_Lock;
+	Priority m_Priority = Priority::kNormal;
+	Category m_Category = Category::kAny;
+};
+
+BV_USE_ENUM_CLASS_OPERATORS(BvTBJobList::Category);
 
 
 struct JobSystemDesc
 {
+	struct WorkerThreadDesc
+	{
+		u64 m_CoreIndex = 0;
+		BvTBJobList::Category m_Category = BvTBJobList::Category::kAny;
+		const char* m_pName = nullptr;
+	};
+
 	enum class Parallelism : u8
 	{
 		kUseCoreCount,		// Use one thread per core
 		kUseThreadCount,	// Use as many threads as the CPU cores support
 		kCustom,			// Use the specified amount in m_NumThreads
-		kSingleThreaded		// Run all tasks in the same thread
+		kSingleThreaded		// Run all tasks in the same thread (for debugging)
 	};
 
-	static constexpr const u32 kDefaultJobListPoolSize = 32;
+	static constexpr u32 kDefaultMaxJobLists = 16;
+	static constexpr u32 kDefaultMaxJobs = 256;
 
-	u32 m_JobListPoolSize = kDefaultJobListPoolSize;
-	u32 m_NumThreads = 0;
-	u32* m_pThreadCores = nullptr;
+	u32 m_JobListPoolSize = kDefaultMaxJobLists;
+	u32 m_JobPoolSize = kDefaultMaxJobs;
 	Parallelism m_Parallelism = Parallelism::kUseCoreCount;
+	u32 m_NumWorkerThreads = 0;
+	WorkerThreadDesc* m_pWorkerThreadDescs = nullptr;
 };
-
-
-enum class JobListPriority : u8
-{
-	kLow,
-	kNormal,
-	kHigh
-};
-
-enum class JobListCategory : u8
-{
-	kGeneral,
-	kRender,
-	kLogic,
-	kAny = kU8Max,
-};
-
-class BvTBJobList;
-class BvTBJobSystemWorker;
 
 
 class BvTBJobSystem
@@ -61,69 +132,12 @@ public:
 	void Initialize(const JobSystemDesc& desc = JobSystemDesc());
 	void Shutdown();
 
-	BvTBJobList* AllocJobList(u32 maxJobs, u32 maxSyncs, JobListPriority priority = JobListPriority::kNormal);
+	BvTBJobList* AllocJobList(u32 maxJobs, u32 maxSyncs, BvTBJobList::Priority priority = BvTBJobList::Priority::kNormal);
 	void FreeJobList(BvTBJobList*& pJobList);
 	void Submit(BvTBJobList* pJobList);
 	void Wait();
 
 private:
-	BvVector<BvTBJobSystemWorker *> m_Workers;
-};
-
-
-extern BvTBJobSystem* g_pJobSystem;
-
-
-class BvTBJobList
-{
-	friend class BvTBJobSystem;
-	friend class BvTBJobSystemWorker;
-
-	enum class JobSyncType : u8
-	{
-		kNone,
-		kSyncPoint,
-		kJobListDependency,
-	};
-
-	struct Job
-	{
-		BvTaskT<48> m_Job{};
-		BvTBJobList* m_pDependency{};
-		JobSyncType m_SyncType{};
-	};
-
-public:
-	template<typename Fn, typename... Args>
-	void AddJob(Fn&& fn, Args&&... args)
-	{
-		BvAssert(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
-		auto& job = AddInternal();
-		job.m_Job.Set(std::forward<Fn>(fn), std::forward<Args>(args)...);
-	}
-
-	void AddSyncPoint();
-	void AddJobListDependency(BvTBJobList* pDependency);
-	void Reset(bool resetJobs = false);
-	
-	void Submit(bool threaded = true);
-	
-	bool IsDone() const;
-	bool IsWaitingForDependency() const;
-	void Wait() const;
-	
-	JobListPriority GetPriority() const;
-
-private:
-	BvTBJobList(u32 maxJobs, u32 maxSyncs, JobListPriority priority);
-	~BvTBJobList();
-
-	Job& AddInternal();
-
-private:
-	BvVector<Job> m_Jobs;
-	std::atomic<u32> m_CurrJob;
-	std::atomic<u32> m_JobsDone;
-	BvSpinlock m_Lock;
-	JobListPriority m_Priority = JobListPriority::kNormal;
+	BvVector<BvTBJobSystemWorker*> m_Workers;
+	BvVector<BvTBJobList*> m_JobLists;
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvBuffer.h"
+#include "BDeV/Core/RenderAPI/BvBuffer.h"
 #include "BvCommonVk.h"
 #include <VulkanMemoryAllocator/include/vk_mem_alloc.h>
 

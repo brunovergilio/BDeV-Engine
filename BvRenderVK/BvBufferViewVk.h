@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvBufferView.h"
+#include "BDeV/Core/RenderAPI/BvBufferView.h"
 #include "BvBufferVk.h"
 
 

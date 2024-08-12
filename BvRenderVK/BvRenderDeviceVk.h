@@ -40,11 +40,13 @@ public:
 	BvCommandContext* GetGraphicsContext(u32 index = 0) const override;
 	BvCommandContext* GetComputeContext(u32 index = 0) const override;
 	BvCommandContext* GetTransferContext(u32 index = 0) const override;
+	
 	void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize) const override;
 	bool SupportsQueryType(QueryType queryType, QueueFamilyType commandType) const override;
+	bool IsFormatSupported(Format format) const override;
 
 	BV_INLINE const VkDevice GetHandle() const { return m_Device; }
-	BV_INLINE const VkInstance GetInstanceHandle() const { return m_pEngine->GetInstance(); }
+	BV_INLINE VkInstance GetInstanceHandle() const { return m_pEngine->GetInstance(); }
 	BV_INLINE const BvGPUInfoVk& GetGPUInfo() const { return m_GPUInfo; }
 	BV_INLINE VmaAllocator GetAllocator() const { return m_VMA; }
 	BV_INLINE BvFramebufferManagerVk* GetFramebufferManager() const { return m_pFramebufferManager; }

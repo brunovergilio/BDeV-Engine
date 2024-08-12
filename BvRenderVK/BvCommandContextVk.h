@@ -2,9 +2,9 @@
 
 
 #include "BvCommonVk.h"
-#include "BDeV/RenderAPI/BvCommandContext.h"
-#include "BDeV/Container/BvVector.h"
-#include "BDeV/Container/BvRobinMap.h"
+#include "BDeV/Core/RenderAPI/BvCommandContext.h"
+#include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
 #include "BvCommandPoolVk.h"
 #include "BvDescriptorSetVk.h"
 #include "BvSemaphoreVk.h"
@@ -91,6 +91,7 @@ public:
 	void SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex) override;
 	void SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex) override;
 	void SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex) override;
+	void SetShaderConstants(u32 size, const void* pData, u32 offset) override;
 
 	void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) override;
 	void SetIndexBufferView(const BvBufferView* pIndexBufferView, IndexFormat indexFormat) override;
@@ -123,6 +124,8 @@ public:
 	void ResourceBarrier(u32 bufferBarrierCount, const VkBufferMemoryBarrier2* pBufferBarriers,
 		u32 imageBarrierCount, const VkImageMemoryBarrier2* pImageBarriers, u32 memoryBarrierCount, const VkMemoryBarrier2* pMemoryBarriers);
 	void ResourceBarrier(u32 barrierCount, const ResourceBarrierDesc* pBarriers) override;
+
+	void SetPredication(const BvBuffer* pBuffer, u64 offset, PredicationOp predicationOp) override;
 
 	void BeginQuery(BvQuery* pQuery) override;
 	void EndQuery(BvQuery* pQuery) override;

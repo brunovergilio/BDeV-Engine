@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include "BDeV/System/Threading/BvSync.h"
-#include "BDeV/Container/BvVector.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
+#include "BDeV/Core/Container/BvVector.h"
 
 
 template<typename Type, u32 SIZE>

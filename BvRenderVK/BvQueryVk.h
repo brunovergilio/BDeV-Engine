@@ -1,9 +1,9 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvQuery.h"
+#include "BDeV/Core/RenderAPI/BvQuery.h"
 #include "BvCommonVk.h"
-#include "BDeV/Container/BvVector.h"
+#include "BDeV/Core/Container/BvVector.h"
 
 
 class BvQueryHeapVk;

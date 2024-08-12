@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvRenderEngine.h"
+#include "BDeV/Core/RenderAPI/BvRenderEngine.h"
 #include "BvRenderVk/BvGPUInfoVk.h"
 
 
@@ -23,19 +23,18 @@ class BvRenderEngineVk final : public BvRenderEngine
 	BV_NOCOPYMOVE(BvRenderEngineVk);
 
 public:
-	BvRenderEngineVk();
+	BvRenderEngineVk(IBvMemoryArena* pArena);
 	~BvRenderEngineVk();
 
-	bool Initialize() override;
-	void Shutdown() override;
+	bool Initialize();
+	void Shutdown();
 
 	BV_INLINE u32 GetSupportedGPUCount() const override { return m_GPUs.Size(); }
 	void GetGPUInfo(u32 index, BvGPUInfo& info) const override;
-
 	BvRenderDevice* CreateRenderDevice(u32 gpuIndex = 0) override;
 	BvRenderDevice* CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, u32 gpuIndex = 0);
 	
-	BV_INLINE const char* GetEngineName() const override { return "BvRenderVk"; }
+	BV_INLINE void SetName(const char* pName) override {}
 
 	BV_INLINE VkInstance GetInstance() const { return m_Instance; }
 
@@ -61,6 +60,5 @@ namespace BvRenderVk
 	extern "C"
 	{
 		BV_API BvRenderEngine* CreateRenderEngine();
-		BV_API void DestroyRenderEngine();
 	}
 }

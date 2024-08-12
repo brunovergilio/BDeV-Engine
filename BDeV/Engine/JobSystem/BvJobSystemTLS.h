@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/BvCore.h"
+#include "BDeV/Core/BvCore.h"
 
 
 namespace JS

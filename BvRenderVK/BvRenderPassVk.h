@@ -2,11 +2,11 @@
 
 
 #include "BvRenderVK/BvCommonVk.h"
-#include "BDeV/RenderAPI/BvRenderPass.h"
-#include "BDeV/Utils/BvHash.h"
-#include "BDeV/System/Threading/BvSync.h"
-#include "BDeV/Container/BvVector.h"
-#include "BDeV/Container/BvRobinMap.h"
+#include "BDeV/Core/RenderAPI/BvRenderPass.h"
+#include "BDeV/Core/Utils/BvHash.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
+#include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
 
 
 class BvRenderDeviceVk;
