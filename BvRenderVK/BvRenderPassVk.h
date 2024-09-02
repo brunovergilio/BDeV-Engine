@@ -15,15 +15,16 @@ class BvRenderDeviceVk;
 class BvRenderPassVk final : public BvRenderPass
 {
 public:
-	BvRenderPassVk(const BvRenderDeviceVk& device, const RenderPassDesc& renderPassDesc);
+	BvRenderPassVk(BvRenderDeviceVk* pDevice, const RenderPassDesc& renderPassDesc);
 	~BvRenderPassVk();
 
-	void Create();
-	void Destroy();
-
+	BvRenderDevice* GetDevice() override;
 	BV_INLINE const VkRenderPass GetHandle() const { return m_RenderPass; }
 
 private:
+	void Create();
+	void Destroy();
+
 	void SetupAttachments(BvVector<VkAttachmentDescription2>& attachments);
 	void SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses, BvVector<VkAttachmentReference2>& attachmentRefs,
 		VkFragmentShadingRateAttachmentInfoKHR& shadingRateRef);
@@ -32,7 +33,7 @@ private:
 	void GetVkFlags(u32 subpassIndex, VkAccessFlags2& accessFlags, VkPipelineStageFlags2& stageFlags);
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkRenderPass m_RenderPass = VK_NULL_HANDLE;
 };
 

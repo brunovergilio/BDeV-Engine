@@ -278,7 +278,7 @@ struct ComputePipelineStateDesc
 };
 
 
-class BvGraphicsPipelineState
+class BvGraphicsPipelineState : public BvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvGraphicsPipelineState);
 
@@ -295,7 +295,7 @@ protected:
 };
 
 
-class BvComputePipelineState
+class BvComputePipelineState : public BvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvComputePipelineState);
 

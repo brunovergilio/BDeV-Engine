@@ -4,8 +4,8 @@
 #include "BvTypeConversionsVk.h"
 
 
-BvBufferViewVk::BvBufferViewVk(const BvRenderDeviceVk & device, const BufferViewDesc & bufferViewDesc)
-	: BvBufferView(bufferViewDesc), m_Device(device)
+BvBufferViewVk::BvBufferViewVk(BvRenderDeviceVk* pDevice, const BufferViewDesc & bufferViewDesc)
+	: BvBufferView(bufferViewDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -14,6 +14,12 @@ BvBufferViewVk::BvBufferViewVk(const BvRenderDeviceVk & device, const BufferView
 BvBufferViewVk::~BvBufferViewVk()
 {
 	Destroy();
+}
+
+
+BvRenderDevice* BvBufferViewVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -35,7 +41,7 @@ void BvBufferViewVk::Create()
 	bufferViewCreateInfo.offset = m_BufferViewDesc.m_Offset;
 	bufferViewCreateInfo.range = m_BufferViewDesc.m_ElementCount * m_BufferViewDesc.m_Stride;
 
-	auto result = vkCreateBufferView(m_Device.GetHandle(), &bufferViewCreateInfo, nullptr, &m_View);
+	auto result = vkCreateBufferView(m_pDevice->GetHandle(), &bufferViewCreateInfo, nullptr, &m_View);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -47,7 +53,7 @@ void BvBufferViewVk::Destroy()
 {
 	if (m_View)
 	{
-		vkDestroyBufferView(m_Device.GetHandle(), m_View, nullptr);
+		vkDestroyBufferView(m_pDevice->GetHandle(), m_View, nullptr);
 		m_View = VK_NULL_HANDLE;
 	}
 }

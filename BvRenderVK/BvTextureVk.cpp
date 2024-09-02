@@ -7,16 +7,28 @@
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
-BvTextureVk::BvTextureVk(const BvRenderDeviceVk& device, const TextureDesc& textureDesc, const TextureInitData* pInitData)
-	: BvTexture(textureDesc), m_Device(device)
+BvTextureVk::BvTextureVk(BvRenderDeviceVk* pDevice, const TextureDesc& textureDesc, const TextureInitData* pInitData)
+	: BvTexture(textureDesc), m_pDevice(pDevice)
 {
 	Create(pInitData);
+}
+
+
+BvTextureVk::BvTextureVk(BvRenderDeviceVk* pDevice, BvSwapChainVk* pSwapChain, const TextureDesc& textureDesc, VkImage image)
+	: BvTexture(textureDesc), m_pDevice(pDevice), m_pSwapChain(pSwapChain), m_Image(image)
+{
 }
 
 
 BvTextureVk::~BvTextureVk()
 {
 	Destroy();
+}
+
+
+BvRenderDevice* BvTextureVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -57,7 +69,7 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	imageCreateInfo.pQueueFamilyIndices = nullptr;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-	auto device = m_Device.GetHandle();
+	auto device = m_pDevice->GetHandle();
 
 	auto result = vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
 	if (result != VK_SUCCESS)
@@ -66,7 +78,7 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 		return;
 	}
 
-	auto vma = m_Device.GetAllocator();
+	auto vma = m_pDevice->GetAllocator();
 	VmaAllocationCreateInfo vmaACI = {};
 	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType);
 	vmaACI.preferredFlags = GetPreferredVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType);
@@ -100,13 +112,16 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 
 void BvTextureVk::Destroy()
 {
-	auto device = m_Device.GetHandle();
-
-	if (m_Image)
+	if (!m_pSwapChain)
 	{
-		vkDestroyImage(device, m_Image, nullptr);
+		auto device = m_pDevice->GetHandle();
+
+		if (m_Image)
+		{
+			vkDestroyImage(device, m_Image, nullptr);
+		}
+		vmaFreeMemory(m_pDevice->GetAllocator(), m_VMAAllocation);
 	}
-	vmaFreeMemory(m_Device.GetAllocator(), m_VMAAllocation);
 }
 
 
@@ -150,7 +165,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		bufferDesc.m_Size = bufferSize;
 		bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 
-		BvBufferVk buffer(m_Device, bufferDesc, nullptr);
+		BvBufferVk buffer(m_pDevice, bufferDesc, nullptr);
 		auto pDstData = static_cast<u8*>(buffer.GetMappedData());
 
 		// Copy initial data to staging buffer
@@ -198,15 +213,4 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 	}
 	pContext->Signal();
 	pContext->WaitForGPU();
-}
-
-
-BvSwapChainTextureVk::BvSwapChainTextureVk(BvSwapChainVk * pSwapChain, const TextureDesc & textureDesc, VkImage image)
-	: BvTexture(textureDesc), m_pSwapChain(pSwapChain), m_Image(image)
-{
-}
-
-
-BvSwapChainTextureVk::~BvSwapChainTextureVk()
-{
 }

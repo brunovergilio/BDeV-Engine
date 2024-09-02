@@ -16,9 +16,6 @@ public:
 	BvRenderDeviceVk(BvRenderEngineVk* pEngine, BvGPUInfoVk& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc);
 	~BvRenderDeviceVk();
 
-	void Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc);
-	void Destroy();
-
 	BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext) override;
 	BvBuffer* CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData = nullptr) override;
 	BvBufferView* CreateBufferView(const BufferViewDesc& desc) override;
@@ -30,6 +27,8 @@ public:
 		const ShaderResourceConstantDesc& shaderResourceConstantDesc) override;
 	BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc) override;
 	BvQuery* CreateQuery(QueryType queryType) override;
+
+	void Release(BvRenderDeviceChild* pDeviceObj) override;
 
 	void WaitIdle() const override;
 
@@ -53,6 +52,9 @@ public:
 	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pQueryHeapManager; }
 
 private:
+	void Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc);
+	void Destroy();
+
 	void CreateVMA();
 	void DestroyVMA();
 
@@ -65,7 +67,7 @@ private:
 	BvVector<BvCommandContextVk*> m_TransferContexts;
 	BvFramebufferManagerVk* m_pFramebufferManager;
 	BvQueryHeapManagerVk* m_pQueryHeapManager;
-	BvRenderDeviceFactory* m_pFactory = nullptr;
+	BvVector<BvRenderDeviceChild*> m_DeviceObjects;
 	VmaAllocator m_VMA{};
 };
 

@@ -1,7 +1,7 @@
 #include "BvTextureLoader.h"
-#include "BDeV/System/File/BvFile.h"
-#include "BvRenderTools/TextureLoader/DDS/BvDDS.h"
-#include "BDeV/Container/BvRobinSet.h"
+#include "DDS/BvDDS.h"
+#include "BDeV/Core/System/File/BvFile.h"
+#include "BDeV/Core/Container/BvRobinSet.h"
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -38,7 +38,6 @@ public:
 	~BvTextureLoader();
 
 	LoaderResult LoadTextureFromFile(const char* pFilename, IBvTextureBlob*& pTextureBlob) override;
-	LoaderResult LoadTextureFromFile(const wchar_t* pFilename, IBvTextureBlob*& pTextureBlob) override;
 	LoaderResult LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureBlob*& pTextureBlob) override;
 	void DestroyTexture(IBvTextureBlob*& pTextureBlob) override;
 
@@ -65,20 +64,6 @@ BvTextureLoader::~BvTextureLoader()
 
 
 LoaderResult BvTextureLoader::LoadTextureFromFile(const char* pFilename, IBvTextureBlob*& pTextureBlob)
-{
-	mbstate_t mbState{};
-	auto len = 1 + mbsrtowcs(nullptr, &pFilename, 0, &mbState);
-	BvVector<wchar_t> widePath(len);
-	if (mbsrtowcs(widePath.Data(), &pFilename, widePath.Size(), &mbState) == (size_t)-1)
-	{
-		return LoaderResult::kInvalidArg;
-	}
-
-	return LoadTextureFromFile(widePath.Data(), pTextureBlob);
-}
-
-
-LoaderResult BvTextureLoader::LoadTextureFromFile(const wchar_t* pFilename, IBvTextureBlob*& pTextureBlob)
 {
 	BvFile file(pFilename);
 	if (!file.IsValid())

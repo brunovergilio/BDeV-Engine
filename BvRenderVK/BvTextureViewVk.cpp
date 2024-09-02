@@ -4,8 +4,8 @@
 #include "BvUtilsVk.h"
 
 
-BvTextureViewVk::BvTextureViewVk(const BvRenderDeviceVk & device, const TextureViewDesc & textureViewDesc)
-	: BvTextureView(textureViewDesc), m_Device(device)
+BvTextureViewVk::BvTextureViewVk(BvRenderDeviceVk* pDevice, const TextureViewDesc & textureViewDesc)
+	: BvTextureView(textureViewDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -14,6 +14,12 @@ BvTextureViewVk::BvTextureViewVk(const BvRenderDeviceVk & device, const TextureV
 BvTextureViewVk::~BvTextureViewVk()
 {
 	Destroy();
+}
+
+
+BvRenderDevice* BvTextureViewVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -29,9 +35,7 @@ bool BvTextureViewVk::Create()
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	imageViewCreateInfo.pNext = nullptr;
 	imageViewCreateInfo.flags = 0;
-	imageViewCreateInfo.image = m_TextureViewDesc.m_pTexture->GetClassType() == BvTexture::ClassType::kTexture ?
-		reinterpret_cast<BvTextureVk*>(m_TextureViewDesc.m_pTexture)->GetHandle() :
-		reinterpret_cast<BvSwapChainTextureVk*>(m_TextureViewDesc.m_pTexture)->GetHandle();
+	imageViewCreateInfo.image = TO_VK(m_TextureViewDesc.m_pTexture)->GetHandle();
 	imageViewCreateInfo.viewType = GetVkImageViewType(m_TextureViewDesc.m_ViewType);
 	imageViewCreateInfo.format = vkFormatMap.format;
 	imageViewCreateInfo.components = vkFormatMap.componentMapping;
@@ -44,7 +48,7 @@ bool BvTextureViewVk::Create()
 		m_TextureViewDesc.m_SubresourceDesc.layerCount
 	};
 
-	auto result = vkCreateImageView(m_Device.GetHandle(), &imageViewCreateInfo, nullptr, &m_View);
+	auto result = vkCreateImageView(m_pDevice->GetHandle(), &imageViewCreateInfo, nullptr, &m_View);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -59,7 +63,7 @@ void BvTextureViewVk::Destroy()
 {
 	if (m_View)
 	{
-		vkDestroyImageView(m_Device.GetHandle(), m_View, nullptr);
+		vkDestroyImageView(m_pDevice->GetHandle(), m_View, nullptr);
 		m_View = VK_NULL_HANDLE;
 	}
 }

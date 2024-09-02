@@ -4,8 +4,8 @@
 #include "BvTypeConversionsVk.h"
 
 
-BvRenderPassVk::BvRenderPassVk(const BvRenderDeviceVk & device, const RenderPassDesc & renderPassDesc)
-	: BvRenderPass(renderPassDesc), m_Device(device)
+BvRenderPassVk::BvRenderPassVk(BvRenderDeviceVk* pDevice, const RenderPassDesc & renderPassDesc)
+	: BvRenderPass(renderPassDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -14,6 +14,12 @@ BvRenderPassVk::BvRenderPassVk(const BvRenderDeviceVk & device, const RenderPass
 BvRenderPassVk::~BvRenderPassVk()
 {
 	Destroy();
+}
+
+
+BvRenderDevice* BvRenderPassVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -41,7 +47,7 @@ void BvRenderPassVk::Create()
 	createInfo.pDependencies = dependencies.Data();
 
 
-	auto result = vkCreateRenderPass2(m_Device.GetHandle(), &createInfo, nullptr, &m_RenderPass);
+	auto result = vkCreateRenderPass2(m_pDevice->GetHandle(), &createInfo, nullptr, &m_RenderPass);
 }
 
 
@@ -49,7 +55,7 @@ void BvRenderPassVk::Destroy()
 {
 	if (m_RenderPass)
 	{
-		vkDestroyRenderPass(m_Device.GetHandle(), m_RenderPass, nullptr);
+		vkDestroyRenderPass(m_pDevice->GetHandle(), m_RenderPass, nullptr);
 		m_RenderPass = VK_NULL_HANDLE;
 	}
 }

@@ -49,4 +49,5 @@ struct BvGPUInfo
 	u32 m_DeviceId = 0;
 	u32 m_VendorId = 0;
 	GPUVendorId m_Vendor = GPUVendorId::kUnknown;
+	GPUType m_Type = GPUType::kUnknown;
 };

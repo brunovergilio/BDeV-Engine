@@ -18,7 +18,7 @@ struct SwapChainDesc
 };
 
 
-class BvSwapChain
+class BvSwapChain : public BvRenderDeviceChild
 {
 public:
 	virtual void Present(bool vSync = false) = 0;

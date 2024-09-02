@@ -1,9 +1,9 @@
 #pragma once
 
 
-#include "BDeV/BvCore.h"
-#include "BDeV/Container/BvVector.h"
-#include "BDeV/RenderAPI/BvTexture.h"
+#include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/RenderAPI/BvTexture.h"
 
 
 class IBvTextureBlob
@@ -53,7 +53,6 @@ class IBvTextureLoader
 
 public:
 	virtual LoaderResult LoadTextureFromFile(const char* pFilename, IBvTextureBlob*& pTextureBlob) = 0;
-	virtual LoaderResult LoadTextureFromFile(const wchar_t* pFilename, IBvTextureBlob*& pTextureBlob) = 0;
 	virtual LoaderResult LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureBlob*& pTextureBlob) = 0;
 	virtual void DestroyTexture(IBvTextureBlob*& pTextureBlob) = 0;
 

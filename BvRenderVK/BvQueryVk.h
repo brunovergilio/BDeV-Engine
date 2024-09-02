@@ -25,17 +25,19 @@ public:
 		u32 m_QueryIndex = 0;
 	};
 
-	BvQueryVk(QueryType queryType, u32 frameCount);
+	BvQueryVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 frameCount);
 	~BvQueryVk();
+
+	BvRenderDevice* GetDevice() override;
+	BV_INLINE QueryType GetQueryType() const override { return m_QueryType; }
 
 	BvQueryVk::Data* Allocate(BvQueryHeapManagerVk* pQueryHeapManager, u32 queryCount, u32 frameIndex);
 	void UpdateResults(u32 frameIndex);
-
-	BV_INLINE QueryType GetQueryType() const override { return m_QueryType; }
 	BV_INLINE u64 GetResult() const { return m_Result; }
 	BV_INLINE BvQueryVk::Data* GetQueryData(u32 frameIndex) { return &m_QueryData[frameIndex]; }
 
 private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvVector<BvQueryVk::Data> m_QueryData;
 	u64 m_Result = 0;
 	QueryType m_QueryType = QueryType::kTimestamp;
@@ -52,15 +54,16 @@ public:
 	BvQueryHeapVk(BvQueryHeapVk&& rhs) noexcept;
 	BvQueryHeapVk& operator=(BvQueryHeapVk&& rhs) noexcept;
 	~BvQueryHeapVk();
-
-	void Create(QueryType queryType, u32 queryCount, u32 frameCount);
-	void Destroy();
 	
 	u32 Allocate(u32 queryCount, u32 frameIndex);
 	void Reset(u32 frameIndex);
 	void GetResults(void* pData, u32 queryIndex, u32 queryCount, u64 stride, u32 frameIndex);
 
 	BV_INLINE VkQueryPool GetHandle() const { return m_Pool; }
+
+private:
+	void Create(QueryType queryType, u32 queryCount, u32 frameCount);
+	void Destroy();
 	
 private:
 	VkDevice m_Device = VK_NULL_HANDLE;

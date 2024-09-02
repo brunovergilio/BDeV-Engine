@@ -8,9 +8,9 @@
 #include "BvTextureViewVk.h"
 
 
-BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(const BvRenderDeviceVk& device, u32 shaderResourceCount,
+BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, u32 shaderResourceCount,
 	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc)
-	: m_Device(device)
+	: m_pDevice(pDevice)
 {
 	u32 samplerCount = 0;
 	for (auto i = 0; i < shaderResourceCount; ++i)
@@ -51,6 +51,12 @@ BvShaderResourceLayoutVk::~BvShaderResourceLayoutVk()
 }
 
 
+BvRenderDevice* BvShaderResourceLayoutVk::GetDevice()
+{
+	return m_pDevice;
+}
+
+
 void BvShaderResourceLayoutVk::Create()
 {
 	BvVector<VkDescriptorSetLayout> layouts(m_ShaderResourceLayoutDesc.m_ShaderResources.Size());
@@ -85,7 +91,7 @@ void BvShaderResourceLayoutVk::Create()
 		layoutCI.bindingCount = bindings.Size();
 		layoutCI.pBindings = bindings.Data();
 
-		vkCreateDescriptorSetLayout(m_Device.GetHandle(), &layoutCI, nullptr, &layouts[layoutIndex]);
+		vkCreateDescriptorSetLayout(m_pDevice->GetHandle(), &layoutCI, nullptr, &layouts[layoutIndex]);
 		m_Layouts[currSet.first] = layouts[layoutIndex++];
 	}
 
@@ -105,7 +111,7 @@ void BvShaderResourceLayoutVk::Create()
 		pipelineCI.pPushConstantRanges = &pushConstants;
 	}
 
-	vkCreatePipelineLayout(m_Device.GetHandle(), &pipelineCI, nullptr, &m_PipelineLayout);
+	vkCreatePipelineLayout(m_pDevice->GetHandle(), &pipelineCI, nullptr, &m_PipelineLayout);
 }
 
 
@@ -113,13 +119,13 @@ void BvShaderResourceLayoutVk::Destroy()
 {
 	if (m_PipelineLayout)
 	{
-		vkDestroyPipelineLayout(m_Device.GetHandle(), m_PipelineLayout, nullptr);
+		vkDestroyPipelineLayout(m_pDevice->GetHandle(), m_PipelineLayout, nullptr);
 		m_PipelineLayout = VK_NULL_HANDLE;
 	}
 
 	for (auto && layout : m_Layouts)
 	{
-		vkDestroyDescriptorSetLayout(m_Device.GetHandle(), layout.second, nullptr);
+		vkDestroyDescriptorSetLayout(m_pDevice->GetHandle(), layout.second, nullptr);
 	}
 	m_Layouts.Clear();
 }

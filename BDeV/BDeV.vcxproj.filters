@@ -71,7 +71,6 @@
     <ClInclude Include="Core\System\Window\BvWindowCommon.h" />
     <ClInclude Include="Core\Container\BvRobinSet.h" />
     <ClInclude Include="Engine\JobSystem\BvRingBuffer.h" />
-    <ClInclude Include="Engine\MemorySystem\BvMemorySystem.h" />
     <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
     <ClInclude Include="Core\RenderAPI\BvColor.h" />
     <ClInclude Include="Core\System\Windows\BvWindowsHeader.h" />
@@ -82,13 +81,11 @@
     <ClInclude Include="BDeV.h" />
     <ClInclude Include="Core\System\HID\BvController.h" />
     <ClInclude Include="Core\Utils\BvUUID.h" />
-    <ClInclude Include="Core\Utils\BvObject.h" />
     <ClInclude Include="Core\System\Memory\Allocators\BvDefaultAllocator.h" />
     <ClInclude Include="Core\Utils\BvLog.h" />
     <ClInclude Include="Core\System\Memory\BvMemoryArena.h" />
     <ClInclude Include="Core\System\Memory\BvMemoryArea.h" />
     <ClInclude Include="Core\Container\BvText.h" />
-    <ClInclude Include="Core\RenderAPI\BvRenderObject.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -127,7 +124,6 @@
     <ClCompile Include="Core\Utils\BvTestUnit.cpp" />
     <ClCompile Include="Core\Utils\BvHash.cpp" />
     <ClCompile Include="Core\Container\BvStringId.cpp" />
-    <ClCompile Include="Engine\MemorySystem\BvMemorySystem.cpp" />
     <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
     <ClCompile Include="Core\RenderAPI\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />

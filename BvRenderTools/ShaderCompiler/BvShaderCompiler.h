@@ -1,11 +1,11 @@
 #pragma once
 
 
-#include "BDeV/BvCore.h"
-#include "BDeV/Container/BvString.h"
-#include "BDeV/RenderAPI/BvShaderResource.h"
-#include "BDeV/RenderAPI/BvPipelineState.h"
-#include "BDeV/Utils/BvUtils.h"
+#include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/Container/BvString.h"
+#include "BDeV/Core/RenderAPI/BvShaderResource.h"
+#include "BDeV/Core/RenderAPI/BvPipelineState.h"
+#include "BDeV/Core/Utils/BvUtils.h"
 
 
 enum class ShaderLanguage : u8

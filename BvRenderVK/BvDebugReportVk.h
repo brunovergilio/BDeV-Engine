@@ -13,10 +13,10 @@ public:
 	BvDebugReportVk(const VkInstance instance);
 	~BvDebugReportVk();
 
+private:
 	void Create();
 	void Destroy();
 
-private:
 	static VkBool32 VKAPI_PTR DebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,	void* pUserData);
 

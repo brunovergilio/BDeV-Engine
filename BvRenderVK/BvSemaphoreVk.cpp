@@ -38,35 +38,6 @@ BvSemaphoreVk::~BvSemaphoreVk()
 }
 
 
-void BvSemaphoreVk::Create(u64 initialValue, bool isTimelineSemaphore)
-{
-	VkSemaphoreTypeCreateInfo timelineCreateInfo{};
-	if (isTimelineSemaphore)
-	{
-		timelineCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-		//timelineCreateInfo.pNext = nullptr;
-		timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-		timelineCreateInfo.initialValue = initialValue;
-	}
-
-	VkSemaphoreCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	createInfo.pNext = isTimelineSemaphore ? &timelineCreateInfo : nullptr;
-
-	auto result = vkCreateSemaphore(m_Device, &createInfo, nullptr, &m_Semaphore);
-}
-
-
-void BvSemaphoreVk::Destroy()
-{
-	if (m_Semaphore)
-	{
-		vkDestroySemaphore(m_Device, m_Semaphore, nullptr);
-		m_Semaphore = VK_NULL_HANDLE;
-	}
-}
-
-
 void BvSemaphoreVk::Signal(u64 value)
 {
 	VkSemaphoreSignalInfo signalInfo{};
@@ -101,6 +72,35 @@ u64 BvSemaphoreVk::GetCompletedValue()
 	auto result = vkGetSemaphoreCounterValue(m_Device, m_Semaphore, &value);
 
 	return value;
+}
+
+
+void BvSemaphoreVk::Create(u64 initialValue, bool isTimelineSemaphore)
+{
+	VkSemaphoreTypeCreateInfo timelineCreateInfo{};
+	if (isTimelineSemaphore)
+	{
+		timelineCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+		//timelineCreateInfo.pNext = nullptr;
+		timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+		timelineCreateInfo.initialValue = initialValue;
+	}
+
+	VkSemaphoreCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	createInfo.pNext = isTimelineSemaphore ? &timelineCreateInfo : nullptr;
+
+	auto result = vkCreateSemaphore(m_Device, &createInfo, nullptr, &m_Semaphore);
+}
+
+
+void BvSemaphoreVk::Destroy()
+{
+	if (m_Semaphore)
+	{
+		vkDestroySemaphore(m_Device, m_Semaphore, nullptr);
+		m_Semaphore = VK_NULL_HANDLE;
+	}
 }
 
 

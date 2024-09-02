@@ -13,16 +13,18 @@ class BvSamplerVk final : public BvSampler
 	BV_NOCOPYMOVE(BvSamplerVk);
 
 public:
-	BvSamplerVk(const BvRenderDeviceVk & device, const SamplerDesc & samplerDesc);
+	BvSamplerVk(BvRenderDeviceVk* pDevice, const SamplerDesc & samplerDesc);
 	~BvSamplerVk();
-
-	void Create();
-	void Destroy();
+	BvRenderDevice* GetDevice() override;
 
 	BV_INLINE VkSampler GetHandle() const { return m_Sampler; }
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	void Create();
+	void Destroy();
+
+private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkSampler m_Sampler = VK_NULL_HANDLE;
 };
 

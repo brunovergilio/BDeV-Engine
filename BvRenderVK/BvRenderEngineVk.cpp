@@ -32,20 +32,84 @@ bool IsInstanceLayerSupported(const BvVector<VkLayerProperties>& layers, const c
 }
 
 
-BvRenderEngineVk::BvRenderEngineVk(IBvMemoryArena* pArena)
-	: BvRenderEngine(pArena)
+BvRenderEngineVk::BvRenderEngineVk()
 {
-	Initialize();
+	Create();
 }
 
 
 BvRenderEngineVk::~BvRenderEngineVk()
 {
-	Shutdown();
+	Destroy();
 }
 
 
-bool BvRenderEngineVk::Initialize()
+void BvRenderEngineVk::GetGPUInfo(u32 index, BvGPUInfo& gpuInfo) const
+{
+	BvAssert(index < m_GPUs.Size(), "Invalid GPU index");
+
+	gpuInfo.m_DeviceName = m_GPUs[index].m_DeviceProperties.properties.deviceName;
+	gpuInfo.m_DeviceId = m_GPUs[index].m_DeviceProperties.properties.deviceID;
+	gpuInfo.m_VendorId = m_GPUs[index].m_DeviceProperties.properties.vendorID;
+
+	switch (gpuInfo.m_VendorId)
+	{
+	case 0x1002:
+	case 0x1022:
+		gpuInfo.m_Vendor = GPUVendorId::kAMD; break;
+	case 0x1010:
+		gpuInfo.m_Vendor = GPUVendorId::kImgTec; break;
+	case 0x10DE:
+		gpuInfo.m_Vendor = GPUVendorId::kNvidia; break;
+	case 0x13B5:
+		gpuInfo.m_Vendor = GPUVendorId::kARM; break;
+	case 0x5143:
+		gpuInfo.m_Vendor = GPUVendorId::kQualcomm; break;
+	case 0x163C:
+	case 0x8086:
+	case 0x8087:
+		gpuInfo.m_Vendor = GPUVendorId::kIntel; break;
+	}
+	
+	const auto & memoryProperties = m_GPUs[index].m_DeviceMemoryProperties;
+	for (u32 i = 0; i < memoryProperties.memoryProperties.memoryTypeCount; i++)
+	{
+		if (memoryProperties.memoryProperties.memoryTypes[i].propertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+		{
+			gpuInfo.m_DeviceMemory += memoryProperties.memoryProperties.memoryHeaps[memoryProperties.memoryProperties.memoryTypes[i].heapIndex].size;
+		}
+	}
+}
+
+
+BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDesc* pDeviceCreateDesc)
+{
+	auto pDeviceCreateDescVk = static_cast<const BvRenderDeviceCreateDescVk*>(pDeviceCreateDesc);
+	return CreateRenderDevice(pDeviceCreateDescVk ? *pDeviceCreateDescVk : BvRenderDeviceCreateDescVk());
+}
+
+
+BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc)
+{
+	BvAssert(m_pDevice == nullptr, "Render device already created");
+	if (m_pDevice != nullptr)
+	{
+		return m_pDevice;
+	}
+
+	u32 gpuIndex = deviceDesc.m_GPUIndex;
+	if (gpuIndex >= m_GPUs.Size())
+	{
+		gpuIndex = AutoSelectGPU();
+	}
+
+	m_pDevice = new BvRenderDeviceVk(this, m_GPUs[gpuIndex], deviceDesc);
+
+	return m_pDevice;
+}
+
+
+bool BvRenderEngineVk::Create()
 {
 	auto result = volkInitialize();
 	if (result != VK_SUCCESS)
@@ -191,7 +255,7 @@ bool BvRenderEngineVk::Initialize()
 }
 
 
-void BvRenderEngineVk::Shutdown()
+void BvRenderEngineVk::Destroy()
 {
 	if (m_pDevice)
 	{
@@ -212,69 +276,6 @@ void BvRenderEngineVk::Shutdown()
 		vkDestroyInstance(m_Instance, nullptr);
 		m_Instance = VK_NULL_HANDLE;
 	}
-}
-
-
-void BvRenderEngineVk::GetGPUInfo(u32 index, BvGPUInfo& gpuInfo) const
-{
-	BvAssert(index < m_GPUs.Size(), "Invalid GPU index");
-
-	gpuInfo.m_DeviceName = m_GPUs[index].m_DeviceProperties.properties.deviceName;
-	gpuInfo.m_DeviceId = m_GPUs[index].m_DeviceProperties.properties.deviceID;
-	gpuInfo.m_VendorId = m_GPUs[index].m_DeviceProperties.properties.vendorID;
-
-	switch (gpuInfo.m_VendorId)
-	{
-	case 0x1002:
-	case 0x1022:
-		gpuInfo.m_Vendor = GPUVendorId::kAMD; break;
-	case 0x1010:
-		gpuInfo.m_Vendor = GPUVendorId::kImgTec; break;
-	case 0x10DE:
-		gpuInfo.m_Vendor = GPUVendorId::kNvidia; break;
-	case 0x13B5:
-		gpuInfo.m_Vendor = GPUVendorId::kARM; break;
-	case 0x5143:
-		gpuInfo.m_Vendor = GPUVendorId::kQualcomm; break;
-	case 0x163C:
-	case 0x8086:
-	case 0x8087:
-		gpuInfo.m_Vendor = GPUVendorId::kIntel; break;
-	}
-	
-	const auto & memoryProperties = m_GPUs[index].m_DeviceMemoryProperties;
-	for (u32 i = 0; i < memoryProperties.memoryProperties.memoryTypeCount; i++)
-	{
-		if (memoryProperties.memoryProperties.memoryTypes[i].propertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-		{
-			gpuInfo.m_DeviceMemory += memoryProperties.memoryProperties.memoryHeaps[memoryProperties.memoryProperties.memoryTypes[i].heapIndex].size;
-		}
-	}
-}
-
-
-BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(u32 gpuIndex)
-{
-	return CreateRenderDevice(BvRenderDeviceCreateDescVk(), gpuIndex);
-}
-
-
-BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, u32 gpuIndex)
-{
-	BvAssert(m_pDevice == nullptr, "Render device already created");
-	if (m_pDevice != nullptr)
-	{
-		return m_pDevice;
-	}
-
-	if (gpuIndex >= m_GPUs.Size())
-	{
-		gpuIndex = AutoSelectGPU();
-	}
-
-	m_pDevice = new BvRenderDeviceVk(this, m_GPUs[gpuIndex], deviceDesc);
-
-	return m_pDevice;
 }
 
 
@@ -593,13 +594,22 @@ namespace BvRenderVk
 {
 	BvRenderEngine* CreateRenderEngine()
 	{
-		auto pEngine = new BvRenderEngineVk(nullptr);
+		auto pEngine = new BvRenderEngineVk();
 		if (pEngine->GetSupportedGPUCount() == 0)
 		{
-			pEngine->Release();
+			delete pEngine;
 			return nullptr;
 		}
 
 		return pEngine;
+	}
+
+
+	void DestroyRenderEngine(BvRenderEngine* pEngine)
+	{
+		if (auto pEngineVk = static_cast<BvRenderEngineVk*>(pEngine))
+		{
+			delete pEngineVk;
+		}
 	}
 }

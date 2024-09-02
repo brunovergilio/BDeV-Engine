@@ -2,35 +2,34 @@
 
 
 #include "BDeV/Core/RenderAPI/BvSwapChain.h"
-#include "BvRenderDeviceVk.h"
 #include "BDeV/Core/System/Threading/BvSync.h"
 #include "BvSemaphoreVk.h"
 #include "BvTextureViewVk.h"
 
 
 class BvTextureVk;
-class BvSwapChainTextureVk;
-class BvCommandQueueVk;
 class BvTextureViewVk;
+class BvCommandQueueVk;
 
 
 class BvSwapChainVk final : public BvSwapChain
 {
 public:
-	BvSwapChainVk(const BvRenderDeviceVk& renderDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext);
+	BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext);
 	~BvSwapChainVk();
-
-	bool Create();
-	void Destroy();
 
 	void Present(bool vSync) override;
 
+	BvRenderDevice* GetDevice() override;
 	BV_INLINE u32 GetCurrentImageIndex() const override { return m_CurrImageIndex; }
 	BV_INLINE BvTextureView* GetTextureView(u32 index) const override { return m_SwapChainTextureViews[index]; }
 	BV_INLINE const BvSemaphoreVk* GetCurrentImageAcquiredSemaphore() const { return &m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
 	BV_INLINE const BvSemaphoreVk* GetCurrentRenderCompleteSemaphore() const { return &m_RenderCompleteSemaphores[m_CurrImageIndex]; }
 
 private:
+	bool Create();
+	void Destroy();
+
 	void CreateSurface();
 	void DestroySurface();
 	void Resize();
@@ -39,13 +38,13 @@ private:
 	void DestroySynchronizationResources();
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvCommandQueueVk* m_pCommandQueue = nullptr;
 
 	VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 	VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;
 
-	BvVector<BvSwapChainTextureVk*> m_SwapChainTextures;
+	BvVector<BvTextureVk*> m_SwapChainTextures;
 	BvVector<BvTextureViewVk*> m_SwapChainTextureViews;
 
 	BvVector<BvSemaphoreVk> m_ImageAcquiredSemaphores;

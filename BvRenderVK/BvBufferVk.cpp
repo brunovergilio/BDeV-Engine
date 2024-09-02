@@ -10,8 +10,8 @@
 void GetBufferFlags(const BufferDesc& bufferDesc, VkAccessFlags2& accessFlags, VkPipelineStageFlagBits2& stageFlags);
 
 
-BvBufferVk::BvBufferVk(const BvRenderDeviceVk& device, const BufferDesc& bufferDesc, const BufferInitData* pInitData)
-	: BvBuffer(bufferDesc), m_Device(device)
+BvBufferVk::BvBufferVk(BvRenderDeviceVk* pDevice, const BufferDesc& bufferDesc, const BufferInitData* pInitData)
+	: BvBuffer(bufferDesc), m_pDevice(pDevice)
 {
 	Create(pInitData);
 }
@@ -20,6 +20,85 @@ BvBufferVk::BvBufferVk(const BvRenderDeviceVk& device, const BufferDesc& bufferD
 BvBufferVk::~BvBufferVk()
 {
 	Destroy();
+}
+
+
+void * const BvBufferVk::Map(const u64 size, const u64 offset)
+{
+	auto vma = m_pDevice->GetAllocator();
+	auto result = vmaMapMemory(vma, m_VMAAllocation, &m_pMapped);
+	if (result != VK_SUCCESS)
+	{
+		BvDebugVkResult(result);
+		return nullptr;
+	}
+
+	return m_pMapped;
+}
+
+
+void BvBufferVk::Unmap()
+{
+	auto vma = m_pDevice->GetAllocator();
+	vmaUnmapMemory(vma, m_VMAAllocation);
+
+	m_pMapped = nullptr;
+}
+
+
+void BvBufferVk::Flush(const u64 size, const u64 offset) const
+{
+	if (!m_NeedsFlush)
+	{
+		return;
+	}
+
+	auto vma = m_pDevice->GetAllocator();
+	VmaAllocationInfo vmaAI;
+	vmaGetAllocationInfo(vma, m_VMAAllocation, &vmaAI);
+
+	VkMappedMemoryRange mappedRange = {};
+	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	mappedRange.memory = vmaAI.deviceMemory;
+	mappedRange.offset = vmaAI.offset + offset;
+	mappedRange.size = size;
+	auto result = vkFlushMappedMemoryRanges(m_pDevice->GetHandle(), 1, &mappedRange);
+	if (result != VK_SUCCESS)
+	{
+		BvDebugVkResult(result);
+		return;
+	}
+}
+
+
+void BvBufferVk::Invalidate(const u64 size, const u64 offset) const
+{
+	if (!m_NeedsFlush)
+	{
+		return;
+	}
+
+	auto vma = m_pDevice->GetAllocator();
+	VmaAllocationInfo vmaAI;
+	vmaGetAllocationInfo(vma, m_VMAAllocation, &vmaAI);
+
+	VkMappedMemoryRange mappedRange = {};
+	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	mappedRange.memory = vmaAI.deviceMemory;
+	mappedRange.offset = offset;
+	mappedRange.size = size;
+	auto result = vkInvalidateMappedMemoryRanges(m_pDevice->GetHandle(), 1, &mappedRange);
+	if (result != VK_SUCCESS)
+	{
+		BvDebugVkResult(result);
+		return;
+	}
+}
+
+
+BvRenderDevice* BvBufferVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -35,14 +114,14 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	//bufferCreateInfo.queueFamilyIndexCount = 0;
 	//bufferCreateInfo.pQueueFamilyIndices = nullptr;
 
-	auto device = m_Device.GetHandle();
+	auto device = m_pDevice->GetHandle();
 	auto result = vkCreateBuffer(device, &bufferCreateInfo, nullptr, &m_Buffer);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
 	}
 
-	auto vma = m_Device.GetAllocator();
+	auto vma = m_pDevice->GetAllocator();
 	VmaAllocationCreateInfo vmaACI = {};
 	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_BufferDesc.m_MemoryType);
 	vmaACI.preferredFlags = vmaACI.requiredFlags | GetPreferredVkMemoryPropertyFlags(m_BufferDesc.m_MemoryType);
@@ -65,7 +144,7 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	}
 	m_VMAAllocation = vmaA;
 
-	const auto& memoryType = m_Device.GetGPUInfo().m_DeviceMemoryProperties.memoryProperties.memoryTypes[vmaAI.memoryType];
+	const auto& memoryType = m_pDevice->GetGPUInfo().m_DeviceMemoryProperties.memoryProperties.memoryTypes[vmaAI.memoryType];
 	m_NeedsFlush = ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0);
 
 	if (m_BufferDesc.m_MemoryType != MemoryType::kDevice
@@ -103,8 +182,8 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 
 void BvBufferVk::Destroy()
 {
-	auto device = m_Device.GetHandle();
-	auto vma = m_Device.GetAllocator();
+	auto device = m_pDevice->GetHandle();
+	auto vma = m_pDevice->GetAllocator();
 	if (m_pMapped)
 	{
 		vmaUnmapMemory(vma, m_VMAAllocation);
@@ -114,80 +193,7 @@ void BvBufferVk::Destroy()
 	{
 		vkDestroyBuffer(device, m_Buffer, nullptr);
 	}
-	vmaFreeMemory(m_Device.GetAllocator(), m_VMAAllocation);
-}
-
-
-void * const BvBufferVk::Map(const u64 size, const u64 offset)
-{
-	auto vma = m_Device.GetAllocator();
-	auto result = vmaMapMemory(vma, m_VMAAllocation, &m_pMapped);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return nullptr;
-	}
-
-	return m_pMapped;
-}
-
-
-void BvBufferVk::Unmap()
-{
-	auto vma = m_Device.GetAllocator();
-	vmaUnmapMemory(vma, m_VMAAllocation);
-
-	m_pMapped = nullptr;
-}
-
-
-void BvBufferVk::Flush(const u64 size, const u64 offset) const
-{
-	if (!m_NeedsFlush)
-	{
-		return;
-	}
-
-	auto vma = m_Device.GetAllocator();
-	VmaAllocationInfo vmaAI;
-	vmaGetAllocationInfo(vma, m_VMAAllocation, &vmaAI);
-
-	VkMappedMemoryRange mappedRange = {};
-	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	mappedRange.memory = vmaAI.deviceMemory;
-	mappedRange.offset = vmaAI.offset + offset;
-	mappedRange.size = size;
-	auto result = vkFlushMappedMemoryRanges(m_Device.GetHandle(), 1, &mappedRange);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return;
-	}
-}
-
-
-void BvBufferVk::Invalidate(const u64 size, const u64 offset) const
-{
-	if (!m_NeedsFlush)
-	{
-		return;
-	}
-
-	auto vma = m_Device.GetAllocator();
-	VmaAllocationInfo vmaAI;
-	vmaGetAllocationInfo(vma, m_VMAAllocation, &vmaAI);
-
-	VkMappedMemoryRange mappedRange = {};
-	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	mappedRange.memory = vmaAI.deviceMemory;
-	mappedRange.offset = offset;
-	mappedRange.size = size;
-	auto result = vkInvalidateMappedMemoryRanges(m_Device.GetHandle(), 1, &mappedRange);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return;
-	}
+	vmaFreeMemory(m_pDevice->GetAllocator(), m_VMAAllocation);
 }
 
 
@@ -200,7 +206,7 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	bufferDesc.m_Size = pInitData->m_Size;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 	
-	BvBufferVk srcBuffer(m_Device, bufferDesc, pInitData);
+	BvBufferVk srcBuffer(m_pDevice, bufferDesc, pInitData);
 	VkBufferCopy copyRegion{};
 	copyRegion.size = std::min(m_BufferDesc.m_Size, pInitData->m_Size);
 

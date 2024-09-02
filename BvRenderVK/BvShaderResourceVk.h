@@ -12,18 +12,20 @@ class BvDescriptorPoolVk;
 class BvShaderResourceLayoutVk final : public BvShaderResourceLayout
 {
 public:
-	BvShaderResourceLayoutVk(const BvRenderDeviceVk& device, u32 shaderResourceCount,
+	BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, u32 shaderResourceCount,
 		const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc);
 	~BvShaderResourceLayoutVk();
 
-	void Create();
-	void Destroy();
-
+	BvRenderDevice* GetDevice() override;
 	BV_INLINE const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const { return m_Layouts; }
 	BV_INLINE VkPipelineLayout GetPipelineLayoutHandle() const { return m_PipelineLayout; }
 
 private:
-	const BvRenderDeviceVk& m_Device;
+	void Create();
+	void Destroy();
+
+private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvRobinMap<u32, VkDescriptorSetLayout> m_Layouts{};
 	VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
 };

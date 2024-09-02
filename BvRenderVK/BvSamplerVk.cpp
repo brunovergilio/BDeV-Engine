@@ -4,8 +4,8 @@
 #include "BvUtilsVk.h"
 
 
-BvSamplerVk::BvSamplerVk(const BvRenderDeviceVk & device, const SamplerDesc & samplerDesc)
-	: BvSampler(samplerDesc), m_Device(device)
+BvSamplerVk::BvSamplerVk(BvRenderDeviceVk* pDevice, const SamplerDesc & samplerDesc)
+	: BvSampler(samplerDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -14,6 +14,12 @@ BvSamplerVk::BvSamplerVk(const BvRenderDeviceVk & device, const SamplerDesc & sa
 BvSamplerVk::~BvSamplerVk()
 {
 	Destroy();
+}
+
+
+BvRenderDevice* BvSamplerVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -39,7 +45,7 @@ void BvSamplerVk::Create()
 	//samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
 	//samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
-	const auto& gpuInfo = m_Device.GetGPUInfo();
+	const auto& gpuInfo = m_pDevice->GetGPUInfo();
 	bool usesCustomBorderColor = m_SamplerDesc.m_BorderColor[0] != 0.0f
 		|| m_SamplerDesc.m_BorderColor[1] != 0.0f
 		|| m_SamplerDesc.m_BorderColor[2] != 0.0f
@@ -60,7 +66,7 @@ void BvSamplerVk::Create()
 		samplerCreateInfo.pNext = &customBorderColorCI;
 	}
 
-	auto result = vkCreateSampler(m_Device.GetHandle(), &samplerCreateInfo, nullptr, &m_Sampler);
+	auto result = vkCreateSampler(m_pDevice->GetHandle(), &samplerCreateInfo, nullptr, &m_Sampler);
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
@@ -72,7 +78,7 @@ void BvSamplerVk::Destroy()
 {
 	if (m_Sampler)
 	{
-		vkDestroySampler(m_Device.GetHandle(), m_Sampler, nullptr);
+		vkDestroySampler(m_pDevice->GetHandle(), m_Sampler, nullptr);
 		m_Sampler = VK_NULL_HANDLE;
 	}
 }

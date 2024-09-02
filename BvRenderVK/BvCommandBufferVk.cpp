@@ -177,8 +177,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		}
 
 		const auto& renderTarget = pRenderTargets[i];
-		auto pView = static_cast<BvTextureViewVk*>(renderTarget.m_pView);
-		auto pTexture = static_cast<BvTexture*>(renderTarget.m_pView->GetTexture());
+		auto pView = TO_VK(renderTarget.m_pView);
+		auto pTexture = TO_VK(renderTarget.m_pView->GetTexture());
 		auto& desc = renderTarget.m_pView->GetTexture()->GetDesc();
 		auto& viewDesc = renderTarget.m_pView->GetDesc();
 
@@ -221,9 +221,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 
 				// If any of the view objects happen to be a swap chain texture, we need to request
 				// a semaphore from the swap chain
-				if (pTexture->GetClassType() == BvTexture::ClassType::kSwapChainTexture)
+				if (auto pSwapChain = pTexture->GetSwapChain())
 				{
-					auto pSwapChain = static_cast<BvSwapChainTextureVk*>(pTexture)->GetSwapChain();
 					m_SwapChains.EmplaceBack(pSwapChain);
 				}
 				++colorAttachmentCount;
@@ -284,12 +283,12 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			}
 		}
 
-		auto pTextureVk = static_cast<BvTextureVk*>(pTexture);
+		auto textureHandle = pTexture->GetHandle();
 		if (renderTarget.m_StateBefore != renderTarget.m_State)
 		{
 			auto& barrier = m_PreRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
-			barrier.image = pTextureVk->GetHandle();
+			barrier.image = textureHandle;
 			barrier.subresourceRange.aspectMask = aspectFlags;
 			barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
 			barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;
@@ -312,7 +311,7 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		{
 			auto& barrier = m_PostRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
-			barrier.image = pTextureVk->GetHandle();
+			barrier.image = textureHandle;
 			barrier.subresourceRange.aspectMask = aspectFlags;
 			barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
 			barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;

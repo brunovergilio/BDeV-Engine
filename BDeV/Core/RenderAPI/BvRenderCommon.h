@@ -10,6 +10,15 @@ class BvBuffer;
 class BvTexture;
 class BvTextureView;
 class BvCommandContext;
+class BvRenderDevice;
+
+
+class BvRenderDeviceChild
+{
+public:
+	virtual ~BvRenderDeviceChild() {}
+	virtual BvRenderDevice* GetDevice() = 0;
+};
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -560,7 +569,7 @@ enum class TextureCreateFlags : u8
 	kNone = 0,
 	kCreateCubemap = BvBit(0),
 	kReserveMips = BvBit(1),
-	kGenerateMips = BvBit(2)
+	kGenerateMips = kReserveMips | BvBit(2)
 };
 BV_USE_ENUM_CLASS_OPERATORS(TextureCreateFlags);
 

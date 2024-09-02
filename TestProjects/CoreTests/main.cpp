@@ -129,10 +129,12 @@ constexpr BvUUID fa3 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a5cdba2b");
 
 void Tryme()
 {
-	class ExType : public BvQueryable
+	class ExType : public IBvRefCounted
 	{
 	public:
-		ExType() {}
+		BV_IMPLEMENT_QUERY_INTERFACE(ExType);
+
+		ExType(IBvMemoryArena* pArena) : IBvRefCounted(pArena) {}
 		~ExType()
 		{
 			printf("bye!\n");
@@ -142,9 +144,15 @@ void Tryme()
 		{
 			printf("%s\n", p);
 		}
+
+		static void Create(void** pObj)
+		{
+			*pObj = BV_IBVOBJECT_CREATE(ExType, nullptr);
+		}
 	};
 
-	auto* pObj = BvNew(ExType);
+	ExType* pObj = nullptr;
+	ExType::Create(&pObj);
 	BvObjectPtr<ExType> ptr;
 	ptr.Attach(pObj);
 	ptr->PrintMe("huhuh");

@@ -6,11 +6,11 @@
 #include "BvUtilsVk.h"
 
 
-VkShaderModule CreateShaderModule(const BvRenderDeviceVk & device, size_t size, const u8 * pShaderCode, const VkShaderStageFlagBits shaderStage);
+VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8 * pShaderCode, const VkShaderStageFlagBits shaderStage);
 
 
-BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(const BvRenderDeviceVk & device, const GraphicsPipelineStateDesc & pipelineStateDesc, const VkPipelineCache pipelineCache)
-	: BvGraphicsPipelineState(pipelineStateDesc), m_Device(device), m_PipelineCache(pipelineCache)
+BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc & pipelineStateDesc, const VkPipelineCache pipelineCache)
+	: BvGraphicsPipelineState(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
 {
 	Create();
 }
@@ -19,6 +19,12 @@ BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(const BvRenderDeviceVk & de
 BvGraphicsPipelineStateVk::~BvGraphicsPipelineStateVk()
 {
 	Destroy();
+}
+
+
+BvRenderDevice* BvGraphicsPipelineStateVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -56,7 +62,7 @@ void BvGraphicsPipelineStateVk::Create()
 	vertexDivisorStateCI.pVertexBindingDivisors = divisorDescs.Data();
 
 	VkPipelineVertexInputStateCreateInfo vertexCI{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-	vertexCI.pNext = m_Device.GetGPUInfo().m_FeaturesSupported.vertexAttributeDivisor && divisorDescs.Size() > 0 ? &vertexDivisorStateCI : nullptr;
+	vertexCI.pNext = m_pDevice->GetGPUInfo().m_FeaturesSupported.vertexAttributeDivisor && divisorDescs.Size() > 0 ? &vertexDivisorStateCI : nullptr;
 	if (bindingDescs.Size() > 0)
 	{
 		vertexCI.vertexBindingDescriptionCount = (u32)bindingDescs.Size();
@@ -91,16 +97,16 @@ void BvGraphicsPipelineStateVk::Create()
 	rasterizerCI.lineWidth = 1.0f;
 
 	VkPipelineRasterizationDepthClipStateCreateInfoEXT depthClip{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
-	if (m_Device.GetGPUInfo().m_ExtendedFeatures.depthClibEnableFeature.depthClipEnable)
+	if (m_pDevice->GetGPUInfo().m_ExtendedFeatures.depthClibEnableFeature.depthClipEnable)
 	{
 		depthClip.depthClipEnable = VK_TRUE;
 		rasterizerCI.pNext = &depthClip;
 	}
 
 	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
-	if (m_Device.GetGPUInfo().m_FeaturesSupported.conservativeRasterization && m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
+	if (m_pDevice->GetGPUInfo().m_FeaturesSupported.conservativeRasterization && m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
 	{
-		const auto & conservativeRasterProps = m_Device.GetGPUInfo().m_ExtendedProperties.convervativeRasterizationProps;
+		const auto & conservativeRasterProps = m_pDevice->GetGPUInfo().m_ExtendedProperties.convervativeRasterizationProps;
 
 		if (conservativeRasterProps.maxExtraPrimitiveOverestimationSize > 0.0f)
 		{
@@ -188,11 +194,11 @@ void BvGraphicsPipelineStateVk::Create()
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
-	if (m_Device.GetGPUInfo().m_DeviceFeatures.features.depthBounds)
+	if (m_pDevice->GetGPUInfo().m_DeviceFeatures.features.depthBounds)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
 	}
-	if (m_Device.GetGPUInfo().m_FeaturesSupported.fragmentShading)
+	if (m_pDevice->GetGPUInfo().m_FeaturesSupported.fragmentShading)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
 	}
@@ -207,7 +213,7 @@ void BvGraphicsPipelineStateVk::Create()
 		shaderStages[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStages[i].pName = m_PipelineStateDesc.m_ShaderStages[i].m_pEntryPoint;
 		shaderStages[i].stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_ShaderStages[i].m_ShaderStage);
-		shaderStages[i].module = CreateShaderModule(m_Device, m_PipelineStateDesc.m_ShaderStages[i].m_ByteCodeSize,
+		shaderStages[i].module = CreateShaderModule(m_pDevice->GetHandle(), m_PipelineStateDesc.m_ShaderStages[i].m_ByteCodeSize,
 			m_PipelineStateDesc.m_ShaderStages[i].m_pByteCode, shaderStages[i].stage);
 	}
 
@@ -231,11 +237,11 @@ void BvGraphicsPipelineStateVk::Create()
 	pipelineCI.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineCI.basePipelineIndex = -1;
 
-	auto result = vkCreateGraphicsPipelines(m_Device.GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
+	auto result = vkCreateGraphicsPipelines(m_pDevice->GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
 
 	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderStages.Size(); i++)
 	{
-		vkDestroyShaderModule(m_Device.GetHandle(), shaderStages[i].module, nullptr);
+		vkDestroyShaderModule(m_pDevice->GetHandle(), shaderStages[i].module, nullptr);
 	}
 }
 
@@ -244,16 +250,16 @@ void BvGraphicsPipelineStateVk::Destroy()
 {
 	if (m_Pipeline)
 	{
-		vkDestroyPipeline(m_Device.GetHandle(), m_Pipeline, nullptr);
+		vkDestroyPipeline(m_pDevice->GetHandle(), m_Pipeline, nullptr);
 		m_Pipeline = nullptr;
 		m_PipelineCache = nullptr;
 	}
 }
 
 
-BvComputePipelineStateVk::BvComputePipelineStateVk(const BvRenderDeviceVk & device, const ComputePipelineStateDesc & pipelineStateDesc,
+BvComputePipelineStateVk::BvComputePipelineStateVk(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc & pipelineStateDesc,
 	const VkPipelineCache pipelineCache)
-	: BvComputePipelineState(pipelineStateDesc), m_Device(device), m_PipelineCache(pipelineCache)
+	: BvComputePipelineState(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
 {
 	Create();
 }
@@ -265,6 +271,12 @@ BvComputePipelineStateVk::~BvComputePipelineStateVk()
 }
 
 
+BvRenderDevice* BvComputePipelineStateVk::GetDevice()
+{
+	return m_pDevice;
+}
+
+
 void BvComputePipelineStateVk::Create()
 {
 	VkComputePipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
@@ -272,13 +284,13 @@ void BvComputePipelineStateVk::Create()
 	pipelineCI.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	pipelineCI.stage.pName = m_PipelineStateDesc.m_ShaderByteCodeDesc.m_pEntryPoint;
 	pipelineCI.stage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_ShaderByteCodeDesc.m_ShaderStage);
-	pipelineCI.stage.module = CreateShaderModule(m_Device, m_PipelineStateDesc.m_ShaderByteCodeDesc.m_ByteCodeSize,
+	pipelineCI.stage.module = CreateShaderModule(m_pDevice->GetHandle(), m_PipelineStateDesc.m_ShaderByteCodeDesc.m_ByteCodeSize,
 	m_PipelineStateDesc.m_ShaderByteCodeDesc.m_pByteCode, pipelineCI.stage.stage);
 	pipelineCI.basePipelineIndex = -1;
 
-	auto result = vkCreateComputePipelines(m_Device.GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
+	auto result = vkCreateComputePipelines(m_pDevice->GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
 
-	vkDestroyShaderModule(m_Device.GetHandle(), pipelineCI.stage.module, nullptr);
+	vkDestroyShaderModule(m_pDevice->GetHandle(), pipelineCI.stage.module, nullptr);
 }
 
 
@@ -286,14 +298,14 @@ void BvComputePipelineStateVk::Destroy()
 {
 	if (m_Pipeline)
 	{
-		vkDestroyPipeline(m_Device.GetHandle(), m_Pipeline, nullptr);
+		vkDestroyPipeline(m_pDevice->GetHandle(), m_Pipeline, nullptr);
 		m_Pipeline = nullptr;
 		m_PipelineCache = nullptr;
 	}
 }
 
 
-VkShaderModule CreateShaderModule(const BvRenderDeviceVk & device, size_t size, const u8 * pShaderCode,
+VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8 * pShaderCode,
 	const VkShaderStageFlagBits shaderStage)
 {
 	VkShaderModuleCreateInfo shaderCI{};
@@ -302,7 +314,7 @@ VkShaderModule CreateShaderModule(const BvRenderDeviceVk & device, size_t size, 
 	shaderCI.codeSize = size;
 
 	VkShaderModule shaderModule = VK_NULL_HANDLE;
-	vkCreateShaderModule(device.GetHandle(), &shaderCI, nullptr, &shaderModule);
+	vkCreateShaderModule(device, &shaderCI, nullptr, &shaderModule);
 
 	return shaderModule;
 }

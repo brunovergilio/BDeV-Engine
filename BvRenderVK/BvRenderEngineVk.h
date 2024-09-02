@@ -9,7 +9,7 @@ class BvDebugReportVk;
 class BvRenderDeviceVk;
 
 
-struct BvRenderDeviceCreateDescVk
+struct BvRenderDeviceCreateDescVk : BvRenderDeviceCreateDesc
 {
 	u32 m_GraphicsQueueCount = 1;
 	u32 m_ComputeQueueCount = 0;
@@ -23,23 +23,21 @@ class BvRenderEngineVk final : public BvRenderEngine
 	BV_NOCOPYMOVE(BvRenderEngineVk);
 
 public:
-	BvRenderEngineVk(IBvMemoryArena* pArena);
+	BvRenderEngineVk();
 	~BvRenderEngineVk();
-
-	bool Initialize();
-	void Shutdown();
 
 	BV_INLINE u32 GetSupportedGPUCount() const override { return m_GPUs.Size(); }
 	void GetGPUInfo(u32 index, BvGPUInfo& info) const override;
-	BvRenderDevice* CreateRenderDevice(u32 gpuIndex = 0) override;
-	BvRenderDevice* CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, u32 gpuIndex = 0);
+	BvRenderDevice* CreateRenderDevice(const BvRenderDeviceCreateDesc* pDeviceCreateDesc) override;
 	
-	BV_INLINE void SetName(const char* pName) override {}
+	BvRenderDevice* CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc);
 
 	BV_INLINE VkInstance GetInstance() const { return m_Instance; }
 
-
 private:
+	bool Create();
+	void Destroy();
+
 	bool IsPhysicalDeviceExtensionSupported(const BvGPUInfoVk& gpu, const char* pPhysicalDeviceExtension);
 	bool SetupDeviceExtraPropertiesAndFeatures(BvGPUInfoVk& gpu);
 	void SetupQueueInfo(BvGPUInfoVk& gpu);
@@ -60,5 +58,6 @@ namespace BvRenderVk
 	extern "C"
 	{
 		BV_API BvRenderEngine* CreateRenderEngine();
+		BV_API void DestroyRenderEngine(BvRenderEngine* pEngine);
 	}
 }

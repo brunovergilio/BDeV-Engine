@@ -13,16 +13,19 @@ class BvTextureViewVk final : public BvTextureView
 	BV_NOCOPYMOVE(BvTextureViewVk);
 
 public:
-	BvTextureViewVk(const BvRenderDeviceVk & device, const TextureViewDesc & textureViewDesc);
-	~BvTextureViewVk() override;
-
-	bool Create();
-	void Destroy();
+	BvTextureViewVk(BvRenderDeviceVk* pDevice, const TextureViewDesc & textureViewDesc);
+	~BvTextureViewVk();
+	
+	BvRenderDevice* GetDevice() override;
 
 	BV_INLINE VkImageView GetHandle() const { return m_View; }
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	bool Create();
+	void Destroy();
+
+private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkImageView m_View = VK_NULL_HANDLE;
 };
 

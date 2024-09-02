@@ -3,14 +3,20 @@
 #include "BvTypeConversionsVk.h"
 
 
-BvQueryVk::BvQueryVk(QueryType queryType, u32 frameCount)
-	: m_QueryType(queryType), m_QueryData(frameCount)
+BvQueryVk::BvQueryVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 frameCount)
+	: m_pDevice(pDevice), m_QueryType(queryType), m_QueryData(frameCount)
 {
 }
 
 
 BvQueryVk::~BvQueryVk()
 {
+}
+
+
+BvRenderDevice* BvQueryVk::GetDevice()
+{
+	return m_pDevice;
 }
 
 
@@ -69,33 +75,6 @@ BvQueryHeapVk::~BvQueryHeapVk()
 }
 
 
-void BvQueryHeapVk::Create(QueryType queryType, u32 queryCount, u32 frameCount)
-{
-	VkQueryPoolCreateInfo qpCI{ VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
-	qpCI.queryCount = queryCount * frameCount;
-	qpCI.queryType = GetVkQueryType(queryType);
-
-	auto result = vkCreateQueryPool(m_Device, &qpCI, nullptr, &m_Pool);
-	if (result != VK_SUCCESS)
-	{
-		// TODO: Handle error
-		return;
-	}
-
-	vkResetQueryPool(m_Device, m_Pool, 0, queryCount * frameCount);
-}
-
-
-void BvQueryHeapVk::Destroy()
-{
-	if (m_Pool)
-	{
-		vkDestroyQueryPool(m_Device, m_Pool, nullptr);
-		m_Pool = nullptr;
-	}
-}
-
-
 u32 BvQueryHeapVk::Allocate(u32 queryCount, u32 frameIndex)
 {
 	auto index = kU32Max;
@@ -130,6 +109,33 @@ void BvQueryHeapVk::GetResults(void* pData, u32 queryIndex, u32 queryCount, u64 
 	if (result != VK_SUCCESS && result != VK_NOT_READY)
 	{
 		// TODO: Handle error
+	}
+}
+
+
+void BvQueryHeapVk::Create(QueryType queryType, u32 queryCount, u32 frameCount)
+{
+	VkQueryPoolCreateInfo qpCI{ VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+	qpCI.queryCount = queryCount * frameCount;
+	qpCI.queryType = GetVkQueryType(queryType);
+
+	auto result = vkCreateQueryPool(m_Device, &qpCI, nullptr, &m_Pool);
+	if (result != VK_SUCCESS)
+	{
+		// TODO: Handle error
+		return;
+	}
+
+	vkResetQueryPool(m_Device, m_Pool, 0, queryCount * frameCount);
+}
+
+
+void BvQueryHeapVk::Destroy()
+{
+	if (m_Pool)
+	{
+		vkDestroyQueryPool(m_Device, m_Pool, nullptr);
+		m_Pool = nullptr;
 	}
 }
 

@@ -13,16 +13,19 @@ class BvBufferViewVk final : public BvBufferView
 	BV_NOCOPYMOVE(BvBufferViewVk);
 
 public:
-	BvBufferViewVk(const BvRenderDeviceVk & device, const BufferViewDesc & bufferViewDesc);
-	~BvBufferViewVk() override;
+	BvBufferViewVk(BvRenderDeviceVk* pDevice, const BufferViewDesc & bufferViewDesc);
+	~BvBufferViewVk();
 
-	void Create();
-	void Destroy();
+	BvRenderDevice* GetDevice() override;
 
 	BV_INLINE VkBufferView GetHandle() const { return m_View; }
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	void Create();
+	void Destroy();
+
+private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkBufferView m_View = VK_NULL_HANDLE;
 };
 

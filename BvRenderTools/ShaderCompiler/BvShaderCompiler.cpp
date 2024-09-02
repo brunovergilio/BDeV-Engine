@@ -1,8 +1,8 @@
 #include "BvShaderCompiler.h"
-#include "BDeV/System/File/BvFile.h"
 #include "SPIRV/BvSPIRVCompiler.h"
-#include "BDeV/Container/BvRobinSet.h"
-#include "BDeV/System/File/BvPath.h"
+#include "BDeV/Core/System/File/BvFile.h"
+#include "BDeV/Core/Container/BvRobinSet.h"
+#include "BDeV/Core/System/File/BvPath.h"
 
 
 class BvShaderBlob final : public IBvShaderBlob
@@ -119,6 +119,7 @@ bool BvShaderCompiler::CompileFromMemory(const u8* const pBlob, u32 blobSize, co
 void BvShaderCompiler::DestroyShader(IBvShaderBlob*& pShaderBlob)
 {
 	auto pPtr = static_cast<BvShaderBlob*>(pShaderBlob);
+	m_Shaders.Erase(pPtr);
 	delete pPtr;
 
 	pShaderBlob = nullptr;

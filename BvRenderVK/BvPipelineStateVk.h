@@ -11,17 +11,19 @@ class BvRenderDeviceVk;
 class BvGraphicsPipelineStateVk final : public BvGraphicsPipelineState
 {
 public:
-	BvGraphicsPipelineStateVk(const BvRenderDeviceVk & device, const GraphicsPipelineStateDesc & pipelineStateDesc,
+	BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc,
 		const VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	~BvGraphicsPipelineStateVk();
 
-	void Create();
-	void Destroy();
-
+	BvRenderDevice* GetDevice() override;
 	BV_INLINE VkPipeline GetHandle() const { return m_Pipeline; }
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	void Create();
+	void Destroy();
+
+private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	VkPipelineCache m_PipelineCache = VK_NULL_HANDLE;
 };
@@ -30,17 +32,19 @@ private:
 class BvComputePipelineStateVk final : public BvComputePipelineState
 {
 public:
-	BvComputePipelineStateVk(const BvRenderDeviceVk & device, const ComputePipelineStateDesc & pipelineStateDesc,
+	BvComputePipelineStateVk(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc& pipelineStateDesc,
 		const VkPipelineCache pipelineCache);
 	~BvComputePipelineStateVk();
 
-	void Create();
-	void Destroy();
-
+	BvRenderDevice* GetDevice() override;
 	BV_INLINE VkPipeline GetHandle() const { return m_Pipeline; }
 
 private:
-	const BvRenderDeviceVk & m_Device;
+	void Create();
+	void Destroy();
+
+private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	VkPipelineCache m_PipelineCache = VK_NULL_HANDLE;
 };

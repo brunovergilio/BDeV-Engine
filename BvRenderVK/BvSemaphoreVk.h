@@ -20,16 +20,17 @@ public:
 	BvSemaphoreVk& operator=(BvSemaphoreVk&& rhs) noexcept;
 	~BvSemaphoreVk();
 
-	void Create(u64 initialValue, bool isTimelineSemaphore);
-	void Destroy();
-
 	void Signal(u64 value);
 	bool Wait(u64 value, u64 timeout = kU64Max);
 	u64 GetCompletedValue();
 
 	BV_INLINE VkSemaphore GetHandle() const { return m_Semaphore; }
+
+private:
+	void Create(u64 initialValue, bool isTimelineSemaphore);
+	void Destroy();
 	
-protected:
+private:
 	VkDevice m_Device = VK_NULL_HANDLE;
 	VkSemaphore m_Semaphore = VK_NULL_HANDLE;
 };

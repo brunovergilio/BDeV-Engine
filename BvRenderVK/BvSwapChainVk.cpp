@@ -7,10 +7,11 @@
 #include "BDeV/Core/System/Window/BvWindow.h"
 #include "BvFramebufferVk.h"
 #include "BvCommandContextVk.h"
+#include "BvRenderDeviceVk.h"
 
 
-BvSwapChainVk::BvSwapChainVk(const BvRenderDeviceVk& device, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext)
-	: BvSwapChain(pWindow, swapChainParams), m_Device(device), m_pCommandQueue(static_cast<BvCommandContextVk*>(pContext)->GetCommandQueue())
+BvSwapChainVk::BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext)
+	: BvSwapChain(pWindow, swapChainParams), m_pDevice(pDevice), m_pCommandQueue(static_cast<BvCommandContextVk*>(pContext)->GetCommandQueue())
 {
 	CreateSurface();
 
@@ -26,18 +27,67 @@ BvSwapChainVk::~BvSwapChainVk()
 }
 
 
+void BvSwapChainVk::Present(bool vSync)
+{
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext = nullptr;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &m_Swapchain;
+	presentInfo.pImageIndices = &m_CurrImageIndex;
+
+	VkSemaphore semaphores[] = { GetCurrentRenderCompleteSemaphore()->GetHandle() };
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = semaphores;
+
+	auto result = VK_SUCCESS;
+	if (vSync == m_SwapChainDesc.m_VSync)
+	{
+		result = vkQueuePresentKHR(m_pCommandQueue->GetHandle(), &presentInfo);
+	}
+	else
+	{
+		m_SwapChainDesc.m_VSync = vSync;
+		result = VkResult::VK_ERROR_OUT_OF_DATE_KHR;
+	}
+
+	if (result != VkResult::VK_SUCCESS)
+	{
+		if (result == VkResult::VK_SUBOPTIMAL_KHR || result == VkResult::VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			Resize();
+			return;
+		}
+		else
+		{
+			BvDebugVkResult(result);
+		}
+	}
+
+	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % (u32)m_SwapChainTextures.Size();
+
+	AcquireImage();
+}
+
+
+BvRenderDevice* BvSwapChainVk::GetDevice()
+{
+	return m_pDevice;
+}
+
+
 bool BvSwapChainVk::Create()
 {
 	for (auto pView : m_SwapChainTextureViews)
 	{
-		m_Device.GetFramebufferManager()->RemoveFramebuffersWithView(pView->GetHandle());
+		m_pDevice->GetFramebufferManager()->RemoveFramebuffersWithView(pView->GetHandle());
 	}
 
 	u32 width = m_pWindow->GetWidth();
 	u32 height = m_pWindow->GetHeight();
 
-	auto device = m_Device.GetHandle();
-	auto physicalDevice = m_Device.GetGPUInfo().m_PhysicalDevice;
+	auto device = m_pDevice->GetHandle();
+	auto physicalDevice = m_pDevice->GetGPUInfo().m_PhysicalDevice;
 
 	VkBool32 presentationSupported = VK_FALSE;
 	u32 queueFamilyIndex = m_pCommandQueue->GetFamilyIndex();
@@ -222,7 +272,7 @@ bool BvSwapChainVk::Create()
 		VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
 	};
 
-	for (auto & compositeAlphaFlag : compositeAlphaFlags)
+	for (auto& compositeAlphaFlag : compositeAlphaFlags)
 	{
 		if (surfCaps.supportedCompositeAlpha & compositeAlphaFlag)
 		{
@@ -245,7 +295,7 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
 	swapchainCreateInfo.imageArrayLayers = 1;
 
-	swapchainCreateInfo.imageSharingMode = queueFamilyIndex == m_Device.GetGPUInfo().m_GraphicsQueueInfo.m_QueueFamilyIndex ?
+	swapchainCreateInfo.imageSharingMode = queueFamilyIndex == m_pDevice->GetGPUInfo().m_GraphicsQueueInfo.m_QueueFamilyIndex ?
 		VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
 	swapchainCreateInfo.queueFamilyIndexCount = 0;
 	swapchainCreateInfo.pQueueFamilyIndices = nullptr;
@@ -306,10 +356,10 @@ bool BvSwapChainVk::Create()
 
 	for (auto i = 0u; i < imageCount; i++)
 	{
-		m_SwapChainTextures[i] = new BvSwapChainTextureVk(this, textureDesc, swapChainImages[i]);
+		m_SwapChainTextures[i] = new BvTextureVk(m_pDevice, this, textureDesc, swapChainImages[i]);
 
 		textureViewDesc.m_pTexture = m_SwapChainTextures[i];
-		m_SwapChainTextureViews[i] = new BvTextureViewVk(m_Device, textureViewDesc);
+		m_SwapChainTextureViews[i] = new BvTextureViewVk(m_pDevice, textureViewDesc);
 	}
 
 	CreateSynchronizationResources();
@@ -326,69 +376,26 @@ void BvSwapChainVk::Destroy()
 
 	DestroySynchronizationResources();
 
-	for (auto && pTextureView : m_SwapChainTextureViews)
+	for (auto&& pTextureView : m_SwapChainTextureViews)
 	{
-		auto pResource = static_cast<BvTextureViewVk *>(pTextureView);
+		auto pResource = static_cast<BvTextureViewVk*>(pTextureView);
 		delete pResource;
 		pTextureView = nullptr;
 	}
 
-	for (auto && pTexture : m_SwapChainTextures)
+	for (auto&& pTexture : m_SwapChainTextures)
 	{
 		delete pTexture;
 	}
 
-	vkDestroySwapchainKHR(m_Device.GetHandle(), m_Swapchain, nullptr);
+	vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_Swapchain, nullptr);
 	m_Swapchain = VK_NULL_HANDLE;
-}
-
-
-void BvSwapChainVk::Present(bool vSync)
-{
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = nullptr;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &m_Swapchain;
-	presentInfo.pImageIndices = &m_CurrImageIndex;
-
-	VkSemaphore semaphores[] = { GetCurrentRenderCompleteSemaphore()->GetHandle() };
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = semaphores;
-
-	auto result = VK_SUCCESS;
-	if (vSync == m_SwapChainDesc.m_VSync)
-	{
-		result = vkQueuePresentKHR(m_pCommandQueue->GetHandle(), &presentInfo);
-	}
-	else
-	{
-		m_SwapChainDesc.m_VSync = vSync;
-		result = VkResult::VK_ERROR_OUT_OF_DATE_KHR;
-	}
-
-	if (result != VkResult::VK_SUCCESS)
-	{
-		if (result == VkResult::VK_SUBOPTIMAL_KHR || result == VkResult::VK_ERROR_OUT_OF_DATE_KHR)
-		{
-			Resize();
-			return;
-		}
-		else
-		{
-			BvDebugVkResult(result);
-		}
-	}
-
-	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % (u32)m_SwapChainTextures.Size();
-
-	AcquireImage();
 }
 
 
 void BvSwapChainVk::DestroySurface()
 {
-	vkDestroySurfaceKHR(m_Device.GetInstanceHandle(), m_Surface, nullptr);
+	vkDestroySurfaceKHR(m_pDevice->GetInstanceHandle(), m_Surface, nullptr);
 	m_Surface = VK_NULL_HANDLE;
 }
 
@@ -407,7 +414,7 @@ void BvSwapChainVk::Resize()
 
 void BvSwapChainVk::AcquireImage()
 {
-	auto result = vkAcquireNextImageKHR(m_Device.GetHandle(), m_Swapchain, UINT64_MAX,
+	auto result = vkAcquireNextImageKHR(m_pDevice->GetHandle(), m_Swapchain, UINT64_MAX,
 		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex].GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
 	if (result != VkResult::VK_SUCCESS)
 	{
@@ -437,13 +444,13 @@ void BvSwapChainVk::CreateSynchronizationResources()
 	m_ImageAcquiredSemaphores.Reserve(m_SwapChainTextures.Size());
 	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
 	{
-		m_ImageAcquiredSemaphores.EmplaceBack(BvSemaphoreVk(m_Device.GetHandle(), 0, false));
+		m_ImageAcquiredSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice->GetHandle(), 0, false));
 	}
 
 	m_RenderCompleteSemaphores.Reserve(m_SwapChainTextures.Size());
 	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
 	{
-		m_RenderCompleteSemaphores.EmplaceBack(BvSemaphoreVk(m_Device.GetHandle(), 0, false));
+		m_RenderCompleteSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice->GetHandle(), 0, false));
 	}
 }
 

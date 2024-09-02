@@ -22,7 +22,7 @@
 
 
 BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, BvGPUInfoVk& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
-	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_pFactory(new BvRenderDeviceFactory())
+	: m_pEngine(pEngine), m_GPUInfo(gpuInfo)
 {
 	Create(deviceDesc);
 }
@@ -34,197 +34,75 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 }
 
 
-void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc)
-{
-	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
-		"No device queues");
-
-	constexpr u32 kMaxQueueCount = 16;
-	BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount, "Graphics queue count greater than limit");
-	BvAssert(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount, "Compute queue count greater than limit");
-	BvAssert(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount, "Transfer queue count greater than limit");
-
-	constexpr float queuePriorities[kMaxQueueCount] =
-	{
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-	};
-
-	// ===========================================================
-	// Prepare Device Queues and create the logical device
-	constexpr auto kMaxQueueTypes = 3;
-	BvFixedVector<VkDeviceQueueCreateInfo, kMaxQueueTypes> queueInfos;
-
-	VkDeviceQueueCreateInfo queueCreateInfo{};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.pQueuePriorities = queuePriorities;
-	if (deviceCreateDesc.m_GraphicsQueueCount > 0)
-	{
-		BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount, "Not enough graphics queues available");
-		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex;
-		queueCreateInfo.queueCount = m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount;
-		queueInfos.PushBack(queueCreateInfo);
-		
-		m_GraphicsContexts.Resize(deviceCreateDesc.m_GraphicsQueueCount);
-	}
-	if (deviceCreateDesc.m_ComputeQueueCount > 0)
-	{
-		BvAssert(deviceCreateDesc.m_ComputeQueueCount <= m_GPUInfo.m_ComputeQueueInfo.m_QueueCount, "Not enough compute queues available");
-		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex;
-		queueCreateInfo.queueCount = m_GPUInfo.m_ComputeQueueInfo.m_QueueCount;
-		queueInfos.PushBack(queueCreateInfo);
-		
-		m_ComputeContexts.Resize(deviceCreateDesc.m_ComputeQueueCount);
-	}
-	if (deviceCreateDesc.m_TransferQueueCount > 0)
-	{
-		BvAssert(deviceCreateDesc.m_TransferQueueCount <= m_GPUInfo.m_TransferQueueInfo.m_QueueCount, "Not enough transfer queues available");
-		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex;
-		queueCreateInfo.queueCount = m_GPUInfo.m_TransferQueueInfo.m_QueueCount;
-		queueInfos.PushBack(queueCreateInfo);
-		
-		m_TransferContexts.Resize(deviceCreateDesc.m_TransferQueueCount);
-	}
-
-	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-	//deviceCreateInfo.pEnabledFeatures = nullptr;
-	deviceCreateInfo.pNext = &m_GPUInfo.m_DeviceFeatures;
-	deviceCreateInfo.pQueueCreateInfos = queueInfos.Data();
-	deviceCreateInfo.queueCreateInfoCount = static_cast<u32>(queueInfos.Size());
-	deviceCreateInfo.ppEnabledExtensionNames = m_GPUInfo.m_EnabledExtensions.Data();
-	deviceCreateInfo.enabledExtensionCount = static_cast<u32>(m_GPUInfo.m_EnabledExtensions.Size());
-
-	VkResult result = vkCreateDevice(m_GPUInfo.m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
-	BvAssert(result == VK_SUCCESS, "Couldn't create a logical device");
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return;
-	}
-
-	volkLoadDevice(m_Device);
-
-	m_GPUInfo.m_QueueFamilyIndices.Reserve(3);
-	for (auto i = 0; i < deviceCreateDesc.m_GraphicsQueueCount; i++)
-	{
-		m_GraphicsContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kGraphics, m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex, i);
-		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex);
-	}
-	for (auto i = 0; i < deviceCreateDesc.m_ComputeQueueCount; i++)
-	{
-		m_ComputeContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kCompute, m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex, i);
-		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex);
-	}
-	for (auto i = 0; i < deviceCreateDesc.m_TransferQueueCount; i++)
-	{
-		m_TransferContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kTransfer, m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex, i);
-		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex);
-	}
-
-	CreateVMA();
-
-	m_pFramebufferManager = new BvFramebufferManagerVk();
-
-	u32 querySizes[kQueryTypeCount]{ 16, 16, 16 };
-	m_pQueryHeapManager = new BvQueryHeapManagerVk(this, querySizes, 3);
-}
-
-
-void BvRenderDeviceVk::Destroy()
-{
-	vkDeviceWaitIdle(m_Device);
-
-	//m_pFactory->DestroyAllOfType<BvGraphicsPipelineStateVk>();
-	//m_pFactory->DestroyAllOfType<BvShaderResourceLayoutVk>();
-	//m_pFactory->DestroyAllOfType<BvRenderPassVk>();
-	//m_pFactory->DestroyAllOfType<BvTextureViewVk>();
-	//m_pFactory->DestroyAllOfType<BvTextureVk>();
-	//m_pFactory->DestroyAllOfType<BvBufferViewVk>();
-	//m_pFactory->DestroyAllOfType<BvBufferVk>();
-	//m_pFactory->DestroyAllOfType<BvSwapChainVk>();
-
-	if (m_pFactory)
-	{
-		delete m_pFactory;
-		m_pFactory = nullptr;
-	}
-
-	delete m_pFramebufferManager;
-
-	DestroyVMA();
-
-	if (m_Device)
-	{
-		vkDestroyDevice(m_Device, nullptr);
-		m_Device = VK_NULL_HANDLE;
-	}
-}
-
-
 BvSwapChain * BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext)
 {
-	return m_pFactory->Create<BvSwapChainVk>(*this, pWindow, swapChainDesc, pContext);
+	return BvNew(BvSwapChainVk, this, pWindow, swapChainDesc, pContext);
 }
 
 
 BvBuffer* BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData)
 {
-	return m_pFactory->Create<BvBufferVk>(*this, desc, pInitData);
+	return BvNew(BvBufferVk, this, desc, pInitData);
 }
 
 
 BvBufferView* BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc)
 {
-	return m_pFactory->Create<BvBufferViewVk>(*this, desc);
+	return BvNew(BvBufferViewVk, this, desc);
 }
 
 
 BvTexture* BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData)
 {
-	return m_pFactory->Create<BvTextureVk>(*this, desc, pInitData);
+	return BvNew(BvTextureVk, this, desc, pInitData);
 }
 
 
 BvTextureView* BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc)
 {
-	return m_pFactory->Create<BvTextureViewVk>(*this, desc);
+	return BvNew(BvTextureViewVk, this, desc);
 }
 
 
 BvSampler* BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc)
 {
-	return m_pFactory->Create<BvSamplerVk>(*this, desc);
+	return BvNew(BvSamplerVk, this, desc);
 }
 
 
-BvRenderPass * BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc & renderPassDesc)
+BvRenderPass* BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc)
 {
-	return m_pFactory->Create<BvRenderPassVk>(*this, renderPassDesc);
+	return BvNew(BvRenderPassVk, this, renderPassDesc);
 }
 
 
 BvShaderResourceLayout* BvRenderDeviceVk::CreateShaderResourceLayout(u32 shaderResourceCount,
 	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc)
 {
-	return m_pFactory->Create<BvShaderResourceLayoutVk>(*this, shaderResourceCount, pShaderResourceDescs, shaderResourceConstantDesc);
+	return BvNew(BvShaderResourceLayoutVk, this, shaderResourceCount, pShaderResourceDescs, shaderResourceConstantDesc);
 }
 
 
-BvGraphicsPipelineState * BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc)
+BvGraphicsPipelineState* BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
 {
-	return m_pFactory->Create<BvGraphicsPipelineStateVk>(*this, graphicsPipelineStateDesc, VkPipelineCache(VK_NULL_HANDLE));
+	return BvNew(BvGraphicsPipelineStateVk, this, graphicsPipelineStateDesc, VkPipelineCache(VK_NULL_HANDLE));
 }
 
 
 BvQuery* BvRenderDeviceVk::CreateQuery(QueryType queryType)
 {
-	return m_pFactory->Create<BvQueryVk>(queryType, 3);
+	return BvNew(BvQueryVk, this, queryType, 3);
+}
+
+
+void BvRenderDeviceVk::Release(BvRenderDeviceChild* pDeviceObj)
+{
+	auto index = m_DeviceObjects.Find(pDeviceObj);
+	if (index != kU64Max)
+	{
+		BvDelete(pDeviceObj);
+		m_DeviceObjects.Erase(index);
+	}
 }
 
 
@@ -402,6 +280,129 @@ bool BvRenderDeviceVk::SupportsQueryType(QueryType queryType, QueueFamilyType co
 bool BvRenderDeviceVk::IsFormatSupported(Format format) const
 {
 	return GetVkFormat(format) != VK_FORMAT_UNDEFINED;
+}
+
+
+void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc)
+{
+	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
+		"No device queues");
+
+	constexpr u32 kMaxQueueCount = 16;
+	BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount, "Graphics queue count greater than limit");
+	BvAssert(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount, "Compute queue count greater than limit");
+	BvAssert(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount, "Transfer queue count greater than limit");
+
+	constexpr float queuePriorities[kMaxQueueCount] =
+	{
+		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+	};
+
+	// ===========================================================
+	// Prepare Device Queues and create the logical device
+	constexpr auto kMaxQueueTypes = 3;
+	BvFixedVector<VkDeviceQueueCreateInfo, kMaxQueueTypes> queueInfos;
+
+	VkDeviceQueueCreateInfo queueCreateInfo{};
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.pQueuePriorities = queuePriorities;
+	if (deviceCreateDesc.m_GraphicsQueueCount > 0)
+	{
+		BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount, "Not enough graphics queues available");
+		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex;
+		queueCreateInfo.queueCount = m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount;
+		queueInfos.PushBack(queueCreateInfo);
+
+		m_GraphicsContexts.Resize(deviceCreateDesc.m_GraphicsQueueCount);
+	}
+	if (deviceCreateDesc.m_ComputeQueueCount > 0)
+	{
+		BvAssert(deviceCreateDesc.m_ComputeQueueCount <= m_GPUInfo.m_ComputeQueueInfo.m_QueueCount, "Not enough compute queues available");
+		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex;
+		queueCreateInfo.queueCount = m_GPUInfo.m_ComputeQueueInfo.m_QueueCount;
+		queueInfos.PushBack(queueCreateInfo);
+
+		m_ComputeContexts.Resize(deviceCreateDesc.m_ComputeQueueCount);
+	}
+	if (deviceCreateDesc.m_TransferQueueCount > 0)
+	{
+		BvAssert(deviceCreateDesc.m_TransferQueueCount <= m_GPUInfo.m_TransferQueueInfo.m_QueueCount, "Not enough transfer queues available");
+		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex;
+		queueCreateInfo.queueCount = m_GPUInfo.m_TransferQueueInfo.m_QueueCount;
+		queueInfos.PushBack(queueCreateInfo);
+
+		m_TransferContexts.Resize(deviceCreateDesc.m_TransferQueueCount);
+	}
+
+	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	//deviceCreateInfo.pEnabledFeatures = nullptr;
+	deviceCreateInfo.pNext = &m_GPUInfo.m_DeviceFeatures;
+	deviceCreateInfo.pQueueCreateInfos = queueInfos.Data();
+	deviceCreateInfo.queueCreateInfoCount = static_cast<u32>(queueInfos.Size());
+	deviceCreateInfo.ppEnabledExtensionNames = m_GPUInfo.m_EnabledExtensions.Data();
+	deviceCreateInfo.enabledExtensionCount = static_cast<u32>(m_GPUInfo.m_EnabledExtensions.Size());
+
+	VkResult result = vkCreateDevice(m_GPUInfo.m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
+	BvAssert(result == VK_SUCCESS, "Couldn't create a logical device");
+	if (result != VK_SUCCESS)
+	{
+		BvDebugVkResult(result);
+		return;
+	}
+
+	volkLoadDevice(m_Device);
+
+	m_GPUInfo.m_QueueFamilyIndices.Reserve(3);
+	for (auto i = 0; i < deviceCreateDesc.m_GraphicsQueueCount; i++)
+	{
+		m_GraphicsContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kGraphics, m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex, i);
+		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex);
+	}
+	for (auto i = 0; i < deviceCreateDesc.m_ComputeQueueCount; i++)
+	{
+		m_ComputeContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kCompute, m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex, i);
+		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex);
+	}
+	for (auto i = 0; i < deviceCreateDesc.m_TransferQueueCount; i++)
+	{
+		m_TransferContexts[i] = new BvCommandContextVk(this, 3, QueueFamilyType::kTransfer, m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex, i);
+		m_GPUInfo.m_QueueFamilyIndices.EmplaceBack(m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex);
+	}
+
+	CreateVMA();
+
+	m_pFramebufferManager = new BvFramebufferManagerVk();
+
+	u32 querySizes[kQueryTypeCount]{ 16, 16, 16 };
+	m_pQueryHeapManager = new BvQueryHeapManagerVk(this, querySizes, 3);
+}
+
+
+void BvRenderDeviceVk::Destroy()
+{
+	vkDeviceWaitIdle(m_Device);
+
+	for (i32 i = i32(m_DeviceObjects.Size()) - 1; i >= 0; --i)
+	{
+		BvDelete(m_DeviceObjects[i]);
+	}
+
+	delete m_pFramebufferManager;
+
+	DestroyVMA();
+
+	if (m_Device)
+	{
+		vkDestroyDevice(m_Device, nullptr);
+		m_Device = VK_NULL_HANDLE;
+	}
 }
 
 

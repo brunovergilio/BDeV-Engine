@@ -49,7 +49,7 @@ struct SamplerDesc
 
 
 
-class BvSampler
+class BvSampler : public BvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvSampler);
 
