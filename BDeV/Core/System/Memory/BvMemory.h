@@ -234,6 +234,7 @@ namespace BvVirtualMemory
 
 
 // Managed new / delete macros
+
 // Allocate type w/ base alignment
 #define BvMNew(allocator, Type, ...) new(BvMemory::New<Type>(alignof(Type), allocator, BV_SOURCE_INFO)) Type(__VA_OPT__(__VA_ARGS__))
 // Allocate type w/ custom alignment (>= base alignment)
@@ -249,6 +250,7 @@ namespace BvVirtualMemory
 
 
 // Unmanaged new / delete macros
+
 // Allocate type w/ base alignment
 #define BvNew(Type, ...) new(BvMemory::New<Type>(alignof(Type), BV_SOURCE_INFO)) Type(__VA_OPT__(__VA_ARGS__))
 // Allocate type w/ custom alignment (>= base alignment)

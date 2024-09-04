@@ -91,7 +91,6 @@ bool BvShaderCompiler::CompileFromMemory(const u8* const pBlob, u32 blobSize, co
 {
 	switch (shaderDesc.shaderLanguage)
 	{
-	case ShaderLanguage::kVKSL:
 	case ShaderLanguage::kGLSL:
 	{
 		BvVector<u8> compiledShader;

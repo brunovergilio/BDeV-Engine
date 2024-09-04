@@ -75,7 +75,7 @@ struct UseEnumClassOperators
 
 
 template<class Type>
-constexpr const bool UseEnumClassOperatorsV = UseEnumClassOperators<Type>::value;
+inline constexpr const bool UseEnumClassOperatorsV = UseEnumClassOperators<Type>::value;
 
 
 #define BV_USE_ENUM_CLASS_OPERATORS(enumClass)				\

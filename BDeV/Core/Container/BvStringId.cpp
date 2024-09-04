@@ -62,9 +62,9 @@ BvStringId::BvStringId(const char* pId)
 		return;
 	}
 
-	u32 len = static_cast<u32>(strlen(pId));
+	u32 len = static_cast<u32>(std::char_traits<char>::length(pId));
 	m_Id = MurmurHash64A(pId, len);
-	BvDebugStringIdTable::GetInstance().AddString(m_Id, pId, strlen(pId));
+	BvDebugStringIdTable::GetInstance().AddString(m_Id, pId, len);
 }
 
 
@@ -98,9 +98,9 @@ BvStringId& BvStringId::operator=(const char* pId)
 		return *this;
 	}
 
-	u32 len = static_cast<u32>(strlen(pId));
+	u32 len = static_cast<u32>(std::char_traits<char>::length(pId));
 	m_Id = MurmurHash64A(pId, len);
-	BvDebugStringIdTable::GetInstance().AddString(m_Id, pId, strlen(pId));
+	BvDebugStringIdTable::GetInstance().AddString(m_Id, pId, len);
 
 	return *this;
 }
@@ -116,7 +116,7 @@ BvStringId& BvStringId::operator=(u64 id)
 
 bool BvStringId::operator==(const char* pId) const
 {
-	return m_Id == MurmurHash64A(pId, strlen(pId));
+	return m_Id == MurmurHash64A(pId, std::char_traits<char>::length(pId));
 }
 
 

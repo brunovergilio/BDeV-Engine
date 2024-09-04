@@ -10,10 +10,35 @@
 #include <locale>
 
 
+namespace Internal
+{
+	template<typename CharT>
+	struct IsCharType
+	{
+		static constexpr bool value = false;
+	};
+
+
+#define BV_IS_CHAR_TYPE(type) template<> struct IsCharType<type> { static constexpr bool value = true; };
+
+	BV_IS_CHAR_TYPE(char);
+	BV_IS_CHAR_TYPE(wchar_t);
+	BV_IS_CHAR_TYPE(char8_t);
+	BV_IS_CHAR_TYPE(char16_t);
+	BV_IS_CHAR_TYPE(char32_t);
+#undef BV_IS_CHAR_TYPE
+
+	template<typename CharT>
+	inline constexpr bool IsCharTypeV = IsCharType<CharT>::value;
+}
+
+
 template<typename CharT, typename MemoryArenaType = IBvMemoryArena>
 class BvStringT
 {
 public:
+	static_assert(Internal::IsCharTypeV<CharT>, "Not a valid string character type");
+
 	static constexpr u32 kInvalidIndex = kU32Max;
 
 	BvStringT();
@@ -1121,3 +1146,6 @@ inline void BvStringT<CharT, MemoryArenaType>::Destroy()
 // Typedefs for convenience
 using BvString = BvStringT<char>;
 using BvWString = BvStringT<wchar_t>;
+using BvString8 = BvStringT<char8_t>;
+using BvString16 = BvStringT<char16_t>;
+using BvString32 = BvStringT<char32_t>;

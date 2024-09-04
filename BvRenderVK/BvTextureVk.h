@@ -29,6 +29,7 @@ private:
 	void Destroy();
 
 	void CopyInitDataAndTransitionState(const TextureInitData* pInitData, u32 mipCount);
+	void GenerateMips(BvCommandContextVk* pContext);
 
 protected:
 	BvRenderDeviceVk* m_pDevice = nullptr;

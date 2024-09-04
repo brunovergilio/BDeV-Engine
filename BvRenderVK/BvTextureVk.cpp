@@ -5,6 +5,7 @@
 #include "BvCommandContextVk.h"
 #include "BvBufferVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
+#include "BvCommandBufferVk.h"
 
 
 BvTextureVk::BvTextureVk(BvRenderDeviceVk* pDevice, const TextureDesc& textureDesc, const TextureInitData* pInitData)
@@ -195,11 +196,28 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		ResourceBarrierDesc copyDstBarrier;
 		copyDstBarrier.m_pTexture = this;
 		copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
+		copyDstBarrier.m_Subresource.mipCount = mipCount;
 
 		pContext->ResourceBarrier(1, &copyDstBarrier);
 		pContext->CopyBufferToTexture(&buffer, this, (u32)copyRegions.Size(), copyRegions.Data());
 
 		currState = ResourceState::kTransferDst;
+
+		if (EHasFlag(m_TextureDesc.m_CreateFlags, TextureCreateFlags::kGenerateMips) && mipCount == 1)
+		{
+			ResourceBarrierDesc copySrcBarrier;
+			copySrcBarrier.m_pTexture = this;
+			copySrcBarrier.m_SrcLayout = ResourceState::kTransferDst;
+			copySrcBarrier.m_DstLayout = ResourceState::kTransferSrc;
+			copySrcBarrier.m_Subresource.firstLayer = 0;
+			copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_LayerCount;
+			copySrcBarrier.m_Subresource.firstMip = 0;
+			copySrcBarrier.m_Subresource.mipCount = 1;
+
+			pContext->ResourceBarrier(1, &copySrcBarrier);
+			GenerateMips(pContext);
+			currState = ResourceState::kTransferSrc;
+		}
 	}
 
 	if (currState != m_TextureDesc.m_ResourceState)
@@ -211,6 +229,66 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 
 		pContext->ResourceBarrier(1, &barrier);
 	}
+
 	pContext->Signal();
 	pContext->WaitForGPU();
+}
+
+
+void BvTextureVk::GenerateMips(BvCommandContextVk* pContext)
+{
+	auto aspectMask = GetVkFormatMap(m_TextureDesc.m_Format).aspectFlags;
+	for (auto i = 1; i < m_TextureDesc.m_MipLevels; ++i)
+	{
+		VkImageBlit2 imageBlit{ VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
+
+		// Source
+		imageBlit.srcSubresource.aspectMask = aspectMask;
+		imageBlit.srcSubresource.layerCount = m_TextureDesc.m_LayerCount;
+		imageBlit.srcSubresource.mipLevel = i - 1;
+		imageBlit.srcOffsets[1].x = i32(std::max(m_TextureDesc.m_Size.width >> (i - 1), 1u));
+		imageBlit.srcOffsets[1].y = i32(std::max(m_TextureDesc.m_Size.height >> (i - 1), 1u));
+		imageBlit.srcOffsets[1].z = i32(std::max(m_TextureDesc.m_Size.depth >> (i - 1), 1u));
+
+		// Destination
+		imageBlit.dstSubresource.aspectMask = aspectMask;
+		imageBlit.dstSubresource.layerCount = m_TextureDesc.m_LayerCount;
+		imageBlit.dstSubresource.mipLevel = i;
+		imageBlit.dstOffsets[1].x = i32(std::max(m_TextureDesc.m_Size.width >> i, 1u));
+		imageBlit.dstOffsets[1].y = i32(std::max(m_TextureDesc.m_Size.height >> i, 1u));
+		imageBlit.dstOffsets[1].z = i32(std::max(m_TextureDesc.m_Size.depth >> i, 1u));
+
+		ResourceBarrierDesc copyDstBarrier;
+		copyDstBarrier.m_pTexture = this;
+		copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
+		copyDstBarrier.m_Subresource.firstLayer = 0;
+		copyDstBarrier.m_Subresource.layerCount = m_TextureDesc.m_LayerCount;
+		copyDstBarrier.m_Subresource.firstMip = i;
+		copyDstBarrier.m_Subresource.mipCount = 1;
+
+		pContext->ResourceBarrier(1, &copyDstBarrier);
+
+		VkBlitImageInfo2 blitInfo{ VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2 };
+		blitInfo.srcImage = m_Image;
+		blitInfo.dstImage = m_Image;
+		blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		blitInfo.regionCount = 1;
+		blitInfo.pRegions = &imageBlit;
+		blitInfo.filter = VK_FILTER_LINEAR;
+
+		// Blitting isn't a function I'm providing right now, so I do it separately here
+		vkCmdBlitImage2(pContext->GetCurrentCommandBuffer()->GetHandle(), &blitInfo);
+
+		ResourceBarrierDesc copySrcBarrier;
+		copySrcBarrier.m_pTexture = this;
+		copySrcBarrier.m_SrcLayout = ResourceState::kTransferDst;
+		copySrcBarrier.m_DstLayout = ResourceState::kTransferSrc;
+		copySrcBarrier.m_Subresource.firstLayer = 0;
+		copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_LayerCount;
+		copySrcBarrier.m_Subresource.firstMip = i;
+		copySrcBarrier.m_Subresource.mipCount = 1;
+
+		pContext->ResourceBarrier(1, &copySrcBarrier);
+	}
 }

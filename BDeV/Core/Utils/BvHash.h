@@ -20,7 +20,7 @@ u64 MurmurHash64A(const void* const pBytes, size_t size, u64 seed = 0);
 // https://github.com/HowardHinnant/hash_append/issues/7
 // https://softwareengineering.stackexchange.com/questions/63595/tea-algorithm-constant-0x9e3779b9-said-to-be-derived-from-golden-ratio-but-the/63599#63599
 template <typename Type, typename... Rest>
-void HashCombine(u64 & seed, const Type& v, Rest... rest)
+void HashCombine(u64& seed, const Type& v, Rest... rest)
 {
 	seed ^= MurmurHash64A(&v, sizeof(Type)) + 0x9e3779b97f4a7c15llu + (seed << 12) + (seed >> 4);
 	(HashCombine(seed, rest), ...);

@@ -173,15 +173,13 @@ EShLanguage GetShaderStage(const ShaderStage stage)
 	}
 }
 
-glslang::EShTargetClientVersion GetAPIVersion(ShaderAPIVersion apiVersion)
+glslang::EShTargetClientVersion GetAPIVersion(ShaderCompiler compiler, ShaderTarget target)
 {
-	switch (apiVersion)
+	switch (compiler)
 	{
-	case ShaderAPIVersion::kOpenGL_4_5:	return glslang::EShTargetClientVersion::EShTargetOpenGL_450;
-	case ShaderAPIVersion::kVulkan_1_0:	return glslang::EShTargetClientVersion::EShTargetVulkan_1_0;
-	case ShaderAPIVersion::kVulkan_1_1:	return glslang::EShTargetClientVersion::EShTargetVulkan_1_1;
-	case ShaderAPIVersion::kVulkan_1_2:	return glslang::EShTargetClientVersion::EShTargetVulkan_1_2;
-	case ShaderAPIVersion::kVulkan_1_3:	return glslang::EShTargetClientVersion::EShTargetVulkan_1_3;
+	case ShaderCompiler::kUnknown:
+	case ShaderCompiler::kSPIRV:
+		return target != ShaderTarget::kGLSL ? glslang::EShTargetClientVersion::EShTargetVulkan_1_3 : glslang::EShTargetClientVersion::EShTargetOpenGL_450;
 	default:
 		BvAssert(0, "This code should be unreachable");
 		return glslang::EShTargetClientVersion::EShTargetVulkan_1_0;
@@ -189,48 +187,51 @@ glslang::EShTargetClientVersion GetAPIVersion(ShaderAPIVersion apiVersion)
 }
 
 
-glslang::EShTargetLanguageVersion GetShaderTarget(ShaderLanguageTarget target)
+glslang::EShTargetLanguageVersion GetShaderTarget(ShaderTarget target)
 {
 	switch (target)
 	{
-	case ShaderLanguageTarget::kSPIRV_1_0: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_0;
-	case ShaderLanguageTarget::kSPIRV_1_1: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_1;
-	case ShaderLanguageTarget::kSPIRV_1_2: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_2;
-	case ShaderLanguageTarget::kSPIRV_1_3: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_3;
-	case ShaderLanguageTarget::kSPIRV_1_4: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_4;
-	case ShaderLanguageTarget::kSPIRV_1_5: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_5;
-	case ShaderLanguageTarget::kSPIRV_1_6: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_6;
+	case ShaderTarget::kSPIRV_1_0: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_0;
+	case ShaderTarget::kSPIRV_1_1: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_1;
+	case ShaderTarget::kSPIRV_1_2: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_2;
+	case ShaderTarget::kSPIRV_1_3: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_3;
+	case ShaderTarget::kSPIRV_1_4: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_4;
+	case ShaderTarget::kSPIRV_1_5: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_5;
+	case ShaderTarget::kUnknown:
+	case ShaderTarget::kSPIRV_1_6: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_6;
+	case ShaderTarget::kGLSL: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_0;
 	default:
 		BvAssert(0, "This code should be unreachable");
 		return glslang::EShTargetLanguageVersion::EShTargetSpv_1_0;
 	}
 }
 
-spv_target_env GetTargetEnv(ShaderLanguageTarget target)
+spv_target_env GetTargetEnv(ShaderTarget target)
 {
 	switch (target)
 	{
-	case ShaderLanguageTarget::kSPIRV_1_0: return spv_target_env::SPV_ENV_UNIVERSAL_1_0;
-	case ShaderLanguageTarget::kSPIRV_1_1: return spv_target_env::SPV_ENV_UNIVERSAL_1_1;
-	case ShaderLanguageTarget::kSPIRV_1_2: return spv_target_env::SPV_ENV_UNIVERSAL_1_2;
-	case ShaderLanguageTarget::kSPIRV_1_3: return spv_target_env::SPV_ENV_UNIVERSAL_1_3;
-	case ShaderLanguageTarget::kSPIRV_1_4: return spv_target_env::SPV_ENV_UNIVERSAL_1_4;
-	case ShaderLanguageTarget::kSPIRV_1_5: return spv_target_env::SPV_ENV_UNIVERSAL_1_5;
-	case ShaderLanguageTarget::kSPIRV_1_6: return spv_target_env::SPV_ENV_UNIVERSAL_1_6;
+	case ShaderTarget::kSPIRV_1_0: return spv_target_env::SPV_ENV_UNIVERSAL_1_0;
+	case ShaderTarget::kSPIRV_1_1: return spv_target_env::SPV_ENV_UNIVERSAL_1_1;
+	case ShaderTarget::kSPIRV_1_2: return spv_target_env::SPV_ENV_UNIVERSAL_1_2;
+	case ShaderTarget::kSPIRV_1_3: return spv_target_env::SPV_ENV_UNIVERSAL_1_3;
+	case ShaderTarget::kSPIRV_1_4: return spv_target_env::SPV_ENV_UNIVERSAL_1_4;
+	case ShaderTarget::kSPIRV_1_5: return spv_target_env::SPV_ENV_UNIVERSAL_1_5;
+	case ShaderTarget::kUnknown:
+	case ShaderTarget::kSPIRV_1_6: return spv_target_env::SPV_ENV_UNIVERSAL_1_6;
+	case ShaderTarget::kGLSL: return spv_target_env::SPV_ENV_OPENGL_4_5;
 	default:
+		BvAssert(0, "This code should be unreachable");
 		return spv_target_env::SPV_ENV_UNIVERSAL_1_0;
 	}
 }
 
-int GetAPIVersionValue(ShaderAPIVersion apiVersion)
+int GetAPIVersionValue(ShaderCompiler compiler, ShaderTarget target)
 {
-	switch (apiVersion)
+	switch (compiler)
 	{
-		//case ShaderAPIVersion::kOpenGL_4_5:	return glslang_target_client_version_t::GLSLANG_TARGET_OPENGL_450;
-	case ShaderAPIVersion::kVulkan_1_0:	return 100;
-	case ShaderAPIVersion::kVulkan_1_1:	return 110;
-	case ShaderAPIVersion::kVulkan_1_2:	return 120;
-	case ShaderAPIVersion::kVulkan_1_3:	return 130;
+	case ShaderCompiler::kUnknown:
+	case ShaderCompiler::kSPIRV:
+		return target != ShaderTarget::kGLSL ? 130 : 100;
 	default:
 		BvAssert(0, "This code should be unreachable");
 		return 100;
@@ -244,15 +245,16 @@ bool BvSPIRVCompiler::Compile(const u8* const pBlob, const size_t blobSize, cons
 	GetGlslangControl();
 
 	auto shaderStage = GetShaderStage(shaderDesc.shaderStage);
-	auto client = GetAPIVersion(shaderDesc.apiVersion);
+	auto client = GetAPIVersion(shaderDesc.compiler, shaderDesc.shaderTarget);
 	auto target = GetShaderTarget(shaderDesc.shaderTarget);
-	auto version = GetAPIVersionValue(shaderDesc.apiVersion);
-
+	auto version = GetAPIVersionValue(shaderDesc.compiler, shaderDesc.shaderTarget);
+	auto language = shaderDesc.shaderLanguage != ShaderLanguage::kHLSL ? glslang::EShSource::EShSourceGlsl : glslang::EShSource::EShSourceHlsl;
+	auto eshClient = shaderDesc.shaderTarget != ShaderTarget::kGLSL ? glslang::EShClient::EShClientVulkan : glslang::EShClient::EShClientOpenGL;
 	glslang::TShader shader(shaderStage);
-	shader.setEnvInput(glslang::EShSource::EShSourceGlsl, shaderStage, glslang::EShClient::EShClientVulkan, version);
-	shader.setEnvClient(glslang::EShClient::EShClientVulkan, client);
+	shader.setEnvInput(glslang::EShSource::EShSourceGlsl, shaderStage, eshClient, version);
+	shader.setEnvClient(eshClient, client);
 	shader.setEnvTarget(glslang::EShTargetLanguage::EShTargetSpv, target);
-	shader.setEntryPoint(shaderDesc.entryPoint.CStr());
+	shader.setEntryPoint(shaderDesc.pEntryPoint);
 
 	const char* shaderStrings[] = { reinterpret_cast<const char*>(pBlob) };
 	i32 lenghts[] = { static_cast<i32>(blobSize) };

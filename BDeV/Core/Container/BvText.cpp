@@ -100,9 +100,11 @@ size_t ConvertUTF8ToUTFT(const UTF8CharT* pSrc, size_t srcCharCount, CharT* pDst
 				++i;
 				continue;
 			}
-
-			// 1-byte sequence (ASCII)
-			codePoint = u32(pSrc[i++]);
+			else
+			{
+				// 1-byte sequence (ASCII)
+				codePoint = u32(pSrc[i++]);
+			}
 		}
 		else if ((ch & 0xE0) == 0xC0)
 		{
@@ -121,10 +123,12 @@ size_t ConvertUTF8ToUTFT(const UTF8CharT* pSrc, size_t srcCharCount, CharT* pDst
 				++i;
 				continue;
 			}
-
-			// 2-byte sequence
-			codePoint = u32(pSrc[i++]) & 0x1F;
-			codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+			else
+			{
+				// 2-byte sequence
+				codePoint = u32(pSrc[i++]) & 0x1F;
+				codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+			}
 		}
 		else if ((ch & 0xF0) == 0xE0)
 		{
@@ -144,11 +148,13 @@ size_t ConvertUTF8ToUTFT(const UTF8CharT* pSrc, size_t srcCharCount, CharT* pDst
 				++i;
 				continue;
 			}
-
-			// 3-byte sequence
-			codePoint = u32(pSrc[i++]) & 0x0F;
-			codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
-			codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+			else
+			{
+				// 3-byte sequence
+				codePoint = u32(pSrc[i++]) & 0x0F;
+				codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+				codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+			}
 		}
 		else if ((ch & 0xF8) == 0xF0)
 		{
@@ -169,12 +175,14 @@ size_t ConvertUTF8ToUTFT(const UTF8CharT* pSrc, size_t srcCharCount, CharT* pDst
 				++i;
 				continue;
 			}
-
-			// 4-byte sequence
-			codePoint = u32(pSrc[i++]) & 0x07;
-			codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
-			codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
-			codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+			else
+			{
+				// 4-byte sequence
+				codePoint = u32(pSrc[i++]) & 0x07;
+				codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+				codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+				codePoint = (codePoint << 6) | (u32(pSrc[i++]) & 0x3F);
+			}
 		}
 		else
 		{

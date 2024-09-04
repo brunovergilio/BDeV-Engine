@@ -7,9 +7,6 @@
 #include "BvCommandBufferVk.h"
 
 
-void GetBufferFlags(const BufferDesc& bufferDesc, VkAccessFlags2& accessFlags, VkPipelineStageFlagBits2& stageFlags);
-
-
 BvBufferVk::BvBufferVk(BvRenderDeviceVk* pDevice, const BufferDesc& bufferDesc, const BufferInitData* pInitData)
 	: BvBuffer(bufferDesc), m_pDevice(pDevice)
 {
@@ -231,10 +228,4 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	pContext->ResourceBarrier(1, &barrier, 0, nullptr, 0, nullptr);
 	pContext->Signal();
 	pContext->WaitForGPU();
-}
-
-
-void GetBufferFlags(const BufferDesc& bufferDesc, VkAccessFlags2& accessFlags, VkPipelineStageFlagBits2& stageFlags)
-{
-
 }
