@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="ShaderCompiler\BvShaderCompiler.h" />
     <ClInclude Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.h" />
     <ClInclude Include="TextureLoader\BvTextureLoader.h" />
     <ClInclude Include="TextureLoader\DDS\BvDDS.h" />
     <ClInclude Include="TextureLoader\STB\stb_image.h" />
+    <ClInclude Include="ShaderCompiler\BvShaderBlob.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ShaderCompiler\BvShaderCompiler.cpp" />
     <ClCompile Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.cpp" />
     <ClCompile Include="TextureLoader\BvTextureLoader.cpp" />
     <ClCompile Include="TextureLoader\DDS\BvDDS.cpp" />
+    <ClCompile Include="ShaderCompiler\BvShaderBlob.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BvRenderTools.def" />

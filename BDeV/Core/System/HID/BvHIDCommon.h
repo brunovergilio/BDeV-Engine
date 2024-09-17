@@ -284,23 +284,4 @@ enum class BvMouseButton : u8
 BV_USE_ENUM_CLASS_OPERATORS(BvMouseButton);
 
 
-enum class BvInputDeviceType : u8
-{
-	kNone = 0,
-	kKeyboard = BvBit(0),
-	kMouse = BvBit(1),
-	kController = BvBit(2),
-};
-BV_USE_ENUM_CLASS_OPERATORS(BvInputDeviceType)
-
-
-enum class BvInputCreateFlags : u8
-{
-	kNone = 0,
-	kUseRawKeyboard = BvBit(0),
-	kUseRawMouse = BvBit(1),
-};
-BV_USE_ENUM_CLASS_OPERATORS(BvInputCreateFlags)
-
-
 const char* const GetKeyName(BvKey key);

@@ -5,7 +5,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 
 
-class BvTexture : public BvRenderDeviceChild
+class BvTexture : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvTexture);
 

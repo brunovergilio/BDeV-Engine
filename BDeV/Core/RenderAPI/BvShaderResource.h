@@ -153,7 +153,7 @@ struct ShaderResourceLayoutDesc
 };
 
 
-class BvShaderResourceLayout : public BvRenderDeviceChild
+class BvShaderResourceLayout : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvShaderResourceLayout);
 

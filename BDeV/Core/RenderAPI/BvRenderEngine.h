@@ -3,7 +3,6 @@
 
 #include "BvRenderDevice.h"
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Container/BvVector.h"
 #include "BvGPUInfo.h"
 
 

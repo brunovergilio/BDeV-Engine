@@ -5,7 +5,7 @@
 #include "BDeV/Core/Container/BvVector.h"
 
 
-class BvShader
+class BvShader : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvShader);
 
@@ -15,7 +15,8 @@ public:
 	BV_INLINE const char* GetEntryPoint() const { return m_pEntryPoint; }
 
 protected:
-	BvShader() {}
+	BvShader(ShaderStage shaderStage, const char* pEntryPoint)
+		: m_ShaderStage(shaderStage), m_pEntryPoint(pEntryPoint) {}
 	virtual ~BvShader() {}
 
 protected:

@@ -76,7 +76,7 @@ AsyncFileRequest::~AsyncFileRequest()
 	{
 		if (--m_pIOData->m_UseCount == 0)
 		{
-			BvDelete(m_pIOData);
+			BV_DELETE(m_pIOData);
 		}
 	}
 }
@@ -196,7 +196,7 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, c
 	BvAssert(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
-	request.m_pIOData = BvNew(AsyncFileData);
+	request.m_pIOData = BV_NEW(AsyncFileData);
 	request.m_pIOData->m_OverlappedIO.Pointer = reinterpret_cast<void *>(position);
 	request.m_pIOData->m_hFile = m_hFile;
 
@@ -221,7 +221,7 @@ AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 buffer
 	BvAssert(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
-	request.m_pIOData = BvNew(AsyncFileData);
+	request.m_pIOData = BV_NEW(AsyncFileData);
 	request.m_pIOData->m_OverlappedIO.Pointer = reinterpret_cast<void *>(position);
 	request.m_pIOData->m_hFile = m_hFile;
 

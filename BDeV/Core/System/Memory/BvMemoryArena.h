@@ -2,6 +2,7 @@
 
 
 #include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/Container/BvStringId.h"
 
 
 class IBvMemoryArena
@@ -17,8 +18,8 @@ template<typename AllocatorType, typename LockType, typename BoundsCheckingType,
 class BvMemoryArena final : public IBvMemoryArena
 {
 public:
-	BvMemoryArena(AllocatorType* pAllocator)
-		: m_pAllocator(pAllocator) {}
+	BvMemoryArena(AllocatorType* pAllocator, BvStringId name)
+		: m_Name(name), m_pAllocator(pAllocator) {}
 	~BvMemoryArena() {}
 
 	void* Allocate(size_t size, size_t alignment, size_t alignmentOffset, const BvSourceInfo& sourceInfo) override
@@ -71,6 +72,7 @@ public:
 	}
 
 private:
+	BvStringId m_Name;
 	AllocatorType* m_pAllocator;
 	LockType m_Lock;
 	BoundsCheckingType m_BoundsChecking;

@@ -23,11 +23,13 @@
 #include "BDeV/Core/RenderAPI/BvSampler.h"
 #include "BDeV/Core/RenderAPI/BvShaderResource.h"
 #include "BDeV/Core/RenderAPI/BvRenderPass.h"
+#include "BDeV/Core/RenderAPI/BvShader.h"
 #include "BDeV/Core/RenderAPI/BvPipelineState.h"
 #include "BDeV/Core/RenderAPI/BvQuery.h"
 #include "BDeV/Core/RenderAPI/BvCommandContext.h"
 #include "BDeV/Core/RenderAPI/BvColor.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
+#include "BDeV/Core/RenderAPI/BvShaderCompiler.h"
 
 #include "BDeV/Core/System/Application/BvApplication.h"
 
@@ -72,3 +74,4 @@
 #include "BDeV/Core/Utils/BvTime.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Utils/BvUUID.h"
+#include "BDeV/Core/Utils/BvObject.h"

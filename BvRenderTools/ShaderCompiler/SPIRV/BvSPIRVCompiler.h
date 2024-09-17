@@ -1,16 +1,35 @@
 #pragma once
 
 
-#include "BvRenderTools/ShaderCompiler/BvShaderCompiler.h"
-#include <vector>
+#include "BDeV/Core/Container/BvRobinSet.h"
+#include "BDeV/Core/System/File/BvPath.h"
+#include "BvRenderTools/ShaderCompiler/BvShaderBlob.h"
 
 
-class BvSPIRVCompiler
+BV_IBVOBJECT_CREATE_REFCOUNT_BASE(BvShaderCompilerRefCount, IBvShaderCompiler);
+
+
+class BvSPIRVCompiler final : public BvShaderCompilerRefCount
 {
-public:
-	BvSPIRVCompiler() {}
-	~BvSPIRVCompiler() {}
+	BV_NOCOPYMOVE(BvSPIRVCompiler);
 
-	bool Compile(const u8* const pBlob, const size_t blobSize, const ShaderDesc& shaderDesc,
-		BvVector<u8>& compiledShaderBlob, BvString* pErrorString);
+public:
+	BV_IBVOBJECT_IMPL_INTERFACE(BvSPIRVCompiler, IBvShaderCompiler);
+
+	BvSPIRVCompiler();
+	~BvSPIRVCompiler();
+
+	bool Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob = nullptr) override;
+
+private:
+	void ProcessIncludes(const char* pFirst, u32 size, BvString& result, const BvPath& basePath);
 };
+
+
+namespace BvRenderTools
+{
+	extern "C"
+	{
+		BV_API bool CreateSPIRVCompiler(IBvShaderCompiler** ppCompiler);
+	}
+}

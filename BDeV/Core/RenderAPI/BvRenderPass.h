@@ -265,7 +265,7 @@ struct BvHash<RenderPassDesc>
 };
 
 
-class BvRenderPass : public BvRenderDeviceChild
+class BvRenderPass : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvRenderPass);
 

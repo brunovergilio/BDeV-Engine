@@ -4,7 +4,7 @@
 #include "BvRenderCommon.h"
 
 
-class BvQuery : public BvRenderDeviceChild
+class BvQuery : public IBvRenderDeviceChild
 {
 public:
 	virtual QueryType GetQueryType() const = 0;

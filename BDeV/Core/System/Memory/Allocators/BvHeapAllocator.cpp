@@ -65,9 +65,30 @@ BvHeapAllocator::~BvHeapAllocator()
 }
 
 
+void BvHeapAllocator::Set(void* pStart, void* pEnd)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	m_pStart = reinterpret_cast<char*>(pStart);
+	m_pEnd = reinterpret_cast<char*>(pEnd);
+
+	const size_t size = size_t(m_pEnd - m_pStart);
+	BvAssert(size > kBlockInfoSize, "Total memory size is smaller than a single memory block!");
+	SetBlockInfo(reinterpret_cast<size_t*>(m_pStart), size - kBlockInfoSize, false);
+}
+
+
+void BvHeapAllocator::Set(size_t size)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	m_pStart = reinterpret_cast<char*>(BvMemory::Allocate(std::max(size, kBlockInfoSize + kPointerSize)));
+	m_pEnd = m_pStart + std::max(size, kBlockInfoSize + kPointerSize);
+	m_HasOwnMemory = true;
+}
+
+
 void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	size = RoundToNearestPowerOf2(size, kPointerSize) + alignment + alignmentOffset + kPointerSize;
+	size = RoundToNearestPowerOf2(size + alignment + alignmentOffset, kPointerSize) + kPointerSize;
 	
 	size_t blockSize = 0;
 	bool blockInUse = true;
@@ -191,7 +212,17 @@ size_t BvHeapAllocator::GetAllocationSize(void* pMem) const
 // ===============================================
 // Growable Heap Allocator
 // ===============================================
+BvGrowableHeapAllocator::BvGrowableHeapAllocator(void* pStart, void* pEnd, size_t growSize)
+	: m_pVirtualStart(reinterpret_cast<char*>(pStart)), m_pVirtualEnd(reinterpret_cast<char*>(pEnd)),
+	m_pStart(m_pVirtualStart), m_pEnd(m_pVirtualStart), m_pUsedAddressEnd(m_pVirtualStart)
+{
+	auto& systemInfo = BvProcess::GetSystemInfo();
+	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+}
+
+
 BvGrowableHeapAllocator::BvGrowableHeapAllocator(size_t maxSize, size_t growSize)
+	: m_HasOwnMemory(true)
 {
 	auto& systemInfo = BvProcess::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
@@ -204,13 +235,44 @@ BvGrowableHeapAllocator::BvGrowableHeapAllocator(size_t maxSize, size_t growSize
 
 BvGrowableHeapAllocator::~BvGrowableHeapAllocator()
 {
-	BvVirtualMemory::Release(m_pVirtualStart);
+	if (m_HasOwnMemory)
+	{
+		BvVirtualMemory::Release(m_pVirtualStart);
+	}
+}
+
+
+void BvGrowableHeapAllocator::Set(void* pStart, void* pEnd, size_t growSize)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	auto& systemInfo = BvProcess::GetSystemInfo();
+	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+
+	m_pVirtualStart = reinterpret_cast<char*>(pStart);
+	m_pVirtualEnd = reinterpret_cast<char*>(pEnd);
+	m_pStart = m_pVirtualStart;
+	m_pEnd = m_pVirtualStart;
+	m_pUsedAddressEnd = m_pVirtualStart;
+}
+
+
+void BvGrowableHeapAllocator::Set(size_t maxSize, size_t growSize)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	auto& systemInfo = BvProcess::GetSystemInfo();
+	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
+
+	m_pVirtualStart = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
+	m_pVirtualEnd = m_pVirtualStart + maxSize;
+	m_pStart = m_pEnd = m_pUsedAddressEnd = m_pVirtualStart;
+	m_HasOwnMemory = true;
 }
 
 
 void* BvGrowableHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset)
 {
-	size = RoundToNearestPowerOf2(size, kPointerSize) + alignment + alignmentOffset + kPointerSize;
+	size = RoundToNearestPowerOf2(size + alignment + alignmentOffset, kPointerSize) + kPointerSize;
 
 	size_t blockSize = 0;
 	bool blockInUse = true;

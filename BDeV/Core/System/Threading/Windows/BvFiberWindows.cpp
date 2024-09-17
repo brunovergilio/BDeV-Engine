@@ -79,6 +79,6 @@ void BvFiber::Destroy()
 	if (m_pFiber && m_pDelegate)
 	{
 		DeleteFiber(m_pFiber);
-		BvDeleteN((u8*)m_pDelegate);
+		BV_DELETE_ARRAY((u8*)m_pDelegate);
 	}
 }

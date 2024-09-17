@@ -4,7 +4,7 @@
 #include "BvTexture.h"
 
 
-class BvTextureView : public BvRenderDeviceChild
+class BvTextureView : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvTextureView);
 

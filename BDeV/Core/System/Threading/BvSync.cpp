@@ -46,19 +46,32 @@ BvAdaptiveMutex::~BvAdaptiveMutex()
 
 void BvAdaptiveMutex::Lock()
 {
+	constexpr u32 kMinSpinLimit = 4;
+	constexpr u32 kMaxSpinLimit = 256;
+
 	u32 currSpinCount{};
 	u32 lastSpinCount = m_SpinCount.load(std::memory_order::acquire);
-	u32 maxSpinCount = lastSpinCount << 1;
+	u32 maxSpinCount = std::min(lastSpinCount << 1, kMaxSpinLimit);
 	while (!m_Lock.try_lock())
 	{
 		if (currSpinCount++ > maxSpinCount)
 		{
-			m_Lock.lock();
+			if (!m_Lock.try_lock())
+			{
+				m_Lock.lock();
+			}
 			break;
 		}
 	}
 
-	m_SpinCount.store((lastSpinCount + currSpinCount) >> 1, std::memory_order::release);
+	if (currSpinCount <= kMinSpinLimit)
+	{
+		m_SpinCount.store(std::max(kMinSpinLimit, (lastSpinCount + currSpinCount) >> 1), std::memory_order::release);
+	}
+	else
+	{
+		m_SpinCount.store((lastSpinCount + currSpinCount) >> 1, std::memory_order::release);
+	}
 }
 
 

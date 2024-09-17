@@ -224,7 +224,7 @@ void BvThread::Destroy()
 	{
 		CloseHandle(m_hThread);
 
-		BvDeleteN((u8*)m_pDelegate);
+		BV_DELETE_ARRAY((u8*)m_pDelegate);
 	}
 }
 

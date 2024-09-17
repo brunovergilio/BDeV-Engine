@@ -3,6 +3,7 @@
 
 #include "BvShaderResource.h"
 #include "BvRenderPass.h"
+#include "BvShader.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Container/BvFixedVector.h"
 #include "BDeV/Core/Container/BvString.h"
@@ -20,7 +21,7 @@ struct BlendStateDesc
 struct GraphicsPipelineStateDesc
 {
 	BvFixedVector<VertexInputDesc, kMaxVertexAttributes>		m_VertexInputDesc;
-	BvFixedVector<ShaderByteCodeDesc, kMaxShaderStages>			m_ShaderStages;
+	BvFixedVector<BvShader*, kMaxShaderStages>					m_Shaders;
 	InputAssemblyStateDesc										m_InputAssemblyStateDesc;
 	TessellationStateDesc										m_TessellationStateDesc;
 	ViewportStateDesc											m_ViewportStateDesc;
@@ -44,7 +45,7 @@ struct ComputePipelineStateDesc
 };
 
 
-class BvGraphicsPipelineState : public BvRenderDeviceChild
+class BvGraphicsPipelineState : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvGraphicsPipelineState);
 
@@ -61,7 +62,7 @@ protected:
 };
 
 
-class BvComputePipelineState : public BvRenderDeviceChild
+class BvComputePipelineState : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvComputePipelineState);
 

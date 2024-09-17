@@ -202,8 +202,8 @@ inline void BvRobinSet<Key, MemoryArenaType, Hash, Comparer>::SetAllocator(Memor
 
 	if (m_Capacity > 0)
 	{
-		KeyValue* pNewData = pAllocator ? BvMNewN(*pAllocator, KeyValue, m_Capacity) : BvNewN(KeyValue, m_Capacity);
-		size_t* pNewHashes = pAllocator ? BvMNewN(*pAllocator, size_t, m_Capacity) : BvNewN(size_t, m_Capacity);
+		KeyValue* pNewData = pAllocator ? BV_MNEW_ARRAY(*pAllocator, KeyValue, m_Capacity) : BV_NEW_ARRAY(KeyValue, m_Capacity);
+		size_t* pNewHashes = pAllocator ? BV_MNEW_ARRAY(*pAllocator, size_t, m_Capacity) : BV_NEW_ARRAY(size_t, m_Capacity);
 		memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 		if (m_Size > 0)
 		{
@@ -219,8 +219,8 @@ inline void BvRobinSet<Key, MemoryArenaType, Hash, Comparer>::SetAllocator(Memor
 			}
 		}
 		Clear();
-		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
-		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pHashes) : BvDeleteN(m_pHashes);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pHashes) : BV_DELETE_ARRAY(m_pHashes);
 
 		m_pData = pNewData;
 		m_pHashes = pNewHashes;
@@ -241,8 +241,8 @@ inline void BvRobinSet<Key, MemoryArenaType, Hash, Comparer>::ResizeAndRehash(co
 	auto oldCapacity = m_Capacity;
 	m_Capacity = size;
 
-	KeyValue* pNewData = m_pAllocator ? BvMNewN(*m_pAllocator, KeyValue, m_Capacity) : BvNewN(KeyValue, m_Capacity);
-	size_t* pNewHashes = m_pAllocator ? BvMNewN(*m_pAllocator, size_t, m_Capacity) : BvNewN(size_t, m_Capacity);
+	KeyValue* pNewData = m_pAllocator ? BV_MNEW_ARRAY(*m_pAllocator, KeyValue, m_Capacity) : BV_NEW_ARRAY(KeyValue, m_Capacity);
+	size_t* pNewHashes = m_pAllocator ? BV_MNEW_ARRAY(*m_pAllocator, size_t, m_Capacity) : BV_NEW_ARRAY(size_t, m_Capacity);
 	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 
 	for (size_t i = 0; i < oldCapacity; i++)
@@ -255,8 +255,8 @@ inline void BvRobinSet<Key, MemoryArenaType, Hash, Comparer>::ResizeAndRehash(co
 
 	if (m_pData)
 	{
-		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
-		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pHashes) : BvDeleteN(m_pHashes);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pHashes) : BV_DELETE_ARRAY(m_pHashes);
 	}
 
 	m_pData = pNewData;

@@ -19,12 +19,12 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 		DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 		if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 		{
-			pBufferData = BvNewN(u8, bufferSize);
+			pBufferData = BV_NEW_ARRAY(u8, bufferSize);
 			pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
 			result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 			if (result == FALSE)
 			{
-				BvDeleteN(pBufferData);
+				BV_DELETE_ARRAY(pBufferData);
 				BvOSCrashIfFailed(result);
 				return systemInfo;
 			}
@@ -53,7 +53,7 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 			}
 		}
 
-		BvDeleteN(pBufferData);
+		BV_DELETE_ARRAY(pBufferData);
 
 		SYSTEM_INFO osInfo;
 		::GetSystemInfo(&osInfo);

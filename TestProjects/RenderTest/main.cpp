@@ -1,5 +1,5 @@
 #include "BDeV/BDeV.h"
-#include "BvRenderTools/ShaderCompiler/BvShaderCompiler.h"
+#include "BDeV/Core/RenderAPI/Vulkan/BvRenderEngineVk.h"
 
 
 struct PosColorVertex
@@ -9,35 +9,27 @@ struct PosColorVertex
 };
 
 
-IBvShaderCompiler* g_pCompiler = nullptr;
-IBvShaderBlob* g_pVS = nullptr;
-IBvShaderBlob* g_pPS = nullptr;
+BvObjectHandle<IBvShaderCompiler> g_pCompiler = nullptr;
 
-ShaderByteCodeDesc GetVS();
-ShaderByteCodeDesc GetPS();
+BvShader* GetVS(BvRenderDevice* pDevice);
+BvShader* GetPS(BvRenderDevice* pDevice);
 BvBuffer* CreateVB(BvRenderDevice* pDevice);
 BvBuffer* CreateUB(BvRenderDevice* pDevice);
 
 
 int main()
 {
-	BvApplication::Initialize();
+	auto pApp = BvApplication::GetInstance();
+	pApp->Initialize();
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
-	typedef IBvShaderCompiler* (*pFNGetShaderCompiler)();
-	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("GetShaderCompiler");
-	auto pCompiler = compilerFn();
+	typedef bool (*pFNGetShaderCompiler)(IBvShaderCompiler**);
+	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
+	compilerFn(&g_pCompiler);
 	//ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
 	//pCompiler->CompileFromFile("D:\\Bruno\\C++\\test.vert", compDesc);
-	BvSharedLib renderVkLib("BvRenderVk.dll");
-	typedef BvRenderEngine* (*pFNCreateRenderEngine)();
-	pFNCreateRenderEngine createeRenderEngineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
-	typedef void (*pFNDestroyRenderEngine)();
-	pFNDestroyRenderEngine destroyRenderEngineFn = renderVkLib.GetProcAddressT<pFNDestroyRenderEngine>("DestroyRenderEngine");
 
-	g_pCompiler = compilerFn();
-
-	auto pEngine = createeRenderEngineFn();
+	auto pEngine = BvRenderEngineVk::GetInstance();
 	auto pDevice = pEngine->CreateRenderDevice();
 
 	BvKeyboard keyboard;
@@ -46,7 +38,7 @@ int main()
 	WindowDesc windowDesc;
 	windowDesc.m_X += 100;
 	windowDesc.m_Y += 100;
-	auto pWindow = BvApplication::CreateWindow(windowDesc);
+	auto pWindow = pApp->CreateWindow(windowDesc);
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
@@ -73,8 +65,8 @@ int main()
 	auto pUBView = pDevice->CreateBufferView(ubViewDesc);
 
 	GraphicsPipelineStateDesc pipelineDesc;
-	pipelineDesc.m_ShaderStages.PushBack(GetVS());
-	pipelineDesc.m_ShaderStages.PushBack(GetPS());
+	pipelineDesc.m_Shaders.PushBack(GetVS(pDevice));
+	pipelineDesc.m_Shaders.PushBack(GetPS(pDevice));
 	pipelineDesc.m_BlendStateDesc.m_BlendAttachments.PushBack(BlendAttachmentStateDesc());
 	//pipelineDesc.m_pRenderPass = pRenderPass;
 	pipelineDesc.m_RenderTargetFormats[0] = pSwapChain->GetDesc().m_Format;
@@ -92,9 +84,6 @@ int main()
 
 	auto pPSO = pDevice->CreateGraphicsPipeline(pipelineDesc);
 
-	g_pCompiler->DestroyShader(g_pVS);
-	g_pCompiler->DestroyShader(g_pPS);
-
 	auto pQuery = pDevice->CreateQuery(QueryType::kTimestamp);
 
 	auto currIndex = 0;
@@ -104,8 +93,8 @@ int main()
 		frame++;
 		//PrintF(ConsoleColor::kLightGreen, "Frame %d:\n", frame);
 		//PrintF(ConsoleColor::kAqua, "Image index aquired: %d\n", pSwapChain->GetCurrentImageIndex());
-		BvApplication::ProcessOSEvents();
-		if (!pWindow->IsValid())
+		pApp->ProcessOSEvents();
+		if (!pWindow->IsVisible())
 		{
 			break;
 		}
@@ -175,13 +164,13 @@ int main()
 		pGraphicsContext->Flush();
 	}
 
-	BvApplication::Shutdown();
+	pApp->Shutdown();
 
 	return 0;
 }
 
 
-ShaderByteCodeDesc GetVS()
+BvShader* GetVS(BvRenderDevice* pDevice)
 {
 	static const char* pShader =
 		R"raw(
@@ -204,22 +193,23 @@ ShaderByteCodeDesc GetVS()
 			}
 		)raw";
 
-	ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
-	BvString errBlob;
-	auto result = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc, g_pVS);
+	ShaderCreateDesc shaderDesc;
+	shaderDesc.m_ShaderStage = ShaderStage::kVertex;
+	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
+	shaderDesc.m_pSourceCode = pShader;
+	shaderDesc.m_SourceCodeSize = strlen(pShader);
+	BvObjectHandle<IBvShaderBlob> shader;
+	auto result = g_pCompiler->Compile(shaderDesc, &shader);
 	BvAssert(result, "Invalid Shader");
 
-	ShaderByteCodeDesc desc;
-	desc.m_pByteCode = g_pVS->GetBufferPointer();
-	desc.m_ByteCodeSize = g_pVS->GetBufferSize();
-	desc.m_pEntryPoint = "main";
-	desc.m_ShaderStage = ShaderStage::kVertex;
+	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
+	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	return desc;
+	return pDevice->CreateShader(shaderDesc);
 }
 
 
-ShaderByteCodeDesc GetPS()
+BvShader* GetPS(BvRenderDevice* pDevice)
 {
 	static const char* pShader =
 		R"raw(
@@ -235,18 +225,19 @@ ShaderByteCodeDesc GetPS()
 			}
 		)raw";
 
-	ShaderDesc compDesc = { "main", ShaderStage::kPixelOrFragment, ShaderLanguage::kGLSL };
-	BvString errBlob;
-	auto result = g_pCompiler->CompileFromMemory((u8*)pShader, strlen(pShader), compDesc, g_pPS);
+	ShaderCreateDesc shaderDesc;
+	shaderDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
+	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
+	shaderDesc.m_pSourceCode = pShader;
+	shaderDesc.m_SourceCodeSize = strlen(pShader);
+	BvObjectHandle<IBvShaderBlob> shader;
+	auto result = g_pCompiler->Compile(shaderDesc, &shader);
 	BvAssert(result, "Invalid Shader");
 
-	ShaderByteCodeDesc desc;
-	desc.m_pByteCode = g_pPS->GetBufferPointer();
-	desc.m_ByteCodeSize = g_pPS->GetBufferSize();
-	desc.m_pEntryPoint = "main";
-	desc.m_ShaderStage = ShaderStage::kPixelOrFragment;
+	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
+	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	return desc;
+	return pDevice->CreateShader(shaderDesc);
 }
 
 BvBuffer* CreateVB(BvRenderDevice* pDevice)

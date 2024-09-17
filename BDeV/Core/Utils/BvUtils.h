@@ -272,12 +272,13 @@ BV_INLINE std::underlying_type_t<Type> EVal(Type value)
 #define EMPTY()
 #define DEFER1(m) m EMPTY()
 #define DEFER2(m) m EMPTY EMPTY()()
+#define DEFER3(m) m EMPTY EMPTY EMPTY()()()
 
-#define FOR_EACH(m, first, ...) m(first)	\
-	IF_ELSE(HAS_ARGS(__VA_ARGS__))			\
-	(										\
-		DEFER2(_FOR_EACH)()(m, __VA_ARGS__)	\
-	)										\
-	(										\
-	)
-#define _FOR_EACH() FOR_EACH
+//#define FOR_EACH(m, first, ...) m(first)	\
+//	IF_ELSE(HAS_ARGS(__VA_ARGS__))			\
+//	(										\
+//		DEFER2(_FOR_EACH)()(m, __VA_ARGS__)	\
+//	)										\
+//	(										\
+//	)
+//#define _FOR_EACH() FOR_EACH

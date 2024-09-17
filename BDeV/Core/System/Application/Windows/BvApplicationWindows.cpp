@@ -14,31 +14,24 @@ extern void ProcessRawInputMouseMessage(const RAWMOUSE& rawMouse);
 extern void ProcessCharInputMessage(u32 codePoint, LPARAM lParam, bool isDeadKey, const BvKeyboard::KeyState*& pKeyState);
 
 
-#define BvDispatchEvent(e, ...) do								\
-{																\
-	for (auto pMessageHandler : GetAppData().m_MessageHandlers)	\
-	{															\
-		pMessageHandler->On##e(__VA_ARGS__);					\
-	}															\
+#define BvDispatchEvent(e, ...) do											\
+{																			\
+	for (auto pMessageHandler : GetInstance()->m_pImpl->m_MessageHandlers)	\
+	{																		\
+		pMessageHandler->On##e(__VA_ARGS__);								\
+	}																		\
 } while (false);
 
 
-struct BvAppData
+struct Pimpl
 {
 	BvRobinMap<HWND, BvWindow*> m_Windows;
 	BvVector<BvWindow*> m_WindowsToDelete;
 	BvRobinSet<BvApplicationMessageHandler*> m_MessageHandlers;
-	BvInputDeviceType m_DeviceTypes = BvInputDeviceType::kNone;
-	BvInputCreateFlags m_InputFlags = BvInputCreateFlags::kNone;
+	bool m_KeyboardUsesRawInput = false;
+	bool m_MouseUsesRawInput = false;
 	u32 m_HighSurrogate = 0;
 };
-
-
-BV_INLINE BvAppData& GetAppData()
-{
-	static BvAppData appData;
-	return appData;
-}
 
 
 void BvApplication::Initialize()
@@ -59,22 +52,21 @@ void BvApplication::Initialize()
 	//wndClass.hIconSm = LoadIcon(nullptr, IDI_WINLOGO);
 
 	RegisterClassExW(&wndClass);
+
+	m_pImpl = BV_NEW(Pimpl)();
 }
 
 
-void BvApplication::RegisterInputs(BvInputDeviceType deviceTypes, BvInputCreateFlags inputFlags)
+void BvApplication::RegisterRawInput(bool keyboard, bool mouse)
 {
-	auto& appData = GetAppData();
-	appData.m_DeviceTypes = deviceTypes;
-	appData.m_InputFlags = inputFlags;
-	if (appData.m_InputFlags == BvInputCreateFlags::kNone)
+	if (!(keyboard || mouse))
 	{
 		return;
 	}
 
 	RAWINPUTDEVICE rawInputDevices[2]{};
 	u32 deviceCount = 0;
-	if (EHasFlag(appData.m_InputFlags, BvInputCreateFlags::kUseRawKeyboard))
+	if (keyboard)
 	{
 		rawInputDevices[deviceCount].usUsagePage = 0x1;
 		rawInputDevices[deviceCount].usUsage = 0x6;
@@ -82,9 +74,11 @@ void BvApplication::RegisterInputs(BvInputDeviceType deviceTypes, BvInputCreateF
 		rawInputDevices[deviceCount].hwndTarget = nullptr; // If no HWND is specified, WM_INPUT is triggered on the foreground window
 
 		deviceCount++;
+
+		m_pImpl->m_KeyboardUsesRawInput = true;
 	}
 
-	if (EHasFlag(appData.m_InputFlags, BvInputCreateFlags::kUseRawMouse))
+	if (mouse)
 	{
 		rawInputDevices[deviceCount].usUsagePage = 0x1;
 		rawInputDevices[deviceCount].usUsage = 0x2;
@@ -92,6 +86,8 @@ void BvApplication::RegisterInputs(BvInputDeviceType deviceTypes, BvInputCreateF
 		rawInputDevices[deviceCount].hwndTarget = nullptr; // If no HWND is specified, WM_INPUT is triggered on the foreground window
 
 		deviceCount++;
+
+		m_pImpl->m_MouseUsesRawInput = true;
 	}
 
 	RegisterRawInputDevices(rawInputDevices, deviceCount, sizeof(RAWINPUTDEVICE));
@@ -100,10 +96,9 @@ void BvApplication::RegisterInputs(BvInputDeviceType deviceTypes, BvInputCreateF
 
 void BvApplication::Shutdown()
 {
-	auto& appData = GetAppData();
 	RAWINPUTDEVICE rawInputDevices[2]{};
 	u32 deviceCount = 0;
-	if (EHasFlag(appData.m_InputFlags, BvInputCreateFlags::kUseRawKeyboard))
+	if (m_pImpl->m_KeyboardUsesRawInput)
 	{
 		rawInputDevices[deviceCount].usUsagePage = 0x1;
 		rawInputDevices[deviceCount].usUsage = 0x6;
@@ -113,7 +108,7 @@ void BvApplication::Shutdown()
 		deviceCount++;
 	}
 
-	if (EHasFlag(appData.m_InputFlags, BvInputCreateFlags::kUseRawMouse))
+	if (m_pImpl->m_MouseUsesRawInput)
 	{
 		rawInputDevices[deviceCount].usUsagePage = 0x1;
 		rawInputDevices[deviceCount].usUsage = 0x2;
@@ -125,26 +120,28 @@ void BvApplication::Shutdown()
 	
 	RegisterRawInputDevices(rawInputDevices, deviceCount, sizeof(RAWINPUTDEVICE));
 
-	if (appData.m_WindowsToDelete.Size() > 0)
+	if (m_pImpl->m_WindowsToDelete.Size() > 0)
 	{
-		for (auto pWindow : appData.m_WindowsToDelete)
+		for (auto pWindow : m_pImpl->m_WindowsToDelete)
 		{
-			BvDelete(pWindow);
+			BV_DELETE(pWindow);
 		}
-		appData.m_WindowsToDelete.Clear();
+		m_pImpl->m_WindowsToDelete.Clear();
 	}
 
-	if (appData.m_Windows.Size() > 0)
+	if (m_pImpl->m_Windows.Size() > 0)
 	{
-		for (auto& windowData : appData.m_Windows)
+		for (auto& windowData : m_pImpl->m_Windows)
 		{
-			BvDelete(windowData.second);
+			BV_DELETE(windowData.second);
 		}
 	}
 
 	HMODULE hModule = GetModuleHandleW(nullptr);
 
 	UnregisterClassW(L"BDeVWindowClass", hModule);
+
+	BV_DELETE(m_pImpl);
 }
 
 
@@ -152,8 +149,7 @@ void BvApplication::ProcessOSEvents()
 {
 	UpdateInputBuffers();
 
-	auto& appData = GetAppData();
-	if (!EHasFlag(appData.m_InputFlags, BvInputCreateFlags::kUseRawKeyboard))
+	if (!m_pImpl->m_KeyboardUsesRawInput)
 	{
 		if (GetAsyncKeyState(VK_SNAPSHOT) & 0x8000)
 		{
@@ -163,13 +159,13 @@ void BvApplication::ProcessOSEvents()
 		}
 	}
 
-	if (appData.m_WindowsToDelete.Size() > 0)
+	if (m_pImpl->m_WindowsToDelete.Size() > 0)
 	{
-		for (auto pWindow : appData.m_WindowsToDelete)
+		for (auto pWindow : m_pImpl->m_WindowsToDelete)
 		{
-			BvDelete(pWindow);
+			BV_DELETE(pWindow);
 		}
-		appData.m_WindowsToDelete.Clear();
+		m_pImpl->m_WindowsToDelete.Clear();
 	}
 
 	MSG msg = {};
@@ -183,9 +179,8 @@ void BvApplication::ProcessOSEvents()
 
 BvWindow* BvApplication::CreateWindow(const WindowDesc& windowDesc)
 {
-	auto pWindow = BvNew(BvWindow, windowDesc);
-	auto& appData = GetAppData();
-	appData.m_Windows.Emplace((HWND)pWindow->GetHandle(), pWindow);
+	auto pWindow = BV_NEW(BvWindow)(windowDesc);
+	m_pImpl->m_Windows.Emplace(pWindow->m_hWnd, pWindow);
 
 	return pWindow;
 }
@@ -193,23 +188,37 @@ BvWindow* BvApplication::CreateWindow(const WindowDesc& windowDesc)
 
 void BvApplication::DestroyWindow(BvWindow* pWindow)
 {
-	if (pWindow->GetRefCount() <= 0)
-	{
-		auto& appData = GetAppData();
-		appData.m_WindowsToDelete.PushBack(pWindow);
-	}
+	m_pImpl->m_Windows.Erase(pWindow->m_hWnd);
+	m_pImpl->m_WindowsToDelete.PushBack(pWindow);
 }
 
 
 void BvApplication::AddMessageHandler(BvApplicationMessageHandler* pMessageHandler)
 {
-	GetAppData().m_MessageHandlers.Emplace(pMessageHandler);
+	m_pImpl->m_MessageHandlers.Emplace(pMessageHandler);
 }
 
 
 void BvApplication::RemoveMessageHandler(BvApplicationMessageHandler* pMessageHandler)
 {
-	GetAppData().m_MessageHandlers.Erase(pMessageHandler);
+	m_pImpl->m_MessageHandlers.Erase(pMessageHandler);
+}
+
+
+BvApplication* BvApplication::GetInstance()
+{
+	static BvApplication app;
+	return &app;
+}
+
+
+BvApplication::BvApplication()
+{
+}
+
+
+BvApplication::~BvApplication()
+{
 }
 
 
@@ -226,7 +235,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 	
 	pWindow = reinterpret_cast<BvWindow*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
-	auto& appData = GetAppData();
+	auto pApp = GetInstance();
 
 	switch (uMsg)
 	{
@@ -265,7 +274,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	case WM_SYSKEYDOWN:
 	case WM_SYSKEYUP:
 	{
-		if (EHasFlag(appData.m_InputFlags, BvInputCreateFlags::kUseRawKeyboard))
+		if (pApp->m_pImpl->m_KeyboardUsesRawInput)
 		{
 			break;
 		}
@@ -290,15 +299,15 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	{
 		if (IS_HIGH_SURROGATE(wParam))
 		{
-			appData.m_HighSurrogate = u32(wParam);
+			pApp->m_pImpl->m_HighSurrogate = u32(wParam);
 			return 0;
 		}
 
 		u32 codePoint;
-		if (IS_SURROGATE_PAIR(appData.m_HighSurrogate, wParam))
+		if (IS_SURROGATE_PAIR(pApp->m_pImpl->m_HighSurrogate, wParam))
 		{
-			codePoint = ((appData.m_HighSurrogate - HIGH_SURROGATE_START) << 10) + (u32(wParam) - LOW_SURROGATE_START) + 0x10000;
-			appData.m_HighSurrogate = 0;
+			codePoint = ((pApp->m_pImpl->m_HighSurrogate - HIGH_SURROGATE_START) << 10) + (u32(wParam) - LOW_SURROGATE_START) + 0x10000;
+			pApp->m_pImpl->m_HighSurrogate = 0;
 		}
 		else
 		{
@@ -400,21 +409,13 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 
 	case WM_CLOSE:
-		if (pWindow->DestroyOnClose())
-		{
-			DestroyWindow(pWindow);
-		}
-		else
-		{
-			pWindow->Hide();
-		}
+		pWindow->Hide();
 		
 		BvDispatchEvent(Close, pWindow);
 
 		return 0;
 
 	case WM_DESTROY:
-		appData.m_Windows.Erase(hWnd);
 		return 0;
 
 	case WM_ERASEBKGND:

@@ -3,6 +3,7 @@
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/Utils/BvObject.h"
 #include <cmath>
 
 
@@ -13,10 +14,10 @@ class BvCommandContext;
 class BvRenderDevice;
 
 
-class BvRenderDeviceChild
+class IBvRenderDeviceChild
 {
 public:
-	virtual ~BvRenderDeviceChild() {}
+	virtual ~IBvRenderDeviceChild() {}
 	virtual BvRenderDevice* GetDevice() = 0;
 };
 
@@ -50,11 +51,14 @@ enum class IndexFormat : u8
 	kU32
 };
 
+
 enum class MemoryType : u8
 {
 	kDevice,
 	kUpload,
+	kUploadNC, // Non-coherent; requires flushing buffer
 	kReadBack,
+	kReadBackNC, // Non-coherent; requires invalidating buffer
 	kShared
 };
 
@@ -1039,9 +1043,9 @@ enum class ShaderLanguage : u8
 enum class ShaderTarget : u8
 {
 	kUnknown,
-	
-	// OpenGL
-	kGLSL,
+
+	// OpenGL 4.5
+	kOpenGL_4_5,
 
 	// SPIR-V
 	kSPIRV_1_0,
@@ -1067,18 +1071,17 @@ enum class ShaderTarget : u8
 };
 
 
-enum class ShaderCompiler
+struct ShaderCreateDesc
 {
-	kUnknown,
-
-	// For OpenGL's default compiler
-	kOpenGL,
-
-	// For OpenGL (under Spir-V) and Vulkan
-	kSPIRV,
-
-	// For DirectX
-	kDXC,
+	const u8* m_pByteCode = nullptr;
+	size_t m_ByteCodeSize = 0;
+	const char* m_pSourceCode = nullptr;
+	size_t m_SourceCodeSize = 0;
+	class IBvShaderCompiler* pShaderCompiler = nullptr;
+	const char* m_pEntryPoint = "main";
+	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
+	ShaderLanguage m_ShaderLanguage = ShaderLanguage::kUnknown;
+	ShaderTarget m_ShaderTarget = ShaderTarget::kUnknown;
 };
 
 

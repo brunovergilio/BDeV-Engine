@@ -5,7 +5,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 
 
-class BvBufferView : public BvRenderDeviceChild
+class BvBufferView : public IBvRenderDeviceChild
 {
 	BV_NOCOPYMOVE(BvBufferView);
 

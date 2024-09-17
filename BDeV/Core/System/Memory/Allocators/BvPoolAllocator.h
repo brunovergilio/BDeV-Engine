@@ -8,6 +8,7 @@ class BvPoolAllocator
 {
 	BV_NOCOPYMOVE(BvPoolAllocator);
 public:
+	BvPoolAllocator() = default;
 	BvPoolAllocator(void* pStart, void* pEnd, size_t elementSize, size_t alignment);
 	BvPoolAllocator(size_t size, size_t elementSize, size_t alignment);
 	~BvPoolAllocator();
@@ -29,6 +30,8 @@ class BvGrowablePoolAllocator
 {
 	BV_NOCOPYMOVE(BvGrowablePoolAllocator);
 public:
+	BvGrowablePoolAllocator() = default;
+	BvGrowablePoolAllocator(void* pStart, void* pEnd, size_t growSize, size_t elementSize, size_t alignment);
 	BvGrowablePoolAllocator(size_t maxSize, size_t growSize, size_t elementSize, size_t alignment);
 	~BvGrowablePoolAllocator();
 
@@ -51,4 +54,6 @@ private:
 
 	void* m_pFreeList = nullptr;
 	size_t m_ElementSize = 0;
+
+	bool m_HasOwnMemory = false;
 };

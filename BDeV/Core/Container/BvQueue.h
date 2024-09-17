@@ -194,14 +194,14 @@ inline void BvQueue<Type, MemoryArenaType>::SetAllocator(MemoryArenaType* pAlloc
 
 	if (m_Capacity > 0)
 	{
-		Type* pNewData = pAllocator ? BvMNewN(*pAllocator, Type, m_Capacity) : BvNewN(Type, m_Capacity);
+		Type* pNewData = pAllocator ? BV_MNEW_ARRAY(*pAllocator, Type, m_Capacity) : BV_NEW_ARRAY(Type, m_Capacity);
 		for (auto i = 0u; i < m_Size; i++)
 		{
 			new (&pNewData[i]) Type(std::move(m_pData[(m_Front + i) % m_Capacity]));
 		}
 
 		Clear();
-		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
 		m_pData = pNewData;
 	}
 
@@ -427,7 +427,7 @@ inline void BvQueue<Type, MemoryArenaType>::Grow(u32 size)
 		return;
 	}
 
-	Type* pNewData = m_pAllocator ? BvMNewN(*m_pAllocator, Type, size) : BvNewN(Type, size);
+	Type* pNewData = m_pAllocator ? BV_MNEW_ARRAY(*m_pAllocator, Type, size) : BV_NEW_ARRAY(Type, size);
 	for (auto i = 0u; i < m_Size; i++)
 	{
 		auto curr = (m_Front + i) % m_Capacity;
@@ -438,7 +438,7 @@ inline void BvQueue<Type, MemoryArenaType>::Grow(u32 size)
 	m_Capacity = size;
 	if (m_pData)
 	{
-		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
 	}
 	m_pData = pNewData;
 	m_Front = 0;
@@ -451,6 +451,6 @@ inline void BvQueue<Type, MemoryArenaType>::Destroy()
 	Clear();
 	if (m_pData)
 	{
-		m_pAllocator ? BvMDeleteN(*m_pAllocator, m_pData) : BvDeleteN(m_pData);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
 	}
 }

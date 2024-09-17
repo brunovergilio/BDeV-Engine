@@ -77,30 +77,61 @@ void BvPoolAllocator::Free(void* pMem)
 // ===============================================
 // Growable Pool Allocator
 // ===============================================
-BvGrowablePoolAllocator::BvGrowablePoolAllocator(size_t maxSize, size_t growSize, size_t elementSize, size_t alignment)
+BvGrowablePoolAllocator::BvGrowablePoolAllocator(void* pStart, void* pEnd, size_t growSize, size_t elementSize, size_t alignment)
 {
-	// I'm not concerned with the alignment of the memory generated, since it is aligned to a multiple of the page size,
-	// which usually is 4KB on most processors / systems. That should be more than enough for the alignment size.
+	auto& systemInfo = BvProcess::GetSystemInfo();
+	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	size_t maxSize = size_t(pEnd) - size_t(pStart);
+
+	auto numPages = maxSize / systemInfo.m_PageSize;
+	auto metadataSize = sizeof(u32) * numPages;
+
+	m_pVirtualBase = reinterpret_cast<char*>(pStart);
+	BvVirtualMemory::Commit(m_pVirtualBase, m_GrowSize);
+	m_pVirtualStart = reinterpret_cast<char*>(RoundToNearestPowerOf2(size_t(m_pVirtualBase) + metadataSize, alignment));
+	m_pVirtualEnd = m_pVirtualBase + maxSize;
+	m_pCurrent = m_pVirtualBase + m_GrowSize;
+	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	MakeFreeList(m_pVirtualStart, m_pCurrent, m_ElementSize);
+
+	// First page will always be allocated since we need to store metadata information
+	// to be able to decommit pages later on
+	u32* pPageCount = reinterpret_cast<u32*>(m_pVirtualBase);
+	*pPageCount = 1;
+}
+
+
+BvGrowablePoolAllocator::BvGrowablePoolAllocator(size_t maxSize, size_t growSize, size_t elementSize, size_t alignment)
+	: m_HasOwnMemory(true)
+{
 	auto& systemInfo = BvProcess::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
 
 	auto numPages = maxSize / systemInfo.m_PageSize;
-	auto maxMetadataElementsPerPage = systemInfo.m_PageSize >> 2;
-	auto extraPageSize = ((numPages / maxMetadataElementsPerPage) + (numPages % maxMetadataElementsPerPage != 0 ? 1 : 0)) * systemInfo.m_PageSize;
+	auto metadataSize = sizeof(u32) * numPages;
 
-	m_pVirtualBase = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize + extraPageSize));
-	BvVirtualMemory::Commit(m_pVirtualBase, extraPageSize);
-	m_pVirtualStart = m_pVirtualBase + extraPageSize;
-	m_pVirtualEnd = m_pVirtualStart + maxSize;
-	m_pCurrent = m_pVirtualStart;
-	m_ElementSize = RoundToNearestPowerOf2(elementSize, alignment);
+	m_pVirtualBase = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
+	BvVirtualMemory::Commit(m_pVirtualBase, m_GrowSize);
+	m_pVirtualStart = reinterpret_cast<char*>(RoundToNearestPowerOf2(size_t(m_pVirtualBase) + metadataSize, alignment));
+	m_pVirtualEnd = m_pVirtualBase + maxSize;
+	m_pCurrent = m_pVirtualBase + m_GrowSize;
+	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	MakeFreeList(m_pVirtualStart, m_pCurrent, m_ElementSize);
+
+	// First page will always be allocated since we need to store metadata information
+	// to be able to decommit pages later on
+	u32* pPageCount = reinterpret_cast<u32*>(m_pVirtualBase);
+	*pPageCount = 1;
 }
 
 
 BvGrowablePoolAllocator::~BvGrowablePoolAllocator()
 {
-	BvVirtualMemory::Release(m_pVirtualBase);
+	if (m_HasOwnMemory)
+	{
+		BvVirtualMemory::Release(m_pVirtualBase);
+	}
 }
 
 

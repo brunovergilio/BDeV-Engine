@@ -16,23 +16,28 @@ class BvApplication
 public:
 	static constexpr const char* s_WindowClassName = "BDeVWindowClass";
 
-	static void Initialize();
-	static void RegisterInputs(BvInputDeviceType deviceTypes, BvInputCreateFlags createFlags = BvInputCreateFlags::kNone);
-	static void Shutdown();
+	void Initialize();
+	void RegisterRawInput(bool keyboard = true, bool mouse = true);
+	void Shutdown();
 
-	static void ProcessOSEvents();
+	void ProcessOSEvents();
 
-	static BvWindow* CreateWindow(const WindowDesc& windowDesc);
-	static void DestroyWindow(BvWindow* pWindow);
+	BvWindow* CreateWindow(const WindowDesc& windowDesc);
+	void DestroyWindow(BvWindow* pWindow);
 
-	static void AddMessageHandler(BvApplicationMessageHandler* pMessageHandler);
-	static void RemoveMessageHandler(BvApplicationMessageHandler* pMessageHandler);
+	void AddMessageHandler(BvApplicationMessageHandler* pMessageHandler);
+	void RemoveMessageHandler(BvApplicationMessageHandler* pMessageHandler);
+
+	static BvApplication* GetInstance();
 
 private:
-	BvApplication() {}
-	~BvApplication() {}
+	BvApplication();
+	~BvApplication();
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 	static LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 #endif
+
+private:
+	struct Pimpl* m_pImpl = nullptr;
 };

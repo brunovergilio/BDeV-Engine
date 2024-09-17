@@ -1,6 +1,7 @@
 ﻿#include "BDeV/BDeV.h"
 #include <iostream>
 #include <fstream>
+#include "BDeV/Reflection/BvRTTI.h"
 
 
 char stack[1024];
@@ -127,43 +128,25 @@ constexpr BvUUID fa2 = MakeUUIDv4("7b134b6e-b092-465f-9c00-a127a562ba2b");
 constexpr BvUUID fa3 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a5cdba2b");
 
 
-void Tryme()
-{
-	class ExType : public IBvRefCounted
-	{
-	public:
-		BV_IMPLEMENT_QUERY_INTERFACE(ExType);
-
-		ExType(IBvMemoryArena* pArena) : IBvRefCounted(pArena) {}
-		~ExType()
-		{
-			printf("bye!\n");
-		}
-
-		void PrintMe(const char* p)
-		{
-			printf("%s\n", p);
-		}
-
-		static void Create(void** pObj)
-		{
-			*pObj = BV_IBVOBJECT_CREATE(ExType, nullptr);
-		}
-	};
-
-	ExType* pObj = nullptr;
-	ExType::Create(&pObj);
-	BvObjectPtr<ExType> ptr;
-	ptr.Attach(pObj);
-	ptr->PrintMe("huhuh");
-	auto g = ptr->GetInterfaceId();
-	ptr.Reset();
-}
-
 BvVector<BvString> locales;
+
+
+
+//void* operator new(std::size_t count, std::align_val_t al, void* ptr)
+//{
+//	return ptr;
+//}
+//
+//
+//void* operator new[](std::size_t count, std::align_val_t al, void* ptr)
+//{
+//	return ptr;
+//}
+
 
 int main()
 {
+	auto f = new(nullptr) MyStruct;
 	//SetConsoleOutputCP(CP_UTF8); // Set console code page to UTF-8
 	//SetConsoleCP(CP_UTF8); // Set input code page to UTF-8
 	const wchar_t* faj = L"На берегу пустынных волн";

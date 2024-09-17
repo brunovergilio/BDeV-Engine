@@ -3,11 +3,11 @@
 
 
 // ===============================================
-// Heap Allocator
+// Linear Allocator
 // ===============================================
 BvLinearAllocator::BvLinearAllocator(void* pStart, void* pEnd)
 	: m_pStart(reinterpret_cast<char*>(pStart)), m_pEnd(reinterpret_cast<char*>(pEnd)),
-	m_pCurrent(reinterpret_cast<char*>(pStart))
+	m_pCurrent(m_pStart)
 {
 }
 
@@ -28,12 +28,28 @@ BvLinearAllocator::~BvLinearAllocator()
 }
 
 
+void BvLinearAllocator::Set(void* pStart, void* pEnd)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	m_pStart = reinterpret_cast<char*>(pStart);
+	m_pEnd = reinterpret_cast<char*>(pEnd);
+	m_pCurrent = m_pStart;
+}
+
+
+void BvLinearAllocator::Set(size_t size)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	m_pStart = reinterpret_cast<char*>(BvMemory::Allocate(size));
+	m_pEnd = m_pStart + size;
+	m_pCurrent = m_pStart;
+	m_HasOwnMemory = true;
+}
+
+
 void* BvLinearAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	// The total size will be => [allocation + alignment + kPointerSize]
-	// The extra 2 kPointerSize bytes will store the address to the next element and
-	// the original memory address, so it can have its size calculated
-	size = RoundToNearestMultiple(size, kPointerSize) + alignment + alignmentOffset + (kPointerSize << 1);
+	size = RoundToNearestMultiple(size + alignment + alignmentOffset, kPointerSize) + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds
 	if (m_pCurrent + size > m_pEnd)
@@ -80,9 +96,19 @@ void BvLinearAllocator::Reset()
 
 
 // ===============================================
-// Growable Heap Allocator
+// Growable Linear Allocator
 // ===============================================
+BvGrowableLinearAllocator::BvGrowableLinearAllocator(void* pStart, void* pEnd, size_t growSize)
+	: m_pVirtualStart(reinterpret_cast<char*>(pStart)), m_pVirtualEnd(reinterpret_cast<char*>(pEnd)),
+	m_pStart(m_pVirtualStart), m_pEnd(m_pVirtualStart), m_pCurrent(m_pVirtualStart)
+{
+	auto& systemInfo = BvProcess::GetSystemInfo();
+	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+}
+
+
 BvGrowableLinearAllocator::BvGrowableLinearAllocator(size_t maxSize, size_t growSize)
+	: m_HasOwnMemory(true)
 {
 	auto& systemInfo = BvProcess::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
@@ -95,16 +121,40 @@ BvGrowableLinearAllocator::BvGrowableLinearAllocator(size_t maxSize, size_t grow
 
 BvGrowableLinearAllocator::~BvGrowableLinearAllocator()
 {
-	BvVirtualMemory::Release(m_pVirtualStart);
+	if (m_HasOwnMemory)
+	{
+		BvVirtualMemory::Release(m_pVirtualStart);
+	}
+}
+
+
+void BvGrowableLinearAllocator::Set(void* pStart, void* pEnd, size_t growSize)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	auto& systemInfo = BvProcess::GetSystemInfo();
+	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	m_pVirtualStart = reinterpret_cast<char*>(pStart);
+	m_pVirtualEnd = reinterpret_cast<char*>(pEnd);
+	m_pStart = m_pEnd = m_pCurrent = m_pVirtualStart;
+}
+
+
+void BvGrowableLinearAllocator::Set(size_t maxSize, size_t growSize)
+{
+	BvAssert(m_pStart == nullptr, "Memory already set");
+	auto& systemInfo = BvProcess::GetSystemInfo();
+	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
+	m_pVirtualStart = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
+	m_pVirtualEnd = m_pVirtualStart + maxSize;
+	m_pStart = m_pEnd = m_pCurrent = m_pVirtualStart;
+	m_HasOwnMemory = true;
 }
 
 
 void* BvGrowableLinearAllocator::Allocate(size_t size, size_t alignment /*= kDefaultAlignmentSize*/, size_t alignmentOffset /*= 0*/)
 {
-	// The total size will be => [allocation + alignment + kPointerSize]
-	// The extra 2 kPointerSize bytes will store the address to the next element and
-	// the original memory address, so it can have its size calculated
-	size = RoundToNearestPowerOf2(size, kPointerSize) + alignment + alignmentOffset + (kPointerSize << 1);
+	size = RoundToNearestPowerOf2(size + alignment + alignmentOffset, kPointerSize) + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds; if we are, try committing more memory
 	if (m_pCurrent + size > m_pEnd && !CommitMemory(size - size_t(m_pEnd - m_pCurrent)))

@@ -64,7 +64,7 @@ public:
 
 		for (auto hMonitor : monitorHandles)
 		{
-			m_MonitorInfos.PushBack(BvNew(BvMonitor, hMonitor));
+			m_MonitorInfos.PushBack(BV_NEW(BvMonitor)(hMonitor));
 		}
 	}
 
@@ -72,7 +72,7 @@ public:
 	{
 		for (auto pMonitorInfo : m_MonitorInfos)
 		{
-			BvDelete(pMonitorInfo);
+			BV_DELETE(pMonitorInfo);
 		}
 		m_MonitorInfos.Clear();
 	}

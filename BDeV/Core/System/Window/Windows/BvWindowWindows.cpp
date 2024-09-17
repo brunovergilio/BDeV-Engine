@@ -296,30 +296,12 @@ void BvWindow::SetText(const char* pText)
 }
 
 
-void BvWindow::DestroyOnClose(bool value)
-{
-	m_DestroyOnClose = value;
-}
-
-
 void BvWindow::GetDimensions(i32& x, i32& y, u32& width, u32& height)
 {
 	x = m_X;
 	y = m_Y;
 	width = m_Width;
 	height = m_Height;
-}
-
-
-void BvWindow::IncRefCount()
-{
-	++m_RefCount;
-}
-
-
-void BvWindow::DecRefCount()
-{
-	--m_RefCount;
 }
 
 
@@ -353,12 +335,6 @@ bool BvWindow::IsValid() const
 }
 
 
-bool BvWindow::DestroyOnClose() const
-{
-	return m_DestroyOnClose;
-}
-
-
 void BvWindow::OnSizeChanged(u32 width, u32 height)
 {
 	m_Width = width;
@@ -379,7 +355,7 @@ void* BvWindow::GetHandle() const
 }
 
 
-void BvWindow::Create()
+void BvWindow::Create(bool createNew)
 {
 	i32 x = m_X;
 	i32 y = m_Y;
@@ -452,19 +428,26 @@ void BvWindow::Create()
 	auto pChosenWindowName = pDefaultWindowName;
 	if (m_WindowDesc.m_Name)
 	{
-		std::mbstate_t state = std::mbstate_t();
-		std::size_t len = 1 + std::mbsrtowcs(nullptr, &m_WindowDesc.m_Name, 0, &state);
-		if (len <= kMaxWindowNameSize)
+		if (auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_WindowDesc.m_Name, 0, nullptr, 0))
 		{
-			std::mbsrtowcs(wideName, &m_WindowDesc.m_Name, len, &state);
+			BvTextUtilities::ConvertUTF8CharToWideChar(m_WindowDesc.m_Name, 0, wideName, sizeNeeded);
 			pChosenWindowName = wideName;
 		}
 	}
-	m_hWnd = CreateWindowExW(exStyle, L"BDeVWindowClass", pChosenWindowName, style,
-		x, y, width, height, nullptr, nullptr, GetModuleHandle(nullptr), this);
-	if (!m_hWnd)
+	if (createNew)
 	{
-		BvOSCrashIfFailed(m_hWnd);
+		m_hWnd = CreateWindowExW(exStyle, L"BDeVWindowClass", pChosenWindowName, style,
+			x, y, width, height, nullptr, nullptr, GetModuleHandleW(nullptr), this);
+		if (!m_hWnd)
+		{
+			BvOSCrashIfFailed(m_hWnd);
+		}
+	}
+	else
+	{
+		SetWindowLongW(m_hWnd, GWL_STYLE, style);
+		SetWindowLongW(m_hWnd, GWL_EXSTYLE, exStyle);
+		SetWindowPos(m_hWnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 	}
 
 	m_X = x;

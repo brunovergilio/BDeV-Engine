@@ -5,6 +5,7 @@
 #include "BvSwapChain.h"
 #include "BvRenderPass.h"
 #include "BvShaderResource.h"
+#include "BvShader.h"
 #include "BvPipelineState.h"
 #include "BvBuffer.h"
 #include "BvBufferView.h"
@@ -29,10 +30,12 @@ public:
 	virtual BvRenderPass* CreateRenderPass(const RenderPassDesc& renderPassDesc) = 0;
 	virtual BvShaderResourceLayout* CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
 		const ShaderResourceConstantDesc& shaderResourceConstantDesc) = 0;
+	virtual BvShader* CreateShader(const ShaderCreateDesc& shaderDesc) = 0;
 	virtual BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) = 0;
+	virtual BvComputePipelineState* CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) = 0;
 	virtual BvQuery* CreateQuery(QueryType queryType) = 0;
 	
-	virtual void Release(BvRenderDeviceChild* pDeviceObj) = 0;
+	virtual void Release(IBvRenderDeviceChild* pDeviceObj) = 0;
 
 	virtual void WaitIdle() const = 0;
 
