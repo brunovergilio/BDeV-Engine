@@ -14,7 +14,7 @@ class BvCommandQueueGl final : public BvCommandQueue
 	BV_NOCOPYMOVE(BvCommandQueueGl);
 
 public:
-	BvCommandQueueGl(const BvRenderDeviceGl& device, const QueueFamilyType queueFamilyType, const u32 queueIndex);
+	BvCommandQueueGl(const BvRenderDeviceGl& device, const CommandType queueFamilyType, const u32 queueIndex);
 	~BvCommandQueueGl();
 
 	void Submit(const SubmitInfo& submitInfo) override;

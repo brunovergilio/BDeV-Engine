@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
@@ -26,19 +18,6 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -57,12 +36,6 @@
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -70,12 +43,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
@@ -88,34 +55,6 @@
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(SolutionDir)BDeV\Core\RenderAPI\Vulkan\Third Party;$(IncludePath)</IncludePath>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
@@ -159,31 +98,6 @@
     <ClInclude Include="Core\Math\BvRandom.h" />
     <ClInclude Include="Core\RenderAPI\BvShader.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvBufferViewVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvBufferVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvCommandBufferVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvCommandContextVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvCommandPoolVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvCommandQueueVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvCommonVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvDebugReportVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvDescriptorSetVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvFramebufferVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvGPUInfoVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvPipelineStateVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvQueryVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvRenderDeviceVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvRenderEngineVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvRenderPassVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvSamplerVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvSemaphoreVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvShaderResourceVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvShaderVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvSwapChainVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvTextureViewVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvTextureVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvTypeConversionsVk.h" />
-    <ClInclude Include="Core\RenderAPI\Vulkan\BvUtilsVk.h" />
     <ClInclude Include="Core\System\Memory\BvMemoryArea.h" />
     <ClInclude Include="Core\System\Memory\BvMemoryArena.h" />
     <ClInclude Include="Core\Utils\BvLog.h" />
@@ -276,31 +190,6 @@
   <ItemGroup>
     <ClCompile Include="Core\Container\BvText.cpp" />
     <ClCompile Include="Core\Math\BvRandom.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvBufferViewVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvBufferVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvCommandBufferVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvCommandContextVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvCommandPoolVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvCommandQueueVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvCommonVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvDebugReportVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvDescriptorSetVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvFramebufferVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvPipelineStateVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvQueryVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvRenderDeviceVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvRenderEngineVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvRenderPassVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvSamplerVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvSemaphoreVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvShaderResourceVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvShaderVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvSwapChainVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvTextureViewVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvTextureVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvTypeConversionsVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\BvUtilsVk.cpp" />
-    <ClCompile Include="Core\RenderAPI\Vulkan\Windows\BvSwapChainVkWindows.cpp" />
     <ClCompile Include="Core\System\Memory\BvMemoryArea.cpp" />
     <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
     <ClCompile Include="Core\Container\BvStringId.cpp" />

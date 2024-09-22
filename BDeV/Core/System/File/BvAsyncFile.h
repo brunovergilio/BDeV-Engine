@@ -16,14 +16,13 @@ public:
 	friend class BvAsyncFile;
 
 	AsyncFileRequest();
-	AsyncFileRequest(const AsyncFileRequest&);
-	AsyncFileRequest& operator =(const AsyncFileRequest&);
 	AsyncFileRequest(AsyncFileRequest&& rhs) noexcept;
 	AsyncFileRequest& operator =(AsyncFileRequest&& rhs) noexcept;
 	~AsyncFileRequest();
 
-	i32 GetResult(const bool wait = true);
+	u32 GetResult(bool wait = true);
 	void Cancel();
+	void Release();
 
 private:
 	AsyncFileData* m_pIOData = nullptr;

@@ -45,7 +45,7 @@ public:
 
 	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr) const = 0;
 
-	virtual bool SupportsQueryType(QueryType queryType, QueueFamilyType commandType) const = 0;
+	virtual bool SupportsQueryType(QueryType queryType, CommandType commandType) const = 0;
 	virtual bool IsFormatSupported(Format format) const = 0;
 
 protected:

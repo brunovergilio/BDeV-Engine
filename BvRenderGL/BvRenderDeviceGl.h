@@ -38,7 +38,7 @@ public:
 	BV_INLINE BvCommandQueue* GetGraphicsQueue(const u32 index = 0) const override final { return nullptr; }
 	BV_INLINE BvCommandQueue* GetComputeQueue(const u32 index = 0) const override final { return nullptr; }
 	BV_INLINE BvCommandQueue* GetTransferQueue(const u32 index = 0) const override final { return nullptr; }
-	bool QueueFamilySupportsPresent(const QueueFamilyType queueFamilyType) const override final { return true; }
+	bool QueueFamilySupportsPresent(const CommandType queueFamilyType) const override final { return true; }
 
 	BV_INLINE const BvGPUInfoGl& GetGPUInfo() const { return m_GPUInfo; }
 	BV_INLINE BvFramebufferManagerGl* GetFramebufferManager() const { return m_pFramebufferManager; }

@@ -30,18 +30,11 @@ constexpr u32 kMaxVertexBindings = 16;
 constexpr u32 kMaxVertexBuffers = 16;
 
 
-enum class QueueFamilyType : u8
+enum class CommandType : u8
 {
 	kGraphics,
 	kCompute,
 	kTransfer,
-};
-
-
-enum class CommandType : u8
-{
-	kPrimary,
-	kSecondary
 };
 
 
@@ -781,8 +774,8 @@ struct ResourceBarrierDesc
 	Type m_Type = Type::kStateTransition;
 
 	// These fields can be used for more detailed barriers (in Vulkan)
-	QueueFamilyType m_SrcQueue = QueueFamilyType::kGraphics;
-	QueueFamilyType m_DstQueue = QueueFamilyType::kGraphics;
+	CommandType m_SrcQueue = CommandType::kGraphics;
+	CommandType m_DstQueue = CommandType::kGraphics;
 
 	ResourceAccess m_SrcAccess = ResourceAccess::kAuto;
 	ResourceAccess m_DstAccess = ResourceAccess::kAuto;

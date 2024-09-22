@@ -11,21 +11,21 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
+    <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{e70917fd-0339-4e6e-a99b-4d5248dd8d5c}</ProjectGuid>
-    <RootNamespace>BvRenderGL</RootNamespace>
+    <ProjectGuid>{f9c85bb6-dc1e-4f09-917a-df6a3a671503}</ProjectGuid>
+    <RootNamespace>BvRenderVk</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -44,12 +44,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(SolutionDir);$(ProjectDir)Third Party;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(SolutionDir);$(ProjectDir)Third Party;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -57,17 +57,15 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External/glew/include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>
+      </SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -76,78 +74,77 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External/glew/include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>
+      </SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\External\glew\include\GL\glew.h" />
-    <ClInclude Include="..\External\glew\include\GL\wglew.h" />
-    <ClInclude Include="BvBufferGl.h" />
-    <ClInclude Include="BvBufferViewGl.h" />
-    <ClInclude Include="BvCommandBufferGl.h" />
-    <ClInclude Include="BvCommandPoolGl.h" />
-    <ClInclude Include="BvCommandQueueGl.h" />
-    <ClInclude Include="BvCommonGl.h" />
-    <ClInclude Include="BvContextGl.h" />
-    <ClInclude Include="BvDebugReportGl.h" />
-    <ClInclude Include="BvFramebufferGl.h" />
-    <ClInclude Include="BvGPUInfoGl.h" />
-    <ClInclude Include="BvPipelineStateGl.h" />
-    <ClInclude Include="BvRenderContextStateGl.h" />
-    <ClInclude Include="BvRenderDeviceGl.h" />
-    <ClInclude Include="BvRenderEngineGl.h" />
-    <ClInclude Include="BvRenderPassGl.h" />
-    <ClInclude Include="BvSamplerGl.h" />
-    <ClInclude Include="BvSemaphoreGl.h" />
-    <ClInclude Include="BvShaderResourceGl.h" />
-    <ClInclude Include="BvShaderResourceSetPoolGl.h" />
-    <ClInclude Include="BvSwapChainGl.h" />
-    <ClInclude Include="BvTextureGl.h" />
-    <ClInclude Include="BvTextureViewGl.h" />
-    <ClInclude Include="BvTypeConversionsGl.h" />
-    <ClInclude Include="BvVertexArrayObjectGl.h" />
+    <ClInclude Include="BvBufferViewVk.h" />
+    <ClInclude Include="BvBufferVk.h" />
+    <ClInclude Include="BvCommandBufferVk.h" />
+    <ClInclude Include="BvCommandContextVk.h" />
+    <ClInclude Include="BvCommandPoolVk.h" />
+    <ClInclude Include="BvCommandQueueVk.h" />
+    <ClInclude Include="BvCommonVk.h" />
+    <ClInclude Include="BvDebugReportVk.h" />
+    <ClInclude Include="BvDescriptorSetVk.h" />
+    <ClInclude Include="BvFramebufferVk.h" />
+    <ClInclude Include="BvGPUInfoVk.h" />
+    <ClInclude Include="BvPipelineStateVk.h" />
+    <ClInclude Include="BvQueryVk.h" />
+    <ClInclude Include="BvRenderDeviceVk.h" />
+    <ClInclude Include="BvRenderEngineVk.h" />
+    <ClInclude Include="BvRenderPassVk.h" />
+    <ClInclude Include="BvSamplerVk.h" />
+    <ClInclude Include="BvSemaphoreVk.h" />
+    <ClInclude Include="BvShaderResourceVk.h" />
+    <ClInclude Include="BvShaderVk.h" />
+    <ClInclude Include="BvSwapChainVk.h" />
+    <ClInclude Include="BvTextureViewVk.h" />
+    <ClInclude Include="BvTextureVk.h" />
+    <ClInclude Include="BvTypeConversionsVk.h" />
+    <ClInclude Include="BvUtilsVk.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BvBufferViewVk.cpp" />
+    <ClCompile Include="BvBufferVk.cpp" />
+    <ClCompile Include="BvCommandBufferVk.cpp" />
+    <ClCompile Include="BvCommandContextVk.cpp" />
+    <ClCompile Include="BvCommandPoolVk.cpp" />
+    <ClCompile Include="BvCommandQueueVk.cpp" />
+    <ClCompile Include="BvCommonVk.cpp" />
+    <ClCompile Include="BvDebugReportVk.cpp" />
+    <ClCompile Include="BvDescriptorSetVk.cpp" />
+    <ClCompile Include="BvFramebufferVk.cpp" />
+    <ClCompile Include="BvPipelineStateVk.cpp" />
+    <ClCompile Include="BvQueryVk.cpp" />
+    <ClCompile Include="BvRenderDeviceVk.cpp" />
+    <ClCompile Include="BvRenderEngineVk.cpp" />
+    <ClCompile Include="BvRenderPassVk.cpp" />
+    <ClCompile Include="BvSamplerVk.cpp" />
+    <ClCompile Include="BvSemaphoreVk.cpp" />
+    <ClCompile Include="BvShaderResourceVk.cpp" />
+    <ClCompile Include="BvShaderVk.cpp" />
+    <ClCompile Include="BvSwapChainVk.cpp" />
+    <ClCompile Include="BvTextureViewVk.cpp" />
+    <ClCompile Include="BvTextureVk.cpp" />
+    <ClCompile Include="BvTypeConversionsVk.cpp" />
+    <ClCompile Include="BvUtilsVk.cpp" />
+    <ClCompile Include="Windows\BvSwapChainVkWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BDeV\BDeV.vcxproj">
       <Project>{5abfc153-e6bd-4f67-bfa0-f123ca883b95}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\External\glew\src\glew.c" />
-    <ClCompile Include="BvBufferGl.cpp" />
-    <ClCompile Include="BvBufferViewGl.cpp" />
-    <ClCompile Include="BvCommandBufferGl.cpp" />
-    <ClCompile Include="BvCommandPoolGl.cpp" />
-    <ClCompile Include="BvCommandQueueGl.cpp" />
-    <ClCompile Include="BvDebugReportGl.cpp" />
-    <ClCompile Include="BvFramebufferGl.cpp" />
-    <ClCompile Include="BvPipelineStateGl.cpp" />
-    <ClCompile Include="BvRenderContextStateGl.cpp" />
-    <ClCompile Include="BvRenderDeviceGl.cpp" />
-    <ClCompile Include="BvRenderEngineGl.cpp" />
-    <ClCompile Include="BvRenderPassGl.cpp" />
-    <ClCompile Include="BvSamplerGl.cpp" />
-    <ClCompile Include="BvSemaphoreGl.cpp" />
-    <ClCompile Include="BvShaderResourceGl.cpp" />
-    <ClCompile Include="BvShaderResourceSetPoolGl.cpp" />
-    <ClCompile Include="BvSwapChainGl.cpp" />
-    <ClCompile Include="BvTextureGl.cpp" />
-    <ClCompile Include="BvTextureViewGl.cpp" />
-    <ClCompile Include="BvTypeConversionsGl.cpp" />
-    <ClCompile Include="BvVertexArrayObjectGl.cpp" />
-    <ClCompile Include="Windows\BvContextGlWindows.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
