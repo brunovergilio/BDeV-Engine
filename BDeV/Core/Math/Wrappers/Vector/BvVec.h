@@ -83,6 +83,11 @@ public:
 	BvVec Reflect(CRBvVec normal) const;
 	BvVec Refract(CRBvVec normal, f32 eta) const;
 
+	BvVec Or(CRBvVec v) const;
+	BvVec And(CRBvVec v) const;
+	BvVec AndNot(CRBvVec v) const;
+	BvVec Xor(CRBvVec v) const;
+
 	const f32& operator[](unsigned int index) const;
 	f32& operator[](unsigned int index);
 

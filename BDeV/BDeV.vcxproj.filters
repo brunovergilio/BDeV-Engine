@@ -92,6 +92,10 @@
     <ClInclude Include="Engine\Memory\BvMemorySystem.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
     <ClInclude Include="Core\Math\BvRandom.h" />
+    <ClInclude Include="Core\Math\BvTrigo.h" />
+    <ClInclude Include="Core\Math\BvGeometryGenerator.h" />
+    <ClInclude Include="Core\Math\BvPrimitives.h" />
+    <ClInclude Include="Core\Math\BvIntersections.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -139,6 +143,8 @@
     <ClCompile Include="Core\Container\BvText.cpp" />
     <ClCompile Include="Engine\Memory\BvAllocationModule.cpp" />
     <ClCompile Include="Core\Math\BvRandom.cpp" />
+    <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
+    <ClCompile Include="Core\Math\BvIntersections.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Math\FPU\BvFastMat_FPU.inl" />

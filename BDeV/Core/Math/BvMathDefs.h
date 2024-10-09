@@ -35,7 +35,9 @@
 constexpr float kEpsilon = 0.0001f;
 
 constexpr float kPi      = 3.141592653589793238462f;
+constexpr float k1DivPi	 = 1.0f / kPi;
 constexpr float k2Pi	 = kPi * 2.0f;//6.283185482025146484375f;
+constexpr float k1Div2Pi = 1.0f / k2Pi;
 constexpr float k3PiDiv2 = kPi * 1.5f;//4.712388992309570312500f;
 
 constexpr float kPiDiv2  = kPi / 2.0f;//1.570796370506286621094f;

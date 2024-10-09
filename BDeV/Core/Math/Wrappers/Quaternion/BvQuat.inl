@@ -186,6 +186,11 @@ inline BvQuat BvQuat::FromMatrix(const BvMat& m) const
 	return BvQuat(QuaternionFromMatrix(m.mat));
 }
 
+inline BvVec BvQuat::ToVector() const
+{
+	return BvVec(m128);
+}
+
 inline BvQuat BvQuat::QVQC(CRBvVec v) const
 {
 	return BvQuat(QuaternionQVQC(m128, v.m128));

@@ -128,9 +128,6 @@ constexpr BvUUID fa2 = MakeUUIDv4("7b134b6e-b092-465f-9c00-a127a562ba2b");
 constexpr BvUUID fa3 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a5cdba2b");
 
 
-BvVector<BvString> locales;
-
-
 
 //void* operator new(std::size_t count, std::align_val_t al, void* ptr)
 //{
@@ -146,28 +143,47 @@ BvVector<BvString> locales;
 
 int main()
 {
+	u64 s2 = BvTime::GetCurrentTimestampInUs();
+	for (int i = 0; i < 1000000; ++i)
+	{
+		float ss = sinf(i);
+	}
+	s2 = BvTime::GetCurrentTimestampInUs() - s2;
+
+	u64 s1 = BvTime::GetCurrentTimestampInUs();
+	for (int i = 0; i < 1000000; ++i)
+	{
+		float ss = Sin(i);
+	}
+	s1 = BvTime::GetCurrentTimestampInUs() - s1;
+
+	printf("%llu / %llu", s1, s2);
+
+
 	auto f = new(nullptr) MyStruct;
 	//SetConsoleOutputCP(CP_UTF8); // Set console code page to UTF-8
 	//SetConsoleCP(CP_UTF8); // Set input code page to UTF-8
-	const wchar_t* faj = L"На берегу пустынных волн";
-	const char* faj2 = "На берегу пустынных волн";
+	constexpr const wchar_t* faj = L"На берегу пустынных волн";
+	constexpr const char* faj2 = "На берегу пустынных волн";
 	auto ftt = BvTextUtilities::ConvertWideCharToUTF8Char(faj, 0, nullptr, 0);
 	auto ggg = new char[ftt];
 	BvTextUtilities::ConvertWideCharToUTF8Char(faj, 0, ggg, ftt);
 	printf("%s\n", faj2);
 
+	BvVector<BvString> locales;
 	auto enumLocaleFn = [](LPWSTR pName, DWORD flags, LPARAM pUserData)
 		{
+			BvVector<BvString>* locales = (BvVector<BvString>*)pUserData;
 			auto sizeNeeded = BvTextUtilities::ConvertWideCharToASCII(pName, 0, nullptr, 0);
 			BvStackArea(strMem, sizeNeeded + 5);
 			char* pStr = strMem.GetStart();
 			BvTextUtilities::ConvertWideCharToASCII(pName, 0, pStr, sizeNeeded);
-			auto& loc = locales.EmplaceBack(pStr);
+			auto& loc = locales->EmplaceBack(pStr);
 			loc.Append(".UTF8", 0, 5);
 			//printf("%ls\n", pName);
 			return 0;
 		};
-	EnumSystemLocalesEx(enumLocaleFn, 0, 0, nullptr);
+	EnumSystemLocalesEx(enumLocaleFn, 0, 0, &locales);
 
 
 	{

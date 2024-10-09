@@ -95,7 +95,11 @@
     <ClInclude Include="BDeV.h" />
     <ClInclude Include="Core\BvCore.h" />
     <ClInclude Include="Core\Container\BvText.h" />
+    <ClInclude Include="Core\Math\BvGeometryGenerator.h" />
+    <ClInclude Include="Core\Math\BvIntersections.h" />
+    <ClInclude Include="Core\Math\BvPrimitives.h" />
     <ClInclude Include="Core\Math\BvRandom.h" />
+    <ClInclude Include="Core\Math\BvTrigo.h" />
     <ClInclude Include="Core\RenderAPI\BvShader.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
     <ClInclude Include="Core\System\Memory\BvMemoryArea.h" />
@@ -189,6 +193,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\Container\BvText.cpp" />
+    <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
+    <ClCompile Include="Core\Math\BvIntersections.cpp" />
     <ClCompile Include="Core\Math\BvRandom.cpp" />
     <ClCompile Include="Core\System\Memory\BvMemoryArea.cpp" />
     <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />

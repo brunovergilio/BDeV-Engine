@@ -92,8 +92,8 @@ vf32 VectorLengthV(vf32 v);
 
 vf32 VectorNormalize(vf32 v);
 
-vf32 VectorProject(vf32 v1, vf32 v2);
-vf32 VectorProjectNormal(vf32 v1, vf32 v2);
+vf32 VectorProject(vf32 v, vf32 p);
+vf32 VectorProjectNormal(vf32 v, vf32 p);
 
 vf32 VectorLerp(vf32 v1, vf32 v2, f32 t);
 

@@ -825,7 +825,7 @@ inline mf32 MatrixPerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fov
 inline mf32 MatrixPerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
 	f32 a = 1.0f / tanf(fovY * 0.5f);
-	f32 b = farZ / (farZ - nearZ);
+	f32 b = farZ / (nearZ - farZ);
 
 	vf32 v0 = _mm_set_ps(0.0f, nearZ * b, a, a / aspectRatio);
 	vf32 v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, b);
@@ -842,10 +842,10 @@ inline mf32 MatrixPerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fov
 inline mf32 MatrixPerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
 	f32 a = 1.0f / tanf(fovY * 0.5f);
-	f32 b = farZ - nearZ;
+	f32 b = 1.0f / (farZ - nearZ);
 
-	vf32 v0 = _mm_set_ps(0.0f, (2.0f * farZ * nearZ) / b, a, a / aspectRatio);
-	vf32 v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, -(farZ + nearZ) / b);
+	vf32 v0 = _mm_set_ps(0.0f, -2.0f * farZ * nearZ * b, a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, 1.0f, (farZ + nearZ) * b);
 
 	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
@@ -859,10 +859,10 @@ inline mf32 MatrixPerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fov
 inline mf32 MatrixPerspectiveRH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
 	f32 a = 1.0f / tanf(fovY * 0.5f);
-	f32 b = farZ - nearZ;
+	f32 b = 1.0f / (nearZ - farZ);
 
-	vf32 v0 = _mm_set_ps(0.0f, (-2.0f * farZ * nearZ) / b, a, a / aspectRatio);
-	vf32 v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, -(farZ + nearZ) / b);
+	vf32 v0 = _mm_set_ps(0.0f, 2.0f * farZ * nearZ * b, a, a / aspectRatio);
+	vf32 v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, (farZ + nearZ) * b);
 
 	mf32 r;
 	r.r[0] = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(3, 3, 3, 0));
@@ -893,7 +893,7 @@ inline mf32 MatrixPerspectiveLH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fov
 inline mf32 MatrixPerspectiveRH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 {
 	f32 a = 1.0f / tanf(fovY * 0.5f);
-	f32 b = farZ / (farZ - nearZ);
+	f32 b = farZ / (nearZ - farZ);
 
 	vf32 v0 = _mm_set_ps(0.0f, nearZ * b, -a, a / aspectRatio);
 	vf32 v1 = _mm_set_ps(0.0f, 0.0f, -1.0f, b);

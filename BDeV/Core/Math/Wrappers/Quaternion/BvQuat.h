@@ -64,6 +64,8 @@ public:
 	BvMat ToMatrix() const;
 	BvQuat FromMatrix(const BvMat& m) const;
 
+	BvVec ToVector() const;
+
 	BvQuat QVQC(CRBvVec v) const;
 	BvQuat QCVQ(CRBvVec v) const;
 

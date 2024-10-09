@@ -191,6 +191,15 @@ constexpr u64 operator""_gb(size_t bytes)
 }
 
 
+template<typename T, auto V>
+constexpr size_t OffsetOfPtr()
+{
+	return ((size_t)&reinterpret_cast<char const volatile&>((((T*)0)->*V)));
+}
+
+#define BV_OFFSETOF(t, v) OffsetOfPtr<t, &t::v>()
+
+
 struct BvSourceInfo
 {
 	const char* m_pFunction;

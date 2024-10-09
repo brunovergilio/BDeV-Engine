@@ -277,6 +277,26 @@ inline BvVec BvVec::Refract(CRBvVec normal, f32 eta) const
 	return BvVec(VectorRefraction(m128, normal.m128, eta));
 }
 
+inline BvVec BvVec::Or(CRBvVec v) const
+{
+	return BvVec(VectorOr(m128, v.m128));
+}
+
+inline BvVec BvVec::And(CRBvVec v) const
+{
+	return BvVec(VectorAnd(m128, v.m128));
+}
+
+inline BvVec BvVec::AndNot(CRBvVec v) const
+{
+	return BvVec(VectorAndNot(m128, v.m128));
+}
+
+inline BvVec BvVec::Xor(CRBvVec v) const
+{
+	return BvVec(VectorXor(m128, v.m128));
+}
+
 inline const f32& BvVec::operator[](unsigned int index) const
 {
 	return arr[index];
