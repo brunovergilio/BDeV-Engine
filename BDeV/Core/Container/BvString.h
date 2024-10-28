@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Utils/BvHash.h"
 #include "BDeV/Core/Container/BvVector.h"

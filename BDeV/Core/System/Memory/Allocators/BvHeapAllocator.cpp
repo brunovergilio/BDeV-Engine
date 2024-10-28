@@ -1,5 +1,5 @@
 #include "BvHeapAllocator.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/Threading/BvProcess.h"
 
 

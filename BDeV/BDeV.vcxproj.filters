@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="Core\BvCore.h" />
-    <ClInclude Include="Core\System\Debug\BvDebug.h" />
     <ClInclude Include="Core\Utils\BvDelegate.h" />
     <ClInclude Include="Core\Utils\BvEvent.h" />
     <ClInclude Include="Core\Utils\BvTime.h" />
@@ -96,6 +95,7 @@
     <ClInclude Include="Core\Math\BvGeometryGenerator.h" />
     <ClInclude Include="Core\Math\BvPrimitives.h" />
     <ClInclude Include="Core\Math\BvIntersections.h" />
+    <ClInclude Include="Core\System\Diagnostics\BvDiagnostics.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -129,7 +129,6 @@
     <ClCompile Include="Core\System\Threading\BvSync.cpp" />
     <ClCompile Include="Core\System\Threading\Windows\BvThreadWindows.cpp" />
     <ClCompile Include="Core\System\Window\Windows\BvWindowWindows.cpp" />
-    <ClCompile Include="Core\System\Debug\Windows\BvDebugWindows.cpp" />
     <ClCompile Include="Core\System\Window\Windows\BvMonitorWindows.cpp" />
     <ClCompile Include="Core\Utils\BvTestUnit.cpp" />
     <ClCompile Include="Core\Utils\BvHash.cpp" />
@@ -145,6 +144,7 @@
     <ClCompile Include="Core\Math\BvRandom.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\Math\BvIntersections.cpp" />
+    <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Math\FPU\BvFastMat_FPU.inl" />

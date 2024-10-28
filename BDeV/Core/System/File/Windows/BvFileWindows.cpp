@@ -1,5 +1,5 @@
 #include "BDeV/Core/System/File/BvFile.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Container/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/Windows/BvWindowsHeader.h"

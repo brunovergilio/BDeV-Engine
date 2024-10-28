@@ -7,7 +7,7 @@
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Container/BvIterator.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include <utility>
 
 

@@ -33,7 +33,7 @@
 
 #include "BDeV/Core/System/Application/BvApplication.h"
 
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 
 #include "BDeV/Core/System/File/BvFile.h"
 #include "BDeV/Core/System/File/BvAsyncFile.h"

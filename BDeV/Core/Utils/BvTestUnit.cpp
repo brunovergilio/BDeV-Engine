@@ -1,5 +1,5 @@
 #include "BvTestUnit.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 
 namespace Internal
 {

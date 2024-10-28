@@ -3,7 +3,7 @@
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 
 
 template<typename Type, typename MemoryArenaType = IBvMemoryArena>

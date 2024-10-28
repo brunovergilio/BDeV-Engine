@@ -1,5 +1,5 @@
 #include "BDeV/Core/System/HID/BvMouse.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/Windows/BvWindowsHeader.h"
 
 

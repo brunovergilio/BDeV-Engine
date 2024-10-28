@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/Window/BvWindow.h"
 #include "BDeV/Core/System/Application/BvApplication.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Container/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/Window/BvMonitor.h"

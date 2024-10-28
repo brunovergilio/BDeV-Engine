@@ -1,7 +1,7 @@
 #include "BDeV/Core/System/Threading/BvProcess.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 #include "BDeV/Core/Container/BvVector.h"
-#include "BDeV/Core/System/Debug/BvDebug.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/Windows/BvWindowsHeader.h"
 #include <DbgHelp.h>
 #include <bit>
