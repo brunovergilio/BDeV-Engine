@@ -65,6 +65,8 @@
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -83,6 +85,8 @@
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -122,16 +126,7 @@
     <ClInclude Include="Engine\TBJobSystem\BvTBJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystemTLS.h" />
-    <ClInclude Include="Core\Math\BvFloatTypes.h" />
     <ClInclude Include="Core\Math\BvMath.h" />
-    <ClInclude Include="Core\Math\BvMathDefs.h" />
-    <ClInclude Include="Core\Math\BvFastMat.h" />
-    <ClInclude Include="Core\Math\BvFastQuat.h" />
-    <ClInclude Include="Core\Math\BvFastVec.h" />
-    <ClInclude Include="Core\Math\BvLoaders.h" />
-    <ClInclude Include="Core\Math\Wrappers\Matrix\BvMat.h" />
-    <ClInclude Include="Core\Math\Wrappers\Quaternion\BvQuat.h" />
-    <ClInclude Include="Core\Math\Wrappers\Vector\BvVec.h" />
     <ClInclude Include="Reflection\BvRTTI.h" />
     <ClInclude Include="Core\RenderAPI\BvBuffer.h" />
     <ClInclude Include="Core\RenderAPI\BvBufferView.h" />
@@ -238,17 +233,10 @@
     <ClCompile Include="Core\Utils\BvUUID.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Core\Math\FPU\BvFastMat_FPU.inl" />
-    <None Include="Core\Math\FPU\BvFastQuat_FPU.inl" />
-    <None Include="Core\Math\FPU\BvFastVec_FPU.inl" />
-    <None Include="Core\Math\FPU\BvLoaders_FPU.inl" />
-    <None Include="Core\Math\SIMD\BvFastMat_SIMD.inl" />
-    <None Include="Core\Math\SIMD\BvFastQuat_SIMD.inl" />
-    <None Include="Core\Math\SIMD\BvFastVec_SIMD.inl" />
-    <None Include="Core\Math\SIMD\BvLoaders_SIMD.inl" />
-    <None Include="Core\Math\Wrappers\Matrix\BvMat.inl" />
-    <None Include="Core\Math\Wrappers\Quaternion\BvQuat.inl" />
-    <None Include="Core\Math\Wrappers\Vector\BvVec.inl" />
+    <None Include="Core\Math\BvMathLoaders.inl" />
+    <None Include="Core\Math\BvMathMatrix.inl" />
+    <None Include="Core\Math\BvMathQuaternion.inl" />
+    <None Include="Core\Math\BvMathVector.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

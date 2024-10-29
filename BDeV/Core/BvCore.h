@@ -21,6 +21,17 @@
 #endif
 
 
+#define BV_MATH_INSTRUCTION_AVX 1
+#define BV_MATH_INSTRUCTION_FPU 2
+
+
+#if defined(__AVX__)
+#define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_AVX
+#else
+#define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_FPU
+#endif
+
+
 // =================================
 // Platform-dependent stuff
 // =================================

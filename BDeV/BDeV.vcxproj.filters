@@ -12,8 +12,6 @@
     <ClInclude Include="Core\Container\BvRobinMap.h" />
     <ClInclude Include="Core\Container\BvString.h" />
     <ClInclude Include="Core\Container\BvVector.h" />
-    <ClInclude Include="Core\Math\BvMathDefs.h" />
-    <ClInclude Include="Core\Math\BvFloatTypes.h" />
     <ClInclude Include="Core\Math\BvMath.h" />
     <ClInclude Include="Core\RenderAPI\BvTextureView.h" />
     <ClInclude Include="Core\RenderAPI\BvBuffer.h" />
@@ -31,13 +29,6 @@
     <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystemTLS.h" />
     <ClInclude Include="Engine\TBJobSystem\BvTBJobSystem.h" />
-    <ClInclude Include="Core\Math\BvFastMat.h" />
-    <ClInclude Include="Core\Math\BvFastQuat.h" />
-    <ClInclude Include="Core\Math\BvFastVec.h" />
-    <ClInclude Include="Core\Math\BvLoaders.h" />
-    <ClInclude Include="Core\Math\Wrappers\Matrix\BvMat.h" />
-    <ClInclude Include="Core\Math\Wrappers\Quaternion\BvQuat.h" />
-    <ClInclude Include="Core\Math\Wrappers\Vector\BvVec.h" />
     <ClInclude Include="Reflection\BvRTTI.h" />
     <ClInclude Include="Core\System\File\BvAsyncFile.h" />
     <ClInclude Include="Core\System\File\BvFile.h" />
@@ -147,16 +138,9 @@
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Core\Math\FPU\BvFastMat_FPU.inl" />
-    <None Include="Core\Math\FPU\BvFastQuat_FPU.inl" />
-    <None Include="Core\Math\FPU\BvFastVec_FPU.inl" />
-    <None Include="Core\Math\FPU\BvLoaders_FPU.inl" />
-    <None Include="Core\Math\SIMD\BvFastMat_SIMD.inl" />
-    <None Include="Core\Math\SIMD\BvFastQuat_SIMD.inl" />
-    <None Include="Core\Math\SIMD\BvFastVec_SIMD.inl" />
-    <None Include="Core\Math\SIMD\BvLoaders_SIMD.inl" />
-    <None Include="Core\Math\Wrappers\Matrix\BvMat.inl" />
-    <None Include="Core\Math\Wrappers\Quaternion\BvQuat.inl" />
-    <None Include="Core\Math\Wrappers\Vector\BvVec.inl" />
+    <None Include="Core\Math\BvMathVector.inl" />
+    <None Include="Core\Math\BvMathLoaders.inl" />
+    <None Include="Core\Math\BvMathMatrix.inl" />
+    <None Include="Core\Math\BvMathQuaternion.inl" />
   </ItemGroup>
 </Project>
