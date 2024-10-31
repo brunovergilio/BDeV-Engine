@@ -24,7 +24,7 @@ public:
 	static i32 PrintF(const char* pFormat, ...);
 
 	// Should only be called by assert macros
-	static void RaiseAssertionError(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
+	static void Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
 };
 
 
@@ -42,7 +42,7 @@ public:
 {																							\
 	if (!(cond))																			\
 	{																						\
-		BvDebug::RaiseAssertionError(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+		BvDebug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);				\
 	}																						\
 } while (false)
 
@@ -51,7 +51,7 @@ public:
 	static bool log = true;																	\
 	if (log && !(cond))																		\
 	{																						\
-		BvDebug::RaiseAssertionError(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+		BvDebug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);				\
 		log = false;																		\
 	}																						\
 } while (false)

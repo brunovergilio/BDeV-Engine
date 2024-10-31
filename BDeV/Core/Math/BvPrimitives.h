@@ -1,41 +1,39 @@
 #pragma once
 
 
-#include "Wrappers/Vector/BvVec.h"
-#include "Wrappers/Matrix/BvMat.h"
-#include "Wrappers/Quaternion/BvQuat.h"
+#include "BvMath.h"
 
 
 struct BvRay
 {
 	BvRay() = default;
-	BvRay(BvVec pos, BvVec dir)
+	BvRay(const Float3& pos, const Float3& dir)
 		: m_Pos(pos), m_Dir(dir) {}
 
-	BvVec m_Pos;
-	BvVec m_Dir;
+	Float3 m_Pos;
+	Float3 m_Dir;
 };
 
 
 struct BvTriangle
 {
 	BvTriangle() = default;
-	BvTriangle(BvVec v0, BvVec v1, BvVec v2)
+	BvTriangle(const Float3& v0, const Float3& v1, const Float3& v2)
 		: m_V0(v0), m_V1(v1), m_V2(v2) {}
 
-	BvVec m_V0;
-	BvVec m_V1;
-	BvVec m_V2;
+	Float3 m_V0;
+	Float3 m_V1;
+	Float3 m_V2;
 };
 
 
 struct BvSphere
 {
 	BvSphere() = default;
-	BvSphere(BvVec center, float radius = 1.0f)
+	BvSphere(const Float3& center, float radius = 1.0f)
 		: m_Center(center), m_Radius(radius) {}
 
-	BvVec m_Center;
+	Float3 m_Center;
 	float m_Radius;
 };
 
@@ -43,12 +41,12 @@ struct BvSphere
 struct BvPlane
 {
 	BvPlane() = default;
-	BvPlane(BvVec normal, float distance)
+	BvPlane(const Float3& normal, float distance)
 		: m_Normal(normal), m_Distance(distance) {}
-	BvPlane(BvVec normal, BvVec point)
-		: m_Normal(normal), m_Distance(-(point.Dot(normal))) {}
+	BvPlane(const Float3& normal, const Float3& point)
+		: m_Normal(normal), m_Distance(-VectorGetX(Vector3Dot(Load(point), Load(normal)))) {}
 
-	BvVec m_Normal;
+	Float3 m_Normal;
 	float m_Distance;
 };
 
@@ -56,25 +54,25 @@ struct BvPlane
 struct BvAABB
 {
 	BvAABB() = default;
-	BvAABB(BvVec min, BvVec max)
-		: m_Min(min), m_Max(max) {}
+	BvAABB(const Float3& center, const Float3& extents)
+		: m_Center(center), m_Extents(extents) {}
 
-	BvVec m_Min;
-	BvVec m_Max;
+	Float3 m_Center;
+	Float3 m_Extents;
 };
 
 
 struct BvOBB
 {
 	BvOBB() = default;
-	BvOBB(BvVec center, BvVec extents, BvQuat rotation = BvQuat())
+	BvOBB(const Float3& center, const Float3& extents, const Float4& rotation)
 		: m_Center(center), m_Extents(extents), m_Rotation(rotation) {}
 	explicit BvOBB(const BvAABB& aabb)
-		: m_Center((aabb.m_Min + aabb.m_Max) * 0.5f), m_Extents((aabb.m_Max - aabb.m_Min) * 0.5f) {}
+		: m_Center(aabb.m_Center), m_Extents(aabb.m_Extents), m_Rotation(0.0f, 0.0f, 0.0f, 1.0f) {}
 
-	BvVec m_Center;
-	BvVec m_Extents;
-	BvQuat m_Rotation;
+	Float3 m_Center;
+	Float3 m_Extents;
+	Float4 m_Rotation;
 };
 
 
@@ -99,10 +97,10 @@ struct BvFrustum
 struct BvCapsule
 {
 	BvCapsule() = default;
-	BvCapsule(BvVec p0, BvVec p1, float radius = 1.0f)
-		: m_P0(p0), m_P1(p1), m_Radius(radius) {}
+	BvCapsule(const Float3& p0, const Float3& p1, float radius = 1.0f)
+		: m_P1(p0), m_P2(p1), m_Radius(radius) {}
 
-	BvVec m_P0;
-	BvVec m_P1;
+	Float3 m_P1;
+	Float3 m_P2;
 	float m_Radius;
 };

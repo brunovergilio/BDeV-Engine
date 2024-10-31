@@ -4,12 +4,16 @@
 #include <cstdio>
 
 
-constexpr u32 kMaxMsgSize = 2048;
-
-
 class BvConsoleHelper
 {
 public:
+	static BvConsoleHelper* GetInstance()
+	{
+		static BvConsoleHelper console;
+		return &console;
+	}
+
+private:
 	BvConsoleHelper()
 	{
 		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -34,15 +38,10 @@ public:
 	~BvConsoleHelper() {}
 };
 
-BV_INLINE void InitConsoleHelperOnce()
-{
-	static BvConsoleHelper consoleHelper;
-}
-
 
 i32 BvConsole::PrintF(const char* pFormat, ...)
 {
-	InitConsoleHelperOnce();
+	BvConsoleHelper::GetInstance();
 
 	va_list argList;
 	va_start(argList, pFormat);
@@ -55,7 +54,7 @@ i32 BvConsole::PrintF(const char* pFormat, ...)
 
 i32 BvConsole::PrintF(const BvColorI& textColor, const char* pFormat, ...)
 {
-	InitConsoleHelperOnce();
+	BvConsoleHelper::GetInstance();
 
 	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
 	va_list argList;
@@ -70,7 +69,7 @@ i32 BvConsole::PrintF(const BvColorI& textColor, const char* pFormat, ...)
 
 i32 BvConsole::PrintF(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
 {
-	InitConsoleHelperOnce();
+	BvConsoleHelper::GetInstance();
 
 	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
 	printf("\033[48;2;%d;%d;%dm", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
@@ -87,36 +86,48 @@ i32 BvConsole::PrintF(const BvColorI& textColor, const BvColorI& backGroundColor
 i32 BvDebug::PrintF(const char* pFormat, ...)
 {
 #if BV_DEBUG
-	char errorMessage[kMaxMsgSize];
-
 	va_list argList;
 	va_start(argList, pFormat);
-	auto charsWritten = vsnprintf(errorMessage, kMaxMsgSize, pFormat, argList);
+	auto charsWritten = vsnprintf(nullptr, 0, pFormat, argList);
 	va_end(argList);
-	OutputDebugStringA(errorMessage);
 
-	return charsWritten < kMaxMsgSize ? charsWritten : kMaxMsgSize - 1;
+	{
+		char* pErrorMessage = (char*)BV_STACK_ALLOC(charsWritten + 1);
+		va_start(argList, pFormat);
+		vsnprintf(pErrorMessage, charsWritten + 1, pFormat, argList);
+		va_end(argList);
+		OutputDebugStringA(pErrorMessage);
+	}
+
+	return charsWritten;
 #else
 	return 0;
 #endif
 }
 
 
-void BvDebug::RaiseAssertionError(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...)
+void BvDebug::Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...)
 {
 #if BV_DEBUG
-	char errorMessage[kMaxMsgSize];
-
 	va_list argList;
 	va_start(argList, pFormat);
-	auto charsWritten = vsnprintf(errorMessage, kMaxMsgSize, pFormat, argList);
+	auto charsWritten = vsnprintf(nullptr, 0, pFormat, argList);
 	va_end(argList);
-	if (charsWritten + 1 < kMaxMsgSize)
+
+	auto extraCharsWritten = snprintf(nullptr, 0, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+
+	i32 result = 0;
 	{
-		snprintf(errorMessage + charsWritten, kMaxMsgSize - 1 - charsWritten, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		char* pErrorMessage = (char*)BV_STACK_ALLOC(charsWritten + extraCharsWritten + 1);
+
+		va_start(argList, pFormat);
+		vsnprintf(pErrorMessage, charsWritten + 1, pFormat, argList);
+		va_end(argList);
+
+		snprintf(pErrorMessage + charsWritten, extraCharsWritten + 1, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		result = MessageBoxA(nullptr, pErrorMessage, "BDeV Assertion Error", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 	}
 
-	auto result = MessageBoxA(nullptr, errorMessage, "BDeV Assertion Error", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 	if (result == IDABORT)
 	{
 		exit(kI32Max);
@@ -136,24 +147,32 @@ void BvDebug::RaiseAssertionError(const char* pCondition, const BvSourceInfo& so
 
 void BvError::RaiseError(const BvSourceInfo& sourceInfo, const char* pFormat, ...)
 {
-	char errorMessage[kMaxMsgSize];
-
 	va_list argList;
 	va_start(argList, pFormat);
-	auto charsWritten = vsnprintf(errorMessage, kMaxMsgSize, pFormat, argList);
+	auto charsWritten = vsnprintf(nullptr, 0, pFormat, argList);
 	va_end(argList);
-	if (charsWritten + 1 < kMaxMsgSize)
+
+	auto extraCharsWritten = snprintf(nullptr, 0, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+
 	{
-		snprintf(errorMessage + charsWritten, kMaxMsgSize - 1 - charsWritten, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		char* pErrorMessage = (char*)BV_STACK_ALLOC(charsWritten + extraCharsWritten + 1);
+
+		va_start(argList, pFormat);
+		vsnprintf(pErrorMessage, charsWritten + 1, pFormat, argList);
+		va_end(argList);
+
+		snprintf(pErrorMessage + charsWritten, extraCharsWritten + 1, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		MessageBoxA(nullptr, pErrorMessage, "BDeV Error", MB_OK | MB_ICONERROR);
 	}
 
-	MessageBoxA(nullptr, errorMessage, "BDeV Error", MB_OK | MB_ICONERROR);
 	exit(kI32Max);
 }
 
 
 void BvError::RaiseOSError(const BvSourceInfo& sourceInfo)
 {
+	constexpr auto kMaxMsgSize = 2048;
+	
 	auto errorCode = GetLastError();
 	char errorMessage[kMaxMsgSize];
 	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, errorCode, 0, errorMessage, kMaxMsgSize, nullptr);

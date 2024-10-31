@@ -78,9 +78,49 @@ BV_INLINE vf32 BV_VCALL VectorReplicateW(cvf32 v)
 	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(3, 3, 3, 3));
 }
 
-BV_INLINE vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2, cvf32 mask)
+BV_INLINE vf32 BV_VCALL VectorMaskX()
 {
-	return _mm_blendv_ps(v2, v1, mask);
+	return _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0, 0, 0));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskY()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0, 0xFFFFFFFF, 0, 0));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskZ()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0, 0, 0xFFFFFFFF, 0));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskW()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0, 0, 0, 0xFFFFFFFF));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskAll()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskInvX()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskInvY()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0, 0xFFFFFFFF, 0xFFFFFFFF));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskInvZ()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0xFFFFFFFF, 0, 0xFFFFFFFF));
+}
+
+BV_INLINE vf32 BV_VCALL VectorMaskInvW()
+{
+	return _mm_castsi128_ps(_mm_setr_epi32(0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0));
 }
 
 template<u32 X, u32 Y, u32 Z, u32 W>
@@ -89,16 +129,28 @@ BV_INLINE vf32 BV_VCALL VectorPermute(cvf32 v)
 	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(W, Z, Y, X));
 }
 
+BV_INLINE vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2, i32 mask)
+{
+	__m128i imm = _mm_setr_epi32((mask & 1) ? 0xFFFFFFFF : 0, (mask & 2) ? 0xFFFFFFFF : 0, (mask & 4) ? 0xFFFFFFFF : 0, (mask & 8) ? 0xFFFFFFFF : 0);
+
+	return _mm_blendv_ps(v2, v1, _mm_castsi128_ps(imm));
+}
+
+BV_INLINE vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2, cvf32 mask)
+{
+	return _mm_blendv_ps(v2, v1, mask);
+}
+
 template<u32 X, u32 Y, u32 Z, u32 W>
 BV_INLINE vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2)
 {
 	constexpr i32 s = _MM_SHUFFLE((W & 3), (Z & 3), (Y & 3), (X & 3));
-	vf32 s0 = _mm_shuffle_ps(v0, v0, s);
 	vf32 s1 = _mm_shuffle_ps(v1, v1, s);
+	vf32 s2 = _mm_shuffle_ps(v2, v2, s);
 
 	constexpr i32 b = (X <= 3) | ((Y <= 3) << 1) | ((Z <= 3) << 2) | ((W <= 3) << 3);
 
-	return _mm_blend_ps(s1, s0, b);
+	return _mm_blend_ps(s2, s1, b);
 }
 
 template<u32 X, u32 Y, u32 Z, u32 W>
@@ -305,6 +357,26 @@ BV_INLINE vf32 BV_VCALL Vector4LessEqual(cvf32 v1, cvf32 v2)
 	return _mm_cmple_ps(v1, v2);
 }
 
+BV_INLINE bool BV_VCALL Vector3AllTrue(cvf32 v)
+{
+	return VectorAllTrue(VectorPermute<0, 1, 2, 2>(v));
+}
+
+BV_INLINE bool BV_VCALL Vector3AllFalse(cvf32 v)
+{
+	return VectorAllFalse(VectorPermute<0, 1, 2, 2>(v));
+}
+
+BV_INLINE bool BV_VCALL Vector3AnyTrue(cvf32 v)
+{
+	return VectorAnyTrue(VectorPermute<0, 1, 2, 2>(v));
+}
+
+BV_INLINE bool BV_VCALL Vector3AnyFalse(cvf32 v)
+{
+	return VectorAnyFalse(VectorPermute<0, 1, 2, 2>(v));
+}
+
 BV_INLINE bool BV_VCALL VectorAllTrue(cvf32 v)
 {
 	return VectorGetMask(v) == 0xF;
@@ -338,6 +410,11 @@ BV_INLINE vf32 BV_VCALL VectorAnd(cvf32 v1, cvf32 v2)
 BV_INLINE vf32 BV_VCALL VectorXor(cvf32 v1, cvf32 v2)
 {
 	return _mm_xor_ps(v1, v2);
+}
+
+BV_INLINE vf32 BV_VCALL VectorNot(cvf32 v)
+{
+	return _mm_xor_ps(v, _mm_castsi128_ps(_mm_set1_epi32(0xFFFFFFFF)));
 }
 
 BV_INLINE vf32 BV_VCALL VectorAndNot(cvf32 v1, cvf32 v2)

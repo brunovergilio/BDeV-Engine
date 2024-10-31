@@ -1,6 +1,9 @@
 #pragma once
 
 
+#include "BDeV/Core/BvCore.h"
+
+
 // Default floating point error threshold
 constexpr float kEpsilon = 0.0001f;
 
@@ -253,25 +256,25 @@ void BV_VCALL Store44(const mf32& m, f32* p);
 void BV_VCALL Store44A(const mf32& m, f32* p);
 
 BV_INLINE vf32 BV_VCALL Load(f32 f) { return Load(&f); }
-BV_INLINE vf32 BV_VCALL Load2(const Float2& f) { return Load2(f.v); }
-BV_INLINE vf32 BV_VCALL Load3(const Float3& f) { Load3(f.v); }
-BV_INLINE vf32 BV_VCALL Load4(const Float4& f) { Load4(f.v); }
-BV_INLINE vf32 BV_VCALL Load4A(const Float4A& f) { Load4A(f.v); }
+BV_INLINE vf32 BV_VCALL Load(const Float2& f) { return Load2(f.v); }
+BV_INLINE vf32 BV_VCALL Load(const Float3& f) { Load3(f.v); }
+BV_INLINE vf32 BV_VCALL Load(const Float4& f) { Load4(f.v); }
+BV_INLINE vf32 BV_VCALL Load(const Float4A& f) { Load4A(f.v); }
 BV_INLINE void BV_VCALL Store(cvf32 v, f32& f) { Store(v, &f); }
-BV_INLINE void BV_VCALL Store2(cvf32 v, Float2& f) { Store2(v, f.v); }
-BV_INLINE void BV_VCALL Store3(cvf32 v, Float3& f) { Store3(v, f.v); }
-BV_INLINE void BV_VCALL Store4(cvf32 v, Float4& f) { Store4(v, f.v); }
-BV_INLINE void BV_VCALL Store4A(cvf32 v, Float4A& f) { Store4A(v, f.v); }
-BV_INLINE mf32 BV_VCALL Load22(const Float22& r) { Load22(r.m); }
-BV_INLINE mf32 BV_VCALL Load33(const Float33& r) { Load33(r.m); }
-BV_INLINE mf32 BV_VCALL Load43(const Float43& r) { Load43(r.m); }
-BV_INLINE mf32 BV_VCALL Load44(const Float44& r) { Load44(r.m); }
-BV_INLINE mf32 BV_VCALL Load44A(const Float44A& r) { Load44A(r.m); }
-BV_INLINE void BV_VCALL Store22(const mf32& m, Float22& r) { Store22(m, r.m); }
-BV_INLINE void BV_VCALL Store33(const mf32& m, Float33& r) { Store33(m, r.m); }
-BV_INLINE void BV_VCALL Store43(const mf32& m, Float43& r) { Store43(m, r.m); }
-BV_INLINE void BV_VCALL Store44(const mf32& m, Float44& r) { Store44(m, r.m); }
-BV_INLINE void BV_VCALL Store44A(const mf32& m, Float44A& r) { Store44A(m, r.m); }
+BV_INLINE void BV_VCALL Store(cvf32 v, Float2& f) { Store2(v, f.v); }
+BV_INLINE void BV_VCALL Store(cvf32 v, Float3& f) { Store3(v, f.v); }
+BV_INLINE void BV_VCALL Store(cvf32 v, Float4& f) { Store4(v, f.v); }
+BV_INLINE void BV_VCALL Store(cvf32 v, Float4A& f) { Store4A(v, f.v); }
+BV_INLINE mf32 BV_VCALL Load(const Float22& r) { Load22(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float33& r) { Load33(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float43& r) { Load43(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float44& r) { Load44(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float44A& r) { Load44A(r.m); }
+BV_INLINE void BV_VCALL Store(cmf32 m, Float22& r) { Store22(m, r.m); }
+BV_INLINE void BV_VCALL Store(cmf32 m, Float33& r) { Store33(m, r.m); }
+BV_INLINE void BV_VCALL Store(cmf32 m, Float43& r) { Store43(m, r.m); }
+BV_INLINE void BV_VCALL Store(cmf32 m, Float44& r) { Store44(m, r.m); }
+BV_INLINE void BV_VCALL Store(cmf32 m, Float44A& r) { Store44A(m, r.m); }
 
 
 f32 BV_VCALL VectorGetX(cvf32 v);
@@ -288,7 +291,17 @@ vf32 BV_VCALL VectorReplicateX(cvf32 v);
 vf32 BV_VCALL VectorReplicateY(cvf32 v);
 vf32 BV_VCALL VectorReplicateZ(cvf32 v);
 vf32 BV_VCALL VectorReplicateW(cvf32 v);
+vf32 BV_VCALL VectorMaskX();
+vf32 BV_VCALL VectorMaskY();
+vf32 BV_VCALL VectorMaskZ();
+vf32 BV_VCALL VectorMaskW();
+vf32 BV_VCALL VectorMaskAll();
+vf32 BV_VCALL VectorMaskInvX();
+vf32 BV_VCALL VectorMaskInvY();
+vf32 BV_VCALL VectorMaskInvZ();
+vf32 BV_VCALL VectorMaskInvW();
 template<u32 X, u32 Y, u32 Z, u32 W> vf32 BV_VCALL VectorPermute(cvf32 v);
+vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2, i32 mask);
 vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2, cvf32 mask);
 template<u32 X, u32 Y, u32 Z, u32 W> vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL VectorMax(cvf32 v1, cvf32 v2);
@@ -327,6 +340,10 @@ vf32 BV_VCALL Vector4Greater(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL Vector4GreaterEqual(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL Vector4Less(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL Vector4LessEqual(cvf32 v1, cvf32 v2);
+bool BV_VCALL Vector3AllTrue(cvf32 v);
+bool BV_VCALL Vector3AllFalse(cvf32 v);
+bool BV_VCALL Vector3AnyTrue(cvf32 v);
+bool BV_VCALL Vector3AnyFalse(cvf32 v);
 bool BV_VCALL VectorAllTrue(cvf32 v);
 bool BV_VCALL VectorAllFalse(cvf32 v);
 bool BV_VCALL VectorAnyTrue(cvf32 v);
@@ -334,6 +351,7 @@ bool BV_VCALL VectorAnyFalse(cvf32 v);
 vf32 BV_VCALL VectorOr(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL VectorAnd(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL VectorXor(cvf32 v1, cvf32 v2);
+vf32 BV_VCALL VectorNot(cvf32 v);
 vf32 BV_VCALL VectorAndNot(cvf32 v1, cvf32 v2);
 i32 BV_VCALL VectorGetMask(cvf32 v);
 vf32 BV_VCALL VectorAdd(cvf32 v1, cvf32 v2);
