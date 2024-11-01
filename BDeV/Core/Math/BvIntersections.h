@@ -13,16 +13,17 @@ enum class IntersectionType
 
 
 bool Intersects(const BvRay& ray, const BvTriangle& triangle, f32& t, f32& u, f32& v);
-BV_INLINE bool Intersects(const BvRay& ray, const BvTriangle& triangle) { f32 t, u, v; return Intersects(ray, triangle, t, u, v); }
 bool Intersects(const BvRay& ray, const BvSphere& sphere, f32& t);
-BV_INLINE bool Intersects(const BvRay& ray, const BvSphere& sphere) { f32 t; return Intersects(ray, sphere, t); }
 bool Intersects(const BvRay& ray, const BvPlane& plane, f32& t);
-BV_INLINE bool Intersects(const BvRay& ray, const BvPlane& plane) { f32 t; return Intersects(ray, plane, t); }
 bool Intersects(const BvRay& ray, const BvAABB& aabb, f32& t);
-BV_INLINE bool Intersects(const BvRay& ray, const BvAABB& aabb) { f32 t; return Intersects(ray, aabb, t); }
 bool Intersects(const BvRay& ray, const BvOBB& obb, f32& t);
-BV_INLINE bool Intersects(const BvRay& ray, const BvOBB& obb) { f32 t; return Intersects(ray, obb, t); }
 bool Intersects(const BvRay& ray, const BvCapsule& capsule, f32& t);
+
+BV_INLINE bool Intersects(const BvRay& ray, const BvTriangle& triangle) { f32 t, u, v; return Intersects(ray, triangle, t, u, v); }
+BV_INLINE bool Intersects(const BvRay& ray, const BvSphere& sphere) { f32 t; return Intersects(ray, sphere, t); }
+BV_INLINE bool Intersects(const BvRay& ray, const BvPlane& plane) { f32 t; return Intersects(ray, plane, t); }
+BV_INLINE bool Intersects(const BvRay& ray, const BvAABB& aabb) { f32 t; return Intersects(ray, aabb, t); }
+BV_INLINE bool Intersects(const BvRay& ray, const BvOBB& obb) { f32 t; return Intersects(ray, obb, t); }
 BV_INLINE bool Intersects(const BvRay& ray, const BvCapsule& capsule) { f32 t; return Intersects(ray, capsule, t); }
 
 BV_INLINE bool Intersects(const BvTriangle& triangle, const BvRay& ray) { return Intersects(ray, triangle); }
@@ -45,7 +46,7 @@ BV_INLINE bool Intersects(const BvAABB& aabb, const BvTriangle& triangle) { retu
 BV_INLINE bool Intersects(const BvOBB& obb, const BvTriangle& triangle) { return Intersects(triangle, obb); }
 BV_INLINE bool Intersects(const BvCapsule& capsule, const BvTriangle& triangle) { return Intersects(triangle, capsule); }
 
-bool Intersects(const BvSphere& sphere, const BvSphere& sphere1);
+bool Intersects(const BvSphere& sphere1, const BvSphere& sphere2);
 bool Intersects(const BvSphere& sphere, const BvPlane& plane);
 bool Intersects(const BvSphere& sphere, const BvAABB& aabb);
 bool Intersects(const BvSphere& sphere, const BvOBB& obb);
@@ -76,18 +77,18 @@ bool Intersects(const BvOBB& obb, const BvCapsule& capsule);
 
 BV_INLINE bool Intersects(const BvCapsule& capsule, const BvOBB& obb) { return Intersects(obb, capsule); }
 
-bool Intersects(const BvRay& ray, const BvFrustum& frustum, f32& tMin, f32& tMax);
-BV_INLINE bool Intersects(const BvRay& ray, const BvFrustum& frustum) { f32 min, max; return Intersects(ray, frustum, min, max); }
-BV_INLINE bool Intersects(const BvFrustum& frustum, const BvRay& ray) { return Intersects(ray, frustum); }
-bool Intersects(const BvTriangle& triangle, const BvFrustum& frustum);
-BV_INLINE bool Intersects(const BvFrustum& frustum, const BvTriangle& triangle) { return Intersects(triangle, frustum); }
-bool Intersects(const BvSphere& sphere, const BvFrustum& frustum);
-BV_INLINE bool Intersects(const BvFrustum& frustum, const BvSphere& sphere) { return Intersects(sphere, frustum); }
-bool Intersects(const BvAABB& aabb, const BvFrustum& frustum);
-bool Intersects(const BvOBB& obb, const BvFrustum& frustum);
-
-IntersectionType TestIntersection(const BvFrustum& frustum, const BvTriangle& triangle);
-IntersectionType TestIntersection(const BvFrustum& frustum, const BvSphere& sphere);
-IntersectionType TestIntersection(const BvFrustum& frustum, const BvAABB& aabb);
-IntersectionType TestIntersection(const BvFrustum& frustum, const BvOBB& obb);
-IntersectionType TestIntersection(const BvFrustum& frustum, const BvCapsule& capsule);
+//bool Intersects(const BvRay& ray, const BvFrustum& frustum, f32& tMin, f32& tMax);
+//BV_INLINE bool Intersects(const BvRay& ray, const BvFrustum& frustum) { f32 min, max; return Intersects(ray, frustum, min, max); }
+//BV_INLINE bool Intersects(const BvFrustum& frustum, const BvRay& ray) { return Intersects(ray, frustum); }
+//bool Intersects(const BvTriangle& triangle, const BvFrustum& frustum);
+//BV_INLINE bool Intersects(const BvFrustum& frustum, const BvTriangle& triangle) { return Intersects(triangle, frustum); }
+//bool Intersects(const BvSphere& sphere, const BvFrustum& frustum);
+//BV_INLINE bool Intersects(const BvFrustum& frustum, const BvSphere& sphere) { return Intersects(sphere, frustum); }
+//bool Intersects(const BvAABB& aabb, const BvFrustum& frustum);
+//bool Intersects(const BvOBB& obb, const BvFrustum& frustum);
+//
+//IntersectionType TestIntersection(const BvFrustum& frustum, const BvTriangle& triangle);
+//IntersectionType TestIntersection(const BvFrustum& frustum, const BvSphere& sphere);
+//IntersectionType TestIntersection(const BvFrustum& frustum, const BvAABB& aabb);
+//IntersectionType TestIntersection(const BvFrustum& frustum, const BvOBB& obb);
+//IntersectionType TestIntersection(const BvFrustum& frustum, const BvCapsule& capsule);

@@ -30,24 +30,24 @@ struct BvTriangle
 struct BvSphere
 {
 	BvSphere() = default;
-	BvSphere(const Float3& center, float radius = 1.0f)
+	BvSphere(const Float3& center, f32 radius = 1.0f)
 		: m_Center(center), m_Radius(radius) {}
 
 	Float3 m_Center;
-	float m_Radius;
+	f32 m_Radius;
 };
 
 
 struct BvPlane
 {
 	BvPlane() = default;
-	BvPlane(const Float3& normal, float distance)
+	BvPlane(const Float3& normal, f32 distance)
 		: m_Normal(normal), m_Distance(distance) {}
 	BvPlane(const Float3& normal, const Float3& point)
 		: m_Normal(normal), m_Distance(-VectorGetX(Vector3Dot(Load(point), Load(normal)))) {}
 
 	Float3 m_Normal;
-	float m_Distance;
+	f32 m_Distance;
 };
 
 
@@ -97,10 +97,10 @@ struct BvFrustum
 struct BvCapsule
 {
 	BvCapsule() = default;
-	BvCapsule(const Float3& p0, const Float3& p1, float radius = 1.0f)
+	BvCapsule(const Float3& p0, const Float3& p1, f32 radius = 1.0f)
 		: m_P1(p0), m_P2(p1), m_Radius(radius) {}
 
 	Float3 m_P1;
 	Float3 m_P2;
-	float m_Radius;
+	f32 m_Radius;
 };
