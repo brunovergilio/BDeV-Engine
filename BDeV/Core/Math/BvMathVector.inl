@@ -254,73 +254,73 @@ BV_INLINE vf32 BV_VCALL VectorUnitW()
 
 BV_INLINE vf32 BV_VCALL Vector2Equal(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4Equal(v1, v2);
+	vf32 r = VectorEqual(v1, v2);
 	return VectorPermute<0, 1, 1, 1>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector2NearlyEqual(cvf32 v1, cvf32 v2, f32 epsilon = kEpsilon)
 {
-	vf32 r = Vector4NearlyEqual(v1, v2, kEpsilon);
+	vf32 r = VectorNearlyEqual(v1, v2, kEpsilon);
 	return VectorPermute<0, 1, 1, 1>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector2Greater(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4Greater(v1, v2);
+	vf32 r = VectorGreater(v1, v2);
 	return VectorPermute<0, 1, 1, 1>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector2GreaterEqual(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4GreaterEqual(v1, v2);
+	vf32 r = VectorGreaterEqual(v1, v2);
 	return VectorPermute<0, 1, 1, 1>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector2Less(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4Less(v1, v2);
+	vf32 r = VectorLess(v1, v2);
 	return VectorPermute<0, 1, 1, 1>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector2LessEqual(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4LessEqual(v1, v2);
+	vf32 r = VectorLessEqual(v1, v2);
 	return VectorPermute<0, 1, 1, 1>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector3Equal(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4Equal(v1, v2);
+	vf32 r = VectorEqual(v1, v2);
 	return VectorPermute<0, 1, 2, 2>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector3NearlyEqual(cvf32 v1, cvf32 v2, f32 epsilon = kEpsilon)
 {
-	vf32 r = Vector4NearlyEqual(v1, v2, kEpsilon);
+	vf32 r = VectorNearlyEqual(v1, v2, kEpsilon);
 	return VectorPermute<0, 1, 2, 2>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector3Greater(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4Greater(v1, v2);
+	vf32 r = VectorGreater(v1, v2);
 	return VectorPermute<0, 1, 2, 2>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector3GreaterEqual(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4GreaterEqual(v1, v2);
+	vf32 r = VectorGreaterEqual(v1, v2);
 	return VectorPermute<0, 1, 2, 2>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector3Less(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4Less(v1, v2);
+	vf32 r = VectorLess(v1, v2);
 	return VectorPermute<0, 1, 2, 2>(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector3LessEqual(cvf32 v1, cvf32 v2)
 {
-	vf32 r = Vector4LessEqual(v1, v2);
+	vf32 r = VectorLessEqual(v1, v2);
 	return VectorPermute<0, 1, 2, 2>(r);
 }
 
@@ -355,6 +355,59 @@ BV_INLINE vf32 BV_VCALL Vector4Less(cvf32 v1, cvf32 v2)
 BV_INLINE vf32 BV_VCALL Vector4LessEqual(cvf32 v1, cvf32 v2)
 {
 	return _mm_cmple_ps(v1, v2);
+}
+
+BV_INLINE vf32 BV_VCALL VectorEqual(cvf32 v1, cvf32 v2)
+{
+	return _mm_cmpeq_ps(v1, v2);
+}
+
+BV_INLINE vf32 BV_VCALL VectorNearlyEqual(cvf32 v1, cvf32 v2, f32 epsilon)
+{
+	vf32 vDiff = VectorAbs(VectorSub(v1, v2));
+	vf32 vE = VectorSet(epsilon);
+
+	return Vector4LessEqual(vDiff, vE);
+}
+
+BV_INLINE vf32 BV_VCALL VectorGreater(cvf32 v1, cvf32 v2)
+{
+	return _mm_cmpgt_ps(v1, v2);
+}
+
+BV_INLINE vf32 BV_VCALL VectorGreaterEqual(cvf32 v1, cvf32 v2)
+{
+	return _mm_cmpge_ps(v1, v2);
+}
+
+BV_INLINE vf32 BV_VCALL VectorLess(cvf32 v1, cvf32 v2)
+{
+	return _mm_cmplt_ps(v1, v2);
+}
+
+BV_INLINE vf32 BV_VCALL VectorLessEqual(cvf32 v1, cvf32 v2)
+{
+	return _mm_cmple_ps(v1, v2);
+}
+
+BV_INLINE bool BV_VCALL Vector2AllTrue(cvf32 v)
+{
+	return VectorAllTrue(VectorPermute<0, 1, 1, 1>(v));
+}
+
+BV_INLINE bool BV_VCALL Vector2AllFalse(cvf32 v)
+{
+	return VectorAllFalse(VectorPermute<0, 1, 1, 1>(v));
+}
+
+BV_INLINE bool BV_VCALL Vector2AnyTrue(cvf32 v)
+{
+	return VectorAnyTrue(VectorPermute<0, 1, 1, 1>(v));
+}
+
+BV_INLINE bool BV_VCALL Vector2AnyFalse(cvf32 v)
+{
+	return VectorAnyFalse(VectorPermute<0, 1, 1, 1>(v));
 }
 
 BV_INLINE bool BV_VCALL Vector3AllTrue(cvf32 v)

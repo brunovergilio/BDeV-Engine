@@ -899,9 +899,6 @@ bool Intersects(const BvOBB& obb, const BvCapsule& capsule)
 	l1 = QuaternionQVQC(r, l1);
 	l2 = QuaternionQVQC(r, l2);
 
-	Float3 minusExt;
-	Store(VectorNegate(Load(obb.m_Extents)), minusExt);
-
 	BvAABB aabb(Float3(), obb.m_Extents);
 	BvCapsule lcap;
 	lcap.m_Radius = capsule.m_Radius;
