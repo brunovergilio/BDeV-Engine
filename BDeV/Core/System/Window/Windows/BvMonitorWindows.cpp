@@ -4,7 +4,7 @@
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 
 
-BvMonitor::BvMonitor(HMONITOR hMonitor)
+BvMonitor::BvMonitor(OSMonitorHandle hMonitor)
 	: m_hMonitor(hMonitor)
 {
 	MONITORINFOEXW monitorInfo{ sizeof(MONITORINFOEXW) };
@@ -39,8 +39,7 @@ BvMonitor::BvMonitor(HMONITOR hMonitor)
 
 	{
 		auto sizeNeeded = sizeof(monitorInfo.szDevice);
-		BvStackArea(strMem, sizeNeeded);
-		char* pMonitorName = strMem.GetStart();
+		char* pMonitorName = (char*)BV_STACK_ALLOC(sizeNeeded);
 		BvTextUtilities::ConvertWideCharToUTF8Char(monitorInfo.szDevice, 0, pMonitorName, sizeNeeded);
 		m_Name = pMonitorName;
 	}

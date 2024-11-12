@@ -106,6 +106,7 @@
     <ClInclude Include="Core\Math\BvTrigo.h" />
     <ClInclude Include="Core\RenderAPI\BvShader.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
+    <ClInclude Include="Core\System\BvPlatformHeaders.h" />
     <ClInclude Include="Core\System\Diagnostics\BvDiagnostics.h" />
     <ClInclude Include="Core\System\Memory\BvMemoryArea.h" />
     <ClInclude Include="Core\System\Memory\BvMemoryArena.h" />
@@ -167,10 +168,9 @@
     <ClInclude Include="Core\System\Memory\Utilities\BvMemoryTracker.h" />
     <ClInclude Include="Core\System\Application\BvApplication.h" />
     <ClInclude Include="Core\System\Threading\BvFiber.h" />
-    <ClInclude Include="Core\System\Threading\BvProcess.h" />
+    <ClInclude Include="Core\System\Process\BvProcess.h" />
     <ClInclude Include="Core\System\Threading\BvSync.h" />
     <ClInclude Include="Core\System\Threading\BvThread.h" />
-    <ClInclude Include="Core\System\Windows\BvWindowsHeader.h" />
     <ClInclude Include="Core\System\Application\BvMessageHandler.h" />
     <ClInclude Include="Core\System\Window\BvMonitor.h" />
     <ClInclude Include="Core\System\Window\BvWindow.h" />
@@ -222,7 +222,7 @@
     <ClCompile Include="Core\System\Memory\Windows\BvMemoryWindows.cpp" />
     <ClCompile Include="Core\System\Application\Windows\BvApplicationWindows.cpp" />
     <ClCompile Include="Core\System\Threading\Windows\BvFiberWindows.cpp" />
-    <ClCompile Include="Core\System\Threading\Windows\BvProcessWindows.cpp" />
+    <ClCompile Include="Core\System\Process\Windows\BvProcessWindows.cpp" />
     <ClCompile Include="Core\System\Threading\BvSync.cpp" />
     <ClCompile Include="Core\System\Threading\Windows\BvThreadWindows.cpp" />
     <ClCompile Include="Core\System\Window\Windows\BvMonitorWindows.cpp" />

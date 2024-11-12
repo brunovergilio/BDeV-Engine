@@ -1,8 +1,10 @@
-#include "BDeV/Core/System/Threading/BvProcess.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
+#include "BDeV/Core/System/Library/BvSharedLib.h"
 #include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
+#include <BDeV/Core/Container/BvText.h>
 #include <DbgHelp.h>
 #include <bit>
 
@@ -74,20 +76,46 @@ const BvSystemInfo& BvProcess::GetSystemInfo()
 
 #pragma warning(push)
 #pragma warning(disable:4996)
-#pragma comment(lib, "dbghelp.lib")
+//#pragma comment(lib, "dbghelp.lib")
+
+#define BV_LOADPROC(proc) m_SymLib.GetProcAddressT(#proc, PFn##proc)
+#define BV_CALLPROC(proc) s_StackTraceHandler.PFn##proc
 
 class StackTraceHandler
 {
 public:
 	StackTraceHandler()
+		: m_SymLib("dbghelp.dll")
 	{
-		SymInitialize(GetCurrentProcess(), nullptr, TRUE);
-		SymSetOptions(SYMOPT_LOAD_LINES);
+		BV_LOADPROC(SymInitialize);
+		BV_LOADPROC(SymCleanup);
+		BV_LOADPROC(SymSetOptions);
+		BV_LOADPROC(StackWalk64);
+		BV_LOADPROC(SymFunctionTableAccess64);
+		BV_LOADPROC(SymGetModuleBase64);
+		BV_LOADPROC(SymGetSymFromAddr64);
+		BV_LOADPROC(SymGetLineFromAddr64);
+
+		PFnSymInitialize(GetCurrentProcess(), nullptr, TRUE);
+		PFnSymSetOptions(SYMOPT_LOAD_LINES);
 	}
 	~StackTraceHandler()
 	{
-		SymCleanup(GetCurrentProcess());
+		PFnSymCleanup(GetCurrentProcess());
 	}
+
+	BOOL(*PFnSymInitialize)(HANDLE, PCSTR, BOOL);
+	BOOL(*PFnSymCleanup)(HANDLE);
+	DWORD(*PFnSymSetOptions)(DWORD);
+	BOOL(*PFnStackWalk64)(DWORD, HANDLE, HANDLE, LPSTACKFRAME64, PVOID, PREAD_PROCESS_MEMORY_ROUTINE64,
+		PFUNCTION_TABLE_ACCESS_ROUTINE64, PGET_MODULE_BASE_ROUTINE64, PTRANSLATE_ADDRESS_ROUTINE64);
+	PVOID(*PFnSymFunctionTableAccess64)(HANDLE, DWORD64);
+	DWORD64(*PFnSymGetModuleBase64)(HANDLE, DWORD64);
+	BOOL(*PFnSymGetSymFromAddr64)(HANDLE, DWORD64, PDWORD64, PIMAGEHLP_SYMBOL64);
+	BOOL(*PFnSymGetLineFromAddr64)(HANDLE, DWORD64, PDWORD, PIMAGEHLP_LINE64);
+
+private:
+	BvSharedLib m_SymLib;
 };
 
 
@@ -129,8 +157,8 @@ void BvProcess::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSki
 	BOOL result = TRUE;
 	for (auto i = 0u; i < numFramesToSkip; i++)
 	{
-		result = StackWalk64(machine, process, GetCurrentThread(), &frame, &context,
-			nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr);
+		result = BV_CALLPROC(StackWalk64)(machine, process, GetCurrentThread(), &frame, &context,
+			nullptr, BV_CALLPROC(SymFunctionTableAccess64), BV_CALLPROC(SymGetModuleBase64), nullptr);
 		if (!result)
 		{
 			break;
@@ -144,8 +172,8 @@ void BvProcess::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSki
 
 	for (auto i = 0u; i < numFramesToRecord; i++)
 	{
-		result = StackWalk64(machine, process, GetCurrentThread(), &frame, &context,
-			nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr);
+		result = BV_CALLPROC(StackWalk64)(machine, process, GetCurrentThread(), &frame, &context,
+			nullptr, BV_CALLPROC(SymFunctionTableAccess64), BV_CALLPROC(SymGetModuleBase64), nullptr);
 		if (!result)
 		{
 			break;
@@ -156,18 +184,23 @@ void BvProcess::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSki
 
 		currFrame.m_Address = frame.AddrPC.Offset;
 
-		DWORD moduleBase = SymGetModuleBase64(process, frame.AddrPC.Offset);
-		char moduleBuff[kMaxNameSize]{};
-		if (moduleBase && GetModuleFileNameA((HINSTANCE)moduleBase, moduleBuff, kMaxNameSize))
+		DWORD moduleBase = BV_CALLPROC(SymGetModuleBase64)(process, frame.AddrPC.Offset);
+		wchar_t moduleNameW[kMaxNameSize]{};
+		if (moduleBase && GetModuleFileNameW((HINSTANCE)moduleBase, moduleNameW, kMaxNameSize))
 		{
-			currFrame.m_Module = moduleBuff;
+			auto sizeNeeded = BvTextUtilities::ConvertWideCharToUTF8Char(moduleNameW, 0, nullptr, 0);
+			if (sizeNeeded > 0)
+			{
+				currFrame.m_Module.Resize(sizeNeeded - 1);
+				BvTextUtilities::ConvertWideCharToUTF8Char(moduleNameW, 0, &currFrame.m_Module[0], sizeNeeded);
+			}
 		}
 
 		auto pSymbol = reinterpret_cast<IMAGEHLP_SYMBOL64*>(dbgHelpSymbolMem);
 		pSymbol->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64) + kMaxNameSize;
 		pSymbol->MaxNameLength = kMaxNameSize - 1;
 
-		if (SymGetSymFromAddr64(process, frame.AddrPC.Offset, nullptr, pSymbol))
+		if (BV_CALLPROC(SymGetSymFromAddr64)(process, frame.AddrPC.Offset, nullptr, pSymbol))
 		{
 			currFrame.m_Function = pSymbol->Name;
 		}
@@ -176,17 +209,21 @@ void BvProcess::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSki
 		IMAGEHLP_LINE line;
 		line.SizeOfStruct = sizeof(IMAGEHLP_LINE);
 
-		if (SymGetLineFromAddr64(process, frame.AddrPC.Offset, &offset, &line))
+		if (BV_CALLPROC(SymGetLineFromAddr64)(process, frame.AddrPC.Offset, &offset, &line))
 		{
 			currFrame.m_File = line.FileName;
 			currFrame.m_Line = line.LineNumber;
 		}
 	}
 }
+
+#undef BV_LOADPROC
+#undef BV_CALLPROC
+
 #pragma warning( pop )
 
 
-void BvProcess::YieldExecution()
+void BvProcess::Yield()
 {
 	YieldProcessor();
 }

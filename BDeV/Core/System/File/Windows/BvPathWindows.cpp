@@ -2,7 +2,7 @@
 #include "BDeV/Core/System/File/BvFileCommon.h"
 #include "BDeV/Core/Container/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <algorithm>
 
 
@@ -117,8 +117,7 @@ BvPath BvPath::FromCurrentDirectory()
 
 	BvPath currentPath;
 	{
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
@@ -150,8 +149,7 @@ BvPath BvPath::FromCurrentDrive()
 
 	BvPath currentPath;
 	{
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
@@ -187,8 +185,7 @@ bool BvPath::IsValid() const
 {
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pFilenameW, sizeNeeded);
 		WIN32_FILE_ATTRIBUTE_DATA fad;
 		return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad);
@@ -200,8 +197,7 @@ bool BvPath::IsFile() const
 {
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pFilenameW, sizeNeeded);
 		WIN32_FILE_ATTRIBUTE_DATA fad;
 		return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 : false;
@@ -213,8 +209,7 @@ bool BvPath::IsDirectory() const
 {
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pFilenameW, sizeNeeded);
 		WIN32_FILE_ATTRIBUTE_DATA fad;
 		return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 : false;
@@ -288,8 +283,7 @@ BvPath BvPath::GetAbsolutePath() const
 	u32 sizeNeeded;
 	{
 		sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pPathNameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pPathNameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pPathNameW, sizeNeeded);
 
 		sizeNeeded = GetFullPathNameW(pPathNameW, 0, nullptr, nullptr);
@@ -536,12 +530,14 @@ BvAsyncFile BvPath::AsAsyncFile(BvFileAccessMode mode) const
 
 void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& path, const BvString& pathWithFilter)
 {
+	BvVector<char> filenameBuffer;
+
 	WIN32_FIND_DATAW findData;
 	HANDLE hFind;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pathWithFilter.CStr(), pathWithFilter.Size() + 1, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		filenameBuffer.Resize(sizeNeeded * sizeof(wchar_t));
+		wchar_t* pFilenameW = (wchar_t*)&filenameBuffer[0];
 		BvTextUtilities::ConvertUTF8CharToWideChar(pathWithFilter.CStr(), pathWithFilter.Size() + 1, pFilenameW, sizeNeeded);
 		hFind = FindFirstFileW(pFilenameW, &findData);
 	}
@@ -549,7 +545,10 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 	if (hFind == INVALID_HANDLE_VALUE)
 	{
 		DWORD error = GetLastError();
-		// TODO: Handle error
+		if (error != ERROR_FILE_NOT_FOUND)
+		{
+			// TODO: Handle error
+		}
 		return;
 	}
 
@@ -563,11 +562,10 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 
 			{
 				auto sizeNeeded = BvTextUtilities::ConvertWideCharToUTF8Char(findData.cFileName, 0, nullptr, 0);
-				BvStackArea(strMem, sizeNeeded);
-				char* pFilename = strMem.GetStart();
-				BvTextUtilities::ConvertWideCharToUTF8Char(findData.cFileName, 0, pFilename, sizeNeeded);
+				filenameBuffer.Resize(sizeNeeded);
+				BvTextUtilities::ConvertWideCharToUTF8Char(findData.cFileName, 0, &filenameBuffer[0], sizeNeeded);
 
-				filename.Append(pFilename);
+				filename.Append(filenameBuffer.Data());
 			}
 
 			fileList.EmplaceBack(std::move(filename));

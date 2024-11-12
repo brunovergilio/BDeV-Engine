@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/HID/BvKeyboard.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 
 
 BvKeyboard::KeyState g_CurrGlobalKeyStates[BvKeyboard::kMaxKeyCount]{};

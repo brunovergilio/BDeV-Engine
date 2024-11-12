@@ -124,6 +124,17 @@ BV_INLINE vf32 BV_VCALL VectorMaskInvW()
 }
 
 template<u32 X, u32 Y, u32 Z, u32 W>
+BV_INLINE vf32 BV_VCALL VectorMask()
+{
+	constexpr u32 x = X ? 0xFFFFFFFF : 0;
+	constexpr u32 y = Y ? 0xFFFFFFFF : 0;
+	constexpr u32 z = Z ? 0xFFFFFFFF : 0;
+	constexpr u32 w = W ? 0xFFFFFFFF : 0;
+
+	return _mm_castsi128_ps(_mm_setr_epi32(x, y, z, w));
+}
+
+template<u32 X, u32 Y, u32 Z, u32 W>
 BV_INLINE vf32 BV_VCALL VectorPermute(cvf32 v)
 {
 	return _mm_shuffle_ps(v, v, _MM_SHUFFLE(W, Z, Y, X));
@@ -156,7 +167,7 @@ BV_INLINE vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2)
 template<u32 X, u32 Y, u32 Z, u32 W>
 BV_INLINE vf32 BV_VCALL VectorChangeSign(cvf32 v)
 {
-	if constexpr (X | Y | Z | W == 0)
+	if constexpr ((X | Y | Z | W) == 0)
 	{
 		return v;
 	}
@@ -258,7 +269,7 @@ BV_INLINE vf32 BV_VCALL Vector2Equal(cvf32 v1, cvf32 v2)
 	return VectorPermute<0, 1, 1, 1>(r);
 }
 
-BV_INLINE vf32 BV_VCALL Vector2NearlyEqual(cvf32 v1, cvf32 v2, f32 epsilon = kEpsilon)
+BV_INLINE vf32 BV_VCALL Vector2NearlyEqual(cvf32 v1, cvf32 v2, f32 epsilon)
 {
 	vf32 r = VectorNearlyEqual(v1, v2, kEpsilon);
 	return VectorPermute<0, 1, 1, 1>(r);
@@ -294,7 +305,7 @@ BV_INLINE vf32 BV_VCALL Vector3Equal(cvf32 v1, cvf32 v2)
 	return VectorPermute<0, 1, 2, 2>(r);
 }
 
-BV_INLINE vf32 BV_VCALL Vector3NearlyEqual(cvf32 v1, cvf32 v2, f32 epsilon = kEpsilon)
+BV_INLINE vf32 BV_VCALL Vector3NearlyEqual(cvf32 v1, cvf32 v2, f32 epsilon)
 {
 	vf32 r = VectorNearlyEqual(v1, v2, kEpsilon);
 	return VectorPermute<0, 1, 2, 2>(r);
@@ -540,6 +551,26 @@ BV_INLINE vf32 BV_VCALL VectorDiv(cvf32 v, f32 val)
 	return _mm_div_ps(v, _mm_set_ps1(val));
 }
 
+BV_INLINE vf32 BV_VCALL VectorAdd(f32 val, cvf32 v)
+{
+	return _mm_add_ps(_mm_set_ps1(val), v);
+}
+
+BV_INLINE vf32 BV_VCALL VectorSub(f32 val, cvf32 v)
+{
+	return _mm_sub_ps(_mm_set_ps1(val), v);
+}
+
+BV_INLINE vf32 BV_VCALL VectorMul(f32 val, cvf32 v)
+{
+	return _mm_mul_ps(_mm_set_ps1(val), v);
+}
+
+BV_INLINE vf32 BV_VCALL VectorDiv(f32 val, cvf32 v)
+{
+	return _mm_div_ps(_mm_set_ps1(val), v);
+}
+
 BV_INLINE vf32 BV_VCALL VectorLerp(cvf32 v1, cvf32 v2, f32 t)
 {
 	// Lerp = V0 + t * (V1 - V0)
@@ -584,6 +615,54 @@ BV_INLINE vf32 BV_VCALL Vector2LengthRcp(cvf32 v)
 BV_INLINE vf32 BV_VCALL Vector2Normalize(cvf32 v)
 {
 	return _mm_mul_ps(v, _mm_rsqrt_ps(Vector2LengthSqr(v)));
+}
+
+BV_INLINE vf32 BV_VCALL Vector2Rotate(cvf32 v, f32 rad)
+{
+	f32 cosSin[2] = { cosf(rad), sinf(rad) };
+	vf32 vCosSin = VectorSet(cosSin[0], -cosSin[1], cosSin[1], cosSin[0]);
+
+	// x' = x * cos - y * sin
+	// y' = x * sin + y * cos
+
+	// v0 = x y x y
+	vf32 v0 = VectorPermute<0, 1, 0, 1>(v);
+
+	// r = x * cos | y * -sin | x * sin | y * cos
+	vf32 r = _mm_mul_ps(v0, vCosSin);
+
+	// v0 = x * cos | y * -sin | x * sin | y * cos
+	//    + y * -sin | x * cos| y * cos | x * sin
+	v0 = _mm_add_ps(r, VectorPermute<1, 0, 3, 2>(r));
+
+	// Mask out z and w
+	vi32 w0 = _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF);
+
+	return _mm_and_ps(v0, _mm_castsi128_ps(w0));
+}
+
+BV_INLINE vf32 BV_VCALL Vector2InvRotate(cvf32 v, f32 rad)
+{
+	f32 cosSin[2] = { cosf(rad), sinf(rad) };
+	vf32 vCosSin = VectorSet(cosSin[0], cosSin[1], -cosSin[1], cosSin[0]);
+
+	// x' = x * cos + y * sin
+	// y' = x * sin - y * cos
+
+	// v0 = x y x y
+	vf32 v0 = VectorPermute<0, 1, 0, 1>(v);
+
+	// r = x * cos | y * sin | x * -sin | y * cos
+	vf32 r = _mm_mul_ps(v0, vCosSin);
+
+	// v0 = x * cos | y * sin | x * -sin | y * cos
+	//    + y * sin | x * cos| y * cos | x * -sin
+	v0 = _mm_add_ps(r, VectorPermute<1, 0, 3, 2>(r));
+
+	// Mask out z and w
+	vi32 w0 = _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF);
+
+	return _mm_and_ps(v0, _mm_castsi128_ps(w0));
 }
 
 BV_INLINE vf32 BV_VCALL Vector2TransformDir(cvf32 v, cmf32 m)
@@ -707,6 +786,16 @@ BV_INLINE vf32 BV_VCALL Vector3Refraction(cvf32 i, cvf32 n, f32 eta)
 	return _mm_andnot_ps(c0, r0);
 }
 
+BV_INLINE vf32 BV_VCALL Vector3Rotate(cvf32 v, cvf32 q)
+{
+	return QuaternionQCVQ(q, v);
+}
+
+BV_INLINE vf32 BV_VCALL Vector3InvRotate(cvf32 v, cvf32 q)
+{
+	return QuaternionQVQC(q, v);
+}
+
 BV_INLINE vf32 BV_VCALL Vector3TransformDir(cvf32 v, cmf32 m)
 {
 	vf32 c = VectorReplicateX(v);
@@ -788,7 +877,7 @@ BV_INLINE vf32 BV_VCALL operator - (cvf32 v)
 	return VectorNegate(v);
 }
 
-BV_INLINE vf32 BV_VCALL operator + (cvf32 v1, cvf32 v2)
+BV_INLINE vf32 BV_VCALL operator+(cvf32 v1, cvf32 v2)
 {
 	return VectorAdd(v1, v2);
 }
@@ -803,13 +892,19 @@ BV_INLINE vf32 BV_VCALL operator+(f32 s, cvf32 v)
 	return VectorAdd(v, s);
 }
 
-BV_INLINE vf32& BV_VCALL operator += (cvf32& v1, cvf32 v2)
+BV_INLINE vf32& BV_VCALL operator+=(vf32& v1, cvf32 v2)
 {
 	v1 = VectorAdd(v1, v2);
 	return v1;
 }
 
-BV_INLINE vf32 BV_VCALL operator - (cvf32 v1, cvf32 v2)
+BV_INLINE vf32& BV_VCALL operator+=(vf32& v, f32 s)
+{
+	v = VectorAdd(v, VectorSet(s));
+	return v;
+}
+
+BV_INLINE vf32 BV_VCALL operator-(cvf32 v1, cvf32 v2)
 {
 	return VectorSub(v1, v2);
 }
@@ -824,67 +919,78 @@ BV_INLINE vf32 BV_VCALL operator-(f32 s, cvf32 v)
 	return VectorSub(VectorSet(s), v);
 }
 
-BV_INLINE vf32& BV_VCALL operator -= (cvf32& v1, cvf32 v2)
+BV_INLINE vf32& BV_VCALL operator-=(vf32& v1, cvf32 v2)
 {
 	v1 = VectorSub(v1, v2);
 	return v1;
 }
 
-BV_INLINE vf32 BV_VCALL operator * (cvf32 v1, cvf32 v2)
+BV_INLINE vf32& BV_VCALL operator-=(vf32& v, f32 s)
+{
+	v = VectorSub(v, VectorSet(s));
+	return v;
+}
+
+BV_INLINE vf32 BV_VCALL operator*(cvf32 v1, cvf32 v2)
 {
 	return VectorMul(v1, v2);
 }
 
-BV_INLINE vf32& BV_VCALL operator *= (cvf32& v1, cvf32 v2)
+BV_INLINE vf32& BV_VCALL operator*=(vf32& v1, cvf32 v2)
 {
 	v1 = VectorMul(v1, v2);
 	return v1;
 }
 
-BV_INLINE vf32 BV_VCALL operator * (cvf32 v, f32 s)
+BV_INLINE vf32 BV_VCALL operator*(cvf32 v, f32 s)
 {
 	return VectorMul(v, s);
 }
 
-BV_INLINE vf32 BV_VCALL operator * (f32 s, cvf32 v)
+BV_INLINE vf32 BV_VCALL operator*(f32 s, cvf32 v)
 {
 	return VectorMul(v, s);
 }
 
-BV_INLINE vf32& BV_VCALL operator *= (cvf32& v, f32 s)
+BV_INLINE vf32& BV_VCALL operator*=(vf32& v, f32 s)
 {
 	v = VectorMul(v, s);
 	return v;
 }
 
-BV_INLINE vf32 BV_VCALL operator * (cvf32 v, cmf32 m)
+BV_INLINE vf32 BV_VCALL operator*(cvf32 v, cmf32 m)
 {
 	return VectorTransform(v, m);
 }
 
-BV_INLINE vf32& BV_VCALL operator *= (cvf32& v, cmf32 m)
+BV_INLINE vf32& BV_VCALL operator*=(vf32& v, cmf32 m)
 {
 	v = VectorTransform(v, m);
 	return v;
 }
 
-BV_INLINE vf32 BV_VCALL operator / (cvf32 v1, cvf32 v2)
+BV_INLINE vf32 BV_VCALL operator/(cvf32 v1, cvf32 v2)
 {
 	return VectorDiv(v1, v2);
 }
 
-BV_INLINE vf32& BV_VCALL operator /= (cvf32& v1, cvf32 v2)
+BV_INLINE vf32& BV_VCALL operator/=(vf32& v1, cvf32 v2)
 {
 	v1 = VectorDiv(v1, v2);
 	return v1;
 }
 
-BV_INLINE vf32 BV_VCALL operator / (cvf32 v, f32 s)
+BV_INLINE vf32 BV_VCALL operator/(cvf32 v, f32 s)
 {
 	return VectorDiv(v, s);
 }
 
-BV_INLINE vf32& BV_VCALL operator /= (cvf32& v, f32 s)
+BV_INLINE vf32 BV_VCALL operator/(f32 s, cvf32 v)
+{
+	return VectorDiv(s, v);
+}
+
+BV_INLINE vf32& BV_VCALL operator/=(vf32& v, f32 s)
 {
 	v = VectorDiv(v, s);
 	return v;

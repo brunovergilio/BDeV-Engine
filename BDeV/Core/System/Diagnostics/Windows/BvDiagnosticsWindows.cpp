@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include <intrin.h>
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <cstdio>
 
 

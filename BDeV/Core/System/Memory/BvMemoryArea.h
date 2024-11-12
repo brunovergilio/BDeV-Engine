@@ -4,10 +4,6 @@
 #include "BDeV/Core/BvCore.h"
 
 
-#define BvStackArea(name, size) void* pStackMemory_##name = BV_STACK_ALLOC(size); \
-Internal::BvStackAreaImpl name(pStackMemory_##name, size);
-
-
 namespace Internal
 {
 	class BvStackAreaImpl final

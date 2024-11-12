@@ -1,6 +1,6 @@
 #include "BvMemoryArea.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
-#include "BDeV/Core/System/Threading/BvProcess.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 
 
 namespace Internal

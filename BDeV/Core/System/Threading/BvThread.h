@@ -4,6 +4,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Utils/BvDelegate.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 
 
 class BvFiber;
@@ -69,14 +70,14 @@ public:
 	void SetPriority(Priority priority) const;
 
 	static void Sleep(u32 miliseconds);
-	static void YieldExecution();
+	static void Yield();
 	static const BvThread& GetCurrentThread();
 	static u32 GetCurrentProcessor();
 	static void ConvertToFiber();
 	static void ConvertFromFiber();
 
 	BV_INLINE u64 GetId() const { return m_ThreadId; }
-	BV_INLINE void* GetHandle() const { return m_hThread; }
+	BV_INLINE OSThreadHandle GetHandle() const { return m_hThread; }
 	const BvFiber& GetThreadFiber() const;
 	bool IsFiber() const;
 
@@ -88,5 +89,5 @@ private:
 private:
 	BvDelegateBase* m_pDelegate = nullptr;
 	u64 m_ThreadId = 0;
-	void* m_hThread = nullptr;
+	OSThreadHandle m_hThread = nullptr;
 };

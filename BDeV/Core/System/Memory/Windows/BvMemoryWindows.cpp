@@ -1,7 +1,7 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
-#include "BDeV/Core/System/Threading/BvProcess.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 
 
 void* BvVirtualMemory::Reserve(size_t size)

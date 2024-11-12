@@ -1,6 +1,5 @@
 #include "BDeV/Core/System/Threading/BvFiber.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
 #include <utility>
 
 

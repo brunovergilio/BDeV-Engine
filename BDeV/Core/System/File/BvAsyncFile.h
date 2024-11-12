@@ -5,6 +5,13 @@
 // using aligned sector-sized blocks for read/write operations
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/System/File/BvFileCommon.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
+
+
+//Feature						Windows					Linux						macOS
+//Unbuffered I/O				FILE_FLAG_NO_BUFFERING	O_DIRECT					No exact equivalent; try F_NOCACHE with fcntl()
+//Immediate Write - Through		FILE_FLAG_WRITE_THROUGH	O_SYNC / O_DSYNC			O_SYNC / O_DSYNC
+//Asynchronous I/O Libraries	Built - in async API	libaio or POSIX AIO(aio_*)	POSIX AIO(aio_*)
 
 
 struct AsyncFileData;
@@ -17,11 +24,13 @@ public:
 
 	AsyncFileRequest();
 	AsyncFileRequest(AsyncFileRequest&& rhs) noexcept;
-	AsyncFileRequest& operator =(AsyncFileRequest&& rhs) noexcept;
+	AsyncFileRequest& operator=(AsyncFileRequest&& rhs) noexcept;
 	~AsyncFileRequest();
 
 	u32 GetResult(bool wait = true);
 	void Cancel();
+
+private:
 	void Release();
 
 private:
@@ -31,19 +40,20 @@ private:
 
 class BvAsyncFile
 {
+	BV_NOCOPY(BvAsyncFile);
+
 public:
 	friend class BvFileSystem;
 
 	BvAsyncFile();
-	BvAsyncFile(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
+	BvAsyncFile(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite,
+		BvFileAction action = BvFileAction::kOpenOrCreate, BvAsyncFileFlags asyncFlags = BvAsyncFileFlags::kNone);
 	BvAsyncFile(BvAsyncFile&& rhs) noexcept;
-	BvAsyncFile& operator =(BvAsyncFile&& rhs) noexcept;
+	BvAsyncFile& operator=(BvAsyncFile&& rhs) noexcept;
 	~BvAsyncFile();
 
-	BvAsyncFile(const BvAsyncFile&) = delete;
-	BvAsyncFile& operator =(const BvAsyncFile&) = delete;
-
-	bool Open(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
+	bool Open(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite,
+		BvFileAction action = BvFileAction::kOpenOrCreate, BvAsyncFileFlags asyncFlags = BvAsyncFileFlags::kNone);
 
 	AsyncFileRequest Read(void* const pBuffer, const u32 bufferSize, const u64 position = 0);
 	AsyncFileRequest Write(const void* const pBuffer, const u32 bufferSize, const u64 position = 0);
@@ -51,20 +61,15 @@ public:
 	template<typename Type> AsyncFileRequest ReadT(Type& value, const u64 position = 0) { return Read(&value, sizeof(Type), position); }
 	template<typename Type> AsyncFileRequest WriteT(const Type& value, const u64 position = 0) { return Write(&value, sizeof(Type), position); }
 
-	const u64 GetSize() const;
+	u64 GetSize() const;
 
 	void Close();
-
-	void GetFileInfo(BvFileInfo& fileInfo);
-
+	void Flush();
+	void GetInfo(BvFileInfo& fileInfo);
 	bool IsValid() const;
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	void* GetHandle() const { return m_hFile; }
-#endif
+	OSFileHandle GetHandle() const { return m_hFile; }
 
 private:
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	void* m_hFile = ((void*)-1ll);
-#endif
+	OSFileHandle m_hFile = kNullOSFileHandle;
 };

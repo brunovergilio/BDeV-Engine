@@ -288,8 +288,7 @@ void BvWindow::SetText(const char* pText)
 {
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pTextW = (wchar_t*)strMem.GetStart();
+		wchar_t* pTextW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, pTextW, sizeNeeded);
 		SetWindowTextW(m_hWnd, pTextW);
 	}

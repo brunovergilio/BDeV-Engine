@@ -2,6 +2,7 @@
 
 
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 
 
 class BvSharedLib
@@ -23,6 +24,12 @@ public:
 		return static_cast<PFN>(GetProcAddress(pFunctionName));
 	}
 
+	template<typename PFN>
+	BV_INLINE void GetProcAddressT(const char* const pFunctionName, PFN& pFn) const
+	{
+		pFn = static_cast<PFN>(GetProcAddress(pFunctionName));
+	}
+
 private:
-	void* m_hLib = nullptr;
+	OSSharedLibHandle m_hLib = kNullOSSharedLibHandle;
 };

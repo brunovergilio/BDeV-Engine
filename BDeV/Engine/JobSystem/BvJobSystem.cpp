@@ -4,7 +4,7 @@
 #include "BDeV/Core/System/Threading/BvThread.h"
 #include "BDeV/Core/System/Threading/BvFiber.h"
 #include "BDeV/Core/System/Threading/BvSync.h"
-#include "BDeV/Core/System/Threading/BvProcess.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 #include "BvRingBuffer.h"
 
 
@@ -274,7 +274,7 @@ namespace JS
 			// System-External thread
 			while (!pCounter->IsDone())
 			{
-				BvProcess::YieldExecution();
+				BvProcess::Yield();
 			}
 		}
 	}
@@ -373,7 +373,7 @@ namespace JS
 						}
 					}
 
-					BvProcess::YieldExecution();
+					BvProcess::Yield();
 				}
 			}
 			else

@@ -1,7 +1,6 @@
 #include "BDeV/Core/System/Library/BvSharedLib.h"
 #include "BDeV/Core/Container/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
 
 
 BvSharedLib::BvSharedLib()
@@ -13,8 +12,7 @@ BvSharedLib::BvSharedLib(const char * pFilename)
 {
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
 		m_hLib = LoadLibraryW(pFilenameW);
 	}

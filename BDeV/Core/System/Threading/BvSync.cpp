@@ -1,5 +1,5 @@
 #include "BDeV/Core/System/Threading/BvSync.h"
-#include "BDeV/Core/System/Threading/BvProcess.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 
 
 BvMutex::BvMutex()
@@ -108,7 +108,7 @@ void BvSpinlock::Lock()
 
 		while (m_Lock.load(std::memory_order::memory_order_relaxed))
 		{
-			BvProcess::YieldExecution();
+			BvProcess::Yield();
 		}
 	}
 }

@@ -4,7 +4,7 @@
 #if (BV_MATH_INSTRUCTION == BV_MATH_INSTRUCTION_AVX)
 
 
-BV_INLINE vf32 BV_VCALL Load(const f32* p)
+BV_INLINE vf32 BV_VCALL Load1(const f32* p)
 {
 	return _mm_load_ss(p);
 }
@@ -31,7 +31,7 @@ BV_INLINE vf32 BV_VCALL Load4A(const f32* p)
 	return _mm_load_ps(p);
 }
 
-BV_INLINE void BV_VCALL Store(cvf32 v, f32* p)
+BV_INLINE void BV_VCALL Store1(cvf32 v, f32* p)
 {
 	_mm_store_ss(p, v);
 }

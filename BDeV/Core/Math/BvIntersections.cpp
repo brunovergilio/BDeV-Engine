@@ -51,47 +51,6 @@ bool IsPointInSphere(const BvSphere& sphere, cvf32 p)
 	return lenSqr <= sphere.m_Radius * sphere.m_Radius;
 }
 
-vf32 ClosestPoint(const BvSphere& sphere, cvf32 p)
-{
-	vf32 c = Load(sphere.m_Center);
-	vf32 toPoint = Vector3Normalize(p - c);
-	vf32 r = VectorSet(sphere.m_Radius);
-	toPoint *= r;
-
-	return c + toPoint;
-}
-
-vf32 ClosestPoint(const BvAABB& aabb, cvf32 p)
-{
-	vf32 min, max;
-	GetMinMax(aabb, min, max);
-
-	return VectorClamp(p, min, max);
-}
-
-vf32 ClosestPoint(const BvOBB& obb, cvf32 p)
-{
-	vf32 c = Load(obb.m_Center);
-	vf32 toPoint = p - c;
-
-	mf32 rot = MatrixFromQuaternion(Load(obb.m_Rotation));
-	vf32 e = Load(obb.m_Extents);
-
-	vf32 d = Vector3Dot(toPoint, rot.r[0]);
-	d = VectorClamp(d, -e, e);
-	c += rot.r[0] * d;
-
-	d = Vector3Dot(toPoint, rot.r[1]);
-	d = VectorClamp(d, -e, e);
-	c += rot.r[1] * d;
-
-	d = Vector3Dot(toPoint, rot.r[2]);
-	d = VectorClamp(d, -e, e);
-	c += rot.r[2] * d;
-
-	return c;
-}
-
 vf32 SqrDistanceFromPointToLineSegment(cvf32 p, cvf32 v0, cvf32 v1)
 {
 	vf32 line = VectorSub(v1, v0);
@@ -150,6 +109,47 @@ void GetMinMax(const BvAABB& aabb, vf32& min, vf32& max)
 
 	min = c - e;
 	max = c + e;
+}
+
+vf32 ClosestPoint(const BvSphere& sphere, cvf32 p)
+{
+	vf32 c = Load(sphere.m_Center);
+	vf32 toPoint = Vector3Normalize(p - c);
+	vf32 r = VectorSet(sphere.m_Radius);
+	toPoint *= r;
+
+	return c + toPoint;
+}
+
+vf32 ClosestPoint(const BvAABB& aabb, cvf32 p)
+{
+	vf32 min, max;
+	GetMinMax(aabb, min, max);
+
+	return VectorClamp(p, min, max);
+}
+
+vf32 ClosestPoint(const BvOBB& obb, cvf32 p)
+{
+	vf32 c = Load(obb.m_Center);
+	vf32 toPoint = p - c;
+
+	mf32 rot = MatrixFromQuaternion(Load(obb.m_Rotation));
+	vf32 e = Load(obb.m_Extents);
+
+	vf32 d = Vector3Dot(toPoint, rot.r[0]);
+	d = VectorClamp(d, -e, e);
+	c += rot.r[0] * d;
+
+	d = Vector3Dot(toPoint, rot.r[1]);
+	d = VectorClamp(d, -e, e);
+	c += rot.r[1] * d;
+
+	d = Vector3Dot(toPoint, rot.r[2]);
+	d = VectorClamp(d, -e, e);
+	c += rot.r[2] * d;
+
+	return c;
 }
 
 vf32 LineLineDistanceSqr(cvf32 p1, cvf32 p2, cvf32 e1, cvf32 e2)
@@ -506,14 +506,19 @@ bool Intersects(const BvTriangle& triangle1, const BvTriangle& triangle2)
 
 	vf32 e1[] = { (t1[1] - t1[0]), (t1[2] - t1[1]), (t1[0] - t1[2]) };
 	vf32 e2[] = { (t2[1] - t2[0]), (t2[2] - t2[1]), (t2[0] - t2[2]) };
+	vf32 eps = VectorSet(kEpsilon);
 	for (auto i = 0; i < 3; ++i)
 	{
 		for (auto j = 0; j < 3; ++j)
 		{
 			fn = Vector3Cross(e1[i], e2[j]);
-			if (!OverlapOnAxis(fn, t1, 3, t2, 3))
+			vf32 c0 = Vector3Greater(Vector3LengthSqr(fn), eps);
+			if (VectorAllTrue(c0))
 			{
-				return false;
+				if (!OverlapOnAxis(fn, t1, 3, t2, 3))
+				{
+					return false;
+				}
 			}
 		}
 	}
@@ -696,8 +701,8 @@ bool Intersects(const BvTriangle& triangle, const BvCapsule& capsule)
 	r *= r;
 
 	vf32 c0 = Vector4LessEqual(LineLineDistanceSqr(p1, p2, t[0], t[1]), r);
-	vf32 c0 = VectorOr(c0, Vector4LessEqual(LineLineDistanceSqr(p1, p2, t[1], t[2]), r));
-	vf32 c0 = VectorOr(c0, Vector4LessEqual(LineLineDistanceSqr(p1, p2, t[2], t[0]), r));
+	c0 = VectorOr(c0, Vector4LessEqual(LineLineDistanceSqr(p1, p2, t[1], t[2]), r));
+	c0 = VectorOr(c0, Vector4LessEqual(LineLineDistanceSqr(p1, p2, t[2], t[0]), r));
 
 	return VectorAnyTrue(c0);
 }
@@ -804,7 +809,7 @@ bool Intersects(const BvPlane& plane, const BvCapsule& capsule)
 	vf32 d2 = SignedDistanceToPlane(plane, Load(capsule.m_P2));
 
 	vf32 c0 = Vector4Less(d1, VectorNegate(r));
-	vf32 c0 = VectorAnd(c0, Vector4Less(d2, r));
+	c0 = VectorAnd(c0, Vector4Less(d2, r));
 
 	return VectorAllTrue(c0);
 }

@@ -5,7 +5,6 @@
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include <utility>
 #include <process.h>
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
 
 
 BvFiber& GetThreadFiberInternal();
@@ -75,8 +74,7 @@ void BvThread::SetName(const char* pThreadName) const
 	HRESULT hr = S_OK;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pThreadName, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pThreadNameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pThreadNameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pThreadName, 0, pThreadNameW, sizeNeeded);
 		hr = SetThreadDescription(m_hThread, pThreadNameW);
 	}
@@ -138,7 +136,7 @@ void BvThread::Sleep(u32 miliseconds)
 }
 
 
-void BvThread::YieldExecution()
+void BvThread::Yield()
 {
 	SwitchToThread();
 }

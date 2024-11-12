@@ -1,7 +1,7 @@
 #include "BDeV/Core/System/File/BvFileSystem.h"
 #include "BDeV/Core/Container/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <winioctl.h>
 
 
@@ -10,8 +10,7 @@ bool BvFileSystem::FileExists(const char * pFilename)
 	DWORD attrib = 0;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
 		attrib = GetFileAttributesW(pFilenameW);
 	}
@@ -35,8 +34,7 @@ bool BvFileSystem::DeleteFile(const char* const pFilename)
 	BOOL result = TRUE;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
 		result = DeleteFileW(pFilenameW);
 	}
@@ -59,8 +57,7 @@ bool BvFileSystem::DirectoryExists(const char * const pDirName)
 	DWORD attrib = 0;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded);
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, pFilenameW, sizeNeeded);
 		attrib = GetFileAttributesW(pFilenameW);
 	}
@@ -84,8 +81,7 @@ bool BvFileSystem::CreateDirectory(const char* const pDirName)
 	BOOL result = TRUE;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, pFilenameW, sizeNeeded);
 		result = CreateDirectoryW(pFilenameW, nullptr);
 	}
@@ -185,8 +181,7 @@ bool BvFileSystem::DeleteDirectory(const char* const pDirName, bool recurse)
 	bool result = true;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, pFilenameW, sizeNeeded);
 		result = Internal::DeleteDirectoryInternal(pFilenameW, recurse);
 	}

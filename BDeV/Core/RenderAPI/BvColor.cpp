@@ -89,10 +89,6 @@ BvColor& BvColor::operator=(BvColor&& rhs) noexcept
 	return *this;
 }
 
-BvColor::BvColor(const BvVec& rhs)
-	: m_Vec(rhs) {}
-
-
 BvColorI BvColor::ToColorI() const
 {
 	auto color = GetSaturatedValue();
@@ -106,10 +102,13 @@ void BvColor::Clamp(f32 min, f32 max)
 
 BvColor BvColor::GetClampedValue(f32 min, f32 max) const
 {
-	BvVec vmax(max);
-	BvVec vmin(min);
+	BvColor r(*this);
+	r.m_Red = fmaxf(min, fminf(max, r.m_Red));
+	r.m_Green = fmaxf(min, fminf(max, r.m_Green));
+	r.m_Blue = fmaxf(min, fminf(max, r.m_Blue));
+	r.m_Alpha = fmaxf(min, fminf(max, r.m_Alpha));
 
-	return vmax.Min(vmin.Max(m_Vec));
+	return r;
 }
 
 void BvColor::Saturate()

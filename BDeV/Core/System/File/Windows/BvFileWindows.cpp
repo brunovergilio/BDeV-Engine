@@ -2,7 +2,6 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Container/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
 
 
 BvFile::BvFile()
@@ -63,8 +62,7 @@ bool BvFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileActi
 
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		BvStackArea(strMem, sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)strMem.GetStart();
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
 		m_hFile = CreateFileW(pFilenameW, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
 	}
@@ -79,35 +77,61 @@ bool BvFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileActi
 }
 
 
-i32 BvFile::Read(void * const pBuffer, const u32 bufferSize)
+u32 BvFile::Read(void* const pBuffer, const u32 bufferSize)
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	BvAssert(pBuffer != nullptr, "Null buffer");
 	BvAssert(bufferSize > 0, "Invalid buffer size");
 
-	i32 bytes = 0;
-	if (!ReadFile(m_hFile, pBuffer, bufferSize, reinterpret_cast<LPDWORD>(&bytes), nullptr))
+	u32 totalBytesRead = 0;
+	char* const pMem = reinterpret_cast<char* const>(pBuffer);
+	while (totalBytesRead < bufferSize)
 	{
-		return -1;
+		u32 bytesRead = 0;
+		if (!ReadFile(m_hFile, pMem + totalBytesRead, bufferSize - totalBytesRead, reinterpret_cast<LPDWORD>(&bytesRead), nullptr))
+		{
+			// TODO: Handle error
+			return 0;
+		}
+
+		if (!bytesRead)
+		{
+			break;
+		}
+
+		totalBytesRead += bytesRead;
 	}
 
-	return bytes;
+	return totalBytesRead;
 }
 
 
-i32 BvFile::Write(const void * const pBuffer, const u32 bufferSize)
+u32 BvFile::Write(const void* const pBuffer, const u32 bufferSize)
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	BvAssert(pBuffer != nullptr, "Null buffer");
 	BvAssert(bufferSize > 0, "Invalid buffer size");
 
-	i32 bytes = 0;
-	if (!WriteFile(m_hFile, pBuffer, bufferSize, reinterpret_cast<LPDWORD>(&bytes), nullptr))
+	u32 totalBytesWritten = 0;
+	const char* const pMem = reinterpret_cast<const char* const>(pBuffer);
+	while (totalBytesWritten < bufferSize)
 	{
-		return -1;
+		u32 bytesWritten = 0;
+		if (!WriteFile(m_hFile, pMem + totalBytesWritten, bufferSize - totalBytesWritten, reinterpret_cast<LPDWORD>(&bytesWritten), nullptr))
+		{
+			// TODO: Handle error
+			return 0;
+		}
+
+		if (!bytesWritten)
+		{
+			break;
+		}
+
+		totalBytesWritten += bytesWritten;
 	}
 
-	return bytes;
+	return totalBytesWritten;
 }
 
 
@@ -141,17 +165,17 @@ BvFile & BvFile::GoToEnd()
 }
 
 
-const i64 BvFile::GetFilePos() const
+u64 BvFile::GetFilePos() const
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	i64 offset = 0; LARGE_INTEGER pos{};
 	SetFilePointerEx(m_hFile, pos, reinterpret_cast<LARGE_INTEGER *>(&offset), FILE_CURRENT);
 
-	return offset;
+	return u64(offset);
 }
 
 
-const u64 BvFile::GetSize() const
+u64 BvFile::GetSize() const
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
@@ -188,7 +212,7 @@ void BvFile::Flush()
 }
 
 
-void BvFile::GetFileInfo(BvFileInfo& fileInfo)
+void BvFile::GetInfo(BvFileInfo& fileInfo)
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 

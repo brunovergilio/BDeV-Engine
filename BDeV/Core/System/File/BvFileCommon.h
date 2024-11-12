@@ -21,6 +21,15 @@ enum class BvFileAction : u8
 };
 
 
+enum class BvAsyncFileFlags : u8
+{
+	kNone = 0,
+	kNoBuffering = BvBit(0), // Requires that buffers for IO operations be aligned to the disk's physical sector size
+	kImmediateFlush = BvBit(1) // Flushes data to disk as soon as a write operation finishes
+};
+BV_USE_ENUM_CLASS_OPERATORS(BvAsyncFileFlags);
+
+
 struct BvFileInfo
 {
 	u64 m_CreationTimestamp;

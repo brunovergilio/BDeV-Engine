@@ -7,7 +7,7 @@
 #include <atomic>
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 #endif
 
 

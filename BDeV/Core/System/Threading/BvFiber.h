@@ -4,6 +4,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Utils/BvDelegate.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 
 
 using FiberFunction = void(*)(void*);
@@ -35,7 +36,7 @@ public:
 
 	void Switch(const BvFiber& fiber) const;
 
-	void* GetFiber() const;
+	OSFiberHandle GetFiber() const;
 
 private:
 	void Create(const size_t stackSize);
@@ -43,5 +44,5 @@ private:
 
 private:
 	BvDelegateBase* m_pDelegate = nullptr;
-	void* m_pFiber = nullptr;
+	OSFiberHandle m_pFiber = nullptr;
 };

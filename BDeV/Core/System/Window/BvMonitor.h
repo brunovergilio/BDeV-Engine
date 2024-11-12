@@ -3,10 +3,7 @@
 
 #include "BDeV/Core/Container/BvVector.h"
 #include <BDeV/Core/Container/BvString.h>
-
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
-#endif
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 
 
 class BvWindow;
@@ -28,9 +25,7 @@ class BvMonitor
 public:
 	friend class BvMonitorHelper;
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	BvMonitor(HMONITOR hMonitor);
-#endif
+	BvMonitor(OSMonitorHandle hMonitor);
 	~BvMonitor();
 
 	struct Rect
@@ -49,14 +44,10 @@ public:
 	BV_INLINE const BvString& GetName() const { return m_Name; }
 	BV_INLINE f32 GetDPIScaleFactor() const { return m_DPIScaleFactor; }
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	BV_INLINE HMONITOR GetHandle() const { return m_hMonitor; }
-#endif
+	BV_INLINE OSMonitorHandle GetHandle() const { return m_hMonitor; }
 
 protected:
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	HMONITOR m_hMonitor = nullptr;
-#endif
+	OSMonitorHandle m_hMonitor = nullptr;
 	Rect m_FullscreenArea;
 	Rect m_MaximizedArea;
 	f32 m_DPIScaleFactor = 1.0f;

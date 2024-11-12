@@ -114,8 +114,6 @@ public:
 	BvColor(BvColor&& rhs) noexcept;
 	BvColor& operator=(BvColor&& rhs) noexcept;
 
-	BvColor(const BvVec& rhs);
-
 	BvColorI ToColorI() const;
 	void Clamp(f32 min, f32 max);
 	BvColor GetClampedValue(f32 min, f32 max) const;
@@ -132,6 +130,5 @@ public:
 			f32 m_Blue;
 			f32 m_Alpha;
 		};
-		BvVec m_Vec;
 	};
 };

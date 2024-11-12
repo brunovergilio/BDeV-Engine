@@ -50,7 +50,7 @@
     <ClInclude Include="Core\System\Memory\BvMemory.h" />
     <ClInclude Include="Core\System\Application\BvApplication.h" />
     <ClInclude Include="Core\System\Threading\BvFiber.h" />
-    <ClInclude Include="Core\System\Threading\BvProcess.h" />
+    <ClInclude Include="Core\System\Process\BvProcess.h" />
     <ClInclude Include="Core\System\Threading\BvSync.h" />
     <ClInclude Include="Core\System\Threading\BvThread.h" />
     <ClInclude Include="Core\System\Window\BvWindow.h" />
@@ -63,7 +63,6 @@
     <ClInclude Include="Engine\JobSystem\BvRingBuffer.h" />
     <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
     <ClInclude Include="Core\RenderAPI\BvColor.h" />
-    <ClInclude Include="Core\System\Windows\BvWindowsHeader.h" />
     <ClInclude Include="Core\RenderAPI\BvCommandContext.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderAPIUtils.h" />
     <ClInclude Include="Core\RenderAPI\BvQuery.h" />
@@ -87,6 +86,7 @@
     <ClInclude Include="Core\Math\BvPrimitives.h" />
     <ClInclude Include="Core\Math\BvIntersections.h" />
     <ClInclude Include="Core\System\Diagnostics\BvDiagnostics.h" />
+    <ClInclude Include="Core\System\BvPlatformHeaders.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -116,7 +116,7 @@
     <ClCompile Include="Core\System\Memory\BvMemory.cpp" />
     <ClCompile Include="Core\System\Application\Windows\BvApplicationWindows.cpp" />
     <ClCompile Include="Core\System\Threading\Windows\BvFiberWindows.cpp" />
-    <ClCompile Include="Core\System\Threading\Windows\BvProcessWindows.cpp" />
+    <ClCompile Include="Core\System\Process\Windows\BvProcessWindows.cpp" />
     <ClCompile Include="Core\System\Threading\BvSync.cpp" />
     <ClCompile Include="Core\System\Threading\Windows\BvThreadWindows.cpp" />
     <ClCompile Include="Core\System\Window\Windows\BvWindowWindows.cpp" />

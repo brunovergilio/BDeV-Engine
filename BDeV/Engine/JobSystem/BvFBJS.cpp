@@ -1,7 +1,7 @@
 #include "BvFBJS.h"
 #include "BDeV/Core/System/Threading/BvThread.h"
 #include "BDeV/Core/System/Threading/BvSync.h"
-#include "BDeV/Core/System/Threading/BvProcess.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 #include <bit>
 
 
@@ -31,7 +31,7 @@ public:
 
 		while (m_LastJobIndex.load(std::memory_order::relaxed) - m_FirstJobIndex.load(std::memory_order::relaxed) >= m_JobPoolSize)
 		{
-			BvProcess::YieldExecution();
+			BvProcess::Yield();
 		}
 
 		u32 currIndex = m_LastJobIndex.load(std::memory_order::relaxed) & (m_JobPoolSize - 1);

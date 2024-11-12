@@ -440,7 +440,7 @@ BV_INLINE mf32 BV_VCALL MatrixScaling(f32 sX, f32 sY, f32 sZ)
 	return r;
 }
 
-mf32 BV_VCALL MatrixTranslation(cvf32 t)
+BV_INLINE mf32 BV_VCALL MatrixTranslation(cvf32 t)
 {
 	mf32 r;
 	r.r[0] = VectorSet(1.0f, 0.0f, 0.0f, 0.0f);

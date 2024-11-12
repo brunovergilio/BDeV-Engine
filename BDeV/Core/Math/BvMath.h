@@ -2,6 +2,7 @@
 
 
 #include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/Utils/BvUtils.h"
 
 
 // Default floating point error threshold
@@ -234,12 +235,12 @@ struct mf32
 using cmf32 = const mf32&;
 
 
-vf32 BV_VCALL Load(const f32* p);
+vf32 BV_VCALL Load1(const f32* p);
 vf32 BV_VCALL Load2(const f32* p);
 vf32 BV_VCALL Load3(const f32* p);
 vf32 BV_VCALL Load4(const f32* p);
 vf32 BV_VCALL Load4A(const f32* p);
-void BV_VCALL Store(cvf32 v, f32* p);
+void BV_VCALL Store1(cvf32 v, f32* p);
 void BV_VCALL Store2(cvf32 v, f32* p);
 void BV_VCALL Store3(cvf32 v, f32* p);
 void BV_VCALL Store4(cvf32 v, f32* p);
@@ -255,21 +256,21 @@ void BV_VCALL Store43(const mf32& m, f32* p);
 void BV_VCALL Store44(const mf32& m, f32* p);
 void BV_VCALL Store44A(const mf32& m, f32* p);
 
-BV_INLINE vf32 BV_VCALL Load(f32 f) { return Load(&f); }
+BV_INLINE vf32 BV_VCALL Load(f32 f) { return Load1(&f); }
 BV_INLINE vf32 BV_VCALL Load(const Float2& f) { return Load2(f.v); }
-BV_INLINE vf32 BV_VCALL Load(const Float3& f) { Load3(f.v); }
-BV_INLINE vf32 BV_VCALL Load(const Float4& f) { Load4(f.v); }
-BV_INLINE vf32 BV_VCALL Load(const Float4A& f) { Load4A(f.v); }
-BV_INLINE void BV_VCALL Store(cvf32 v, f32& f) { Store(v, &f); }
+BV_INLINE vf32 BV_VCALL Load(const Float3& f) { return Load3(f.v); }
+BV_INLINE vf32 BV_VCALL Load(const Float4& f) { return Load4(f.v); }
+BV_INLINE vf32 BV_VCALL Load(const Float4A& f) { return Load4A(f.v); }
+BV_INLINE void BV_VCALL Store(cvf32 v, f32& f) { Store1(v, &f); }
 BV_INLINE void BV_VCALL Store(cvf32 v, Float2& f) { Store2(v, f.v); }
 BV_INLINE void BV_VCALL Store(cvf32 v, Float3& f) { Store3(v, f.v); }
 BV_INLINE void BV_VCALL Store(cvf32 v, Float4& f) { Store4(v, f.v); }
 BV_INLINE void BV_VCALL Store(cvf32 v, Float4A& f) { Store4A(v, f.v); }
-BV_INLINE mf32 BV_VCALL Load(const Float22& r) { Load22(r.m); }
-BV_INLINE mf32 BV_VCALL Load(const Float33& r) { Load33(r.m); }
-BV_INLINE mf32 BV_VCALL Load(const Float43& r) { Load43(r.m); }
-BV_INLINE mf32 BV_VCALL Load(const Float44& r) { Load44(r.m); }
-BV_INLINE mf32 BV_VCALL Load(const Float44A& r) { Load44A(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float22& r) { return Load22(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float33& r) { return Load33(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float43& r) { return Load43(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float44& r) { return Load44(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float44A& r) { return Load44A(r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float22& r) { Store22(m, r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float33& r) { Store33(m, r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float43& r) { Store43(m, r.m); }
@@ -300,6 +301,7 @@ vf32 BV_VCALL VectorMaskInvX();
 vf32 BV_VCALL VectorMaskInvY();
 vf32 BV_VCALL VectorMaskInvZ();
 vf32 BV_VCALL VectorMaskInvW();
+template<u32 X, u32 Y, u32 Z, u32 W> vf32 BV_VCALL VectorMask();
 template<u32 X, u32 Y, u32 Z, u32 W> vf32 BV_VCALL VectorPermute(cvf32 v);
 vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2, i32 mask);
 vf32 BV_VCALL VectorBlend(cvf32 v1, cvf32 v2, cvf32 mask);
@@ -376,6 +378,10 @@ vf32 BV_VCALL VectorAdd(cvf32 v, f32 val);
 vf32 BV_VCALL VectorSub(cvf32 v, f32 val);
 vf32 BV_VCALL VectorMul(cvf32 v, f32 val);
 vf32 BV_VCALL VectorDiv(cvf32 v, f32 val);
+vf32 BV_VCALL VectorAdd(f32 val, cvf32 v);
+vf32 BV_VCALL VectorSub(f32 val, cvf32 v);
+vf32 BV_VCALL VectorMul(f32 val, cvf32 v);
+vf32 BV_VCALL VectorDiv(f32 val, cvf32 v);
 vf32 BV_VCALL VectorLerp(cvf32 v1, cvf32 v2, f32 t);
 vf32 BV_VCALL Vector2Dot(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL Vector2Cross(cvf32 v1, cvf32 v2);
@@ -383,6 +389,8 @@ vf32 BV_VCALL Vector2LengthSqr(cvf32 v);
 vf32 BV_VCALL Vector2Length(cvf32 v);
 vf32 BV_VCALL Vector2LengthRcp(cvf32 v);
 vf32 BV_VCALL Vector2Normalize(cvf32 v);
+vf32 BV_VCALL Vector2Rotate(cvf32 v, f32 rad);
+vf32 BV_VCALL Vector2InvRotate(cvf32 v, f32 rad);
 vf32 BV_VCALL Vector2TransformDir(cvf32 v, cmf32 m);
 vf32 BV_VCALL Vector2TransformPoint(cvf32 v, cmf32 m);
 vf32 BV_VCALL Vector3Dot(cvf32 v1, cvf32 v2);
@@ -395,6 +403,8 @@ vf32 BV_VCALL Vector3Project(cvf32 v, cvf32 p);
 vf32 BV_VCALL Vector3ProjectNormal(cvf32 v, cvf32 p);
 vf32 BV_VCALL Vector3Reflection(cvf32 i, cvf32 n);
 vf32 BV_VCALL Vector3Refraction(cvf32 i, cvf32 n, f32 eta);
+vf32 BV_VCALL Vector3Rotate(cvf32 v, cvf32 q);
+vf32 BV_VCALL Vector3InvRotate(cvf32 v, cvf32 q);
 vf32 BV_VCALL Vector3TransformDir(cvf32 v, cmf32 m);
 vf32 BV_VCALL Vector3TransformPoint(cvf32 v, cmf32 m);
 vf32 BV_VCALL Vector4Dot(cvf32 v1, cvf32 v2);
@@ -408,22 +418,25 @@ vf32 BV_VCALL operator-(cvf32 v);
 vf32 BV_VCALL operator+(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL operator+(cvf32 v, f32 s);
 vf32 BV_VCALL operator+(f32 s, cvf32 v);
-vf32& BV_VCALL operator+=(cvf32& v1, cvf32 v2);
+vf32& BV_VCALL operator+=(vf32& v1, cvf32 v2);
+vf32& BV_VCALL operator+=(vf32& v, f32 s);
 vf32 BV_VCALL operator-(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL operator-(cvf32 v, f32 s);
 vf32 BV_VCALL operator-(f32 s, cvf32 v);
-vf32& BV_VCALL operator-=(cvf32& v1, cvf32 v2);
+vf32& BV_VCALL operator-=(vf32& v1, cvf32 v2);
+vf32& BV_VCALL operator-=(vf32& v, f32 s);
 vf32 BV_VCALL operator*(cvf32 v1, cvf32 v2);
-vf32& BV_VCALL operator*=(cvf32& v1, cvf32 v2);
+vf32& BV_VCALL operator*=(vf32& v1, cvf32 v2);
 vf32 BV_VCALL operator*(cvf32 v, f32 s);
 vf32 BV_VCALL operator*(f32 s, cvf32 v);
-vf32& BV_VCALL operator*=(cvf32& v, f32 s);
+vf32& BV_VCALL operator*=(vf32& v, f32 s);
 vf32 BV_VCALL operator*(cvf32 v, cmf32 m);
-vf32& BV_VCALL operator*=(cvf32& v, cmf32 m);
+vf32& BV_VCALL operator*=(vf32& v, cmf32 m);
 vf32 BV_VCALL operator/(cvf32 v1, cvf32 v2);
-vf32& BV_VCALL operator/=(cvf32& v1, cvf32 v2);
+vf32& BV_VCALL operator/=(vf32& v1, cvf32 v2);
 vf32 BV_VCALL operator/(cvf32 v, f32 s);
-vf32& BV_VCALL operator/=(cvf32& v, f32 s);
+vf32 BV_VCALL operator/(f32 s, cvf32 v);
+vf32& BV_VCALL operator/=(vf32& v, f32 s);
 
 mf32 BV_VCALL MatrixSet(cvf32 v0, cvf32 v1, cvf32 v2, cvf32 v3);
 mf32 BV_VCALL MatrixAdd(cmf32 m1, cmf32 m2);
@@ -504,3 +517,229 @@ vf32 BV_VCALL QuaternionAngle(cvf32 q);
 #include "BvMathVector.inl"
 #include "BvMathMatrix.inl"
 #include "BvMathQuaternion.inl"
+
+
+class BvQuat;
+class BvMat3;
+class BvMat4;
+
+
+class BvBoolVec
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvBoolVec);
+
+	BV_INLINE BvBoolVec() {}
+	BV_INLINE BvBoolVec(bool s) : m_Vec(s ? VectorMaskAll() : VectorZero()) {}
+	BV_INLINE explicit BvBoolVec(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE bool AnyTrue() const { return VectorAnyTrue(m_Vec); }
+	BV_INLINE bool AllTrue() const { return VectorAllTrue(m_Vec); }
+	BV_INLINE bool AnyFalse() const { return VectorAnyFalse(m_Vec); }
+	BV_INLINE bool AllFalse() const { return VectorAllFalse(m_Vec); }
+
+	BV_INLINE operator bool() const { return AllTrue(); }
+	BV_INLINE bool operator==(const BvBoolVec& rhs) const { return BvBoolVec(VectorEqual(m_Vec, rhs.m_Vec)); }
+	BV_INLINE bool operator!=(const BvBoolVec& rhs) const { return !(*this == rhs); }
+	
+	BV_INLINE operator vf32() const { return m_Vec; }
+
+private:
+	vf32 m_Vec;
+};
+
+
+class BvSVec
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvSVec);
+
+	BV_INLINE BvSVec() {}
+	BV_INLINE BvSVec(f32 s)	: m_Vec(VectorSet(s)) {}
+	BV_INLINE explicit BvSVec(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE BvSVec operator+() const { return BvSVec(m_Vec); }
+	BV_INLINE BvSVec operator-() const { return BvSVec(VectorNegate(m_Vec)); }
+
+	BV_INLINE BvSVec operator+(BvSVec v) const { return BvSVec(m_Vec + v.m_Vec); }
+	BV_INLINE BvSVec operator-(BvSVec v) const { return BvSVec(m_Vec - v.m_Vec); }
+	BV_INLINE BvSVec operator*(BvSVec v) const { return BvSVec(m_Vec * v.m_Vec); }
+	BV_INLINE BvSVec operator/(BvSVec v) const { return BvSVec(m_Vec / v.m_Vec); }
+
+	BV_INLINE BvSVec operator+(f32 s) const { return BvSVec(m_Vec + s); }
+	BV_INLINE BvSVec operator-(f32 s) const { return BvSVec(m_Vec - s); }
+	BV_INLINE BvSVec operator*(f32 s) const { return BvSVec(m_Vec * s); }
+	BV_INLINE BvSVec operator/(f32 s) const { return BvSVec(m_Vec / s); }
+
+	BV_INLINE friend BvSVec operator+(f32 s, BvSVec v) { return BvSVec(s + v.m_Vec); }
+	BV_INLINE friend BvSVec operator-(f32 s, BvSVec v) { return BvSVec(s - v.m_Vec); }
+	BV_INLINE friend BvSVec operator*(f32 s, BvSVec v) { return BvSVec(s * v.m_Vec); }
+	BV_INLINE friend BvSVec operator/(f32 s, BvSVec v) { return BvSVec(s / v.m_Vec); }
+
+	BV_INLINE BvSVec& operator+=(BvSVec v) { m_Vec += v.m_Vec; return *this; }
+	BV_INLINE BvSVec& operator-=(BvSVec v) { m_Vec -= v.m_Vec; return *this; }
+	BV_INLINE BvSVec& operator*=(BvSVec v) { m_Vec *= v.m_Vec; return *this; }
+	BV_INLINE BvSVec& operator/=(BvSVec v) { m_Vec /= v.m_Vec; return *this; }
+
+	BV_INLINE BvSVec& operator+=(f32 s) { m_Vec += s; return *this; }
+	BV_INLINE BvSVec& operator-=(f32 s) { m_Vec -= s; return *this; }
+	BV_INLINE BvSVec& operator*=(f32 s) { m_Vec *= s; return *this; }
+	BV_INLINE BvSVec& operator/=(f32 s) { m_Vec /= s; return *this; }
+	
+	BV_INLINE BvBoolVec IsNearlyEqual(BvSVec v, f32 epsilon = kEpsilon) const { return BvBoolVec(VectorNearlyEqual(m_Vec, v.m_Vec, epsilon)); }
+	BV_INLINE BvBoolVec operator==(BvSVec v) const { return BvBoolVec(VectorEqual(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>(BvSVec v) const { return BvBoolVec(VectorGreater(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>=(BvSVec v) const { return BvBoolVec(VectorGreaterEqual(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<(BvSVec v) const { return BvBoolVec(VectorLess(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<=(BvSVec v) const { return BvBoolVec(VectorLessEqual(m_Vec, v.m_Vec)); }
+
+	BV_INLINE operator vf32() const { return m_Vec; }
+	BV_INLINE operator f32() const { return VectorGetX(m_Vec); }
+
+private:
+	vf32 m_Vec;
+};
+
+
+class BvVec2
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvVec2);
+
+	BV_INLINE BvVec2() {}
+	BV_INLINE BvVec2(const Float2& v) : m_Vec(Load(v)) {}
+	BV_INLINE explicit BvVec2(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
+	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
+
+	BV_INLINE void SetX(f32 x) { m_Vec = VectorSetX(m_Vec, x); }
+	BV_INLINE void SetY(f32 y) { m_Vec = VectorSetY(m_Vec, y); }
+
+	BV_INLINE BvVec2 operator+() const { return BvVec2(m_Vec); }
+	BV_INLINE BvVec2 operator-() const { return BvVec2(VectorChangeSign<1, 1, 0, 0>(m_Vec)); }
+
+	BV_INLINE BvVec2 operator+(BvVec2 v) const { return BvVec2(m_Vec + v.m_Vec); }
+	BV_INLINE BvVec2 operator-(BvVec2 v) const { return BvVec2(m_Vec - v.m_Vec); }
+	BV_INLINE BvVec2 operator*(BvVec2 v) const { return BvVec2(m_Vec * v.m_Vec); }
+	BV_INLINE BvVec2 operator/(BvVec2 v) const { return BvVec2(m_Vec / v.m_Vec); }
+
+	BV_INLINE BvVec2 operator+(BvSVec v) const { return BvVec2(m_Vec + (vf32)v); }
+	BV_INLINE BvVec2 operator-(BvSVec v) const { return BvVec2(m_Vec - (vf32)v); }
+	BV_INLINE BvVec2 operator*(BvSVec v) const { return BvVec2(m_Vec * (vf32)v); }
+	BV_INLINE BvVec2 operator/(BvSVec v) const { return BvVec2(m_Vec / (vf32)v); }
+
+	BV_INLINE BvVec2 operator+(f32 s) const { return BvVec2(m_Vec + s); }
+	BV_INLINE BvVec2 operator-(f32 s) const { return BvVec2(m_Vec - s); }
+	BV_INLINE BvVec2 operator*(f32 s) const { return BvVec2(m_Vec * s); }
+	BV_INLINE BvVec2 operator/(f32 s) const { return BvVec2(m_Vec / s); }
+
+	BV_INLINE BvVec2& operator+=(BvVec2 v) { m_Vec += v.m_Vec; return *this; }
+	BV_INLINE BvVec2& operator-=(BvVec2 v) { m_Vec -= v.m_Vec; return *this; }
+	BV_INLINE BvVec2& operator*=(BvVec2 v) { m_Vec *= v.m_Vec; return *this; }
+	BV_INLINE BvVec2& operator/=(BvVec2 v) { m_Vec /= v.m_Vec; return *this; }
+
+	BV_INLINE BvVec2& operator+=(BvSVec v) { m_Vec += (vf32)v; return *this; }
+	BV_INLINE BvVec2& operator-=(BvSVec v) { m_Vec -= (vf32)v; return *this; }
+	BV_INLINE BvVec2& operator*=(BvSVec v) { m_Vec *= (vf32)v; return *this; }
+	BV_INLINE BvVec2& operator/=(BvSVec v) { m_Vec /= (vf32)v; return *this; }
+
+	BV_INLINE BvVec2& operator+=(f32 s) { m_Vec += s; return *this; }
+	BV_INLINE BvVec2& operator-=(f32 s) { m_Vec -= s; return *this; }
+	BV_INLINE BvVec2& operator*=(f32 s) { m_Vec *= s; return *this; }
+	BV_INLINE BvVec2& operator/=(f32 s) { m_Vec /= s; return *this; }
+
+	BV_INLINE BvSVec Dot(BvVec2 v) const { return BvSVec(Vector2Dot(m_Vec, v.m_Vec)); }
+	BV_INLINE BvSVec Length() const { return BvSVec(Vector2Length(m_Vec)); }
+	BV_INLINE BvSVec LengthSqr() const { return BvSVec(Vector2LengthSqr(m_Vec)); }
+	BV_INLINE BvVec2 Normalize() const { return BvVec2(Vector2Normalize(m_Vec)); }
+	BV_INLINE BvSVec Cross(BvVec2 v) const { return BvSVec(Vector2Cross(m_Vec, v.m_Vec)); }
+	BV_INLINE BvVec2 Lerp(BvVec2 v, f32 t) const { return BvVec2(VectorLerp(m_Vec, v.m_Vec, t)); }
+	BV_INLINE BvVec2 Rotate(f32 rad) const { return BvVec2(Vector2Rotate(m_Vec, rad)); }
+	BV_INLINE BvVec2 InvRotate(f32 rad) const { return BvVec2(Vector2InvRotate(m_Vec, rad)); }
+
+	BV_INLINE BvBoolVec IsNearlyEqual(BvVec2 v, f32 epsilon = kEpsilon) const { return BvBoolVec(Vector2NearlyEqual(m_Vec, v.m_Vec, epsilon)); }
+	BV_INLINE BvBoolVec operator==(BvVec2 v) const { return BvBoolVec(Vector2Equal(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>(BvVec2 v) const { return BvBoolVec(Vector2Greater(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>=(BvVec2 v) const { return BvBoolVec(Vector2GreaterEqual(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<(BvVec2 v) const { return BvBoolVec(Vector2Less(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<=(BvVec2 v) const { return BvBoolVec(Vector2LessEqual(m_Vec, v.m_Vec)); }
+
+	BV_INLINE operator vf32() const { return m_Vec; }
+
+private:
+	vf32 m_Vec;
+};
+
+
+class BvVec3
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvVec3);
+
+	BV_INLINE BvVec3() {}
+	BV_INLINE BvVec3(const Float3& v) : m_Vec(Load(v)) {}
+	BV_INLINE explicit BvVec3(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
+	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
+	BV_INLINE BvSVec GetZ() const { return BvSVec(VectorReplicateZ(m_Vec)); }
+
+	BV_INLINE void SetX(f32 x) { m_Vec = VectorSetX(m_Vec, x); }
+	BV_INLINE void SetY(f32 y) { m_Vec = VectorSetY(m_Vec, y); }
+	BV_INLINE void SetZ(f32 z) { m_Vec = VectorSetZ(m_Vec, z); }
+
+	BV_INLINE BvVec3 operator+() const { return BvVec3(m_Vec); }
+	BV_INLINE BvVec3 operator-() const { return BvVec3(VectorChangeSign<1, 1, 1, 0>(m_Vec)); }
+
+	BV_INLINE BvVec3 operator+(BvVec3 v) const { return BvVec3(m_Vec + v.m_Vec); }
+	BV_INLINE BvVec3 operator-(BvVec3 v) const { return BvVec3(m_Vec - v.m_Vec); }
+	BV_INLINE BvVec3 operator*(BvVec3 v) const { return BvVec3(m_Vec * v.m_Vec); }
+	BV_INLINE BvVec3 operator/(BvVec3 v) const { return BvVec3(m_Vec / v.m_Vec); }
+
+	BV_INLINE BvVec3 operator+(BvSVec v) const { return BvVec3(m_Vec + (vf32)v); }
+	BV_INLINE BvVec3 operator-(BvSVec v) const { return BvVec3(m_Vec - (vf32)v); }
+	BV_INLINE BvVec3 operator*(BvSVec v) const { return BvVec3(m_Vec * (vf32)v); }
+	BV_INLINE BvVec3 operator/(BvSVec v) const { return BvVec3(m_Vec / (vf32)v); }
+
+	BV_INLINE BvVec3 operator+(f32 s) const { return BvVec3(m_Vec + s); }
+	BV_INLINE BvVec3 operator-(f32 s) const { return BvVec3(m_Vec - s); }
+	BV_INLINE BvVec3 operator*(f32 s) const { return BvVec3(m_Vec * s); }
+	BV_INLINE BvVec3 operator/(f32 s) const { return BvVec3(m_Vec / s); }
+
+	BV_INLINE BvVec3& operator+=(BvVec3 v) { m_Vec += v.m_Vec; return *this; }
+	BV_INLINE BvVec3& operator-=(BvVec3 v) { m_Vec -= v.m_Vec; return *this; }
+	BV_INLINE BvVec3& operator*=(BvVec3 v) { m_Vec *= v.m_Vec; return *this; }
+	BV_INLINE BvVec3& operator/=(BvVec3 v) { m_Vec /= v.m_Vec; return *this; }
+
+	BV_INLINE BvVec3& operator+=(BvSVec v) { m_Vec += (vf32)v; return *this; }
+	BV_INLINE BvVec3& operator-=(BvSVec v) { m_Vec -= (vf32)v; return *this; }
+	BV_INLINE BvVec3& operator*=(BvSVec v) { m_Vec *= (vf32)v; return *this; }
+	BV_INLINE BvVec3& operator/=(BvSVec v) { m_Vec /= (vf32)v; return *this; }
+
+	BV_INLINE BvVec3& operator+=(f32 s) { m_Vec += s; return *this; }
+	BV_INLINE BvVec3& operator-=(f32 s) { m_Vec -= s; return *this; }
+	BV_INLINE BvVec3& operator*=(f32 s) { m_Vec *= s; return *this; }
+	BV_INLINE BvVec3& operator/=(f32 s) { m_Vec /= s; return *this; }
+
+	BV_INLINE BvSVec Dot(BvVec3 v) const { return BvSVec(Vector3Dot(m_Vec, v.m_Vec)); }
+	BV_INLINE BvSVec Length() const { return BvSVec(Vector3Length(m_Vec)); }
+	BV_INLINE BvSVec LengthSqr() const { return BvSVec(Vector3LengthSqr(m_Vec)); }
+	BV_INLINE BvVec3 Normalize() const { return BvVec3(Vector3Normalize(m_Vec)); }
+	BV_INLINE BvVec3 Cross(BvVec3 v) const { return BvVec3(Vector3Cross(m_Vec, v.m_Vec)); }
+	BV_INLINE BvVec3 Lerp(BvVec3 v, f32 t) const { return BvVec3(VectorLerp(m_Vec, v.m_Vec, t)); }
+	BV_INLINE BvVec3 Rotate(BvQuat q) const; // { return BvVec3(Vector3Rotate(m_Vec, q.m_Vec)); }
+	BV_INLINE BvVec3 InvRotate(BvQuat q) const; // { return BvVec3(Vector3InvRotate(m_Vec, q.m_Vec)); }
+
+	BV_INLINE BvBoolVec IsNearlyEqual(BvVec3 v, f32 epsilon = kEpsilon) const { return BvBoolVec(Vector3NearlyEqual(m_Vec, v.m_Vec, epsilon)); }
+	BV_INLINE BvBoolVec operator==(BvVec3 v) const { return BvBoolVec(Vector3Equal(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>(BvVec3 v) const { return BvBoolVec(Vector3Greater(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>=(BvVec3 v) const { return BvBoolVec(Vector3GreaterEqual(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<(BvVec3 v) const { return BvBoolVec(Vector3Less(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<=(BvVec3 v) const { return BvBoolVec(Vector3LessEqual(m_Vec, v.m_Vec)); }
+
+	BV_INLINE operator vf32() const { return m_Vec; }
+
+private:
+	vf32 m_Vec;
+};

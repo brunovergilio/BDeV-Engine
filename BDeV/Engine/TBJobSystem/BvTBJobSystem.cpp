@@ -1,4 +1,5 @@
 #include "BvTBJobSystem.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 #include <bit>
 
 
@@ -83,7 +84,7 @@ void BvTBJobSystemWorker::AddJobList(BvTBJobList* pJobList)
 		// and the list happens to be already full. If that's ever the case, increase the job list size.
 		while (m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) >= (u32)m_JobLists.Size())
 		{
-			BvProcess::YieldExecution();
+			BvProcess::Yield();
 		}
 
 		auto lastJobListIndex = m_LastJobListIndex.load(std::memory_order::relaxed) & ((u32)m_JobLists.Size() - 1);
@@ -276,7 +277,7 @@ void BvTBJobSystemWorker::Process()
 		{
 			if (lastSkippedJobListIndex == jobListIndex)
 			{
-				BvProcess::YieldExecution();
+				BvProcess::Yield();
 			}
 			lastSkippedJobListIndex = jobListIndex;
 		}
@@ -387,7 +388,7 @@ void BvTBJobSystem::Wait()
 	{
 		while (!pWorker->IsIdle())
 		{
-			BvProcess::YieldExecution();
+			BvProcess::Yield();
 		}
 	}
 }
@@ -479,7 +480,7 @@ void BvTBJobList::Wait() const
 {
 	while (!IsDone())
 	{
-		BvProcess::YieldExecution();
+		BvProcess::Yield();
 	}
 }
 
