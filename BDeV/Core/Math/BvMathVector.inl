@@ -687,6 +687,14 @@ BV_INLINE vf32 BV_VCALL Vector2TransformPoint(cvf32 v, cmf32 m)
 	return r;
 }
 
+BV_INLINE bool BV_VCALL Vector2IsUnit(cvf32 v, f32 epsilon)
+{
+	vf32 d = VectorSub(Vector2Length(v), VectorOne());
+	vf32 r = VectorLess(VectorAbs(d), VectorSet(epsilon));
+
+	return Vector2AllTrue(r);
+}
+
 BV_INLINE vf32 BV_VCALL Vector3Dot(cvf32 v1, cvf32 v2)
 {
 	// _mm_dp_ps will use a 8 bit mask where:
@@ -822,6 +830,14 @@ BV_INLINE vf32 BV_VCALL Vector3TransformPoint(cvf32 v, cmf32 m)
 	r = _mm_fmadd_ps(c, m.r[2], r);
 
 	return r;
+}
+
+BV_INLINE bool BV_VCALL Vector3IsUnit(cvf32 v, f32 epsilon)
+{
+	vf32 d = VectorSub(Vector3Length(v), VectorOne());
+	vf32 r = VectorLess(VectorAbs(d), VectorSet(epsilon));
+
+	return Vector3AllTrue(r);
 }
 
 BV_INLINE vf32 BV_VCALL Vector4Dot(cvf32 v1, cvf32 v2)

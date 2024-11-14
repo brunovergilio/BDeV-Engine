@@ -7,6 +7,17 @@
 #include "BDeV/Core/System/Memory/BvMemory.h"
 
 
+struct AsyncFileData : OVERLAPPED
+{
+	HANDLE m_hFile;
+	void* m_pBuffer;
+	u32 m_TotalBytesRequested;
+	u32 m_TotalBytesProcessed;
+	bool m_IsReadOp;
+	bool m_IsDone;
+};
+
+
 namespace Internal
 {
 	BOOL ReadAsync(AsyncFileData& data, u32 bytesToRead)
@@ -20,17 +31,6 @@ namespace Internal
 		return WriteFile(data.m_hFile, data.m_pBuffer, bytesToWrite, nullptr, &data);
 	}
 }
-
-
-struct AsyncFileData : OVERLAPPED
-{
-	HANDLE m_hFile;
-	void* m_pBuffer;
-	u32 m_TotalBytesRequested;
-	u32 m_TotalBytesProcessed;
-	bool m_IsReadOp;
-	bool m_IsDone;
-};
 
 
 AsyncFileRequest::AsyncFileRequest()
@@ -61,6 +61,19 @@ AsyncFileRequest::~AsyncFileRequest()
 }
 
 
+bool AsyncFileRequest::IsComplete()
+{
+	if (!m_pIOData)
+	{
+		return true;
+	}
+
+	GetResult(false);
+
+	return m_pIOData->m_IsDone;
+}
+
+
 u32 AsyncFileRequest::GetResult(bool wait)
 {
 	if (!m_pIOData)
@@ -83,7 +96,6 @@ u32 AsyncFileRequest::GetResult(bool wait)
 			{
 				// Issue another operation for the remaining bytes
 				m_pIOData->Pointer = reinterpret_cast<PVOID>(u64(m_pIOData->Pointer) + result);
-				ResetEvent(m_pIOData->hEvent);
 
 				BOOL status = m_pIOData->m_IsReadOp ? Internal::ReadAsync(*m_pIOData, m_pIOData->m_TotalBytesRequested - m_pIOData->m_TotalBytesProcessed)
 					: Internal::WriteAsync(*m_pIOData, m_pIOData->m_TotalBytesRequested - m_pIOData->m_TotalBytesProcessed);
@@ -142,11 +154,12 @@ void AsyncFileRequest::Cancel()
 	if (!CancelIoEx(m_pIOData->m_hFile, m_pIOData))
 	{
 		auto error = GetLastError();
-		if (error != ERROR_NOT_FOUND || error != ERROR_OPERATION_ABORTED)
+		if (error != ERROR_NOT_FOUND && error != ERROR_OPERATION_ABORTED)
 		{
 			// TODO: Handle error
 		}
 	}
+	GetResult();
 }
 
 
@@ -154,7 +167,6 @@ void AsyncFileRequest::Release()
 {
 	if (m_pIOData)
 	{
-		CloseHandle(m_pIOData->hEvent);
 		BV_DELETE(m_pIOData);
 		m_pIOData = nullptr;
 	}
@@ -255,12 +267,11 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, c
 	ZeroMemory(request.m_pIOData, sizeof(AsyncFileData));
 	request.m_pIOData->m_hFile = m_hFile;
 	request.m_pIOData->Pointer = reinterpret_cast<void*>(position);
-	request.m_pIOData->hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	request.m_pIOData->m_pBuffer = pBuffer;
 	request.m_pIOData->m_TotalBytesRequested = bufferSize;
-	request.m_pIOData->m_TotalBytesProcessed = 0;
+	//request.m_pIOData->m_TotalBytesProcessed = 0;
 	request.m_pIOData->m_IsReadOp = true;
-	request.m_pIOData->m_IsDone = false;
+	//request.m_pIOData->m_IsDone = false;
 
 	BOOL status = Internal::ReadAsync(*request.m_pIOData, bufferSize);
 	if (!status)
@@ -288,12 +299,11 @@ AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 buffer
 	ZeroMemory(request.m_pIOData, sizeof(AsyncFileData));
 	request.m_pIOData->m_hFile = m_hFile;
 	request.m_pIOData->Pointer = reinterpret_cast<void*>(position);
-	request.m_pIOData->hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	request.m_pIOData->m_pBuffer = const_cast<void* const>(pBuffer);
 	request.m_pIOData->m_TotalBytesRequested = bufferSize;
-	request.m_pIOData->m_TotalBytesProcessed = 0;
-	request.m_pIOData->m_IsReadOp = false;
-	request.m_pIOData->m_IsDone = false;
+	//request.m_pIOData->m_TotalBytesProcessed = 0;
+	//request.m_pIOData->m_IsReadOp = false;
+	//request.m_pIOData->m_IsDone = false;
 
 	BOOL status = Internal::WriteAsync(*request.m_pIOData, bufferSize);
 	if (!status)

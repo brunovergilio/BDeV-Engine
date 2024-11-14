@@ -27,6 +27,7 @@ public:
 	AsyncFileRequest& operator=(AsyncFileRequest&& rhs) noexcept;
 	~AsyncFileRequest();
 
+	bool IsComplete();
 	u32 GetResult(bool wait = true);
 	void Cancel();
 

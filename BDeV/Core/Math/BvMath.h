@@ -393,6 +393,7 @@ vf32 BV_VCALL Vector2Rotate(cvf32 v, f32 rad);
 vf32 BV_VCALL Vector2InvRotate(cvf32 v, f32 rad);
 vf32 BV_VCALL Vector2TransformDir(cvf32 v, cmf32 m);
 vf32 BV_VCALL Vector2TransformPoint(cvf32 v, cmf32 m);
+bool BV_VCALL Vector2IsUnit(cvf32 v, f32 epsilon = kEpsilon);
 vf32 BV_VCALL Vector3Dot(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL Vector3Cross(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL Vector3LengthSqr(cvf32 v);
@@ -407,6 +408,7 @@ vf32 BV_VCALL Vector3Rotate(cvf32 v, cvf32 q);
 vf32 BV_VCALL Vector3InvRotate(cvf32 v, cvf32 q);
 vf32 BV_VCALL Vector3TransformDir(cvf32 v, cmf32 m);
 vf32 BV_VCALL Vector3TransformPoint(cvf32 v, cmf32 m);
+bool BV_VCALL Vector3IsUnit(cvf32 v, f32 epsilon = kEpsilon);
 vf32 BV_VCALL Vector4Dot(cvf32 v1, cvf32 v2);
 vf32 BV_VCALL Vector4LengthSqr(cvf32 v);
 vf32 BV_VCALL Vector4Length(cvf32 v);
@@ -511,6 +513,7 @@ vf32 BV_VCALL QuaternionQCVQKeenan(cvf32 q, cvf32 v);
 vf32 BV_VCALL QuaternionFromMatrix(cmf32 m);
 vf32 BV_VCALL QuaternionSlerp(cvf32 q1, cvf32 q2, f32 t, f32 epsilon = kEpsilon);
 vf32 BV_VCALL QuaternionAngle(cvf32 q);
+bool BV_VCALL QuaternionIsUnit(cvf32 q, f32 epsilon = kEpsilon);
 
 
 #include "BvMathLoaders.inl"
@@ -520,8 +523,7 @@ vf32 BV_VCALL QuaternionAngle(cvf32 q);
 
 
 class BvQuat;
-class BvMat3;
-class BvMat4;
+class BvMatrix;
 
 
 class BvBoolVec
@@ -538,10 +540,10 @@ public:
 	BV_INLINE bool AnyFalse() const { return VectorAnyFalse(m_Vec); }
 	BV_INLINE bool AllFalse() const { return VectorAllFalse(m_Vec); }
 
-	BV_INLINE operator bool() const { return AllTrue(); }
 	BV_INLINE bool operator==(const BvBoolVec& rhs) const { return BvBoolVec(VectorEqual(m_Vec, rhs.m_Vec)); }
 	BV_INLINE bool operator!=(const BvBoolVec& rhs) const { return !(*this == rhs); }
 	
+	BV_INLINE operator bool() const { return AllTrue(); }
 	BV_INLINE operator vf32() const { return m_Vec; }
 
 private:
@@ -607,8 +609,15 @@ public:
 	BV_DEFAULTCOPYMOVE(BvVec2);
 
 	BV_INLINE BvVec2() {}
+	BV_INLINE BvVec2(f32 x, f32 y) : m_Vec(VectorSet(x, y, 0.0f, 0.0f)) {}
 	BV_INLINE BvVec2(const Float2& v) : m_Vec(Load(v)) {}
 	BV_INLINE explicit BvVec2(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE static BvVec2 Zero() { return BvVec2(VectorZero()); }
+	BV_INLINE static BvVec2 One() { return BvVec2(VectorOne()); }
+	BV_INLINE static BvVec2 UnitX() { return BvVec2(VectorUnitX()); }
+	BV_INLINE static BvVec2 UnitY() { return BvVec2(VectorUnitY()); }
+	BV_INLINE static BvVec2 UnitZ() { return BvVec2(VectorUnitZ()); }
 
 	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
 	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
@@ -617,7 +626,7 @@ public:
 	BV_INLINE void SetY(f32 y) { m_Vec = VectorSetY(m_Vec, y); }
 
 	BV_INLINE BvVec2 operator+() const { return BvVec2(m_Vec); }
-	BV_INLINE BvVec2 operator-() const { return BvVec2(VectorChangeSign<1, 1, 0, 0>(m_Vec)); }
+	BV_INLINE BvVec2 operator-() const { return BvVec2(VectorNegate(m_Vec)); }
 
 	BV_INLINE BvVec2 operator+(BvVec2 v) const { return BvVec2(m_Vec + v.m_Vec); }
 	BV_INLINE BvVec2 operator-(BvVec2 v) const { return BvVec2(m_Vec - v.m_Vec); }
@@ -657,6 +666,8 @@ public:
 	BV_INLINE BvVec2 Lerp(BvVec2 v, f32 t) const { return BvVec2(VectorLerp(m_Vec, v.m_Vec, t)); }
 	BV_INLINE BvVec2 Rotate(f32 rad) const { return BvVec2(Vector2Rotate(m_Vec, rad)); }
 	BV_INLINE BvVec2 InvRotate(f32 rad) const { return BvVec2(Vector2InvRotate(m_Vec, rad)); }
+	BV_INLINE BvVec2 TransformPoint(const BvMatrix& m) const;
+	BV_INLINE BvVec2 TransformNormal(const BvMatrix& m) const;
 
 	BV_INLINE BvBoolVec IsNearlyEqual(BvVec2 v, f32 epsilon = kEpsilon) const { return BvBoolVec(Vector2NearlyEqual(m_Vec, v.m_Vec, epsilon)); }
 	BV_INLINE BvBoolVec operator==(BvVec2 v) const { return BvBoolVec(Vector2Equal(m_Vec, v.m_Vec)); }
@@ -678,8 +689,15 @@ public:
 	BV_DEFAULTCOPYMOVE(BvVec3);
 
 	BV_INLINE BvVec3() {}
+	BV_INLINE BvVec3(f32 x, f32 y, f32 z) : m_Vec(VectorSet(x, y, z, 0.0f)) {}
 	BV_INLINE BvVec3(const Float3& v) : m_Vec(Load(v)) {}
 	BV_INLINE explicit BvVec3(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE static BvVec3 Zero() { return BvVec3(VectorZero()); }
+	BV_INLINE static BvVec3 One() { return BvVec3(VectorOne()); }
+	BV_INLINE static BvVec3 UnitX() { return BvVec3(VectorUnitX()); }
+	BV_INLINE static BvVec3 UnitY() { return BvVec3(VectorUnitY()); }
+	BV_INLINE static BvVec3 UnitZ() { return BvVec3(VectorUnitZ()); }
 
 	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
 	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
@@ -690,7 +708,7 @@ public:
 	BV_INLINE void SetZ(f32 z) { m_Vec = VectorSetZ(m_Vec, z); }
 
 	BV_INLINE BvVec3 operator+() const { return BvVec3(m_Vec); }
-	BV_INLINE BvVec3 operator-() const { return BvVec3(VectorChangeSign<1, 1, 1, 0>(m_Vec)); }
+	BV_INLINE BvVec3 operator-() const { return BvVec3(VectorNegate(m_Vec)); }
 
 	BV_INLINE BvVec3 operator+(BvVec3 v) const { return BvVec3(m_Vec + v.m_Vec); }
 	BV_INLINE BvVec3 operator-(BvVec3 v) const { return BvVec3(m_Vec - v.m_Vec); }
@@ -707,6 +725,9 @@ public:
 	BV_INLINE BvVec3 operator*(f32 s) const { return BvVec3(m_Vec * s); }
 	BV_INLINE BvVec3 operator/(f32 s) const { return BvVec3(m_Vec / s); }
 
+	BV_INLINE BvVec3 operator*(BvQuat q) const;
+	BV_INLINE BvVec3 operator*(const BvMatrix& m) const;
+
 	BV_INLINE BvVec3& operator+=(BvVec3 v) { m_Vec += v.m_Vec; return *this; }
 	BV_INLINE BvVec3& operator-=(BvVec3 v) { m_Vec -= v.m_Vec; return *this; }
 	BV_INLINE BvVec3& operator*=(BvVec3 v) { m_Vec *= v.m_Vec; return *this; }
@@ -722,14 +743,19 @@ public:
 	BV_INLINE BvVec3& operator*=(f32 s) { m_Vec *= s; return *this; }
 	BV_INLINE BvVec3& operator/=(f32 s) { m_Vec /= s; return *this; }
 
+	BV_INLINE BvVec3& operator*=(BvQuat q);
+	BV_INLINE BvVec3& operator*=(const BvMatrix& m);
+
 	BV_INLINE BvSVec Dot(BvVec3 v) const { return BvSVec(Vector3Dot(m_Vec, v.m_Vec)); }
 	BV_INLINE BvSVec Length() const { return BvSVec(Vector3Length(m_Vec)); }
 	BV_INLINE BvSVec LengthSqr() const { return BvSVec(Vector3LengthSqr(m_Vec)); }
 	BV_INLINE BvVec3 Normalize() const { return BvVec3(Vector3Normalize(m_Vec)); }
 	BV_INLINE BvVec3 Cross(BvVec3 v) const { return BvVec3(Vector3Cross(m_Vec, v.m_Vec)); }
 	BV_INLINE BvVec3 Lerp(BvVec3 v, f32 t) const { return BvVec3(VectorLerp(m_Vec, v.m_Vec, t)); }
-	BV_INLINE BvVec3 Rotate(BvQuat q) const; // { return BvVec3(Vector3Rotate(m_Vec, q.m_Vec)); }
-	BV_INLINE BvVec3 InvRotate(BvQuat q) const; // { return BvVec3(Vector3InvRotate(m_Vec, q.m_Vec)); }
+	BV_INLINE BvVec3 Rotate(BvQuat q) const;
+	BV_INLINE BvVec3 InvRotate(BvQuat q) const;
+	BV_INLINE BvVec3 TransformPoint(const BvMatrix& m) const;
+	BV_INLINE BvVec3 TransformNormal(const BvMatrix& m) const;
 
 	BV_INLINE BvBoolVec IsNearlyEqual(BvVec3 v, f32 epsilon = kEpsilon) const { return BvBoolVec(Vector3NearlyEqual(m_Vec, v.m_Vec, epsilon)); }
 	BV_INLINE BvBoolVec operator==(BvVec3 v) const { return BvBoolVec(Vector3Equal(m_Vec, v.m_Vec)); }
@@ -743,3 +769,288 @@ public:
 private:
 	vf32 m_Vec;
 };
+
+
+class BvVec4
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvVec4);
+
+	BV_INLINE BvVec4() {}
+	BV_INLINE BvVec4(f32 x, f32 y, f32 z, f32 w = 1.0f) : m_Vec(VectorSet(x, y, z, w)) {}
+	BV_INLINE BvVec4(const Float4& v) : m_Vec(Load(v)) {}
+	BV_INLINE explicit BvVec4(BvVec3 v) : m_Vec(VectorSetW(v, 1.0f)) {}
+	BV_INLINE explicit BvVec4(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE static BvVec4 Zero() { return BvVec4(VectorZero()); }
+	BV_INLINE static BvVec4 One() { return BvVec4(VectorOne()); }
+	BV_INLINE static BvVec4 UnitX() { return BvVec4(VectorUnitX()); }
+	BV_INLINE static BvVec4 UnitY() { return BvVec4(VectorUnitY()); }
+	BV_INLINE static BvVec4 UnitZ() { return BvVec4(VectorUnitZ()); }
+
+	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
+	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
+	BV_INLINE BvSVec GetZ() const { return BvSVec(VectorReplicateZ(m_Vec)); }
+	BV_INLINE BvSVec GetW() const { return BvSVec(VectorReplicateW(m_Vec)); }
+
+	BV_INLINE void SetX(f32 x) { m_Vec = VectorSetX(m_Vec, x); }
+	BV_INLINE void SetY(f32 y) { m_Vec = VectorSetY(m_Vec, y); }
+	BV_INLINE void SetZ(f32 z) { m_Vec = VectorSetZ(m_Vec, z); }
+	BV_INLINE void SetW(f32 w) { m_Vec = VectorSetW(m_Vec, w); }
+
+	BV_INLINE BvVec4 operator+() const { return BvVec4(m_Vec); }
+	BV_INLINE BvVec4 operator-() const { return BvVec4(VectorNegate(m_Vec)); }
+
+	BV_INLINE BvVec4 operator+(BvVec4 v) const { return BvVec4(m_Vec + v.m_Vec); }
+	BV_INLINE BvVec4 operator-(BvVec4 v) const { return BvVec4(m_Vec - v.m_Vec); }
+	BV_INLINE BvVec4 operator*(BvVec4 v) const { return BvVec4(m_Vec * v.m_Vec); }
+	BV_INLINE BvVec4 operator/(BvVec4 v) const { return BvVec4(m_Vec / v.m_Vec); }
+
+	BV_INLINE BvVec4 operator+(BvSVec v) const { return BvVec4(m_Vec + (vf32)v); }
+	BV_INLINE BvVec4 operator-(BvSVec v) const { return BvVec4(m_Vec - (vf32)v); }
+	BV_INLINE BvVec4 operator*(BvSVec v) const { return BvVec4(m_Vec * (vf32)v); }
+	BV_INLINE BvVec4 operator/(BvSVec v) const { return BvVec4(m_Vec / (vf32)v); }
+
+	BV_INLINE BvVec4 operator+(f32 s) const { return BvVec4(m_Vec + s); }
+	BV_INLINE BvVec4 operator-(f32 s) const { return BvVec4(m_Vec - s); }
+	BV_INLINE BvVec4 operator*(f32 s) const { return BvVec4(m_Vec * s); }
+	BV_INLINE BvVec4 operator/(f32 s) const { return BvVec4(m_Vec / s); }
+
+	BV_INLINE BvVec4& operator+=(BvVec4 v) { m_Vec += v.m_Vec; return *this; }
+	BV_INLINE BvVec4& operator-=(BvVec4 v) { m_Vec -= v.m_Vec; return *this; }
+	BV_INLINE BvVec4& operator*=(BvVec4 v) { m_Vec *= v.m_Vec; return *this; }
+	BV_INLINE BvVec4& operator/=(BvVec4 v) { m_Vec /= v.m_Vec; return *this; }
+
+	BV_INLINE BvVec4& operator+=(BvSVec v) { m_Vec += (vf32)v; return *this; }
+	BV_INLINE BvVec4& operator-=(BvSVec v) { m_Vec -= (vf32)v; return *this; }
+	BV_INLINE BvVec4& operator*=(BvSVec v) { m_Vec *= (vf32)v; return *this; }
+	BV_INLINE BvVec4& operator/=(BvSVec v) { m_Vec /= (vf32)v; return *this; }
+
+	BV_INLINE BvVec4& operator+=(f32 s) { m_Vec += s; return *this; }
+	BV_INLINE BvVec4& operator-=(f32 s) { m_Vec -= s; return *this; }
+	BV_INLINE BvVec4& operator*=(f32 s) { m_Vec *= s; return *this; }
+	BV_INLINE BvVec4& operator/=(f32 s) { m_Vec /= s; return *this; }
+
+	BV_INLINE BvSVec Dot(BvVec4 v) const { return BvSVec(Vector4Dot(m_Vec, v.m_Vec)); }
+	BV_INLINE BvSVec Length() const { return BvSVec(Vector4Length(m_Vec)); }
+	BV_INLINE BvSVec LengthSqr() const { return BvSVec(Vector4LengthSqr(m_Vec)); }
+	BV_INLINE BvVec4 Lerp(BvVec4 v, f32 t) const { return BvVec4(VectorLerp(m_Vec, v.m_Vec, t)); }
+	BV_INLINE BvVec4 Transform(const BvMatrix& m) const;
+
+	BV_INLINE BvBoolVec IsNearlyEqual(BvVec4 v, f32 epsilon = kEpsilon) const { return BvBoolVec(VectorNearlyEqual(m_Vec, v.m_Vec, epsilon)); }
+	BV_INLINE BvBoolVec operator==(BvVec4 v) const { return BvBoolVec(VectorEqual(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>(BvVec4 v) const { return BvBoolVec(VectorGreater(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator>=(BvVec4 v) const { return BvBoolVec(VectorGreaterEqual(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<(BvVec4 v) const { return BvBoolVec(VectorLess(m_Vec, v.m_Vec)); }
+	BV_INLINE BvBoolVec operator<=(BvVec4 v) const { return BvBoolVec(VectorLessEqual(m_Vec, v.m_Vec)); }
+
+	BV_INLINE operator vf32() const { return m_Vec; }
+
+private:
+	vf32 m_Vec;
+};
+
+
+class BvMatrix
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvMatrix);
+
+	BV_INLINE BvMatrix() {}
+	BV_INLINE BvMatrix(const Float44& m) : m_Mat(Load(m)) {}
+	BV_INLINE BvMatrix(BvVec4 r0, BvVec4 r1, BvVec4 r2, BvVec4 r3) : m_Mat(r0, r1, r2, r2) {}
+	BV_INLINE explicit BvMatrix(BvQuat q);
+	BV_INLINE explicit BvMatrix(cmf32 m) : m_Mat(m) {}
+
+	BV_INLINE static BvMatrix Identity() { return BvMatrix(MatrixIdentity()); }
+	BV_INLINE static BvMatrix Scale(f32 x, f32 y, f32 z) { return BvMatrix(MatrixScaling(x, y, z)); }
+	BV_INLINE static BvMatrix Scale(BvVec3 v) { return BvMatrix(MatrixScaling(v)); }
+	BV_INLINE static BvMatrix RotationX(f32 rad) { return BvMatrix(MatrixRotationX(rad)); }
+	BV_INLINE static BvMatrix RotationY(f32 rad) { return BvMatrix(MatrixRotationY(rad)); }
+	BV_INLINE static BvMatrix RotationZ(f32 rad) { return BvMatrix(MatrixRotationZ(rad)); }
+	BV_INLINE static BvMatrix RotationAxis(BvVec3 axis, f32 rad) { return BvMatrix(MatrixRotationAxis(axis, rad)); }
+	BV_INLINE static BvMatrix Translation(f32 x, f32 y, f32 z) { return BvMatrix(MatrixTranslation(x, y, z)); }
+	BV_INLINE static BvMatrix Translation(BvVec3 v) { return BvMatrix(MatrixTranslation(v)); }
+	BV_INLINE static BvMatrix LookAt(BvVec3 eyePos, BvVec3 dirVec, BvVec3 upVec) { return BvMatrix(MatrixLookAt(eyePos, dirVec, upVec)); }
+	BV_INLINE static BvMatrix LookAtLH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { return BvMatrix(MatrixLookAtLH(eyePos, lookPos, upVec)); }
+	BV_INLINE static BvMatrix LookAtRH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { return BvMatrix(MatrixLookAtRH(eyePos, lookPos, upVec)); }
+	BV_INLINE static BvMatrix PerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveLH_DX(nearZ, farZ, aspectRatio, fovY)); }
+	BV_INLINE static BvMatrix PerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveRH_DX(nearZ, farZ, aspectRatio, fovY)); }
+	BV_INLINE static BvMatrix PerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveLH_GL(nearZ, farZ, aspectRatio, fovY)); }
+	BV_INLINE static BvMatrix PerspectiveRH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveRH_GL(nearZ, farZ, aspectRatio, fovY)); }
+	BV_INLINE static BvMatrix PerspectiveLH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveLH_VK(nearZ, farZ, aspectRatio, fovY)); }
+	BV_INLINE static BvMatrix PerspectiveRH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveRH_VK(nearZ, farZ, aspectRatio, fovY)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterLH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterLH_DX(right, left, top, bottom, nearZ, farZ)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterRH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterRH_DX(right, left, top, bottom, nearZ, farZ)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterLH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterLH_GL(right, left, top, bottom, nearZ, farZ)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterRH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterRH_GL(right, left, top, bottom, nearZ, farZ)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterLH_VK(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterLH_VK(right, left, top, bottom, nearZ, farZ)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterRH_VK(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterRH_VK(right, left, top, bottom, nearZ, farZ)); }
+
+	BV_INLINE void SetIdentity() { m_Mat = MatrixIdentity(); }
+	BV_INLINE void SetScale(f32 x, f32 y, f32 z) { m_Mat = MatrixScaling(x, y, z); }
+	BV_INLINE void SetScale(BvVec3 v) { m_Mat = MatrixScaling(v); }
+	BV_INLINE void SetRotationX(f32 rad) { m_Mat = MatrixRotationX(rad); }
+	BV_INLINE void SetRotationY(f32 rad) { m_Mat = MatrixRotationY(rad); }
+	BV_INLINE void SetRotationZ(f32 rad) { m_Mat = MatrixRotationZ(rad); }
+	BV_INLINE void SetRotationAxis(BvVec3 axis, f32 rad) { m_Mat = MatrixRotationAxis(axis, rad); }
+	BV_INLINE void SetTranslation(f32 x, f32 y, f32 z) { m_Mat = MatrixTranslation(x, y, z); }
+	BV_INLINE void SetTranslation(BvVec3 v) { m_Mat = MatrixTranslation(v); }
+	BV_INLINE void SetLookAt(BvVec3 eyePos, BvVec3 dirVec, BvVec3 upVec) { m_Mat = MatrixLookAt(eyePos, dirVec, upVec); }
+	BV_INLINE void SetLookAtLH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { m_Mat = MatrixLookAtLH(eyePos, lookPos, upVec); }
+	BV_INLINE void SetLookAtRH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { m_Mat = MatrixLookAtRH(eyePos, lookPos, upVec); }
+	BV_INLINE void SetPerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveLH_DX(nearZ, farZ, aspectRatio, fovY); }
+	BV_INLINE void SetPerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveRH_DX(nearZ, farZ, aspectRatio, fovY); }
+	BV_INLINE void SetPerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveLH_GL(nearZ, farZ, aspectRatio, fovY); }
+	BV_INLINE void SetPerspectiveRH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveRH_GL(nearZ, farZ, aspectRatio, fovY); }
+	BV_INLINE void SetPerspectiveLH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveLH_VK(nearZ, farZ, aspectRatio, fovY); }
+	BV_INLINE void SetPerspectiveRH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveRH_VK(nearZ, farZ, aspectRatio, fovY); }
+	BV_INLINE void SetOrthographicOffCenterLH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterLH_DX(right, left, top, bottom, nearZ, farZ); }
+	BV_INLINE void SetOrthographicOffCenterRH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterRH_DX(right, left, top, bottom, nearZ, farZ); }
+	BV_INLINE void SetOrthographicOffCenterLH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterLH_GL(right, left, top, bottom, nearZ, farZ); }
+	BV_INLINE void SetOrthographicOffCenterRH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterRH_GL(right, left, top, bottom, nearZ, farZ); }
+	BV_INLINE void SetOrthographicOffCenterLH_VK(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterLH_VK(right, left, top, bottom, nearZ, farZ); }
+	BV_INLINE void SetOrthographicOffCenterRH_VK(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterRH_VK(right, left, top, bottom, nearZ, farZ); }
+
+	BV_INLINE BvVec4 GetX() const { return BvVec4(m_Mat.r[0]); }
+	BV_INLINE BvVec4 GetY() const { return BvVec4(m_Mat.r[1]); }
+	BV_INLINE BvVec4 GetZ() const { return BvVec4(m_Mat.r[2]); }
+	BV_INLINE BvVec4 GetW() const { return BvVec4(m_Mat.r[3]); }
+
+	BV_INLINE void SetX(BvVec4 v) { m_Mat.r[0] = v; }
+	BV_INLINE void SetY(BvVec4 v) { m_Mat.r[1] = v; }
+	BV_INLINE void SetZ(BvVec4 v) { m_Mat.r[2] = v; }
+	BV_INLINE void SetW(BvVec4 v) { m_Mat.r[3] = v; }
+
+	BV_INLINE BvSVec Determinant() const { return BvSVec(MatrixDeterminant(m_Mat)); }
+	BV_INLINE BvMatrix Inverse() const { return BvMatrix(MatrixInverse(m_Mat)); }
+	BV_INLINE BvMatrix Transpose() const { return BvMatrix(MatrixTranspose(m_Mat)); }
+
+	BV_INLINE BvMatrix operator*(const BvMatrix& m) const { return BvMatrix(MatrixMul(m_Mat, m)); }
+	BV_INLINE BvMatrix& operator*=(const BvMatrix& m) { m_Mat = MatrixMul(m_Mat, m); }
+
+	BV_INLINE BvVec3 operator[](size_t index) const { return BvVec3(m_Mat.r[index]); }
+
+	BV_INLINE operator mf32() const { return m_Mat; }
+
+private:
+	mf32 m_Mat;
+};
+
+
+class BvQuat
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvQuat);
+
+	BV_INLINE BvQuat() {}
+	BV_INLINE BvQuat(f32 x, f32 y, f32 z, f32 w) : m_Vec(VectorSet(x, y, z, w)) {}
+	BV_INLINE BvQuat(const Float4& q) : m_Vec(Load(q)) {}
+	BV_INLINE explicit BvQuat(BvVec3 v) : m_Vec(VectorSetW(v, 0.0f)) {}
+	BV_INLINE explicit BvQuat(const BvMatrix& m) : m_Vec(QuaternionFromMatrix(m)) {}
+	BV_INLINE explicit BvQuat(cvf32 v) : m_Vec(v) {}
+
+	BV_INLINE static BvQuat Identity() { return BvQuat(QuaternionIdentity()); }
+	BV_INLINE static BvQuat RotationAxis(vf32 v, f32 rad) { return BvQuat(QuaternionRotationAxis(v, rad)); }
+	BV_INLINE void SetIdentity() { m_Vec = QuaternionIdentity(); }
+	BV_INLINE void SetRotationAxis(vf32 v, f32 rad) { m_Vec = QuaternionRotationAxis(v, rad); }
+
+	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
+	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
+	BV_INLINE BvSVec GetZ() const { return BvSVec(VectorReplicateZ(m_Vec)); }
+	BV_INLINE BvSVec GetW() const { return BvSVec(VectorReplicateW(m_Vec)); }
+
+	BV_INLINE void SetX(f32 x) { m_Vec = VectorSetX(m_Vec, x); }
+	BV_INLINE void SetY(f32 y) { m_Vec = VectorSetY(m_Vec, y); }
+	BV_INLINE void SetZ(f32 z) { m_Vec = VectorSetZ(m_Vec, z); }
+	BV_INLINE void SetW(f32 w) { m_Vec = VectorSetW(m_Vec, w); }
+
+	BV_INLINE BvSVec Dot(BvQuat q) const { return BvSVec(QuaternionDot(m_Vec, q.m_Vec)); }
+	BV_INLINE BvSVec Length() const { return BvSVec(QuaternionLength(m_Vec)); }
+	BV_INLINE BvSVec LengthSqr() const { return BvSVec(QuaternionLengthSqr(m_Vec)); }
+	BV_INLINE BvQuat Normalize() const { return BvQuat(QuaternionNormalize(m_Vec)); }
+	BV_INLINE BvQuat Conjugate() const { return BvQuat(QuaternionConjugate(m_Vec)); }
+	BV_INLINE BvQuat Inverse() const { return BvQuat(QuaternionInverse(m_Vec)); }
+	BV_INLINE BvQuat Lerp(BvQuat q, f32 t) const { return BvQuat(VectorLerp(m_Vec, q.m_Vec, t)); }
+	BV_INLINE BvQuat Slerp(BvQuat q, f32 t) const { return BvQuat(QuaternionSlerp(m_Vec, q.m_Vec, t)); }
+	BV_INLINE BvSVec GetAngle() const { return BvSVec(QuaternionAngle(m_Vec)); }
+
+	BV_INLINE BvVec4 operator+() const { return BvVec4(m_Vec); }
+	BV_INLINE BvVec4 operator-() const { return BvVec4(QuaternionConjugate(m_Vec)); }
+
+	BV_INLINE BvQuat operator*(BvQuat q) const { return BvQuat(QuaternionMul(m_Vec, q.m_Vec)); }
+	BV_INLINE BvQuat& operator*=(BvQuat q) { m_Vec = QuaternionMul(m_Vec, q.m_Vec); }
+
+	BV_INLINE BvBoolVec IsNearlyEqual(BvQuat q, f32 epsilon = kEpsilon) const { return BvBoolVec(VectorNearlyEqual(m_Vec, q.m_Vec, epsilon)); }
+	BV_INLINE BvBoolVec operator==(BvQuat q) const { return BvBoolVec(VectorEqual(m_Vec, q.m_Vec)); }
+	BV_INLINE BvBoolVec operator>(BvQuat q) const { return BvBoolVec(VectorGreater(m_Vec, q.m_Vec)); }
+	BV_INLINE BvBoolVec operator>=(BvQuat q) const { return BvBoolVec(VectorGreaterEqual(m_Vec, q.m_Vec)); }
+	BV_INLINE BvBoolVec operator<(BvQuat q) const { return BvBoolVec(VectorLess(m_Vec, q.m_Vec)); }
+	BV_INLINE BvBoolVec operator<=(BvQuat q) const { return BvBoolVec(VectorLessEqual(m_Vec, q.m_Vec)); }
+
+	BV_INLINE operator vf32() const { return m_Vec; }
+
+private:
+	vf32 m_Vec;
+};
+
+
+BV_INLINE BvVec2 BvVec2::TransformPoint(const BvMatrix& m) const
+{
+	return BvVec2(Vector2TransformPoint(m_Vec, m));
+}
+
+BV_INLINE BvVec2 BvVec2::TransformNormal(const BvMatrix& m) const
+{
+	return BvVec2(Vector2TransformDir(m_Vec, m));
+}
+
+BV_INLINE BvVec3 BvVec3::operator*(BvQuat q) const
+{
+	return BvVec3(Vector3Rotate(m_Vec, q));
+}
+
+BV_INLINE BvVec3 BvVec3::operator*(const BvMatrix& m) const
+{
+	return BvVec3(Vector3TransformPoint(m_Vec, m));
+}
+
+BV_INLINE BvVec3& BvVec3::operator*=(BvQuat q)
+{
+	m_Vec = Vector3Rotate(m_Vec, q);
+}
+
+BV_INLINE BvVec3& BvVec3::operator*=(const BvMatrix& m)
+{
+	m_Vec = Vector3TransformPoint(m_Vec, m);
+}
+
+BV_INLINE BvVec3 BvVec3::Rotate(BvQuat q) const
+{
+	return BvVec3(Vector3Rotate(m_Vec, q));
+}
+
+BV_INLINE BvVec3 BvVec3::InvRotate(BvQuat q) const
+{
+	return BvVec3(Vector3InvRotate(m_Vec, q));
+}
+
+BV_INLINE BvVec3 BvVec3::TransformPoint(const BvMatrix& m) const
+{
+	return BvVec3(Vector3TransformPoint(m_Vec, m));
+}
+
+BV_INLINE BvVec3 BvVec3::TransformNormal(const BvMatrix& m) const
+{
+	return BvVec3(Vector3TransformDir(m_Vec, m));
+}
+
+BV_INLINE BvVec4 BvVec4::Transform(const BvMatrix& m) const
+{
+	return BvVec4(VectorTransform(m_Vec, m));
+}
+
+BV_INLINE BvMatrix::BvMatrix(BvQuat q)
+	: m_Mat(MatrixFromQuaternion(q))
+{
+}

@@ -126,9 +126,7 @@ BV_INLINE vf32 BV_VCALL QuaternionMulKeenan(cvf32 q1, cvf32 q2)
 
 BV_INLINE vf32 BV_VCALL QuaternionConjugate(cvf32 q)
 {
-	vf32 conj = _mm_set_ps(1.0f, -1.0f, -1.0f, -1.0f);
-
-	return _mm_mul_ps(q, conj);
+	return VectorChangeSign<1, 1, 1, 0>(q);
 }
 
 BV_INLINE vf32 BV_VCALL QuaternionInverse(cvf32 q)
@@ -448,6 +446,14 @@ BV_INLINE vf32 BV_VCALL QuaternionSlerp(cvf32 q1, cvf32 q2, f32 t, f32 epsilon)
 BV_INLINE vf32 BV_VCALL QuaternionAngle(cvf32 q)
 {
 	return VectorSet(2.0f * acosf(VectorGetW(q)));
+}
+
+BV_INLINE bool BV_VCALL QuaternionIsUnit(cvf32 q, f32 epsilon)
+{
+	vf32 d = VectorSub(QuaternionLength(q), VectorOne());
+	vf32 r = VectorLess(VectorAbs(d), VectorSet(epsilon));
+
+	return VectorAllTrue(r);
 }
 
 #else
