@@ -14,9 +14,9 @@ extern void ProcessRawInputMouseMessage(const RAWMOUSE& rawMouse);
 extern void ProcessCharInputMessage(u32 codePoint, LPARAM lParam, bool isDeadKey, const BvKeyboard::KeyState*& pKeyState);
 
 
-#define BvDispatchEvent(e, ...) do											\
+#define BvDispatchEvent(app, e, ...) do										\
 {																			\
-	for (auto pMessageHandler : GetInstance()->m_pImpl->m_MessageHandlers)	\
+	for (auto pMessageHandler : app->m_pImpl->m_MessageHandlers)			\
 	{																		\
 		pMessageHandler->On##e(__VA_ARGS__);								\
 	}																		\
@@ -32,6 +32,16 @@ struct Pimpl
 	bool m_MouseUsesRawInput = false;
 	u32 m_HighSurrogate = 0;
 };
+
+
+BvApplication::BvApplication()
+{
+}
+
+
+BvApplication::~BvApplication()
+{
+}
 
 
 void BvApplication::Initialize()
@@ -155,7 +165,7 @@ void BvApplication::ProcessOSEvents()
 		{
 			const BvKeyboard::KeyState* pKeyState;
 			ProcessLegacyKeyboardMessage(VK_SNAPSHOT, 0, pKeyState);
-			BvDispatchEvent(KeyDown, pKeyState->m_Key, pKeyState->m_ScanCode);
+			BvDispatchEvent(this, KeyDown, pKeyState->m_Key, pKeyState->m_ScanCode);
 		}
 	}
 
@@ -179,7 +189,7 @@ void BvApplication::ProcessOSEvents()
 
 BvWindow* BvApplication::CreateWindow(const WindowDesc& windowDesc)
 {
-	auto pWindow = BV_NEW(BvWindow)(windowDesc);
+	auto pWindow = BV_NEW(BvWindow)(this, windowDesc);
 	m_pImpl->m_Windows.Emplace(pWindow->m_hWnd, pWindow);
 
 	return pWindow;
@@ -205,23 +215,6 @@ void BvApplication::RemoveMessageHandler(BvApplicationMessageHandler* pMessageHa
 }
 
 
-BvApplication* BvApplication::GetInstance()
-{
-	static BvApplication app;
-	return &app;
-}
-
-
-BvApplication::BvApplication()
-{
-}
-
-
-BvApplication::~BvApplication()
-{
-}
-
-
 LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	BvWindow* pWindow = nullptr;
@@ -235,7 +228,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 	
 	pWindow = reinterpret_cast<BvWindow*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
-	auto pApp = GetInstance();
+	auto pApp = pWindow->m_pApplication;
 
 	switch (uMsg)
 	{
@@ -254,11 +247,11 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			ProcessRawInputKeyboardMessage(raw.data.keyboard, pKeyState);
 			if (pKeyState->m_IsPressed)
 			{
-				BvDispatchEvent(KeyDown, pKeyState->m_Key, pKeyState->m_ScanCode);
+				BvDispatchEvent(pApp, KeyDown, pKeyState->m_Key, pKeyState->m_ScanCode);
 			}
 			else
 			{
-				BvDispatchEvent(KeyUp, pKeyState->m_Key, pKeyState->m_ScanCode);
+				BvDispatchEvent(pApp, KeyUp, pKeyState->m_Key, pKeyState->m_ScanCode);
 			}
 		}
 		// extract mouse raw input data
@@ -283,11 +276,11 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		ProcessLegacyKeyboardMessage(wParam, lParam, pKeyState);
 		if (pKeyState->m_IsPressed)
 		{
-			BvDispatchEvent(KeyDown, pKeyState->m_Key, pKeyState->m_ScanCode);
+			BvDispatchEvent(pApp, KeyDown, pKeyState->m_Key, pKeyState->m_ScanCode);
 		}
 		else
 		{
-			BvDispatchEvent(KeyUp, pKeyState->m_Key, pKeyState->m_ScanCode);
+			BvDispatchEvent(pApp, KeyUp, pKeyState->m_Key, pKeyState->m_ScanCode);
 		}
 		return 0;
 	}
@@ -317,7 +310,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		bool isDeadChar = uMsg == WM_DEADCHAR || uMsg == WM_SYSDEADCHAR;
 		const BvKeyboard::KeyState* pKeyState;
 		ProcessCharInputMessage(codePoint, lParam, isDeadChar, pKeyState);
-		BvDispatchEvent(KeyChar, pKeyState->m_CodePoint, pKeyState->m_IsDeadKey);
+		BvDispatchEvent(pApp, KeyChar, pKeyState->m_CodePoint, pKeyState->m_IsDeadKey);
 		return 0;
 	}
 
@@ -334,17 +327,17 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			activationType = WindowActivationType::kClickActivate;
 		}
 
-		BvDispatchEvent(Activate, pWindow, activationType);
+		BvDispatchEvent(pApp, Activate, pWindow, activationType);
 
 		return 0;
 	}
 
 	case WM_SETFOCUS:
-		BvDispatchEvent(Focus, pWindow, true);
+		BvDispatchEvent(pApp, Focus, pWindow, true);
 		return 0;
 
 	case WM_KILLFOCUS:
-		BvDispatchEvent(Focus, pWindow, false);
+		BvDispatchEvent(pApp, Focus, pWindow, false);
 		return 0;
 
 	case WM_SIZE:
@@ -371,7 +364,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 			currState = WindowState::kRestored;
 		}
 
-		BvDispatchEvent(SizeChange, pWindow, width, height, currState);
+		BvDispatchEvent(pApp, SizeChange, pWindow, width, height, currState);
 	}
 	return 0;
 
@@ -384,17 +377,17 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		auto y = (i32)HIWORD(lParam);
 		pWindow->OnPosChanged(x, y);
 
-		BvDispatchEvent(PosChange, pWindow, x, y);
+		BvDispatchEvent(pApp, PosChange, pWindow, x, y);
 
 		return 0;
 	}
 
 	case WM_ENTERSIZEMOVE:
-		BvDispatchEvent(StartSizeMove, pWindow);
+		BvDispatchEvent(pApp, StartSizeMove, pWindow);
 		return 0;
 
 	case WM_EXITSIZEMOVE:
-		BvDispatchEvent(EndSizeMove, pWindow);
+		BvDispatchEvent(pApp, EndSizeMove, pWindow);
 		return 0;
 
 	case WM_GETMINMAXINFO:
@@ -411,7 +404,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	case WM_CLOSE:
 		pWindow->Hide();
 		
-		BvDispatchEvent(Close, pWindow);
+		BvDispatchEvent(pApp, Close, pWindow);
 
 		return 0;
 

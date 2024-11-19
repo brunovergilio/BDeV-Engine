@@ -9,7 +9,7 @@
 #include <bit>
 
 
-const BvSystemInfo& BvProcess::GetSystemInfo()
+const BvSystemInfo& BvSystem::GetSystemInfo()
 {
 	static BvSystemInfo s_SystemInfo = []()
 	{
@@ -119,7 +119,7 @@ private:
 };
 
 
-void BvProcess::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u32 numFramesToRecord)
+void BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u32 numFramesToRecord)
 {
 	static StackTraceHandler s_StackTraceHandler;
 
@@ -223,7 +223,7 @@ void BvProcess::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSki
 #pragma warning( pop )
 
 
-void BvProcess::Yield()
+void BvCPU::Yield()
 {
 	YieldProcessor();
 }

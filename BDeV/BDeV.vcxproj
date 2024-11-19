@@ -128,7 +128,7 @@
     <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystemTLS.h" />
     <ClInclude Include="Core\Math\BvMath.h" />
-    <ClInclude Include="Reflection\BvRTTI.h" />
+    <ClInclude Include="Core\Utils\BvRTTI.h" />
     <ClInclude Include="Core\RenderAPI\BvBuffer.h" />
     <ClInclude Include="Core\RenderAPI\BvBufferView.h" />
     <ClInclude Include="Core\RenderAPI\BvColor.h" />
@@ -175,7 +175,7 @@
     <ClInclude Include="Core\System\Window\BvMonitor.h" />
     <ClInclude Include="Core\System\Window\BvWindow.h" />
     <ClInclude Include="Core\System\Window\BvWindowCommon.h" />
-    <ClInclude Include="Core\Utils\BvDelegate.h" />
+    <ClInclude Include="Core\Utils\BvTask.h" />
     <ClInclude Include="Core\Utils\BvEvent.h" />
     <ClInclude Include="Core\Utils\BvTime.h" />
     <ClInclude Include="Core\Utils\BvTestUnit.h" />

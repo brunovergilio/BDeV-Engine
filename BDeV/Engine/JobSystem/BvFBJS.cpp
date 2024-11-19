@@ -31,7 +31,7 @@ public:
 
 		while (m_LastJobIndex.load(std::memory_order::relaxed) - m_FirstJobIndex.load(std::memory_order::relaxed) >= m_JobPoolSize)
 		{
-			BvProcess::Yield();
+			BvCPU::Yield();
 		}
 
 		u32 currIndex = m_LastJobIndex.load(std::memory_order::relaxed) & (m_JobPoolSize - 1);

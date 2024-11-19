@@ -68,7 +68,7 @@
 #include "BDeV/Core/System/Window/BvWindow.h"
 #include "BDeV/Core/System/Window/BvMonitor.h"
 
-#include "BDeV/Core/Utils/BvDelegate.h"
+#include "BDeV/Core/Utils/BvTask.h"
 #include "BDeV/Core/Utils/BvEvent.h"
 #include "BDeV/Core/Utils/BvHash.h"
 #include "BDeV/Core/Utils/BvTestUnit.h"

@@ -135,7 +135,7 @@ u32 BvFile::Write(const void* const pBuffer, const u32 bufferSize)
 }
 
 
-BvFile & BvFile::SkipBytes(const i64 offset)
+BvFile& BvFile::SkipBytes(const i64 offset)
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	LARGE_INTEGER seekOffset; seekOffset.QuadPart = offset;
@@ -145,7 +145,7 @@ BvFile & BvFile::SkipBytes(const i64 offset)
 }
 
 
-BvFile & BvFile::GoToStart()
+BvFile& BvFile::GoToStart()
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	LARGE_INTEGER seekOffset; seekOffset.QuadPart = 0ll;
@@ -155,7 +155,7 @@ BvFile & BvFile::GoToStart()
 }
 
 
-BvFile & BvFile::GoToEnd()
+BvFile& BvFile::GoToEnd()
 {
 	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	LARGE_INTEGER seekOffset; seekOffset.QuadPart = 0ll;

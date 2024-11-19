@@ -10,8 +10,8 @@
 //#pragma comment(lib, "Dwmapi.lib")
 
 
-BvWindow::BvWindow(const WindowDesc& windowDesc)
-	: m_WindowDesc(windowDesc), m_WindowMode(windowDesc.m_WindowMode)
+BvWindow::BvWindow(BvApplication* pApplication, const WindowDesc& windowDesc)
+	: m_pApplication(pApplication), m_WindowDesc(windowDesc), m_WindowMode(windowDesc.m_WindowMode)
 {
 	Create();
 }

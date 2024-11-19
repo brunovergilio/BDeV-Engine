@@ -2,13 +2,13 @@
 
 
 #include "BDeV/Core/BvCore.h"
-#include "BDeV/Core/Utils/BvDelegate.h"
+#include "BDeV/Core/Utils/BvTask.h"
 #include <atomic>
 
 
 struct JobDecl
 {
-	BvTaskT<32> m_Job;
+	BvTaskN<32> m_Job;
 	class BvJobCounter* m_pCounter;
 	std::atomic<u32> m_FetchLock;
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Utils/BvDelegate.h"
+#include "BDeV/Core/Utils/BvTask.h"
 
 
 namespace JS
@@ -14,7 +14,7 @@ namespace JS
 	};
 
 	constexpr auto kMaxJobFunctionSize = kCacheLineSize - (sizeof(const char*) * 3);
-	using JobFunction = BvTaskT<kMaxJobFunctionSize>;
+	using JobFunction = BvTaskN<kMaxJobFunctionSize>;
 	//using JobFunction = void(*)(void*);
 
 	struct Job

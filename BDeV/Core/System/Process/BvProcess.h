@@ -33,26 +33,14 @@ struct BvStackTrace
 };
 
 
-class BvPipe
-{
-	BV_NOCOPY(BvPipe);
-
-public:
-	BvPipe();
-	BvPipe(bool isWritePipe);
-	BvPipe(BvPipe&& rhs);
-	BvPipe& operator=(BvPipe&& rhs);
-	~BvPipe();
-
-private:
-	void* m_pReadPipe = nullptr;
-	void* m_pWritePipe = nullptr;
-};
-
-
-namespace BvProcess
+namespace BvSystem
 {
 	const BvSystemInfo& GetSystemInfo();
 	void GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip = 1, const u32 numFramesToRecord = 3);
-	void Yield();
 };
+
+
+namespace BvCPU
+{
+	void Yield();
+}

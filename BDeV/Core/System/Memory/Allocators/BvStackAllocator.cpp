@@ -117,7 +117,7 @@ BvGrowableStackAllocator::BvGrowableStackAllocator(void* pStart, void* pEnd, siz
 	: m_pVirtualStart(reinterpret_cast<char*>(pStart)), m_pVirtualEnd(reinterpret_cast<char*>(pEnd)),
 	m_pStart(m_pVirtualStart), m_pEnd(m_pVirtualStart), m_pCurrent(m_pVirtualStart)
 {
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 }
 
@@ -125,7 +125,7 @@ BvGrowableStackAllocator::BvGrowableStackAllocator(void* pStart, void* pEnd, siz
 BvGrowableStackAllocator::BvGrowableStackAllocator(size_t maxSize, size_t growSize /*= 0*/)
 	: m_HasOwnMemory(true)
 {
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
 	m_pVirtualStart = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
@@ -146,7 +146,7 @@ BvGrowableStackAllocator::~BvGrowableStackAllocator()
 void BvGrowableStackAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 {
 	BvAssert(m_pStart == nullptr, "Memory already set");
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	m_pVirtualStart = reinterpret_cast<char*>(pStart);
 	m_pVirtualEnd = reinterpret_cast<char*>(pEnd);
@@ -157,7 +157,7 @@ void BvGrowableStackAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 void BvGrowableStackAllocator::Set(size_t maxSize, size_t growSize)
 {
 	BvAssert(m_pStart == nullptr, "Memory already set");
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
 	m_pVirtualStart = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));

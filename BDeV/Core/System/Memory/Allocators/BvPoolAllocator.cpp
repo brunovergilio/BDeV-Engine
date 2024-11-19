@@ -79,7 +79,7 @@ void BvPoolAllocator::Free(void* pMem)
 // ===============================================
 BvGrowablePoolAllocator::BvGrowablePoolAllocator(void* pStart, void* pEnd, size_t growSize, size_t elementSize, size_t alignment)
 {
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	size_t maxSize = size_t(pEnd) - size_t(pStart);
 
@@ -104,7 +104,7 @@ BvGrowablePoolAllocator::BvGrowablePoolAllocator(void* pStart, void* pEnd, size_
 BvGrowablePoolAllocator::BvGrowablePoolAllocator(size_t maxSize, size_t growSize, size_t elementSize, size_t alignment)
 	: m_HasOwnMemory(true)
 {
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
 
@@ -148,7 +148,7 @@ void* BvGrowablePoolAllocator::Allocate(size_t size /*= 0*/, size_t alignment /*
 	m_pFreeList = *((void**)pBlock);
 
 	// We update the metadata for the page we just acquired memory from
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	MemType mem{ pBlock }, start{ m_pVirtualStart };
 	auto metadataPageIndex = (mem.asSizeT - start.asSizeT) / systemInfo.m_PageSize;
 	u32* pMetadata = reinterpret_cast<u32*>(m_pVirtualBase) + metadataPageIndex;
@@ -169,7 +169,7 @@ void BvGrowablePoolAllocator::Free(void* pMem)
 	m_pFreeList = pMem;
 
 	// We update the metadata for the page we just released memory to
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	MemType mem{ pMem }, start{ m_pVirtualStart };
 	auto metadataPageIndex = (mem.asSizeT - start.asSizeT) / systemInfo.m_PageSize;
 	u32* pMetadata = reinterpret_cast<u32*>(m_pVirtualBase) + metadataPageIndex;
@@ -184,7 +184,7 @@ void BvGrowablePoolAllocator::Purge()
 		return;
 	}
 
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	MemType start{ m_pVirtualStart }, end{ m_pVirtualEnd }, addressToFree{ m_pVirtualStart };
 	auto numPages = (end.asSizeT - start.asSizeT) / systemInfo.m_PageSize;
 	u32* pMetadata = reinterpret_cast<u32*>(m_pVirtualBase);

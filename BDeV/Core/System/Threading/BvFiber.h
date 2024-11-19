@@ -2,7 +2,7 @@
 
 
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Utils/BvDelegate.h"
+#include "BDeV/Core/Utils/BvTask.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 
@@ -27,7 +27,7 @@ public:
 	template<class Fn, class... Args,
 		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
 	BvFiber(const u32 stackSize, Fn&& fn, Args&&... args)
-		: m_pDelegate(new((void*)BV_NEW_ARRAY(u8, sizeof(BvDelegate<Fn, Args...>))) BvDelegate<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
+		: m_pTask(new((void*)BV_NEW_ARRAY(u8, sizeof(Internal::BvTaskT<Fn, Args...>))) Internal::BvTaskT<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
 	{
 		Create(stackSize);
 	}
@@ -43,6 +43,6 @@ private:
 	void Destroy();
 
 private:
-	BvDelegateBase* m_pDelegate = nullptr;
 	OSFiberHandle m_pFiber = nullptr;
+	IBvTask* m_pTask = nullptr;
 };

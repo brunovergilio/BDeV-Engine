@@ -28,7 +28,7 @@ class BvTBJobList
 
 	struct alignas(64) Job
 	{
-		BvTaskT<48> m_Job{};
+		BvTaskN<48> m_Job{};
 		BvTBJobList* m_pDependency{};
 		JobSyncType m_SyncType{};
 	};

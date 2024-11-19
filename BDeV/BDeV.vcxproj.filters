@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="Core\BvCore.h" />
-    <ClInclude Include="Core\Utils\BvDelegate.h" />
+    <ClInclude Include="Core\Utils\BvTask.h" />
     <ClInclude Include="Core\Utils\BvEvent.h" />
     <ClInclude Include="Core\Utils\BvTime.h" />
     <ClInclude Include="Core\Utils\BvUtils.h" />
@@ -29,7 +29,7 @@
     <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystemTLS.h" />
     <ClInclude Include="Engine\TBJobSystem\BvTBJobSystem.h" />
-    <ClInclude Include="Reflection\BvRTTI.h" />
+    <ClInclude Include="Core\Utils\BvRTTI.h" />
     <ClInclude Include="Core\System\File\BvAsyncFile.h" />
     <ClInclude Include="Core\System\File\BvFile.h" />
     <ClInclude Include="Core\System\File\BvFileCommon.h" />

@@ -66,11 +66,11 @@ void BvVirtualMemory::Release(void* pAddress)
 
 size_t BvVirtualMemory::GetPageSize()
 {
-	return BvProcess::GetSystemInfo().m_PageSize;
+	return BvSystem::GetSystemInfo().m_PageSize;
 }
 
 
 size_t BvVirtualMemory::GetLargePageSize()
 {
-	return BvProcess::GetSystemInfo().m_LargePageSize;
+	return BvSystem::GetSystemInfo().m_LargePageSize;
 }

@@ -86,7 +86,7 @@ void BvFullMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment
 	trackingData.m_Size = size;
 	trackingData.m_Alignment = alignment;
 
-	BvProcess::GetStackTrace(trackingData.m_StackTrace, 3);
+	BvSystem::GetStackTrace(trackingData.m_StackTrace, 3);
 }
 
 

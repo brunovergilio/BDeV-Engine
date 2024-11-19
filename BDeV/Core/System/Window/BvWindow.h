@@ -16,7 +16,7 @@ class BvWindow final
 public:
 	friend class BvApplication;
 
-	explicit BvWindow(const WindowDesc& windowDesc);
+	explicit BvWindow(BvApplication* pApplication, const WindowDesc& windowDesc);
 	~BvWindow();
 
 	void Reshape(i32 x, i32 y, u32 width, u32 height);
@@ -56,8 +56,9 @@ private:
 	void Destroy();
 
 private:
+	BvApplication* m_pApplication = nullptr;
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	HWND m_hWnd = nullptr;
+	OSWindowHandle m_hWnd = nullptr;
 	WINDOWPLACEMENT m_PreFullscreenPosition{};
 #endif
 	WindowDesc m_WindowDesc;

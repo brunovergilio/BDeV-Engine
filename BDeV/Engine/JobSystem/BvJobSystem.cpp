@@ -274,7 +274,7 @@ namespace JS
 			// System-External thread
 			while (!pCounter->IsDone())
 			{
-				BvProcess::Yield();
+				BvCPU::Yield();
 			}
 		}
 	}
@@ -373,7 +373,7 @@ namespace JS
 						}
 					}
 
-					BvProcess::Yield();
+					BvCPU::Yield();
 				}
 			}
 			else

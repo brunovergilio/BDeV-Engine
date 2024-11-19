@@ -216,7 +216,7 @@ BvGrowableHeapAllocator::BvGrowableHeapAllocator(void* pStart, void* pEnd, size_
 	: m_pVirtualStart(reinterpret_cast<char*>(pStart)), m_pVirtualEnd(reinterpret_cast<char*>(pEnd)),
 	m_pStart(m_pVirtualStart), m_pEnd(m_pVirtualStart), m_pUsedAddressEnd(m_pVirtualStart)
 {
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 }
 
@@ -224,7 +224,7 @@ BvGrowableHeapAllocator::BvGrowableHeapAllocator(void* pStart, void* pEnd, size_
 BvGrowableHeapAllocator::BvGrowableHeapAllocator(size_t maxSize, size_t growSize)
 	: m_HasOwnMemory(true)
 {
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
 	m_pVirtualStart = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
@@ -245,7 +245,7 @@ BvGrowableHeapAllocator::~BvGrowableHeapAllocator()
 void BvGrowableHeapAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 {
 	BvAssert(m_pStart == nullptr, "Memory already set");
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 
 	m_pVirtualStart = reinterpret_cast<char*>(pStart);
@@ -259,7 +259,7 @@ void BvGrowableHeapAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 void BvGrowableHeapAllocator::Set(size_t maxSize, size_t growSize)
 {
 	BvAssert(m_pStart == nullptr, "Memory already set");
-	auto& systemInfo = BvProcess::GetSystemInfo();
+	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
 

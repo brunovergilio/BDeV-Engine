@@ -30,7 +30,7 @@ BvThread & BvThread::operator =(BvThread && rhs) noexcept
 
 		std::swap(m_ThreadId, rhs.m_ThreadId);
 		std::swap(m_hThread, rhs.m_hThread);
-		std::swap(m_pDelegate, rhs.m_pDelegate);
+		std::swap(m_pTask, rhs.m_pTask);
 	}
 
 	return *this;
@@ -194,13 +194,13 @@ bool BvThread::IsFiber() const
 
 void BvThread::Create()
 {
-	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0U, ThreadEntryPoint, m_pDelegate, 0U, reinterpret_cast<u32*>(&m_ThreadId)));
+	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0U, ThreadEntryPoint, &m_pTask, 0U, reinterpret_cast<u32*>(&m_ThreadId)));
 }
 
 
 void BvThread::Create(const CreateInfo& createInfo)
 {
-	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, m_pDelegate,
+	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, &m_pTask,
 		createInfo.m_CreateSuspended ? CREATE_SUSPENDED : 0u, reinterpret_cast<u32*>(&m_ThreadId)));
 	SetPriority(createInfo.m_Priority);
 	SetAffinityMask(createInfo.m_AffinityMask);
@@ -218,11 +218,10 @@ void BvThread::Destroy()
 		}
 	}
 
-	if (m_hThread && m_pDelegate)
+	if (m_hThread && m_pTask)
 	{
 		CloseHandle(m_hThread);
-
-		BV_DELETE_ARRAY((u8*)m_pDelegate);
+		BV_DELETE_ARRAY((u8*)m_pTask);
 	}
 }
 
@@ -237,8 +236,8 @@ BvFiber& GetThreadFiberInternal()
 
 u32 CALLBACK ThreadEntryPoint(void* pData)
 {
-	BvDelegateBase * pDelegate = reinterpret_cast<BvDelegateBase *>(pData);
-	pDelegate->Invoke();
+	const IBvTask* pDelegate = reinterpret_cast<const IBvTask *>(pData);
+	pDelegate->Run();
 
 	_endthreadex(0);
 

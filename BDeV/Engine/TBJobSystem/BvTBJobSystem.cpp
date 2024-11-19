@@ -84,7 +84,7 @@ void BvTBJobSystemWorker::AddJobList(BvTBJobList* pJobList)
 		// and the list happens to be already full. If that's ever the case, increase the job list size.
 		while (m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) >= (u32)m_JobLists.Size())
 		{
-			BvProcess::Yield();
+			BvCPU::Yield();
 		}
 
 		auto lastJobListIndex = m_LastJobListIndex.load(std::memory_order::relaxed) & ((u32)m_JobLists.Size() - 1);
@@ -277,7 +277,7 @@ void BvTBJobSystemWorker::Process()
 		{
 			if (lastSkippedJobListIndex == jobListIndex)
 			{
-				BvProcess::Yield();
+				BvCPU::Yield();
 			}
 			lastSkippedJobListIndex = jobListIndex;
 		}
@@ -311,7 +311,7 @@ void BvTBJobSystem::Initialize(const JobSystemDesc& desc)
 	auto numWorkerThreads = 0u;
 	auto numThreadsPerCore = 1u;
 
-	const auto& sysInfo = BvProcess::GetSystemInfo();
+	const auto& sysInfo = BvSystem::GetSystemInfo();
 	BvAssert(desc.m_NumWorkerThreads <= sysInfo.m_NumLogicalProcessors, "Not enough logical processors for the worker threads");
 
 	switch (desc.m_Parallelism)
@@ -388,7 +388,7 @@ void BvTBJobSystem::Wait()
 	{
 		while (!pWorker->IsIdle())
 		{
-			BvProcess::Yield();
+			BvCPU::Yield();
 		}
 	}
 }
@@ -480,7 +480,7 @@ void BvTBJobList::Wait() const
 {
 	while (!IsDone())
 	{
-		BvProcess::Yield();
+		BvCPU::Yield();
 	}
 }
 

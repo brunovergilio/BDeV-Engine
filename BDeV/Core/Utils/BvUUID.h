@@ -5,6 +5,39 @@
 #include <random>
 
 
+// UUID Version 4
+// Version 4: This is set by ensuring bits 12–15 of data3 are 0100 (for Version 4).
+// Variant 1: This is set by ensuring the two highest bits of data4 are 10.
+//struct BvGUID
+//{
+//	inline void Generate()
+//	{
+//		std::random_device rd;
+//		std::mt19937 gen(rd());
+//		std::uniform_int_distribution<u32> dist32(0, 0xFFFFFFFF);
+//		std::uniform_int_distribution<u16> dist16(0, 0xFFFF);
+//		std::uniform_int_distribution<u8> dist8(0, 0xFF);
+//
+//		m_Data1 = dist32(gen);
+//		m_Data2 = dist16(gen);
+//		m_Data3 = (dist16(gen) & 0x0FFF) | (4 << 12);  // Set Version 4
+//		m_Data4 = (dist16(gen) & 0x3FFF) | 0x8000;     // Set Variant 1
+//
+//		// Fill data5 with random bytes
+//		for (int i = 0; i < 6; ++i)
+//		{
+//			m_Data5[i] = dist8(gen);
+//		}
+//	}
+//
+//	u32 m_Data1;
+//	u16 m_Data2;
+//	u16 m_Data3;
+//	u16 m_Data4;
+//	u8 m_Data5[6];
+//};
+
+
 struct BvUUID
 {
 	u64 m_Block1{};

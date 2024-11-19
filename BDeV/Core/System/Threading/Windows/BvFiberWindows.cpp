@@ -5,8 +5,8 @@
 
 void __stdcall FiberEntryPoint(void* pData)
 {
-	BvDelegateBase* pDelegate = reinterpret_cast<BvDelegateBase*>(pData);
-	pDelegate->Invoke();
+	const IBvTask* pTask = reinterpret_cast<const IBvTask*>(pData);
+	pTask->Run();
 }
 
 
@@ -26,7 +26,7 @@ BvFiber & BvFiber::operator =(BvFiber && rhs) noexcept
 	if (this != &rhs)
 	{
 		std::swap(m_pFiber, rhs.m_pFiber);
-		std::swap(m_pDelegate, rhs.m_pDelegate);
+		std::swap(m_pTask, rhs.m_pTask);
 	}
 
 	return *this;
@@ -67,7 +67,7 @@ void BvFiber::Create(const size_t stackSize)
 	// If this minimum stack size is OK for performance, then that's how fiber creation should be done on Windows.
 	//
 	// If we need smaller values(16KiB is common in schedulers), then asm fibers should be used instead IMO.
-	m_pFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, m_pDelegate);
+	m_pFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, m_pTask);
 
 	BvAssert(m_pFiber != nullptr, "Couldn't create Fiber");
 }
@@ -75,9 +75,9 @@ void BvFiber::Create(const size_t stackSize)
 
 void BvFiber::Destroy()
 {
-	if (m_pFiber && m_pDelegate)
+	if (m_pFiber && m_pTask)
 	{
 		DeleteFiber(m_pFiber);
-		BV_DELETE_ARRAY((u8*)m_pDelegate);
+		BV_DELETE_ARRAY((u8*)m_pTask);
 	}
 }
