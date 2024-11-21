@@ -40,7 +40,7 @@ BvFile::~BvFile()
 
 bool BvFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileAction action)
 {
-	BvAssert(pFilename != nullptr, "Invalid filename");
+	BV_ASSERT(pFilename != nullptr, "Invalid filename");
 
 	DWORD acccessMode = 0;
 	DWORD createMode = 0;
@@ -79,9 +79,9 @@ bool BvFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileActi
 
 u32 BvFile::Read(void* const pBuffer, const u32 bufferSize)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
-	BvAssert(pBuffer != nullptr, "Null buffer");
-	BvAssert(bufferSize > 0, "Invalid buffer size");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(pBuffer != nullptr, "Null buffer");
+	BV_ASSERT(bufferSize > 0, "Invalid buffer size");
 
 	u32 totalBytesRead = 0;
 	char* const pMem = reinterpret_cast<char* const>(pBuffer);
@@ -108,9 +108,9 @@ u32 BvFile::Read(void* const pBuffer, const u32 bufferSize)
 
 u32 BvFile::Write(const void* const pBuffer, const u32 bufferSize)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
-	BvAssert(pBuffer != nullptr, "Null buffer");
-	BvAssert(bufferSize > 0, "Invalid buffer size");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(pBuffer != nullptr, "Null buffer");
+	BV_ASSERT(bufferSize > 0, "Invalid buffer size");
 
 	u32 totalBytesWritten = 0;
 	const char* const pMem = reinterpret_cast<const char* const>(pBuffer);
@@ -137,7 +137,7 @@ u32 BvFile::Write(const void* const pBuffer, const u32 bufferSize)
 
 BvFile& BvFile::SkipBytes(const i64 offset)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	LARGE_INTEGER seekOffset; seekOffset.QuadPart = offset;
 	SetFilePointerEx(m_hFile, seekOffset, nullptr, FILE_CURRENT);
 
@@ -147,7 +147,7 @@ BvFile& BvFile::SkipBytes(const i64 offset)
 
 BvFile& BvFile::GoToStart()
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	LARGE_INTEGER seekOffset; seekOffset.QuadPart = 0ll;
 	SetFilePointerEx(m_hFile, seekOffset, nullptr, FILE_BEGIN);
 
@@ -157,7 +157,7 @@ BvFile& BvFile::GoToStart()
 
 BvFile& BvFile::GoToEnd()
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	LARGE_INTEGER seekOffset; seekOffset.QuadPart = 0ll;
 	SetFilePointerEx(m_hFile, seekOffset, nullptr, FILE_END);
 
@@ -167,7 +167,7 @@ BvFile& BvFile::GoToEnd()
 
 u64 BvFile::GetFilePos() const
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	i64 offset = 0; LARGE_INTEGER pos{};
 	SetFilePointerEx(m_hFile, pos, reinterpret_cast<LARGE_INTEGER *>(&offset), FILE_CURRENT);
 
@@ -177,7 +177,7 @@ u64 BvFile::GetFilePos() const
 
 u64 BvFile::GetSize() const
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	u64 fileSize = 0;
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
@@ -202,7 +202,7 @@ void BvFile::Close()
 
 void BvFile::Flush()
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	BOOL status = FlushFileBuffers(m_hFile);
 	if (!status)
@@ -214,7 +214,7 @@ void BvFile::Flush()
 
 void BvFile::GetInfo(BvFileInfo& fileInfo)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	BY_HANDLE_FILE_INFORMATION bhfi;
 	GetFileInformationByHandle(m_hFile, &bhfi);

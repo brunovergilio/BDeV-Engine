@@ -45,7 +45,7 @@ BvThread::~BvThread()
 
 void BvThread::Wait()
 {
-	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
+	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
 
 	WaitForSingleObject(m_hThread, INFINITE);
 }
@@ -53,7 +53,7 @@ void BvThread::Wait()
 
 void BvThread::SetAffinityMask(u64 affinityMask) const
 {
-	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
+	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
 
 	SetThreadAffinityMask(m_hThread, static_cast<DWORD_PTR>(affinityMask));
 }
@@ -61,8 +61,8 @@ void BvThread::SetAffinityMask(u64 affinityMask) const
 
 void BvThread::LockToCore(u32 coreIndex) const
 {
-	BvAssert(m_hThread != nullptr, "Thread handle is invalid");
-	BvAssert(coreIndex < 64, "This implementation supports only up to 64 cores");
+	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
+	BV_ASSERT(coreIndex < 64, "This implementation supports only up to 64 cores");
 
 	SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(coreIndex));
 }
@@ -164,18 +164,18 @@ u32 BvThread::GetCurrentProcessor()
 void BvThread::ConvertToFiber()
 {
 	auto& fiber = GetThreadFiberInternal();
-	BvAssert(fiber.m_pFiber == nullptr, "Fiber already converted / created");
+	BV_ASSERT(fiber.m_pFiber == nullptr, "Fiber already converted / created");
 	fiber.m_pFiber = ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
-	BvAssert(fiber.m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
+	BV_ASSERT(fiber.m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
 }
 
 
 void BvThread::ConvertFromFiber()
 {
 	auto& fiber = GetThreadFiberInternal();
-	BvAssert(fiber.m_pFiber != nullptr, "Thread not yet converted to Fiber");
+	BV_ASSERT(fiber.m_pFiber != nullptr, "Thread not yet converted to Fiber");
 	BOOL result = ConvertFiberToThread();
-	BvAssert(result, "Couldn't convert Fiber to Thread");
+	BV_ASSERT(result, "Couldn't convert Fiber to Thread");
 	fiber.m_pFiber = nullptr;
 }
 

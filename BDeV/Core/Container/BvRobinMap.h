@@ -530,7 +530,7 @@ template<typename Key, typename Value, typename MemoryArenaType, typename Hash, 
 inline Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::At(const Key & key)
 {
 	auto iter = FindKey(key);
-	BvAssert(iter != cend(), "Key not found");
+	BV_ASSERT(iter != cend(), "Key not found");
 
 	return m_pData[iter.GetIndex()].second;
 }
@@ -540,7 +540,7 @@ template<typename Key, typename Value, typename MemoryArenaType, typename Hash, 
 inline const Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::At(const Key & key) const
 {
 	auto iter = FindKey(key);
-	BvAssert(iter != cend(), "Key not found");
+	BV_ASSERT(iter != cend(), "Key not found");
 
 	return m_pData[iter.GetIndex()].second;
 }

@@ -66,7 +66,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 		break;
 	}
 	default:
-		BvAssert(nullptr, "Resource doesn't match binding's type");
+		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
 	}
 }
@@ -103,7 +103,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 		break;
 	}
 	default:
-		BvAssert(nullptr, "Resource doesn't match binding's type");
+		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
 	}
 }
@@ -126,7 +126,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 		}
 		break;
 	default:
-		BvAssert(nullptr, "Resource doesn't match binding's type");
+		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
 	}
 }
@@ -249,7 +249,7 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const Bv
 {
 	BvRobinMap<VkDescriptorType, u32> poolSizes;
 	auto it = pLayout->GetDesc().m_ShaderResources.FindKey(set);
-	BvAssert(it != pLayout->GetDesc().m_ShaderResources.cend(), "Set not found in current Shader Resource Layout");
+	BV_ASSERT(it != pLayout->GetDesc().m_ShaderResources.cend(), "Set not found in current Shader Resource Layout");
 	auto& resources = it->second;
 	m_Layout = pLayout->GetSetLayoutHandles().At(set);
 	for (auto& resource : resources)

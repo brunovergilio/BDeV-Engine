@@ -25,11 +25,11 @@ BvRenderDevice* BvTextureViewVk::GetDevice()
 
 bool BvTextureViewVk::Create()
 {
-	BvAssert(m_TextureViewDesc.m_pTexture != nullptr, "Invalid texture handle");
+	BV_ASSERT(m_TextureViewDesc.m_pTexture != nullptr, "Invalid texture handle");
 
 	decltype(auto) textureViewDesc = m_TextureViewDesc.m_pTexture->GetDesc();
 	decltype(auto) vkFormatMap = GetVkFormatMap(m_TextureViewDesc.m_Format);
-	BvAssert(vkFormatMap.format != VK_FORMAT_UNDEFINED, "Format not supported in Vulkan");
+	BV_ASSERT(vkFormatMap.format != VK_FORMAT_UNDEFINED, "Format not supported in Vulkan");
 
 	VkImageViewCreateInfo imageViewCreateInfo{};
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

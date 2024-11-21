@@ -41,7 +41,7 @@ BvFiber::~BvFiber()
 
 void BvFiber::Switch(const BvFiber & fiber) const
 {
-	BvAssert(fiber.m_pFiber != nullptr, "Fiber is nullptr");
+	BV_ASSERT(fiber.m_pFiber != nullptr, "Fiber is nullptr");
 	SwitchToFiber(fiber.m_pFiber);
 }
 
@@ -69,7 +69,7 @@ void BvFiber::Create(const size_t stackSize)
 	// If we need smaller values(16KiB is common in schedulers), then asm fibers should be used instead IMO.
 	m_pFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, m_pTask);
 
-	BvAssert(m_pFiber != nullptr, "Couldn't create Fiber");
+	BV_ASSERT(m_pFiber != nullptr, "Couldn't create Fiber");
 }
 
 

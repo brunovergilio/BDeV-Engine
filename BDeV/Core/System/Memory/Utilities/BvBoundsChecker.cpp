@@ -35,14 +35,14 @@ void BvSimpleBoundsChecker::GuardBack(void* pMemory)
 void BvSimpleBoundsChecker::CheckFrontGuard(void* pMemory)
 {
 	MemType mem{ pMemory };
-	BvAssert(*mem.pAsSizeTPtr == kFrontGuardValue, "Front guards not maching in address 0x%p", mem.pAsVoidPtr);
+	BV_ASSERT(*mem.pAsSizeTPtr == kFrontGuardValue, "Front guards not maching in address 0x%p", mem.pAsVoidPtr);
 }
 
 
 void BvSimpleBoundsChecker::CheckBackGuard(void* pMemory)
 {
 	MemType mem{ pMemory };
-	BvAssert(*mem.pAsSizeTPtr == kBackGuardValue, "Back guards not maching in address 0x%p", mem.pAsVoidPtr);
+	BV_ASSERT(*mem.pAsSizeTPtr == kBackGuardValue, "Back guards not maching in address 0x%p", mem.pAsVoidPtr);
 }
 
 
@@ -66,7 +66,7 @@ void BvExtendedBoundsChecker::GuardFront(void* pMemory)
 
 	for (auto guard : m_FrontGuards)
 	{
-		BvAssert(*guard == kFrontGuardValue, "Front guards not maching in address 0x%p", guard);
+		BV_ASSERT(*guard == kFrontGuardValue, "Front guards not maching in address 0x%p", guard);
 	}
 	m_FrontGuards.EmplaceBack(mem.pAsSizeTPtr);
 }
@@ -79,7 +79,7 @@ void BvExtendedBoundsChecker::GuardBack(void* pMemory)
 
 	for (auto guard : m_BackGuards)
 	{
-		BvAssert(*guard == kBackGuardValue, "Front guards not maching in address 0x%p", guard);
+		BV_ASSERT(*guard == kBackGuardValue, "Front guards not maching in address 0x%p", guard);
 	}
 	m_BackGuards.EmplaceBack(mem.pAsSizeTPtr);
 }
@@ -92,7 +92,7 @@ void BvExtendedBoundsChecker::CheckFrontGuard(void* pMemory)
 	for (auto i = 0u; i < m_FrontGuards.Size(); i++)
 	{
 		auto guard = m_FrontGuards[i];
-		BvAssert(*guard == kFrontGuardValue, "Front guards not maching in address 0x%p", guard);
+		BV_ASSERT(*guard == kFrontGuardValue, "Front guards not maching in address 0x%p", guard);
 
 		if (mem.pAsVoidPtr == pMemory)
 		{
@@ -111,7 +111,7 @@ void BvExtendedBoundsChecker::CheckBackGuard(void* pMemory)
 	for (auto i = 0u; i < m_BackGuards.Size(); i++)
 	{
 		auto guard = m_BackGuards[i];
-		BvAssert(*guard == kBackGuardValue, "Back guards not maching in address 0x%p", guard);
+		BV_ASSERT(*guard == kBackGuardValue, "Back guards not maching in address 0x%p", guard);
 
 		if (mem.pAsVoidPtr == pMemory)
 		{

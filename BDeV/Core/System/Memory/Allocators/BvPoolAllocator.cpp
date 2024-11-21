@@ -64,7 +64,7 @@ void* BvPoolAllocator::Allocate(size_t, size_t, size_t)
 
 void BvPoolAllocator::Free(void* pMem)
 {
-	BvAssert(pMem != nullptr, "Trying to free nullptr");
+	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
 	// Make the free pointer point to the beginning of the list
 	void** pHead = (void**)pMem;
@@ -160,7 +160,7 @@ void* BvGrowablePoolAllocator::Allocate(size_t size /*= 0*/, size_t alignment /*
 
 void BvGrowablePoolAllocator::Free(void* pMem)
 {
-	BvAssert(pMem != nullptr, "Trying to free nullptr");
+	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
 	// Make the free pointer point to the beginning of the list
 	void** pHead = (void**)pMem;

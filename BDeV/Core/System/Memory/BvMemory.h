@@ -17,10 +17,10 @@ namespace BvMemory
 namespace BvVirtualMemory
 {
 	void* Reserve(size_t size);
-	void Commit(void* pAddress, size_t size);
+	bool Commit(void* pAddress, size_t size);
 	void* ReserveAndCommit(size_t size, bool useLargePage = false);
-	void Decommit(void* pAddress, size_t size);
-	void Release(void* pAddress);
+	bool Decommit(void* pAddress, size_t size);
+	bool Release(void* pAddress);
 	size_t GetPageSize();
 	size_t GetLargePageSize();
 };
@@ -234,6 +234,6 @@ namespace Internal
 // Free array of type
 #define BV_DELETE_ARRAY(pObjs) Internal::DeleteArray(pObjs, BV_SOURCE_INFO)
 // Allocate block of bytes with custom alignment
-#define BV_ALLOC(size, alignment) Internal::Alloc(size, alignment, BV_SOURCE_INFO))
+#define BV_ALLOC(size, alignment) Internal::Alloc(size, alignment, BV_SOURCE_INFO)
 // Free block of bytes
 #define BV_FREE(pObj) Internal::Free(pObj, BV_SOURCE_INFO)

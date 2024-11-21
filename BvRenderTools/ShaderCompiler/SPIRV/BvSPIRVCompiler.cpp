@@ -162,7 +162,7 @@ EShLanguage GetShaderStage(const ShaderStage stage)
 	case ShaderStage::kMesh:				return EShLanguage::EShLangMesh;
 	case ShaderStage::kAmplificationOrTask:	return EShLanguage::EShLangTask;
 	default:
-		BvAssert(0, "This code should be unreachable");
+		BV_ASSERT(0, "This code should be unreachable");
 		return EShLanguage::EShLangCount;
 	}
 }
@@ -188,7 +188,7 @@ glslang::EShTargetLanguageVersion GetShaderTarget(ShaderTarget target)
 	case ShaderTarget::kUnknown:
 	case ShaderTarget::kSPIRV_1_6: return glslang::EShTargetLanguageVersion::EShTargetSpv_1_6;
 	default:
-		BvAssert(0, "This code should be unreachable");
+		BV_ASSERT(0, "This code should be unreachable");
 		return glslang::EShTargetLanguageVersion::EShTargetSpv_1_0;
 	}
 }
@@ -208,7 +208,7 @@ spv_target_env GetTargetEnv(ShaderTarget target)
 	case ShaderTarget::kSPIRV_1_6: return spv_target_env::SPV_ENV_UNIVERSAL_1_6;
 	case ShaderTarget::kOpenGL_4_5: return spv_target_env::SPV_ENV_OPENGL_4_5;
 	default:
-		BvAssert(0, "This code should be unreachable");
+		BV_ASSERT(0, "This code should be unreachable");
 		return spv_target_env::SPV_ENV_UNIVERSAL_1_0;
 	}
 }

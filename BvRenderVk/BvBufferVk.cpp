@@ -157,7 +157,7 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 		}
 		else
 		{
-			BvAssert(m_BufferDesc.m_MemoryType != MemoryType::kReadBack, "Readback shouldn't have initial data");
+			BV_ASSERT(m_BufferDesc.m_MemoryType != MemoryType::kReadBack, "Readback shouldn't have initial data");
 
 			auto pMappedData = GetMappedData();
 			if (!pMappedData)
@@ -195,7 +195,7 @@ void BvBufferVk::Destroy()
 
 void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 {
-	BvAssert(pInitData->m_pContext != nullptr && pInitData->m_Size > 0 && pInitData->m_pData != nullptr, "Invalid init data parameters");
+	BV_ASSERT(pInitData->m_pContext != nullptr && pInitData->m_Size > 0 && pInitData->m_pData != nullptr, "Invalid init data parameters");
 
 	BufferDesc bufferDesc;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;

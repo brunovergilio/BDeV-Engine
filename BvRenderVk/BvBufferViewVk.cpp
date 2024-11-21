@@ -25,7 +25,7 @@ BvRenderDevice* BvBufferViewVk::GetDevice()
 
 void BvBufferViewVk::Create()
 {
-	BvAssert(m_BufferViewDesc.m_pBuffer != nullptr, "Invalid buffer handle");
+	BV_ASSERT(m_BufferViewDesc.m_pBuffer != nullptr, "Invalid buffer handle");
 
 	if (m_BufferViewDesc.m_Format == Format::kUnknown)
 	{

@@ -30,7 +30,7 @@ BvStackAllocator::~BvStackAllocator()
 
 void BvStackAllocator::Set(void* pStart, void* pEnd)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(pStart);
 	m_pEnd = reinterpret_cast<char*>(pEnd);
 	m_pCurrent = m_pStart;
@@ -39,7 +39,7 @@ void BvStackAllocator::Set(void* pStart, void* pEnd)
 
 void BvStackAllocator::Set(size_t size)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(BvMemory::Allocate(size));
 	m_pEnd = m_pStart + size;
 	m_pCurrent = m_pStart;
@@ -79,7 +79,7 @@ void* BvStackAllocator::Allocate(size_t size, size_t alignment, size_t alignment
 
 void BvStackAllocator::Free(void* pMem)
 {
-	BvAssert(pMem != nullptr, "Trying to free nullptr");
+	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
 	MemType mem{ pMem };
 
@@ -93,7 +93,7 @@ void BvStackAllocator::Free(void* pMem)
 	// then we know there's been another allocation after it, so we
 	// can't roll the memory back - could do an if condition, but
 	// will assert instead
-	BvAssert(m_pCurrent == current.pAsCharPtr, "Stack allocator not freeing the last allocation");
+	BV_ASSERT(m_pCurrent == current.pAsCharPtr, "Stack allocator not freeing the last allocation");
 	m_pCurrent = mem.pAsCharPtr;
 }
 
@@ -145,7 +145,7 @@ BvGrowableStackAllocator::~BvGrowableStackAllocator()
 
 void BvGrowableStackAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	m_pVirtualStart = reinterpret_cast<char*>(pStart);
@@ -156,7 +156,7 @@ void BvGrowableStackAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 
 void BvGrowableStackAllocator::Set(size_t maxSize, size_t growSize)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
@@ -199,7 +199,7 @@ void* BvGrowableStackAllocator::Allocate(size_t size, size_t alignment /*= kDefa
 
 void BvGrowableStackAllocator::Free(void* pMem)
 {
-	BvAssert(pMem != nullptr, "Trying to free nullptr");
+	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
 	MemType mem{ pMem };
 
@@ -213,7 +213,7 @@ void BvGrowableStackAllocator::Free(void* pMem)
 	// then we know there's been another allocation after it, so we
 	// can't roll the memory back - could do an if condition, but
 	// will assert instead
-	BvAssert(m_pCurrent == current.pAsCharPtr, "Stack allocator not freeing the last allocation");
+	BV_ASSERT(m_pCurrent == current.pAsCharPtr, "Stack allocator not freeing the last allocation");
 	m_pCurrent = mem.pAsCharPtr;
 }
 

@@ -159,11 +159,11 @@ public:
 	friend BvStringT operator +(const CharT * const pStr, const BvStringT & str);
 	friend BvStringT operator +(const CharT c, const BvStringT & str);
 
-	BV_INLINE const CharT & operator[](const u32 index) const { BvAssert(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
-	BV_INLINE CharT & operator[](const u32 index) { BvAssert(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
-	BV_INLINE const CharT At(const u32 index) const { BvAssert(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
-	BV_INLINE const CharT Front() const { BvAssert(m_Size > 0, "Index out of bounds"); return m_pStr[0]; }
-	BV_INLINE const CharT Back() const { BvAssert(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
+	BV_INLINE const CharT & operator[](const u32 index) const { BV_ASSERT(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
+	BV_INLINE CharT & operator[](const u32 index) { BV_ASSERT(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
+	BV_INLINE const CharT At(const u32 index) const { BV_ASSERT(index < m_Size, "Index out of bounds"); return m_pStr[index]; }
+	BV_INLINE const CharT Front() const { BV_ASSERT(m_Size > 0, "Index out of bounds"); return m_pStr[0]; }
+	BV_INLINE const CharT Back() const { BV_ASSERT(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
 
 	BV_INLINE const CharT* CStr() const { return m_pStr; }
 	BV_INLINE const CharT* LCStr() const { return m_pStr ? m_pStr + m_Size : nullptr; }
@@ -418,7 +418,7 @@ void BvStringT<CharT, MemoryArenaType>::Assign(const CharT* const pStr, const u3
 		return;
 	}
 
-	BvAssert(m_pStr != pStr, "Same underlying string pointer");
+	BV_ASSERT(m_pStr != pStr, "Same underlying string pointer");
 
 	if (m_Capacity <= count)
 	{
@@ -462,7 +462,7 @@ void BvStringT<CharT, MemoryArenaType>::Insert(const BvStringT& str, const u32 s
 template<typename CharT, typename MemoryArenaType>
 void BvStringT<CharT, MemoryArenaType>::Insert(const CharT* const pStr, const u32 start, const u32 count, const u32 where)
 {
-	BvAssert(m_Size >= where, "Position past the string's size");
+	BV_ASSERT(m_Size >= where, "Position past the string's size");
 	if (count == 0)
 	{
 		return;
@@ -593,7 +593,7 @@ void BvStringT<CharT, MemoryArenaType>::Format(const CharT* format, ...)
 template<typename CharT, typename MemoryArenaType>
 void BvStringT<CharT, MemoryArenaType>::Erase(const u32 start, const u32 count)
 {
-	BvAssert(start < m_Size && count > 0, "Erasing past the string's size");
+	BV_ASSERT(start < m_Size && count > 0, "Erasing past the string's size");
 	u32 end = start + count;
 
 	u32 removed = count;
@@ -623,13 +623,15 @@ void BvStringT<CharT, MemoryArenaType>::Resize(u32 size, CharT c)
 	{
 		Grow(size);
 
-		for (auto i = m_Size; i < size; i++)
+		if (c != CharT())
 		{
-			m_pStr[i] = c;
+			for (auto i = m_Size; i < size; i++)
+			{
+				m_pStr[i] = c;
+			}
+			m_pStr[size] = CharT();
+			m_Size = size;
 		}
-		m_pStr[size] = CharT();
-
-		m_Size = size;
 	}
 	else if (size < m_Size)
 	{

@@ -312,7 +312,7 @@ void BvTBJobSystem::Initialize(const JobSystemDesc& desc)
 	auto numThreadsPerCore = 1u;
 
 	const auto& sysInfo = BvSystem::GetSystemInfo();
-	BvAssert(desc.m_NumWorkerThreads <= sysInfo.m_NumLogicalProcessors, "Not enough logical processors for the worker threads");
+	BV_ASSERT(desc.m_NumWorkerThreads <= sysInfo.m_NumLogicalProcessors, "Not enough logical processors for the worker threads");
 
 	switch (desc.m_Parallelism)
 	{
@@ -332,7 +332,7 @@ void BvTBJobSystem::Initialize(const JobSystemDesc& desc)
 		return;
 	}
 
-	BvAssert(numWorkerThreads > 0, "There must be at least 1 worker thread on the job system!");
+	BV_ASSERT(numWorkerThreads > 0, "There must be at least 1 worker thread on the job system!");
 	m_Workers.Resize(numWorkerThreads);
 	auto coreIndex = 0u;
 	auto coreCountReset = 0u;
@@ -402,7 +402,7 @@ void NoOp()
 
 void BvTBJobList::AddSyncPoint()
 {
-	BvAssert(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
+	BV_ASSERT(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
 	if (m_Jobs.Size() == 0
 		|| m_Jobs.Size() == (u32)m_Jobs.Capacity() - 1
 		|| m_Jobs[m_Jobs.Size() - 1].m_SyncType == JobSyncType::kSyncPoint)
@@ -418,8 +418,8 @@ void BvTBJobList::AddSyncPoint()
 
 void BvTBJobList::AddJobListDependency(BvTBJobList* pDependency)
 {
-	BvAssert(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
-	BvAssert(pDependency != nullptr, "Needs a valid JobList");
+	BV_ASSERT(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
+	BV_ASSERT(pDependency != nullptr, "Needs a valid JobList");
 	if (m_Jobs.Size() == (u32)m_Jobs.Capacity() - 1)
 	{
 		return;

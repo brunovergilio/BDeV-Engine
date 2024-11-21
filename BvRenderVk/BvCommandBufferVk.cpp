@@ -78,9 +78,9 @@ void BvCommandBufferVk::End()
 
 void BvCommandBufferVk::BeginRenderPass(const BvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets)
 {
-	BvAssert(pRenderPass != nullptr, "Invalid render pass");
-	BvAssert(pRenderPassTargets != nullptr, "No render / depth targets");
-	BvAssert(renderPassTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
+	BV_ASSERT(pRenderPass != nullptr, "Invalid render pass");
+	BV_ASSERT(pRenderPassTargets != nullptr, "No render / depth targets");
+	BV_ASSERT(renderPassTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
 
 	ResetRenderTargets();
 
@@ -134,7 +134,7 @@ void BvCommandBufferVk::NextSubpass()
 
 void BvCommandBufferVk::EndRenderPass()
 {
-	BvAssert(m_CurrentState == State::kRenderPass, "Command buffer not in render pass");
+	BV_ASSERT(m_CurrentState == State::kRenderPass, "Command buffer not in render pass");
 
 	VkSubpassEndInfo endInfo{ VK_STRUCTURE_TYPE_SUBPASS_END_INFO, nullptr };
 	vkCmdEndRenderPass2(m_CommandBuffer, &endInfo);
@@ -152,7 +152,7 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		return;
 	}
 
-	BvAssert(renderTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
+	BV_ASSERT(renderTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
 
 	VkExtent2D renderArea{ kU32Max, kU32Max };
 
@@ -368,7 +368,7 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 void BvCommandBufferVk::SetViewports(u32 viewportCount, const Viewport* pViewports)
 {
 	constexpr u32 kMaxViewports = 16;
-	BvAssert(viewportCount <= kMaxViewports, "Viewport count greater than limit");
+	BV_ASSERT(viewportCount <= kMaxViewports, "Viewport count greater than limit");
 	VkViewport vps[kMaxViewports];
 	for (auto i = 0u; i < viewportCount; ++i)
 	{
@@ -387,7 +387,7 @@ void BvCommandBufferVk::SetViewports(u32 viewportCount, const Viewport* pViewpor
 void BvCommandBufferVk::SetScissors(u32 scissorCount, const Rect* pScissors)
 {
 	constexpr u32 kMaxScissors = 16;
-	BvAssert(scissorCount <= kMaxScissors, "Scissor count greater than limit");
+	BV_ASSERT(scissorCount <= kMaxScissors, "Scissor count greater than limit");
 	VkRect2D scissors[kMaxScissors];
 	for (auto i = 0u; i < scissorCount; ++i)
 	{
@@ -495,7 +495,7 @@ void BvCommandBufferVk::SetShaderConstants(u32 size, const void* pData, u32 offs
 void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding)
 {
 	constexpr u32 kMaxVertexBufferViews = 16;
-	BvAssert(vertexBufferCount <= kMaxVertexBufferViews, "Vertex buffer view count greater than limit");
+	BV_ASSERT(vertexBufferCount <= kMaxVertexBufferViews, "Vertex buffer view count greater than limit");
 
 	VkBuffer vertexBuffers[kMaxVertexBufferViews];
 	VkDeviceSize vertexBufferOffsets[kMaxVertexBufferViews];

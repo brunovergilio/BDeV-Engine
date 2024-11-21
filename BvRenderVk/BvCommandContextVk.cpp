@@ -107,7 +107,7 @@ VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResou
 
 void BvFrameDataVk::UpdateSignalIndex(u64 value)
 {
-	BvAssert(value > m_SignaValueIndex.second, "Signal value must be greater than the previous one");
+	BV_ASSERT(value > m_SignaValueIndex.second, "Signal value must be greater than the previous one");
 	m_SignaValueIndex.second = value;
 }
 

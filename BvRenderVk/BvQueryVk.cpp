@@ -159,7 +159,7 @@ void BvQueryHeapManagerVk::AllocateQuery(QueryType queryType, u32 queryCount, u3
 {
 	auto queryTypeIndex = (u32)queryType;
 	auto index = m_QueryHeaps[queryTypeIndex].Allocate(queryCount, frameIndex);
-	BvAssert(index != kU32Max, "No more queries available in pool - increase size");
+	BV_ASSERT(index != kU32Max, "No more queries available in pool - increase size");
 
 	queryData.m_pQueryHeap = &m_QueryHeaps[queryTypeIndex];
 	queryData.m_QueryIndex = index;

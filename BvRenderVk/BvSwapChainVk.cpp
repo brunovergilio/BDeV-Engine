@@ -169,7 +169,7 @@ bool BvSwapChainVk::Create()
 			// If we still couldn't find anything, then throw an error
 			if (format == VkFormat::VK_FORMAT_UNDEFINED)
 			{
-				BvAssert(false, "Couldn't find a format for Vulkan's SwapChain");
+				BV_ASSERT(false, "Couldn't find a format for Vulkan's SwapChain");
 				return false;
 			}
 		}
@@ -188,7 +188,7 @@ bool BvSwapChainVk::Create()
 	u32 presentModeCount;
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
 	BvCheckErrorReturnVk(result, false);
-	BvAssert(presentModeCount > 0, "No present modes");
+	BV_ASSERT(presentModeCount > 0, "No present modes");
 
 	BvVector<VkPresentModeKHR> presentModes(presentModeCount);
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModes.Data());

@@ -319,56 +319,56 @@ inline void BvVector<Type, MemoryArenaType>::Reserve(const size_t size)
 template<typename Type, typename MemoryArenaType>
 inline Type & BvVector<Type, MemoryArenaType>::operator[](const size_t index)
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<typename Type, typename MemoryArenaType>
 inline const Type & BvVector<Type, MemoryArenaType>::operator[](const size_t index) const
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<typename Type, typename MemoryArenaType>
 inline Type & BvVector<Type, MemoryArenaType>::At(const size_t index)
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<typename Type, typename MemoryArenaType>
 inline const Type & BvVector<Type, MemoryArenaType>::At(const size_t index) const
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<typename Type, typename MemoryArenaType>
 inline Type & BvVector<Type, MemoryArenaType>::Front()
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
 template<typename Type, typename MemoryArenaType>
 inline const Type & BvVector<Type, MemoryArenaType>::Front() const
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
 template<typename Type, typename MemoryArenaType>
 inline Type & BvVector<Type, MemoryArenaType>::Back()
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 
 template<typename Type, typename MemoryArenaType>
 inline const Type & BvVector<Type, MemoryArenaType>::Back() const
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 
@@ -698,7 +698,7 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 template<typename Type, typename MemoryArenaType>
 inline void BvVector<Type, MemoryArenaType>::EraseAndSwapWithLast(size_t index)
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	if (index < m_Size - 1)
 	{
 		std::swap(m_pData[index], m_pData[m_Size - 1]);

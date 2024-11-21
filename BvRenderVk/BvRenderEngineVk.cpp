@@ -34,7 +34,7 @@ bool IsInstanceLayerSupported(const BvVector<VkLayerProperties>& layers, const c
 
 void BvRenderEngineVk::GetGPUInfo(u32 index, BvGPUInfo& gpuInfo) const
 {
-	BvAssert(index < m_GPUs.Size(), "Invalid GPU index");
+	BV_ASSERT(index < m_GPUs.Size(), "Invalid GPU index");
 
 	gpuInfo.m_DeviceName = m_GPUs[index].m_DeviceProperties.properties.deviceName;
 	gpuInfo.m_DeviceId = m_GPUs[index].m_DeviceProperties.properties.deviceID;
@@ -79,7 +79,7 @@ BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateD
 
 BvRenderDeviceVk* BvRenderEngineVk::CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc)
 {
-	BvAssert(m_pDevice == nullptr, "Render device already created");
+	BV_ASSERT(m_pDevice == nullptr, "Render device already created");
 	if (m_pDevice != nullptr)
 	{
 		return m_pDevice;

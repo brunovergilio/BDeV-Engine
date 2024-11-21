@@ -20,7 +20,7 @@ bool BvFileSystem::FileExists(const char * pFilename)
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
 		{
-			BvAssert(error != 0, "Some other error happened");
+			BV_ASSERT(error != 0, "Some other error happened");
 		}
 		return false;
 	}
@@ -67,7 +67,7 @@ bool BvFileSystem::DirectoryExists(const char * const pDirName)
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
 		{
-			BvAssert(error != 0, "Some other error happened");
+			BV_ASSERT(error != 0, "Some other error happened");
 		}
 		return false;
 	}

@@ -394,13 +394,13 @@ bool BvRenderDeviceVk::IsFormatSupported(Format format) const
 
 void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc)
 {
-	BvAssert(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
+	BV_ASSERT(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0,
 		"No device queues");
 
 	constexpr u32 kMaxQueueCount = 16;
-	BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount, "Graphics queue count greater than limit");
-	BvAssert(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount, "Compute queue count greater than limit");
-	BvAssert(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount, "Transfer queue count greater than limit");
+	BV_ASSERT(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount, "Graphics queue count greater than limit");
+	BV_ASSERT(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount, "Compute queue count greater than limit");
+	BV_ASSERT(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount, "Transfer queue count greater than limit");
 
 	constexpr float queuePriorities[kMaxQueueCount] =
 	{
@@ -424,7 +424,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	queueCreateInfo.pQueuePriorities = queuePriorities;
 	if (deviceCreateDesc.m_GraphicsQueueCount > 0)
 	{
-		BvAssert(deviceCreateDesc.m_GraphicsQueueCount <= m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount, "Not enough graphics queues available");
+		BV_ASSERT(deviceCreateDesc.m_GraphicsQueueCount <= m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount, "Not enough graphics queues available");
 		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex;
 		queueCreateInfo.queueCount = m_GPUInfo.m_GraphicsQueueInfo.m_QueueCount;
 		queueInfos.PushBack(queueCreateInfo);
@@ -433,7 +433,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	}
 	if (deviceCreateDesc.m_ComputeQueueCount > 0)
 	{
-		BvAssert(deviceCreateDesc.m_ComputeQueueCount <= m_GPUInfo.m_ComputeQueueInfo.m_QueueCount, "Not enough compute queues available");
+		BV_ASSERT(deviceCreateDesc.m_ComputeQueueCount <= m_GPUInfo.m_ComputeQueueInfo.m_QueueCount, "Not enough compute queues available");
 		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_ComputeQueueInfo.m_QueueFamilyIndex;
 		queueCreateInfo.queueCount = m_GPUInfo.m_ComputeQueueInfo.m_QueueCount;
 		queueInfos.PushBack(queueCreateInfo);
@@ -442,7 +442,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	}
 	if (deviceCreateDesc.m_TransferQueueCount > 0)
 	{
-		BvAssert(deviceCreateDesc.m_TransferQueueCount <= m_GPUInfo.m_TransferQueueInfo.m_QueueCount, "Not enough transfer queues available");
+		BV_ASSERT(deviceCreateDesc.m_TransferQueueCount <= m_GPUInfo.m_TransferQueueInfo.m_QueueCount, "Not enough transfer queues available");
 		queueCreateInfo.queueFamilyIndex = m_GPUInfo.m_TransferQueueInfo.m_QueueFamilyIndex;
 		queueCreateInfo.queueCount = m_GPUInfo.m_TransferQueueInfo.m_QueueCount;
 		queueInfos.PushBack(queueCreateInfo);
@@ -459,7 +459,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	deviceCreateInfo.enabledExtensionCount = static_cast<u32>(m_GPUInfo.m_EnabledExtensions.Size());
 
 	VkResult result = vkCreateDevice(m_GPUInfo.m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
-	BvAssert(result == VK_SUCCESS, "Couldn't create a logical device");
+	BV_ASSERT(result == VK_SUCCESS, "Couldn't create a logical device");
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);

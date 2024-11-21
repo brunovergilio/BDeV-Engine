@@ -254,7 +254,7 @@ inline void BvFixedVector<Type, N>::Resize(const size_t size, const Type & value
 template<class Type, size_t N>
 inline Type & BvFixedVector<Type, N>::operator[](const size_t index)
 {
-	BvAssert(index < N, "Index out of bounds");
+	BV_ASSERT(index < N, "Index out of bounds");
 	if (index >= m_Size)
 	{
 		m_Size = index + 1;
@@ -265,49 +265,49 @@ inline Type & BvFixedVector<Type, N>::operator[](const size_t index)
 template<class Type, size_t N>
 inline const Type & BvFixedVector<Type, N>::operator[](const size_t index) const
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<class Type, size_t N>
 inline Type & BvFixedVector<Type, N>::At(const size_t index)
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<class Type, size_t N>
 inline const Type & BvFixedVector<Type, N>::At(const size_t index) const
 {
-	BvAssert(m_Size > 0 && index < m_Size, "Index out of bounds");
+	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
 template<class Type, size_t N>
 inline Type & BvFixedVector<Type, N>::Front()
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
 template<class Type, size_t N>
 inline const Type & BvFixedVector<Type, N>::Front() const
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
 template<class Type, size_t N>
 inline Type & BvFixedVector<Type, N>::Back()
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 
 template<class Type, size_t N>
 inline const Type & BvFixedVector<Type, N>::Back() const
 {
-	BvAssert(m_Size > 0, "Vector is empty");
+	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 

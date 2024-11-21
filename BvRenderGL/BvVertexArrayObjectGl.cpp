@@ -60,7 +60,7 @@ void BvVertexArrayObjectGl::Create()
 		const auto& attribute = m_VAODesc.m_VertexAttributeDesc[i];
 		const auto& formatMap = GetGlFormatMap(attribute.m_Format);
 		auto pBufferView = m_VAODesc.m_VertexBuffers[attribute.m_Binding];
-		BvAssert(pBufferView != nullptr, "Referenced buffer view can't be nullptr");
+		BV_ASSERT(pBufferView != nullptr, "Referenced buffer view can't be nullptr");
 		auto buffer = reinterpret_cast<BvBufferGl*>(pBufferView->GetBuffer())->GetHandle();
 
 		GLsizei stride = pBufferView->GetDesc().m_Stride;

@@ -6,10 +6,10 @@
 
 
 template<typename T>
-class BvEvent {};
+class BvDelegate {};
 
 template<typename R, typename... Args>
-class BvEvent<R(Args...)>
+class BvDelegate<R(Args...)>
 {
 	using ObjType = void*;
 	using FunctionType = R(*)(ObjType, Args&&...);
@@ -33,11 +33,67 @@ class BvEvent<R(Args...)>
 		return (static_cast<const T*>(obj)->*Fn)(std::forward<Args>(args)...);
 	}
 
-	BV_NOCOPY(BvEvent);
+	BV_NOCOPY(BvDelegate);
+
+public:
+	BvDelegate() {}
+	BvDelegate(BvDelegate&& rhs) noexcept
+	{
+		*this = std::move(rhs);
+	}
+	BvDelegate& operator=(BvDelegate&& rhs) noexcept
+	{
+		if (this != &rhs)
+		{
+			std::swap(m_Data, rhs.m_Data);
+		}
+
+		return *this;
+	}
+
+	template<R(*Fn)(Args...)>
+	void Bind()
+	{
+		m_Data.first = nullptr;
+		m_Data.second = &FunctionStub<Fn>;
+	}
+
+	template<typename T, R(T::* Fn)(Args...)>
+	void Bind(T* pObj)
+	{
+		m_Data.first = pObj;
+		m_Data.second = &ClassFunctionStub<T, Fn>;
+	}
+
+	template<typename T, R(T::* Fn)(Args...) const>
+	void Bind(const T* pObj)
+	{
+		m_Data.first = const_cast<T*>(pObj);
+		m_Data.second = &ConstClassFunctionStub<T, Fn>;
+	}
+
+	R operator()(Args... args)
+	{
+		return m_Data.second(m_Data.first, std::forward<Args>(args)...);
+	}
+
+private:
+	DataType m_Data;
+};
+
+
+template<typename... Args>
+class BvEvent
+{
+	using HandlerType = BvDelegate<void(Args...)>;
 
 public:
 	BvEvent() {}
-	BvEvent(u32 maxHandlers, IBvMemoryArena* pArena = nullptr) : m_Handlers(maxHandlers, {}, pArena) {}
+	BvEvent(u32 maxHandlers, IBvMemoryArena* pArena = nullptr)
+		: m_Handlers(pArena)
+	{
+		m_Handlers.Reserve(maxHandlers);
+	}
 	BvEvent(BvEvent&& rhs) noexcept
 	{
 		*this = std::move(rhs);
@@ -52,58 +108,50 @@ public:
 		return *this;
 	}
 
-	template<R(*Fn)(Args...)>
+	template<void(*Fn)(Args...)>
 	void AddHandler()
 	{
-		m_Handlers.PushBack({ nullptr, &FunctionStub<Fn> });
+		if (m_Handlers.Size() == m_Handlers.Capacity())
+		{
+			return;
+		}
+
+		auto& handler = m_Handlers.EmplaceBack(HandlerType());
+		handler.Bind<Fn>();
 	}
 
-	template<typename T, R(T::* Fn)(Args...)>
+	template<typename T, void(T::* Fn)(Args...)>
 	void AddHandler(T* pObj)
 	{
-		m_Handlers.PushBack({ pObj, &ClassFunctionStub<T, Fn> });
+		if (m_Handlers.Size() == m_Handlers.Capacity())
+		{
+			return;
+		}
+
+		auto& handler = m_Handlers.EmplaceBack(HandlerType());
+		handler.Bind<Fn>(pObj);
 	}
 
-	template<typename T, R(T::* Fn)(Args...) const>
+	template<typename T, void(T::* Fn)(Args...) const>
 	void AddHandler(const T* pObj)
 	{
-		m_Handlers.PushBack({ const_cast<T*>(pObj), &ConstClassFunctionStub<T, Fn> });
+		if (m_Handlers.Size() == m_Handlers.Capacity())
+		{
+			return;
+		}
+
+		auto& handler = m_Handlers.EmplaceBack(HandlerType());
+		handler.Bind<Fn>(pObj);
 	}
 
 	void operator()(Args... args)
 	{
 		for (auto& handler : m_Handlers)
 		{
-			handler.second(handler.first, std::forward<Args>(args)...);
+			handler(std::forward<Args>(args)...);
 		}
-	}
-
-	template<typename = typename std::enable_if_t<!std::is_same_v<void, R>>>
-	bool RunNext(u32& current, R* result, Args... args)
-	{
-		if (current < m_Handlers.Size())
-		{
-			auto& handler = m_Handlers[current++];
-			*result = handler.second(handler.first, std::forward<Args>(args)...);
-			return true;
-		}
-
-		return false;
-	}
-
-	template<typename = typename std::enable_if_t<std::is_same_v<void, R>>>
-	bool RunNext(u32& current, Args... args)
-	{
-		if (current < m_Handlers.Size())
-		{
-			auto& handler = m_Handlers[current++];
-			handler.second(handler.first, std::forward<Args>(args)...);
-			return true;
-		}
-
-		return false;
 	}
 
 private:
-	BvVector<DataType> m_Handlers;
+	BvVector<HandlerType> m_Handlers;
 };

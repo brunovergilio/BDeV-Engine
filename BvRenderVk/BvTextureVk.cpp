@@ -38,7 +38,7 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	if (pInitData && m_TextureDesc.m_MemoryType != MemoryType::kDevice)
 	{
 		// TODO: Use a VkBuffer instead
-		BvAssert(false, "Not supported");
+		BV_ASSERT(false, "Not supported");
 	}
 
 	VkImageCreateFlags imageCreateFlags = 0;
@@ -105,7 +105,7 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 
 	if (m_TextureDesc.m_ResourceState != ResourceState::kCommon && pInitData)
 	{
-		BvAssert(pInitData->m_pContext != nullptr, "Invalid command context");
+		BV_ASSERT(pInitData->m_pContext != nullptr, "Invalid command context");
 		CopyInitDataAndTransitionState(pInitData, mipCount);
 	}
 }

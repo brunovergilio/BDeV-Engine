@@ -43,7 +43,7 @@ BvHeapAllocator::BvHeapAllocator(void* pStart, void* pEnd)
 	: m_pStart(reinterpret_cast<char*>(pStart)), m_pEnd(reinterpret_cast<char*>(pEnd))
 {
 	const size_t size = size_t(m_pEnd - m_pStart);
-	BvAssert(size > kBlockInfoSize, "Total memory size is smaller than a single memory block!");
+	BV_ASSERT(size > kBlockInfoSize, "Total memory size is smaller than a single memory block!");
 	SetBlockInfo(reinterpret_cast<size_t*>(m_pStart), size - kBlockInfoSize, false);
 }
 
@@ -67,19 +67,19 @@ BvHeapAllocator::~BvHeapAllocator()
 
 void BvHeapAllocator::Set(void* pStart, void* pEnd)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(pStart);
 	m_pEnd = reinterpret_cast<char*>(pEnd);
 
 	const size_t size = size_t(m_pEnd - m_pStart);
-	BvAssert(size > kBlockInfoSize, "Total memory size is smaller than a single memory block!");
+	BV_ASSERT(size > kBlockInfoSize, "Total memory size is smaller than a single memory block!");
 	SetBlockInfo(reinterpret_cast<size_t*>(m_pStart), size - kBlockInfoSize, false);
 }
 
 
 void BvHeapAllocator::Set(size_t size)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(BvMemory::Allocate(std::max(size, kBlockInfoSize + kPointerSize)));
 	m_pEnd = m_pStart + std::max(size, kBlockInfoSize + kPointerSize);
 	m_HasOwnMemory = true;
@@ -145,7 +145,7 @@ void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentO
 
 void BvHeapAllocator::Free(void* pMem)
 {
-	BvAssert(pMem != nullptr, "Trying to free nullptr");
+	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
 	MemType mem{ pMem };
 	// Retrieve the original address
@@ -244,7 +244,7 @@ BvGrowableHeapAllocator::~BvGrowableHeapAllocator()
 
 void BvGrowableHeapAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 
@@ -258,7 +258,7 @@ void BvGrowableHeapAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 
 void BvGrowableHeapAllocator::Set(size_t maxSize, size_t growSize)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
@@ -346,7 +346,7 @@ void* BvGrowableHeapAllocator::Allocate(size_t size, size_t alignment, size_t al
 
 void BvGrowableHeapAllocator::Free(void* pMem)
 {
-	BvAssert(pMem != nullptr, "Trying to free nullptr");
+	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
 	MemType mem{ pMem };
 	// Retrieve the original address

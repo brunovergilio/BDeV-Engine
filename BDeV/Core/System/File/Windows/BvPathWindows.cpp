@@ -326,7 +326,7 @@ BvPath BvPath::GetParentPath() const
 
 BvPath BvPath::GetAppendedPath(const char* pPath) const
 {
-	BvAssert(pPath != nullptr, "Invalid path string");
+	BV_ASSERT(pPath != nullptr, "Invalid path string");
 
 	BvPath appendedPath(m_Path);
 	BvPathUtils::AppendPath(appendedPath.m_Path, pPath);
@@ -355,7 +355,7 @@ BvPath BvPath::GetAppendedPath(const BvPath& path) const
 
 BvPath BvPath::GetPrependedPath(const char* pPath) const
 {
-	BvAssert(pPath != nullptr, "Invalid path string");
+	BV_ASSERT(pPath != nullptr, "Invalid path string");
 
 	BvPath prependedPath(pPath);
 	BvPathUtils::AppendPath(prependedPath.m_Path, m_Path);
@@ -420,7 +420,7 @@ void BvPath::MoveToParentPath()
 
 void BvPath::AppendPath(const char* pPath)
 {
-	BvAssert(pPath != nullptr, "Invalid path string");
+	BV_ASSERT(pPath != nullptr, "Invalid path string");
 
 	BvPathUtils::AppendPath(m_Path, pPath);
 }
@@ -440,7 +440,7 @@ void BvPath::AppendPath(const BvPath& path)
 
 void BvPath::PrependPath(const char* pPath)
 {
-	BvAssert(pPath != nullptr, "Invalid path string");
+	BV_ASSERT(pPath != nullptr, "Invalid path string");
 
 	BvString path(pPath);
 	BvPathUtils::AppendPath(path, m_Path);

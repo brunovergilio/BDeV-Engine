@@ -480,7 +480,7 @@ VkStencilOp GetVkStencilOp(const StencilOp stencilOp)
 
 VkSampleCountFlagBits GetVkSampleCountFlagBits(const u8 sampleCount)
 {
-	BvAssert((sampleCount & (sampleCount - 1)) == 0, "Sample count must be a power of 2");
+	BV_ASSERT((sampleCount & (sampleCount - 1)) == 0, "Sample count must be a power of 2");
 	switch (sampleCount)
 	{
 	case 1:		return VK_SAMPLE_COUNT_1_BIT;

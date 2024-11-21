@@ -190,6 +190,12 @@ void BvApplication::ProcessOSEvents()
 BvWindow* BvApplication::CreateWindow(const WindowDesc& windowDesc)
 {
 	auto pWindow = BV_NEW(BvWindow)(this, windowDesc);
+	if (pWindow->m_hWnd == nullptr)
+	{
+		BV_DELETE(pWindow);
+		return nullptr;
+	}
+
 	m_pImpl->m_Windows.Emplace(pWindow->m_hWnd, pWindow);
 
 	return pWindow;

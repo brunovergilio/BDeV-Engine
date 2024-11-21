@@ -29,7 +29,7 @@ void GetTextureSubresourceData(const TextureDesc& textureDesc, u32 mipLevel, Tex
 
 u64 GetTextureDataOffset(const TextureDesc& textureDesc, u32 mipLevel, u32 arraySlice, u32 alignment)
 {
-	BvAssert((arraySlice < textureDesc.m_LayerCount && mipLevel < textureDesc.m_MipLevels)
+	BV_ASSERT((arraySlice < textureDesc.m_LayerCount && mipLevel < textureDesc.m_MipLevels)
 		|| (arraySlice == textureDesc.m_LayerCount && mipLevel == 0), "Invalid arguments");
 
 	u64 offset = 0;

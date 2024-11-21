@@ -345,7 +345,7 @@ bool BvQueue<Type, MemoryArenaType>::PopBack(Type& value)
 template<typename Type, typename MemoryArenaType>
 Type& BvQueue<Type, MemoryArenaType>::Front()
 {
-	BvAssert(!IsEmpty(), "Queue is empty!");
+	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[m_Front];
 }
 
@@ -353,7 +353,7 @@ Type& BvQueue<Type, MemoryArenaType>::Front()
 template<typename Type, typename MemoryArenaType>
 const Type& BvQueue<Type, MemoryArenaType>::Front() const
 {
-	BvAssert(!IsEmpty(), "Queue is empty!");
+	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[m_Front];
 }
 
@@ -361,7 +361,7 @@ const Type& BvQueue<Type, MemoryArenaType>::Front() const
 template<typename Type, typename MemoryArenaType>
 Type& BvQueue<Type, MemoryArenaType>::Back()
 {
-	BvAssert(!IsEmpty(), "Queue is empty!");
+	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[(m_Front + (m_Size - 1)) % m_Capacity];
 }
 
@@ -369,7 +369,7 @@ Type& BvQueue<Type, MemoryArenaType>::Back()
 template<typename Type, typename MemoryArenaType>
 const Type& BvQueue<Type, MemoryArenaType>::Back() const
 {
-	BvAssert(!IsEmpty(), "Queue is empty!");
+	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[(m_Front + (m_Size - 1)) % m_Capacity];
 }
 

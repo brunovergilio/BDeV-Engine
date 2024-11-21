@@ -210,7 +210,7 @@ BvAsyncFile::~BvAsyncFile()
 
 bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFileAction action, BvAsyncFileFlags asyncFlags)
 {
-	BvAssert(pFilename != nullptr, "Invalid filename");
+	BV_ASSERT(pFilename != nullptr, "Invalid filename");
 
 	DWORD acccessMode = 0;
 	DWORD createMode = 0;
@@ -258,9 +258,9 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 
 AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, const u64 position)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
-	BvAssert(pBuffer != nullptr, "Null buffer");
-	BvAssert(bufferSize > 0, "Invalid buffer size");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(pBuffer != nullptr, "Null buffer");
+	BV_ASSERT(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
 	request.m_pIOData = BV_NEW(AsyncFileData);
@@ -290,9 +290,9 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, c
 
 AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 bufferSize, const u64 position)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
-	BvAssert(pBuffer != nullptr, "Null buffer");
-	BvAssert(bufferSize > 0, "Invalid buffer size");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(pBuffer != nullptr, "Null buffer");
+	BV_ASSERT(bufferSize > 0, "Invalid buffer size");
 
 	AsyncFileRequest request;
 	request.m_pIOData = BV_NEW(AsyncFileData);
@@ -322,7 +322,7 @@ AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 buffer
 
 u64 BvAsyncFile::GetSize() const
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	u64 fileSize;
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
@@ -347,7 +347,7 @@ void BvAsyncFile::Close()
 
 void BvAsyncFile::Flush()
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	BOOL status = FlushFileBuffers(m_hFile);
 	if (!status)
@@ -359,7 +359,7 @@ void BvAsyncFile::Flush()
 
 void BvAsyncFile::GetInfo(BvFileInfo& fileInfo)
 {
-	BvAssert(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
+	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	BY_HANDLE_FILE_INFORMATION bhfi;
 	GetFileInformationByHandle(m_hFile, &bhfi);

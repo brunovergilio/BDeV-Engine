@@ -3,8 +3,8 @@
 
 void* BvMemory::Allocate(size_t size, size_t alignment, size_t alignmentOffset)
 {
-	BvAssert(size > 0, "Size can't be 0");
-	BvAssert((alignment & (alignment - 1)) == 0, "Alignment has to be a power of 2");
+	BV_ASSERT(size > 0, "Size can't be 0");
+	BV_ASSERT((alignment & (alignment - 1)) == 0, "Alignment has to be a power of 2");
 
 	// Allocate memory using malloc - the total size will be the requested size, plus
 	// the alignment and alignment offset, and we also add another (kPointerSize * 2)
@@ -61,8 +61,8 @@ size_t BvMemory::GetAllocationSize(void* pMem)
 
 void* BvMemory::AlignMemory(void* pMem, size_t alignment)
 {
-	BvAssert(pMem != nullptr, "Address has to be valid");
-	BvAssert((alignment & (alignment - 1)) == 0, "Alignment has to be a power of 2");
+	BV_ASSERT(pMem != nullptr, "Address has to be valid");
+	BV_ASSERT((alignment & (alignment - 1)) == 0, "Alignment has to be a power of 2");
 
 	const size_t mask = alignment - 1;
 	return reinterpret_cast<void*>((reinterpret_cast<size_t>(pMem) + mask) & (~mask));

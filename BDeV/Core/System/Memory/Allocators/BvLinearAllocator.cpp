@@ -30,7 +30,7 @@ BvLinearAllocator::~BvLinearAllocator()
 
 void BvLinearAllocator::Set(void* pStart, void* pEnd)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(pStart);
 	m_pEnd = reinterpret_cast<char*>(pEnd);
 	m_pCurrent = m_pStart;
@@ -39,7 +39,7 @@ void BvLinearAllocator::Set(void* pStart, void* pEnd)
 
 void BvLinearAllocator::Set(size_t size)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(BvMemory::Allocate(size));
 	m_pEnd = m_pStart + size;
 	m_pCurrent = m_pStart;
@@ -130,7 +130,7 @@ BvGrowableLinearAllocator::~BvGrowableLinearAllocator()
 
 void BvGrowableLinearAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	m_pVirtualStart = reinterpret_cast<char*>(pStart);
@@ -141,7 +141,7 @@ void BvGrowableLinearAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 
 void BvGrowableLinearAllocator::Set(size_t maxSize, size_t growSize)
 {
-	BvAssert(m_pStart == nullptr, "Memory already set");
+	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
 	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);

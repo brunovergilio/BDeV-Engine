@@ -200,7 +200,7 @@ BvShader* GetVS(BvRenderDevice* pDevice)
 	shaderDesc.m_SourceCodeSize = strlen(pShader);
 	BvObjectHandle<IBvShaderBlob> shader;
 	auto result = g_pCompiler->Compile(shaderDesc, &shader);
-	BvAssert(result, "Invalid Shader");
+	BV_ASSERT(result, "Invalid Shader");
 
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
@@ -232,7 +232,7 @@ BvShader* GetPS(BvRenderDevice* pDevice)
 	shaderDesc.m_SourceCodeSize = strlen(pShader);
 	BvObjectHandle<IBvShaderBlob> shader;
 	auto result = g_pCompiler->Compile(shaderDesc, &shader);
-	BvAssert(result, "Invalid Shader");
+	BV_ASSERT(result, "Invalid Shader");
 
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();

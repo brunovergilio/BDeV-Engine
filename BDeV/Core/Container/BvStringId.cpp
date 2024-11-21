@@ -35,7 +35,7 @@ public:
 		}
 		else
 		{
-			BvAssert(it->second == pStr, "Existing String Id found with hash [%llu]: %s", hash, pStr);
+			BV_ASSERT(it->second == pStr, "Existing String Id found with hash [%llu]: %s", hash, pStr);
 		}
 	}
 

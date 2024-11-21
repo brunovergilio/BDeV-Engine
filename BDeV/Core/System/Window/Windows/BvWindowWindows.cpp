@@ -439,7 +439,7 @@ void BvWindow::Create(bool createNew)
 			x, y, width, height, nullptr, nullptr, GetModuleHandleW(nullptr), this);
 		if (!m_hWnd)
 		{
-			BvOSCrashIfFailed(m_hWnd);
+			return;
 		}
 	}
 	else

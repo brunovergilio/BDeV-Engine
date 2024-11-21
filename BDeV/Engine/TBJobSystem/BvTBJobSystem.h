@@ -54,7 +54,7 @@ public:
 	template<typename Fn, typename... Args>
 	void AddJob(Fn&& fn, Args&&... args)
 	{
-		BvAssert(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
+		BV_ASSERT(m_Jobs.Size() < m_Jobs.Capacity(), "JobList is full");
 		auto& job = AddInternal();
 		job.m_Job.Set(std::forward<Fn>(fn), std::forward<std::decay_t<Args>>(args)...);
 	}

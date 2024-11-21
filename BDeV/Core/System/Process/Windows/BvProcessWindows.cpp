@@ -19,21 +19,23 @@ const BvSystemInfo& BvSystem::GetSystemInfo()
 		PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
 		DWORD bufferSize = 0;
 		DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
-		if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+		if (result == FALSE)
 		{
-			pBufferData = BV_NEW_ARRAY(u8, bufferSize);
-			pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
-			result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
-			if (result == FALSE)
+			if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 			{
-				BV_DELETE_ARRAY(pBufferData);
-				BvOSCrashIfFailed(result);
+				pBufferData = BV_NEW_ARRAY(u8, bufferSize);
+				pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
+				result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
+				if (result == FALSE)
+				{
+					BV_DELETE_ARRAY(pBufferData);
+					return systemInfo;
+				}
+			}
+			else
+			{
 				return systemInfo;
 			}
-		}
-		else
-		{
-			BvOSCrashIfFailed(result);
 		}
 
 		auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
@@ -60,12 +62,7 @@ const BvSystemInfo& BvSystem::GetSystemInfo()
 		SYSTEM_INFO osInfo;
 		::GetSystemInfo(&osInfo);
 		systemInfo.m_PageSize = osInfo.dwPageSize;
-		systemInfo.m_LargePageSize = osInfo.dwPageSize;
-
-		if (auto largePageSize = (u32)GetLargePageMinimum())
-		{
-			systemInfo.m_LargePageSize = largePageSize;
-		}
+		systemInfo.m_LargePageSize = (u32)GetLargePageMinimum();
 
 		return systemInfo;
 	}();

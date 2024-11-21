@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include "BDeV/Core/Utils/BvRTTI.h"
-
+#include <format>
 
 char stack[1024];
 char stack2[1024];
@@ -145,19 +145,31 @@ int hij(int g)
 
 int main()
 {
+	BvEvent<int> eve(1);
+	eve.AddHandler<&abc>();
+	eve(2);
+
+	BvError e;
+	e.FromSystem();
+
+	BV_FATAL_ERROR("Testing error %d %s", e.GetErrorCode(), e.GetErrorMessage());
+
+	BvConsole::Print("%d %d %c\n", 1, 2, 'f');
+	BvConsole::Print(BvColorI::BrightBlue, "%d %d %c\n", 1, 2, 'f');
+
 	printf("%s\n", TypeInfo<float>::GetName());
 	printf("%s\n", TypeInfo<def*>::GetName());
 	def o;
-	BvEvent<void(int)> f;
-	f.AddHandler<&abc>();
-	f.AddHandler<def, &def::cc>(&o);
+	BvDelegate<void(int)> f;
+	f.Bind<&abc>();
+	f.Bind<def, &def::cc>(&o);
 	int aa = 0;
 	auto ff = std::move(f);
 	ff(aa);
 
 	def d;
-	BvEvent<void(def)> g;
-	g.AddHandler<def, &def::fff>(&d);
+	BvDelegate<void(def)> g;
+	g.Bind<def, &def::fff>(&d);
 	g(def());
 	g(d);
 
