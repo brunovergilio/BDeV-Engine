@@ -80,7 +80,7 @@
     <ClInclude Include="Engine\Memory\BvAllocationModule.h" />
     <ClInclude Include="Engine\Memory\BvMemorySystem.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
-    <ClInclude Include="Core\Math\BvRandom.h" />
+    <ClInclude Include="Core\Utils\BvRandom.h" />
     <ClInclude Include="Core\Math\BvTrigo.h" />
     <ClInclude Include="Core\Math\BvGeometryGenerator.h" />
     <ClInclude Include="Core\Math\BvPrimitives.h" />
@@ -132,10 +132,11 @@
     <ClCompile Include="Core\System\Memory\BvMemoryArea.cpp" />
     <ClCompile Include="Core\Container\BvText.cpp" />
     <ClCompile Include="Engine\Memory\BvAllocationModule.cpp" />
-    <ClCompile Include="Core\Math\BvRandom.cpp" />
+    <ClCompile Include="Core\Utils\BvRandom.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\Math\BvIntersections.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
+    <ClCompile Include="Core\Utils\BvLog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Math\BvMathVector.inl" />

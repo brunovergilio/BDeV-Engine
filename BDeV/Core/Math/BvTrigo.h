@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvMathDefs.h"
+#include "BvMath.h"
 
 
 namespace Internal

@@ -11,47 +11,11 @@ class BvConsole
 
 public:
 	// Default white text and black background printf
-	static i32 PrintF(const char* pFormat, ...);
+	static void Print(const char* pFormat, ...);
 	// Custom color text and black background printf
-	static i32 PrintF(const BvColorI& textColor, const char* pFormat, ...);
+	static void Print(const BvColorI& textColor, const char* pFormat, ...);
 	// Custom color text and custom color background printf
-	static i32 PrintF(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
-
-	// =====================================================
-	// Template variations
-	// I'm keeping these but they can bloat the code a lot
-
-	// Default white text and black background printf
-	template<typename... Args>
-	static void Print(const char* pStr, Args&&... args)
-	{
-		ConsoleHelper();
-
-		printf(pStr, args...);
-	}
-
-	// Custom color text and black background printf
-	template<typename... Args>
-	static void Print(const BvColorI& textColor, const char* pStr, Args&&... args)
-	{
-		ConsoleHelper();
-
-		printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
-		printf(pStr, args...);
-		printf("\033[0m");
-	}
-
-	// Custom color text and custom color background printf
-	template<typename... Args>
-	static void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pStr, Args&&... args)
-	{
-		ConsoleHelper();
-
-		printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
-		printf("\033[48;2;%d;%d;%dm", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
-		printf(pStr, args...);
-		printf("\033[0m");
-	}
+	static void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
 };
 
 
@@ -59,7 +23,7 @@ class BvDebug
 {
 public:
 	// Same as printf but to the debug window (if one exists)
-	static i32 PrintF(const char* pFormat, ...);
+	static void Print(const char* pFormat, ...);
 
 	// To force code breaks when debugging
 	static void Break();
@@ -95,7 +59,7 @@ public:
 	void FromSystem();
 	void MakeCustom(u32 errorCode, const char* pFormat, ...);
 
-	u32 GetErrorCode() const;
+	i32 GetErrorCode() const;
 	const char* GetErrorMessage() const;
 };
 

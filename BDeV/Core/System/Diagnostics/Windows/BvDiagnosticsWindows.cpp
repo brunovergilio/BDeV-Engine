@@ -54,18 +54,16 @@ void BvConsole::ConsoleHelper()
 }
 
 
-i32 BvConsole::PrintF(const char* pFormat, ...)
+void BvConsole::Print(const char* pFormat, ...)
 {
 	va_list argList;
 	va_start(argList, pFormat);
 	auto charsWritten = vprintf(pFormat, argList);
 	va_end(argList);
-
-	return charsWritten;
 }
 
 
-i32 BvConsole::PrintF(const BvColorI& textColor, const char* pFormat, ...)
+void BvConsole::Print(const BvColorI& textColor, const char* pFormat, ...)
 {
 	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
 	va_list argList;
@@ -73,12 +71,10 @@ i32 BvConsole::PrintF(const BvColorI& textColor, const char* pFormat, ...)
 	auto charsWritten = vprintf(pFormat, argList);
 	va_end(argList);
 	printf("\033[0m");
-
-	return charsWritten;
 }
 
 
-i32 BvConsole::PrintF(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
+void BvConsole::Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
 {
 	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
 	printf("\033[48;2;%d;%d;%dm", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
@@ -87,8 +83,6 @@ i32 BvConsole::PrintF(const BvColorI& textColor, const BvColorI& backGroundColor
 	auto charsWritten = vprintf(pFormat, argList);
 	va_end(argList);
 	printf("\033[0m");
-
-	return charsWritten;
 }
 
 
@@ -140,7 +134,7 @@ BV_INLINE BvBufferHelper& GetMessageBuffer()
 }
 
 
-i32 BvDebug::PrintF(const char* pFormat, ...)
+void BvDebug::Print(const char* pFormat, ...)
 {
 #if BV_DEBUG
 	va_list args1;
@@ -161,10 +155,6 @@ i32 BvDebug::PrintF(const char* pFormat, ...)
 	wchar_t* pErrorMessageW = (wchar_t*)pMem;
 	BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, utf8Size, pErrorMessageW, utf16Size);
 	OutputDebugStringW(pErrorMessageW);
-
-	return charsWritten;
-#else
-	return 0;
 #endif
 }
 
@@ -317,7 +307,7 @@ void BvError::MakeCustom(u32 errorCode, const char* pFormat, ...)
 }
 
 
-u32 BvError::GetErrorCode() const
+i32 BvError::GetErrorCode() const
 {
 	return GetErrorData().m_ErrorCode;
 }

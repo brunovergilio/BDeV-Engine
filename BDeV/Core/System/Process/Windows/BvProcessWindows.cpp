@@ -188,7 +188,7 @@ void BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip
 			auto sizeNeeded = BvTextUtilities::ConvertWideCharToUTF8Char(moduleNameW, 0, nullptr, 0);
 			if (sizeNeeded > 0)
 			{
-				currFrame.m_Module.Resize(sizeNeeded - 1);
+				currFrame.m_Module.Resize(sizeNeeded - 1, ' ');
 				BvTextUtilities::ConvertWideCharToUTF8Char(moduleNameW, 0, &currFrame.m_Module[0], sizeNeeded);
 			}
 		}

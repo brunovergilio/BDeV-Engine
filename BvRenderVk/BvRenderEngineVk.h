@@ -2,6 +2,7 @@
 
 
 #include "BDeV/Core/RenderAPI/BvRenderEngine.h"
+#include "BDeV/Core/System/Library/BvSharedLib.h"
 #include "BvGPUInfoVk.h"
 
 
@@ -51,4 +52,5 @@ private:
 	BvVector<BvGPUInfoVk> m_GPUs;
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvDebugReportVk* m_pDebugReport = nullptr;
+	BvSharedLib m_VulkanLib;
 };

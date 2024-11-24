@@ -6,7 +6,8 @@
 
 // Platform-dependent stuff
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	#define VK_USE_PLATFORM_WIN32_KHR
+#define VK_USE_PLATFORM_WIN32_KHR
+#define BV_VULKAN_DLL_NAME "vulkan-1.dll"
 #else
 	// Other platforms
 #endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
@@ -24,7 +25,7 @@
 // Have to re-include this again because the CreateSemaphore macro
 // conflicts with the BvRenderEngine::CreateSemaphore function
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#include "BDeV/Core/System/Windows/BvWindowsHeader.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
 #endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 
 

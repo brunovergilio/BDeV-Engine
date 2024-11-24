@@ -16,6 +16,8 @@ public:
 	BvSharedLib& operator=(BvSharedLib&& rhs) noexcept;
 	~BvSharedLib();
 
+	bool Open(const char* pFilename);
+	void Close();
 	void* GetProcAddress(const char* const pFunctionName) const;
 
 	template<typename PFN>
@@ -29,6 +31,8 @@ public:
 	{
 		pFn = static_cast<PFN>(GetProcAddress(pFunctionName));
 	}
+
+	BV_INLINE operator bool() const { return m_hLib != kNullOSSharedLibHandle; }
 
 private:
 	OSSharedLibHandle m_hLib = kNullOSSharedLibHandle;

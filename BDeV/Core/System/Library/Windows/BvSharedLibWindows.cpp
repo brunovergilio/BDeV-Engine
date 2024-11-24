@@ -10,12 +10,7 @@ BvSharedLib::BvSharedLib()
 
 BvSharedLib::BvSharedLib(const char * pFilename)
 {
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
-		m_hLib = LoadLibraryW(pFilenameW);
-	}
+	Open(pFilename);
 }
 
 
@@ -38,7 +33,27 @@ BvSharedLib & BvSharedLib::operator=(BvSharedLib && rhs) noexcept
 
 BvSharedLib::~BvSharedLib()
 {
-	FreeLibrary((HMODULE)m_hLib);
+	Close();
+}
+
+
+bool BvSharedLib::Open(const char* pFilename)
+{
+	auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
+	m_hLib = LoadLibraryW(pFilenameW);
+
+	return m_hLib != nullptr;
+}
+
+
+void BvSharedLib::Close()
+{
+	if (m_hLib)
+	{
+		FreeLibrary((HMODULE)m_hLib);
+	}
 }
 
 

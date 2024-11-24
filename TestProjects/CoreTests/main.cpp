@@ -145,6 +145,9 @@ int hij(int g)
 
 int main()
 {
+	BvString str;
+	str.Format("%d, %f %s %s", 2, 3.0f, "asfasf", "aagsg");
+	
 	BvEvent<int> eve(1);
 	eve.AddHandler<&abc>();
 	eve(2);

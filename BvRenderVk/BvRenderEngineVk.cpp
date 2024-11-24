@@ -105,6 +105,7 @@ BvRenderEngineVk* BvRenderEngineVk::GetInstance()
 
 
 BvRenderEngineVk::BvRenderEngineVk()
+	: m_VulkanLib(BV_VULKAN_DLL_NAME)
 {
 	Create();
 }
@@ -118,13 +119,20 @@ BvRenderEngineVk::~BvRenderEngineVk()
 
 void BvRenderEngineVk::Create()
 {
-	auto result = volkInitialize();
-	if (result != VK_SUCCESS)
+	if (!m_VulkanLib)
 	{
 		return;
 	}
 
-	u32 apiVersion = VK_API_VERSION_1_3;
+	PFN_vkGetInstanceProcAddr pProcAddressFn = nullptr;
+	pProcAddressFn = m_VulkanLib.GetProcAddressT<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+	if (!pProcAddressFn)
+	{
+		return;
+	}
+
+	volkInitializeCustom(pProcAddressFn);
+	constexpr u32 apiVersion = VK_API_VERSION_1_3;
 	if (volkGetInstanceVersion() < apiVersion)
 	{
 		return;
@@ -138,6 +146,7 @@ void BvRenderEngineVk::Create()
 	applicationInfo.pEngineName = pEngineName;
 	applicationInfo.apiVersion = apiVersion;
 
+	VkResult result = VK_SUCCESS;
 
 	uint32_t extensionPropertyCount{};
 	result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, nullptr);
@@ -289,6 +298,8 @@ void BvRenderEngineVk::Destroy()
 		vkDestroyInstance(m_Instance, nullptr);
 		m_Instance = VK_NULL_HANDLE;
 	}
+
+	m_VulkanLib.Close();
 }
 
 
