@@ -8,7 +8,9 @@ class IBvTask
 {
 public:
 	virtual ~IBvTask() {}
-	virtual void Run() const = 0;
+	virtual void Run() = 0;
+	virtual void CloneTo(void* pNewJob) = 0;
+	virtual void MoveTo(void* pNewJob) = 0;
 };
 
 
@@ -21,11 +23,23 @@ namespace Internal
 		template<typename = typename std::enable_if_t<std::is_same_v<std::invoke_result_t<Fn, Args...>, void> && std::is_invocable_v<Fn, Args...>>>
 		BvTaskT(Fn&& fn, Args&&... args)
 			: m_Function(std::forward<Fn>(fn)), m_Args(std::forward<Args>(args)...) {}
+		BvTaskT(Fn& fn, std::tuple<Args...>& args)
+			: m_Function(fn), m_Args(args) {}
 		~BvTaskT() {}
 
-		void Run() const override
+		void Run() override
 		{
 			std::apply(m_Function, m_Args);
+		}
+
+		void CloneTo(void* pNewJob) override
+		{
+			new(pNewJob) BvTaskT<Fn, Args...>(m_Function, m_Args);
+		}
+
+		void MoveTo(void* pNewJob) override
+		{
+			new(pNewJob) BvTaskT<Fn, Args...>(std::forward<Fn>(m_Function), std::forward<Args>(m_Args)...);
 		}
 
 	private:
@@ -39,13 +53,12 @@ template<size_t JobSize>
 class BvTaskN
 {
 public:
+	static_assert(JobSize >= 16, "Job size must be at least 16 bytes");
+
 	BvTaskN() {}
 
 	template<typename Fn, typename... Args,
-		typename = typename std::enable_if_t<
-		!std::is_same_v<std::decay_t<Fn>, BvTaskN>
-		&& std::is_invocable_v<Fn, Args...>
-		&& std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
+		typename = typename std::enable_if_t<!std::is_same_v<std::decay_t<Fn>, BvTaskN>>>
 	explicit BvTaskN(Fn&& fn, Args&&... args)
 	{
 		static_assert(sizeof(Internal::BvTaskT<Fn, Args...>) <= JobSize, "Job object is too big, use a bigger task size");
@@ -54,14 +67,14 @@ public:
 
 	explicit BvTaskN(const BvTaskN& rhs)
 	{
-		memcpy(m_Data, rhs.m_Data, JobSize);
+		((IBvTask*)rhs.m_Data)->CloneTo(m_Data);
 	}
 
 	BvTaskN& operator=(const BvTaskN& rhs)
 	{
 		if (this != &rhs)
 		{
-			memcpy(m_Data, rhs.m_Data, JobSize);
+			((IBvTask*)rhs.m_Data)->CloneTo(m_Data);
 		}
 
 		return *this;
@@ -76,7 +89,7 @@ public:
 	{
 		if (this != &rhs)
 		{
-			memcpy(m_Data, rhs.m_Data, JobSize);
+			((IBvTask*)rhs.m_Data)->MoveTo(m_Data);
 		}
 
 		return *this;
@@ -87,18 +100,16 @@ public:
 		Reset();
 	}
 
-	void Run() const
+	void Run()
 	{
 		if (IsSet())
 		{
-			m_pTask->Run();
+			((IBvTask*)m_Data)->Run();
 		}
 	}
 
 	template<typename Fn, typename... Args,
-		typename = typename std::enable_if_t<
-		!std::is_same_v<std::decay_t<Fn>, BvTaskN>
-		&& std::is_same_v<std::invoke_result_t<Fn, Args...>, void>>>
+		typename = typename std::enable_if_t<!std::is_same_v<std::decay_t<Fn>, BvTaskN>>>
 	void Set(Fn&& fn, Args&&... args)
 	{
 		static_assert(sizeof(Internal::BvTaskT<Fn, Args...>) <= JobSize, "Job object is too big");
@@ -107,18 +118,18 @@ public:
 
 	bool IsSet() const
 	{
-		return m_pTask != nullptr;
+		return *((u64*)m_Data) != 0;
 	}
 
 	void Reset()
 	{
-		m_pTask = nullptr;
+		if (IsSet())
+		{
+			((IBvTask*)m_Data)->~IBvTask();
+			*((u64*)m_Data) = 0;
+		}
 	}
 
 private:
-	union
-	{
-		u8 m_Data[JobSize]{};
-		const IBvTask* m_pTask;
-	};
+	u8 m_Data[JobSize]{};
 };

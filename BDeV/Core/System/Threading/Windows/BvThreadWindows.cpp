@@ -31,6 +31,7 @@ BvThread & BvThread::operator =(BvThread && rhs) noexcept
 		std::swap(m_ThreadId, rhs.m_ThreadId);
 		std::swap(m_hThread, rhs.m_hThread);
 		std::swap(m_pTask, rhs.m_pTask);
+		std::swap(m_Suspended, rhs.m_Suspended);
 	}
 
 	return *this;
@@ -43,17 +44,31 @@ BvThread::~BvThread()
 }
 
 
+void BvThread::Start()
+{
+	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
+	if (m_Suspended)
+	{
+		m_Suspended = false;
+		ResumeThread(m_hThread);
+	}
+}
+
+
 void BvThread::Wait()
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
-
-	WaitForSingleObject(m_hThread, INFINITE);
+	if (!m_Suspended)
+	{
+		WaitForSingleObject(m_hThread, INFINITE);
+	}
 }
 
 
 void BvThread::SetAffinityMask(u64 affinityMask) const
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
+	BV_ASSERT(affinityMask != 0, "Affinity mask must have at least one bit set");
 
 	SetThreadAffinityMask(m_hThread, static_cast<DWORD_PTR>(affinityMask));
 }
@@ -142,7 +157,7 @@ void BvThread::Yield()
 }
 
 
-const BvThread & BvThread::GetCurrentThread()
+const BvThread& BvThread::GetCurrentThread()
 {
 	static thread_local BvThread thisThread;
 	if (!thisThread.m_hThread)
@@ -163,20 +178,20 @@ u32 BvThread::GetCurrentProcessor()
 
 void BvThread::ConvertToFiber()
 {
-	auto& fiber = GetThreadFiberInternal();
-	BV_ASSERT(fiber.m_pFiber == nullptr, "Fiber already converted / created");
-	fiber.m_pFiber = ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
-	BV_ASSERT(fiber.m_pFiber != nullptr, "Couldn't convert Thread to Fiber");
+	//auto& fiber = GetThreadFiberInternal();
+	//BV_ASSERT(fiber.m_hFiber == nullptr, "Fiber already converted / created");
+	//fiber.m_hFiber = ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
+	//BV_ASSERT(fiber.m_hFiber != nullptr, "Couldn't convert Thread to Fiber");
 }
 
 
 void BvThread::ConvertFromFiber()
 {
-	auto& fiber = GetThreadFiberInternal();
-	BV_ASSERT(fiber.m_pFiber != nullptr, "Thread not yet converted to Fiber");
-	BOOL result = ConvertFiberToThread();
-	BV_ASSERT(result, "Couldn't convert Fiber to Thread");
-	fiber.m_pFiber = nullptr;
+	//auto& fiber = GetThreadFiberInternal();
+	//BV_ASSERT(fiber.m_hFiber != nullptr, "Thread not yet converted to Fiber");
+	//BOOL result = ConvertFiberToThread();
+	//BV_ASSERT(result, "Couldn't convert Fiber to Thread");
+	//fiber.m_hFiber = nullptr;
 }
 
 
@@ -188,22 +203,30 @@ const BvFiber& BvThread::GetThreadFiber() const
 
 bool BvThread::IsFiber() const
 {
-	return GetThreadFiber().GetFiber() != nullptr;
+	return false;
 }
 
 
 void BvThread::Create()
 {
-	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0U, ThreadEntryPoint, &m_pTask, 0U, reinterpret_cast<u32*>(&m_ThreadId)));
+	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0U, ThreadEntryPoint, m_pTask, 0U, reinterpret_cast<u32*>(&m_ThreadId)));
 }
 
 
 void BvThread::Create(const CreateInfo& createInfo)
 {
-	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, &m_pTask,
+	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, m_pTask,
 		createInfo.m_CreateSuspended ? CREATE_SUSPENDED : 0u, reinterpret_cast<u32*>(&m_ThreadId)));
-	SetPriority(createInfo.m_Priority);
-	SetAffinityMask(createInfo.m_AffinityMask);
+	if (createInfo.m_Priority != Priority::kAuto)
+	{
+		SetPriority(createInfo.m_Priority);
+	}
+	if (createInfo.m_AffinityMask != 0)
+	{
+		SetAffinityMask(createInfo.m_AffinityMask);
+	}
+
+	m_Suspended = createInfo.m_CreateSuspended;
 }
 
 
@@ -211,11 +234,11 @@ void BvThread::Destroy()
 {
 	if (m_hThread == GetCurrentThread().m_hThread)
 	{
-		auto& fiber = GetThreadFiberInternal();
-		if (fiber.m_pFiber)
-		{
-			ConvertFromFiber();
-		}
+		//auto& fiber = GetThreadFiberInternal();
+		//if (fiber.m_hFiber)
+		//{
+		//	ConvertFromFiber();
+		//}
 	}
 
 	if (m_hThread && m_pTask)
@@ -236,7 +259,7 @@ BvFiber& GetThreadFiberInternal()
 
 u32 CALLBACK ThreadEntryPoint(void* pData)
 {
-	const IBvTask* pDelegate = reinterpret_cast<const IBvTask *>(pData);
+	IBvTask* pDelegate = reinterpret_cast<IBvTask *>(pData);
 	pDelegate->Run();
 
 	_endthreadex(0);

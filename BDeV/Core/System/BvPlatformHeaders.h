@@ -45,8 +45,20 @@ const OSFileHandle kNullOSFileHandle = INVALID_HANDLE_VALUE;
 using OSThreadHandle = HANDLE;
 constexpr OSThreadHandle kNullOSThreadHandle = nullptr;
 
+#if !defined(BV_USE_OS_FIBERS)
+namespace Internal
+{
+	struct OSFiberHandle
+	{
+		void* m_pMemory;
+		void* m_pContext;
+	};
+}
+using OSFiberHandle = Internal::OSFiberHandle;
+#else
 using OSFiberHandle = void*;
-constexpr OSFiberHandle kNullOSFiberHandle = nullptr;
+#endif
+constexpr OSFiberHandle kNullOSFiberHandle = {};
 
 using OSSharedLibHandle = HMODULE;
 constexpr OSSharedLibHandle kNullOSSharedLibHandle = nullptr;

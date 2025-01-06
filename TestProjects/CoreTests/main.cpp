@@ -143,41 +143,43 @@ int hij(int g)
 }
 
 
+thread_local int a = 0;
+BvFiber* pFb = nullptr;
+BvFiber* pFb2 = nullptr;
+
 int main()
 {
-	BvString str;
-	str.Format("%d, %f %s %s", 2, 3.0f, "asfasf", "aagsg");
-	
-	BvEvent<int> eve(1);
-	eve.AddHandler<&abc>();
-	eve(2);
+	BvFiber& mfb = BvFiber::CreateForThread();
 
-	BvError e;
-	e.FromSystem();
+	BvSignal s;
+	BvFiber fb;
+	fb = BvFiber([&fb, &mfb]()
+		{
+			printf("%d\n", a);
+			fb.Switch(mfb);
 
-	BV_FATAL_ERROR("Testing error %d %s", e.GetErrorCode(), e.GetErrorMessage());
+			printf("%d\n", a);
+			fb.Switch(*pFb2);
 
-	BvConsole::Print("%d %d %c\n", 1, 2, 'f');
-	BvConsole::Print(BvColorI::BrightBlue, "%d %d %c\n", 1, 2, 'f');
+			printf("%d\n", a);
+			fb.Switch(mfb);
+		});
+	pFb = &fb;
+	mfb.Switch(fb);
 
-	printf("%s\n", TypeInfo<float>::GetName());
-	printf("%s\n", TypeInfo<def*>::GetName());
-	def o;
-	BvDelegate<void(int)> f;
-	f.Bind<&abc>();
-	f.Bind<def, &def::cc>(&o);
-	int aa = 0;
-	auto ff = std::move(f);
-	ff(aa);
+	MessageBoxW(nullptr, L"afaf", L"fa", MB_OK);
 
-	def d;
-	BvDelegate<void(def)> g;
-	g.Bind<def, &def::fff>(&d);
-	g(def());
-	g(d);
+	BvThread t([]()
+		{
+			BvFiber& mfb = BvFiber::CreateForThread();
+			a = 1;
 
-	BvTaskN<32> fn;
-	fn.Set([]() {});
+			pFb2 = &mfb;
+			mfb.Switch(*pFb);
+		});
+	t.Wait();
+
+	mfb.Switch(fb);
 
 	return 0;
 }

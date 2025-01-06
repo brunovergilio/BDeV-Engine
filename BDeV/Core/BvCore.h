@@ -72,6 +72,7 @@
 
 	#define BV_FUNCTION __FUNCTION__
 	#define BV_INLINE __forceinline
+	#define BV_NO_INLINE __declspec(noinline)
 	
 	#pragma warning(disable:4100)	// unref
 	#pragma warning(disable:4103)	// alignment changed after including header, may be due to missing #pragma pack(pop)

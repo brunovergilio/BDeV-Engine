@@ -144,4 +144,7 @@
     <None Include="Core\Math\BvMathMatrix.inl" />
     <None Include="Core\Math\BvMathQuaternion.inl" />
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="Core\System\Threading\Windows\BvFiberMASM.asm" />
+  </ItemGroup>
 </Project>

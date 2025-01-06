@@ -7,8 +7,6 @@
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 
 
-using FiberFunction = void(*)(void*);
-
 class BvFiber
 {
 	BV_NOCOPY(BvFiber);
@@ -19,6 +17,8 @@ public:
 	BvFiber();
 	BvFiber(BvFiber&& rhs) noexcept;
 	BvFiber& operator=(BvFiber&& rhs) noexcept;
+	~BvFiber();
+	
 	template<class Fn, class... Args,
 		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
 	BvFiber(Fn&& fn, Args&&... args)
@@ -26,23 +26,23 @@ public:
 
 	template<class Fn, class... Args,
 		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
-	BvFiber(const u32 stackSize, Fn&& fn, Args&&... args)
+	BvFiber(u32 stackSize, Fn&& fn, Args&&... args)
 		: m_pTask(new((void*)BV_NEW_ARRAY(u8, sizeof(Internal::BvTaskT<Fn, Args...>))) Internal::BvTaskT<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
 	{
 		Create(stackSize);
 	}
 
-	~BvFiber();
+	void Switch(BvFiber& fiber);
 
-	void Switch(const BvFiber& fiber) const;
-
-	OSFiberHandle GetFiber() const;
-
+	static BvFiber& CreateForThread();
+	static void DestroyForThread();
+	static BvFiber& GetCurrent();
 private:
-	void Create(const size_t stackSize);
+
+	void Create(size_t stackSize);
 	void Destroy();
 
 private:
-	OSFiberHandle m_pFiber = nullptr;
+	OSFiberHandle m_hFiber = kNullOSFiberHandle;
 	IBvTask* m_pTask = nullptr;
 };
