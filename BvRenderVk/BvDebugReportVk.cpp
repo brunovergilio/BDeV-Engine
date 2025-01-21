@@ -115,7 +115,6 @@ VkBool32 VKAPI_PTR BvDebugReportVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsM
 		}
 	}
 
-	BvDebug::PrintF("%s\n", message);
 	if (triggerAbort)
 	{
 		BV_ASSERT(false, message);

@@ -47,13 +47,13 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>$(SolutionDir)BDeV\Core\RenderAPI\Vulkan\Third Party;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)BvRenderVk\Third Party;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>$(SolutionDir)BDeV\Core\RenderAPI\Vulkan\Third Party;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)BvRenderVk\Third Party;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -64,12 +64,12 @@
       <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>NotSet</ShowProgress>
     </Link>
@@ -88,14 +88,14 @@
       <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -105,6 +105,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\BDeV\BDeV.vcxproj">
       <Project>{5abfc153-e6bd-4f67-bfa0-f123ca883b95}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\BvRenderVk\BvRenderVk.vcxproj">
+      <Project>{f9c85bb6-dc1e-4f09-917a-df6a3a671503}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

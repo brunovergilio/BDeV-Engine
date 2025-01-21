@@ -60,8 +60,6 @@
     <ClInclude Include="Core\Container\BvStringId.h" />
     <ClInclude Include="Core\System\Window\BvWindowCommon.h" />
     <ClInclude Include="Core\Container\BvRobinSet.h" />
-    <ClInclude Include="Engine\JobSystem\BvRingBuffer.h" />
-    <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
     <ClInclude Include="Core\RenderAPI\BvColor.h" />
     <ClInclude Include="Core\RenderAPI\BvCommandContext.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderAPIUtils.h" />
@@ -77,8 +75,6 @@
     <ClInclude Include="Core\Container\BvText.h" />
     <ClInclude Include="Core\RenderAPI\BvShader.h" />
     <ClInclude Include="Core\Utils\BvObject.h" />
-    <ClInclude Include="Engine\Memory\BvAllocationModule.h" />
-    <ClInclude Include="Engine\Memory\BvMemorySystem.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
     <ClInclude Include="Core\Utils\BvRandom.h" />
     <ClInclude Include="Core\Math\BvTrigo.h" />
@@ -124,14 +120,12 @@
     <ClCompile Include="Core\Utils\BvTestUnit.cpp" />
     <ClCompile Include="Core\Utils\BvHash.cpp" />
     <ClCompile Include="Core\Container\BvStringId.cpp" />
-    <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
     <ClCompile Include="Core\RenderAPI\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
     <ClCompile Include="Core\Utils\BvUUID.cpp" />
     <ClCompile Include="Core\System\Memory\Allocators\BvDefaultAllocator.cpp" />
     <ClCompile Include="Core\System\Memory\BvMemoryArea.cpp" />
     <ClCompile Include="Core\Container\BvText.cpp" />
-    <ClCompile Include="Engine\Memory\BvAllocationModule.cpp" />
     <ClCompile Include="Core\Utils\BvRandom.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\Math\BvIntersections.cpp" />

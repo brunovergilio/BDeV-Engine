@@ -1,5 +1,29 @@
 #include "BDeV/BDeV.h"
 #include "BvRenderVk/BvRenderEngineVk.h"
+#include "BvRenderVk/Third Party/slang/slang.h"
+#include "BvRenderVk/Third Party/slang/slang-com-ptr.h"
+
+
+static const char* pVSShader =
+R"raw(
+			#version 450
+
+			layout (location = 0) in vec3 inPos;
+			layout (location = 1) in vec4 inColor;
+
+			layout (location = 0) out vec4 outColor;
+
+			layout (binding = 0) uniform UBO 
+			{
+				mat4 wvp;
+			} ubo;
+
+			void main() 
+			{
+				outColor = inColor;
+				gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
+			}
+		)raw";
 
 
 struct PosColorVertex
@@ -9,7 +33,7 @@ struct PosColorVertex
 };
 
 
-BvObjectHandle<IBvShaderCompiler> g_pCompiler = nullptr;
+IBvShaderCompiler* g_pCompiler = nullptr;
 
 BvShader* GetVS(BvRenderDevice* pDevice);
 BvShader* GetPS(BvRenderDevice* pDevice);
@@ -19,8 +43,8 @@ BvBuffer* CreateUB(BvRenderDevice* pDevice);
 
 int main()
 {
-	auto pApp = BvApplication::GetInstance();
-	pApp->Initialize();
+	BvApplication app;
+	app.Initialize();
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
 	typedef bool (*pFNGetShaderCompiler)(IBvShaderCompiler**);
@@ -30,7 +54,7 @@ int main()
 	//pCompiler->CompileFromFile("D:\\Bruno\\C++\\test.vert", compDesc);
 
 	auto pEngine = BvRenderEngineVk::GetInstance();
-	auto pDevice = pEngine->CreateRenderDevice();
+	auto pDevice = pEngine->CreateRenderDevice(BvRenderDeviceCreateDesc());
 
 	BvKeyboard keyboard;
 	auto pKeyboard = &keyboard;
@@ -38,7 +62,7 @@ int main()
 	WindowDesc windowDesc;
 	windowDesc.m_X += 100;
 	windowDesc.m_Y += 100;
-	auto pWindow = pApp->CreateWindow(windowDesc);
+	auto pWindow = app.CreateWindow(windowDesc);
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
@@ -93,7 +117,7 @@ int main()
 		frame++;
 		//PrintF(ConsoleColor::kLightGreen, "Frame %d:\n", frame);
 		//PrintF(ConsoleColor::kAqua, "Image index aquired: %d\n", pSwapChain->GetCurrentImageIndex());
-		pApp->ProcessOSEvents();
+		app.ProcessOSEvents();
 		if (!pWindow->IsVisible())
 		{
 			break;
@@ -137,7 +161,7 @@ int main()
 		auto width = pWindow->GetWidth();
 		auto height = pWindow->GetHeight();
 
-		Store44(MatrixLookAtLH(VectorSet(0.0f, 0.0f, -5.0f, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f)) *
+		Store44(MatrixLookAtLH(VectorSet(0.0f, 0.0f, -5.0f, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f, 1.0f)) *
 			MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4),
 			pUB->GetMappedDataAsT<float>());
 
@@ -154,7 +178,7 @@ int main()
 		pGraphicsContext->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
 		pGraphicsContext->SetScissor({ 0, 0, width, height });
 		pGraphicsContext->SetVertexBufferView(pVBView);
-		pGraphicsContext->SetShaderResource(pUBView, 0, 0, 0);
+		pGraphicsContext->SetConstantBuffer(pUBView, 0, 0, 0);
 		pGraphicsContext->Draw(3);
 		pGraphicsContext->EndQuery(pQuery);
 		pGraphicsContext->Signal();
@@ -164,7 +188,7 @@ int main()
 		pGraphicsContext->Flush();
 	}
 
-	pApp->Shutdown();
+	app.Shutdown();
 
 	return 0;
 }
@@ -172,33 +196,12 @@ int main()
 
 BvShader* GetVS(BvRenderDevice* pDevice)
 {
-	static const char* pShader =
-		R"raw(
-			#version 450
-
-			layout (location = 0) in vec3 inPos;
-			layout (location = 1) in vec4 inColor;
-
-			layout (location = 0) out vec4 outColor;
-
-			layout (binding = 0) uniform UBO 
-			{
-				mat4 wvp;
-			} ubo;
-
-			void main() 
-			{
-				outColor = inColor;
-				gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
-			}
-		)raw";
-
 	ShaderCreateDesc shaderDesc;
 	shaderDesc.m_ShaderStage = ShaderStage::kVertex;
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
-	shaderDesc.m_pSourceCode = pShader;
-	shaderDesc.m_SourceCodeSize = strlen(pShader);
-	BvObjectHandle<IBvShaderBlob> shader;
+	shaderDesc.m_pSourceCode = pVSShader;
+	shaderDesc.m_SourceCodeSize = strlen(pVSShader);
+	IBvShaderBlob* shader;
 	auto result = g_pCompiler->Compile(shaderDesc, &shader);
 	BV_ASSERT(result, "Invalid Shader");
 
@@ -230,7 +233,7 @@ BvShader* GetPS(BvRenderDevice* pDevice)
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	shaderDesc.m_pSourceCode = pShader;
 	shaderDesc.m_SourceCodeSize = strlen(pShader);
-	BvObjectHandle<IBvShaderBlob> shader;
+	IBvShaderBlob* shader;
 	auto result = g_pCompiler->Compile(shaderDesc, &shader);
 	BV_ASSERT(result, "Invalid Shader");
 

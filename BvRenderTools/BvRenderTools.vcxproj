@@ -48,11 +48,22 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IncludePath>$(ProjectDir);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IncludePath>$(ProjectDir);$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgUseStatic>false</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgUseStatic>false</VcpkgUseStatic>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -62,16 +73,18 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_LIB;BV_SHARED_LIB;BV_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glslangd.lib;SPIRVd.lib;HLSLd.lib;MachineIndependentd.lib;OGLCompilerd.lib;OSDependentd.lib;GenericCodeGend.lib;SPIRV-Tools-optd.lib;SPIRV-Toolsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099,4217 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>BvRenderTools.def</ModuleDefinitionFile>
     </Link>
@@ -90,18 +103,20 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;BV_SHARED_LIB;BV_DLL_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glslang.lib;SPIRV.lib;HLSL.lib;MachineIndependent.lib;OGLCompiler.lib;OSDependent.lib;GenericCodeGen.lib;SPIRV-Tools-opt.lib;SPIRV-Tools.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099,4217 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>BvRenderTools.def</ModuleDefinitionFile>
     </Link>
@@ -130,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="BvRenderTools.def" />
+    <None Include="vcpkg.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

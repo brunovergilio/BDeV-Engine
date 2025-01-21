@@ -30,22 +30,22 @@ public:
 	virtual void EndRenderPass() = 0;
 
 	virtual void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets) = 0;
-	void SetRenderTarget(const RenderTargetDesc& renderTarget)
+	BV_INLINE void SetRenderTarget(const RenderTargetDesc& renderTarget)
 	{
 		SetRenderTargets(1, &renderTarget);
 	}
 
 	virtual void SetViewports(u32 viewportCount, const Viewport* pViewports) = 0;
-	void SetViewport(const Viewport& viewport) { SetViewports(1, &viewport); }
-	void SetViewport(f32 width, f32 height, f32 minDepth = 0.0f, f32 maxDepth = 1.0f)
+	BV_INLINE void SetViewport(const Viewport& viewport) { SetViewports(1, &viewport); }
+	BV_INLINE void SetViewport(f32 width, f32 height, f32 minDepth = 0.0f, f32 maxDepth = 1.0f)
 	{
 		Viewport viewport{ 0.0f, 0.0f, width, height, minDepth, maxDepth };
 		SetViewports(1, &viewport);
 	}
 
 	virtual void SetScissors(u32 scissorCount, const Rect* pScissors) = 0;
-	void SetScissor(const Rect& scissor) { SetScissors(1, &scissor); }
-	void SetScissor(u32 width, u32 height)
+	BV_INLINE void SetScissor(const Rect& scissor) { SetScissors(1, &scissor); }
+	BV_INLINE void SetScissor(u32 width, u32 height)
 	{
 		Rect scissor{ 0, 0, width, height };
 		SetScissors(1, &scissor);
@@ -54,14 +54,30 @@ public:
 	virtual void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline) = 0;
 	virtual void SetComputePipeline(const BvComputePipelineState* pPipeline) = 0;
 
-	virtual void SetShaderResourceParams(u32 setCount, BvShaderResourceParams* const* ppSets, u32 firstSet) = 0;
-	virtual void SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex) = 0;
-	virtual void SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex) = 0;
-	virtual void SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex) = 0;
-	virtual void SetShaderConstants(u32 size, const void* pData, u32 offset) = 0;
+	virtual void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex = 0) = 0;
+	virtual void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetSamplers(u32 count, const BvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetShaderConstants(u32 size, const void* pData, u32 offset = 0) = 0;
+
+	BV_INLINE void SetShaderResourceParams(BvShaderResourceParams* pResourceParams, u32 startIndex = 0) { SetShaderResourceParams(1, &pResourceParams, startIndex); }
+	BV_INLINE void SetConstantBuffer(const BvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetConstantBuffers(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetStructuredBuffer(const BvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetStructuredBuffers(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetRWStructuredBuffer(const BvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWStructuredBuffers(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetFormattedBuffer(const BvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetFormattedBuffers(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetRWFormattedBuffer(const BvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWFormattedBuffers(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetTexture(const BvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetTextures(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetRWTexture(const BvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWTextures(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetSampler(const BvSampler* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetSamplers(1, &pResource, set, binding, startIndex); }
+	template<typename T> BV_INLINE void SetShaderConstantsT(const T& value, u32 offset = 0) { SetShaderConstants(sizeof(T), &value, offset); }
 
 	virtual void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) = 0;
-	void SetVertexBufferView(const BvBufferView* pVertexBufferView, const u32 firstBinding = 0) { SetVertexBufferViews(1, &pVertexBufferView, firstBinding); }
+	BV_INLINE void SetVertexBufferView(const BvBufferView* pVertexBufferView, const u32 firstBinding = 0) { SetVertexBufferViews(1, &pVertexBufferView, firstBinding); }
 	virtual void SetIndexBufferView(const BvBufferView* pIndexBufferView, IndexFormat indexFormat) = 0;
 
 	virtual void Draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0) = 0;
@@ -83,13 +99,13 @@ public:
 	virtual void CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDstTexture, const TextureCopyDesc& copyDesc = TextureCopyDesc()) = 0;
 
 	virtual void CopyBufferToTexture(const BvBuffer* pSrcBuffer, BvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs) = 0;
-	void CopyBufferToTexture(const BvBuffer* pSrcBuffer, BvTexture* pDstTexture, const BufferTextureCopyDesc& copyDesc)
+	BV_INLINE void CopyBufferToTexture(const BvBuffer* pSrcBuffer, BvTexture* pDstTexture, const BufferTextureCopyDesc& copyDesc)
 	{
 		CopyBufferToTexture(pSrcBuffer, pDstTexture, 1, &copyDesc);
 	}
 
 	virtual void CopyTextureToBuffer(const BvTexture* pSrcTexture, BvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs) = 0;
-	void CopyTextureToBuffer(const BvTexture* pSrcTexture, BvBuffer* pDstBuffer, const BufferTextureCopyDesc& copyDesc)
+	BV_INLINE void CopyTextureToBuffer(const BvTexture* pSrcTexture, BvBuffer* pDstBuffer, const BufferTextureCopyDesc& copyDesc)
 	{
 		CopyTextureToBuffer(pSrcTexture, pDstBuffer, 1, &copyDesc);
 	}

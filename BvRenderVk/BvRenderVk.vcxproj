@@ -61,6 +61,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -78,6 +79,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -98,7 +100,6 @@
     <ClInclude Include="BvDebugReportVk.h" />
     <ClInclude Include="BvDescriptorSetVk.h" />
     <ClInclude Include="BvFramebufferVk.h" />
-    <ClInclude Include="BvGPUInfoVk.h" />
     <ClInclude Include="BvPipelineStateVk.h" />
     <ClInclude Include="BvQueryVk.h" />
     <ClInclude Include="BvRenderDeviceVk.h" />

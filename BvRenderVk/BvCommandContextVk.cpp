@@ -271,35 +271,74 @@ void BvCommandContextVk::SetComputePipeline(const BvComputePipelineState* pPipel
 }
 
 
-void BvCommandContextVk::SetShaderResourceParams(u32 setCount, BvShaderResourceParams* const* ppSets, u32 firstSet)
+void BvCommandContextVk::SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex)
 {
 	SetupCommandBufferIfNotReady();
 
-	m_pCurrCommandBuffer->SetShaderResourceParams(setCount, ppSets, firstSet);
+	m_pCurrCommandBuffer->SetShaderResourceParams(resourceParamsCount, ppResourceParams, startIndex);
+}
+
+void BvCommandContextVk::SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	SetupCommandBufferIfNotReady();
+
+	m_pCurrCommandBuffer->SetConstantBuffers(count, ppResources, set, binding, startIndex);
 }
 
 
-void BvCommandContextVk::SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvCommandContextVk::SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	SetupCommandBufferIfNotReady();
 
-	m_pCurrCommandBuffer->SetShaderResource(pResource, set, binding, arrayIndex);
+	m_pCurrCommandBuffer->SetStructuredBuffers(count, ppResources, set, binding, startIndex);
 }
 
 
-void BvCommandContextVk::SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvCommandContextVk::SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	SetupCommandBufferIfNotReady();
 
-	m_pCurrCommandBuffer->SetShaderResource(pResource, set, binding, arrayIndex);
+	m_pCurrCommandBuffer->SetRWStructuredBuffers(count, ppResources, set, binding, startIndex);
 }
 
 
-void BvCommandContextVk::SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvCommandContextVk::SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	SetupCommandBufferIfNotReady();
 
-	m_pCurrCommandBuffer->SetShaderResource(pResource, set, binding, arrayIndex);
+	m_pCurrCommandBuffer->SetFormattedBuffers(count, ppResources, set, binding, startIndex);
+}
+
+
+void BvCommandContextVk::SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	SetupCommandBufferIfNotReady();
+
+	m_pCurrCommandBuffer->SetRWFormattedBuffers(count, ppResources, set, binding, startIndex);
+}
+
+
+void BvCommandContextVk::SetTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	SetupCommandBufferIfNotReady();
+
+	m_pCurrCommandBuffer->SetTextures(count, ppResources, set, binding, startIndex);
+}
+
+
+void BvCommandContextVk::SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	SetupCommandBufferIfNotReady();
+
+	m_pCurrCommandBuffer->SetRWTextures(count, ppResources, set, binding, startIndex);
+}
+
+
+void BvCommandContextVk::SetSamplers(u32 count, const BvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	SetupCommandBufferIfNotReady();
+
+	m_pCurrCommandBuffer->SetSamplers(count, ppResources, set, binding, startIndex);
 }
 
 

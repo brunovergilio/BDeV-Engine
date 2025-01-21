@@ -1,15 +1,15 @@
-; section .text
-; global SwitchToFiberASM
 .code
 
-InitFPControl PROC
+; void SaveFPControlASM(const void* pFiber);
+; rcx: const void* pFiber
+SaveFPControlASM PROC
     ; save MMX control- and status-word
     stmxcsr  [rcx+0a0h]
     ; save x87 control-word
     fnstcw  [rcx+0a4h]
 
     ret
-InitFPControl ENDP
+SaveFPControlASM ENDP
 
 ; void StartFiberASM(const void* pFiber);
 ; rcx: const void* pFiber

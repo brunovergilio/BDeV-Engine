@@ -364,3 +364,5 @@ FodyWeavers.xsd
 # Generated in BDeV
 [Ll]ibs/
 TestProjects/RayTracing/
+
+BvRenderTools/vcpkg_installed/

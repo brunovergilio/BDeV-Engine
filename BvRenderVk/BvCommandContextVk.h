@@ -53,7 +53,7 @@ private:
 	BvResourceBindingStateVk m_ResourceBindingState;
 	BvRobinMap<u64, BvDescriptorPoolVk> m_DescriptorPools;
 	BvRobinMap<u64, BvDescriptorSetVk> m_DescriptorSets;
-	BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
+	//BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
 	BvVector<BvQueryVk*> m_Queries;
 	BvSemaphoreVk m_SignalSemaphore;
 	std::pair<u64, u64> m_SignaValueIndex;
@@ -87,10 +87,15 @@ public:
 	void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline) override;
 	void SetComputePipeline(const BvComputePipelineState* pPipeline) override;
 
-	void SetShaderResourceParams(u32 setCount, BvShaderResourceParams* const* ppSets, u32 firstSet) override;
-	void SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex) override;
-	void SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex) override;
-	void SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex) override;
+	void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex) override;
+	void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetSamplers(u32 count, const BvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetShaderConstants(u32 size, const void* pData, u32 offset) override;
 
 	void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) override;

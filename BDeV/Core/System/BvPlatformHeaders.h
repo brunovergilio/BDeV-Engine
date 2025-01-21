@@ -40,12 +40,8 @@
 #endif
 
 using OSFileHandle = HANDLE;
-const OSFileHandle kNullOSFileHandle = INVALID_HANDLE_VALUE;
-
 using OSThreadHandle = HANDLE;
-constexpr OSThreadHandle kNullOSThreadHandle = nullptr;
-
-#if !defined(BV_USE_OS_FIBERS)
+#if defined(BV_USE_ASM_FIBERS)
 namespace Internal
 {
 	struct OSFiberHandle
@@ -58,15 +54,15 @@ using OSFiberHandle = Internal::OSFiberHandle;
 #else
 using OSFiberHandle = void*;
 #endif
-constexpr OSFiberHandle kNullOSFiberHandle = {};
-
 using OSSharedLibHandle = HMODULE;
-constexpr OSSharedLibHandle kNullOSSharedLibHandle = nullptr;
-
 using OSWindowHandle = HWND;
-constexpr OSWindowHandle kNullOSWindowHandle = nullptr;
-
 using OSMonitorHandle = HMONITOR;
-constexpr OSMonitorHandle kNullOSMonitorHandle = nullptr;
-
 #endif
+
+
+const OSFileHandle kNullOSFileHandle = INVALID_HANDLE_VALUE;
+constexpr OSThreadHandle kNullOSThreadHandle = nullptr;
+constexpr OSFiberHandle kNullOSFiberHandle = {};
+constexpr OSSharedLibHandle kNullOSSharedLibHandle = nullptr;
+constexpr OSWindowHandle kNullOSWindowHandle = nullptr;
+constexpr OSMonitorHandle kNullOSMonitorHandle = nullptr;

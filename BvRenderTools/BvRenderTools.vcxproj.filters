@@ -15,5 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="BvRenderTools.def" />
+    <None Include="vcpkg.json" />
   </ItemGroup>
 </Project>

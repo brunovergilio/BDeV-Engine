@@ -53,6 +53,7 @@ void BvSharedLib::Close()
 	if (m_hLib)
 	{
 		FreeLibrary((HMODULE)m_hLib);
+		m_hLib = nullptr;
 	}
 }
 

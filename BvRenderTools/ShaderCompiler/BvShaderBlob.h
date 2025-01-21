@@ -5,16 +5,11 @@
 #include "BDeV/Core/Container/BvVector.h"
 
 
-BV_IBVOBJECT_CREATE_REFCOUNT_BASE(BvShaderBlobRefCount, IBvShaderBlob);
-
-
-class BvShaderBlob final : public BvShaderBlobRefCount
+class BvShaderBlob final : public IBvShaderBlob
 {
 	BV_NOCOPYMOVE(BvShaderBlob);
 
 public:
-	BV_IBVOBJECT_IMPL_INTERFACE(BvShaderBlob, IBvShaderBlob);
-
 	BvShaderBlob(BvVector<u8>& shaderBlob);
 	BvShaderBlob(const char* pErrorString);
 	~BvShaderBlob();

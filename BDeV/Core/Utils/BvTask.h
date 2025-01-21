@@ -9,8 +9,8 @@ class IBvTask
 public:
 	virtual ~IBvTask() {}
 	virtual void Run() = 0;
-	virtual void CloneTo(void* pNewJob) = 0;
-	virtual void MoveTo(void* pNewJob) = 0;
+	virtual void CloneTo(void* pNewTask) = 0;
+	virtual void MoveTo(void* pNewTask) = 0;
 };
 
 
@@ -32,14 +32,14 @@ namespace Internal
 			std::apply(m_Function, m_Args);
 		}
 
-		void CloneTo(void* pNewJob) override
+		void CloneTo(void* pNewTask) override
 		{
-			new(pNewJob) BvTaskT<Fn, Args...>(m_Function, m_Args);
+			new(pNewTask) BvTaskT<Fn, Args...>(m_Function, m_Args);
 		}
 
-		void MoveTo(void* pNewJob) override
+		void MoveTo(void* pNewTask) override
 		{
-			new(pNewJob) BvTaskT<Fn, Args...>(std::forward<Fn>(m_Function), std::forward<Args>(m_Args)...);
+			new(pNewTask) BvTaskT<Fn, Args...>(std::forward<Fn>(m_Function), std::forward<Args>(m_Args)...);
 		}
 
 	private:
@@ -49,11 +49,11 @@ namespace Internal
 }
 
 
-template<size_t JobSize>
+template<size_t TaskSize>
 class BvTaskN
 {
 public:
-	static_assert(JobSize >= 16, "Job size must be at least 16 bytes");
+	static_assert(TaskSize >= 16, "Task size must be at least 16 bytes");
 
 	BvTaskN() {}
 
@@ -61,7 +61,7 @@ public:
 		typename = typename std::enable_if_t<!std::is_same_v<std::decay_t<Fn>, BvTaskN>>>
 	explicit BvTaskN(Fn&& fn, Args&&... args)
 	{
-		static_assert(sizeof(Internal::BvTaskT<Fn, Args...>) <= JobSize, "Job object is too big, use a bigger task size");
+		static_assert(sizeof(Internal::BvTaskT<Fn, Args...>) <= TaskSize, "Task object is too big, use a bigger task size");
 		Set(std::forward<Fn>(fn), std::forward<std::decay_t<Args>>(args)...);
 	}
 
@@ -112,7 +112,7 @@ public:
 		typename = typename std::enable_if_t<!std::is_same_v<std::decay_t<Fn>, BvTaskN>>>
 	void Set(Fn&& fn, Args&&... args)
 	{
-		static_assert(sizeof(Internal::BvTaskT<Fn, Args...>) <= JobSize, "Job object is too big");
+		static_assert(sizeof(Internal::BvTaskT<Fn, Args...>) <= TaskSize, "Task object is too big, use a bigger task size");
 		new (m_Data) Internal::BvTaskT<Fn, Args...>(std::forward<Fn>(fn), std::forward<std::decay_t<Args>>(args)...);
 	}
 
@@ -131,5 +131,5 @@ public:
 	}
 
 private:
-	u8 m_Data[JobSize]{};
+	u8 m_Data[TaskSize]{};
 };

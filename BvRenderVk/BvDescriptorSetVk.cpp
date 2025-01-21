@@ -8,6 +8,80 @@
 #include "BvUtilsVk.h"
 
 
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource)
+{
+	switch (descriptorType)
+	{
+	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+		m_Data.m_BufferView = pResource->GetHandle();
+		m_DescriptorType = descriptorType;
+		break;
+	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+	{
+		auto& desc = pResource->GetDesc();
+		auto pBuffer = static_cast<const BvBufferVk*>(desc.m_pBuffer);
+		
+		m_Data.m_BufferInfo.buffer = pBuffer->GetHandle();
+		m_Data.m_BufferInfo.offset = desc.m_Offset;
+		m_Data.m_BufferInfo.range = desc.m_ElementCount * desc.m_Stride;
+		m_DescriptorType = descriptorType;
+		break;
+	}
+	default:
+		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
+		break;
+	}
+}
+
+
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource)
+{
+	switch (descriptorType)
+	{
+	case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+	{
+		auto layout = !IsDepthStencilFormat(pResource->GetDesc().m_Format) ?
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		m_Data.m_ImageInfo.imageLayout = layout;
+		m_Data.m_ImageInfo.imageView = pResource->GetHandle();
+		m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
+		m_DescriptorType = descriptorType;
+		break;
+	}
+	case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+	{
+		m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		m_Data.m_ImageInfo.imageView = pResource->GetHandle();
+		m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
+		m_DescriptorType = descriptorType;
+		break;
+	}
+	default:
+		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
+		break;
+	}
+}
+
+
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource)
+{
+	switch (descriptorType)
+	{
+	case VK_DESCRIPTOR_TYPE_SAMPLER:
+		m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		m_Data.m_ImageInfo.imageView = VK_NULL_HANDLE;
+		m_Data.m_ImageInfo.sampler = pResource->GetHandle();
+		m_DescriptorType = descriptorType;
+		break;
+	default:
+		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
+		break;
+	}
+}
+
+
 BvResourceBindingStateVk::BvResourceBindingStateVk()
 {
 }
@@ -38,37 +112,7 @@ BvResourceBindingStateVk::~BvResourceBindingStateVk()
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
-
-	switch (descriptorType)
-	{
-	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-		if (data.m_Data.m_BufferView != pResource->GetHandle())
-		{
-			data.m_Data.m_BufferView = pResource->GetHandle();
-			data.m_DescriptorType = descriptorType;
-		}
-		break;
-	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-	{
-		auto& desc = pResource->GetDesc();
-		auto pBuffer = static_cast<const BvBufferVk*>(desc.m_pBuffer);
-		if (data.m_Data.m_BufferInfo.buffer != pBuffer->GetHandle()
-			|| data.m_Data.m_BufferInfo.offset != desc.m_Offset
-			|| data.m_Data.m_BufferInfo.range != desc.m_ElementCount * desc.m_Stride)
-		{
-			data.m_Data.m_BufferInfo.buffer = pBuffer->GetHandle();
-			data.m_Data.m_BufferInfo.offset = desc.m_Offset;
-			data.m_Data.m_BufferInfo.range = desc.m_ElementCount * desc.m_Stride;
-			data.m_DescriptorType = descriptorType;
-		}
-		break;
-	}
-	default:
-		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
-		break;
-	}
+	data.Set(descriptorType, pResource);
 }
 
 
@@ -76,36 +120,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
-
-	switch (descriptorType)
-	{
-	case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-		if (data.m_Data.m_ImageInfo.imageView != pResource->GetHandle())
-		{
-			data.m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-			data.m_Data.m_ImageInfo.imageView = pResource->GetHandle();
-			data.m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
-			data.m_DescriptorType = descriptorType;
-		}
-		break;
-	case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-	{
-		auto layout = !IsDepthStencilFormat(pResource->GetDesc().m_Format) ?
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-		if (data.m_Data.m_ImageInfo.imageLayout != layout
-			|| data.m_Data.m_ImageInfo.imageView != pResource->GetHandle())
-		{
-			data.m_Data.m_ImageInfo.imageLayout = layout;
-			data.m_Data.m_ImageInfo.imageView = pResource->GetHandle();
-			data.m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
-			data.m_DescriptorType = descriptorType;
-		}
-		break;
-	}
-	default:
-		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
-		break;
-	}
+	data.Set(descriptorType, pResource);
 }
 
 
@@ -113,22 +128,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
-
-	switch (descriptorType)
-	{
-	case VK_DESCRIPTOR_TYPE_SAMPLER:
-		if (data.m_Data.m_ImageInfo.sampler != pResource->GetHandle())
-		{
-			data.m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			data.m_Data.m_ImageInfo.imageView = VK_NULL_HANDLE;
-			data.m_Data.m_ImageInfo.sampler = pResource->GetHandle();
-			data.m_DescriptorType = descriptorType;
-		}
-		break;
-	default:
-		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
-		break;
-	}
+	data.Set(descriptorType, pResource);
 }
 
 
@@ -139,16 +139,16 @@ void BvResourceBindingStateVk::Reset()
 }
 
 
-const BvResourceBindingStateVk::ResourceData* BvResourceBindingStateVk::GetResource(const ResourceId& resId) const
+const ResourceDataVk* BvResourceBindingStateVk::GetResource(const ResourceIdVk& resId) const
 {
 	auto it = m_Bindings.FindKey(resId);
 	return it != m_Bindings.cend() ? &m_Resources[it->second] : nullptr;
 }
 
 
-BvResourceBindingStateVk::ResourceData& BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex)
+ResourceDataVk& BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex)
 {
-	ResourceId resId{ set, binding, arrayIndex };
+	ResourceIdVk resId{ set, binding, arrayIndex };
 	auto bindingIt = m_Bindings.Emplace(resId, 0);
 	u32 index = 0;
 	if (!bindingIt.second)
@@ -159,6 +159,7 @@ BvResourceBindingStateVk::ResourceData& BvResourceBindingStateVk::AddOrRetrieveR
 	{
 		m_Resources.EmplaceBack();
 		index = static_cast<u32>(m_Resources.Size()) - 1;
+		bindingIt.first->second = index;
 	}
 
 	return m_Resources[index];
@@ -201,40 +202,6 @@ BvDescriptorSetVk::~BvDescriptorSetVk()
 
 void BvDescriptorSetVk::Update(const BvVector<VkWriteDescriptorSet>& writeSets)
 {
-	//BvVector<VkWriteDescriptorSet> writeDescriptors;
-	//auto& resources = descriptorData.GetBindings();
-	//for (auto& resourcePair : resources)
-	//{
-	//	auto& resource = resourcePair.second;
-	//	for (auto i = 0; i < resource.m_Count; ++i)
-	//	{
-	//		VkWriteDescriptorSet writeDescriptor{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	//		//writeDescriptor.pNext = nullptr;
-	//		writeDescriptor.dstSet = m_DescriptorSet;
-	//		writeDescriptor.dstBinding = resourcePair.first;
-	//		writeDescriptor.dstArrayElement = i;
-	//		writeDescriptor.descriptorCount = 1;
-	//		writeDescriptor.descriptorType = resource.m_DescriptorType;
-	//		auto pElement = i == 0 ? &resource.m_Element : &resource.m_Elements[i - 1];
-	//		switch (resource.m_DescriptorType)
-	//		{
-	//		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-	//		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-	//			writeDescriptor.pBufferInfo = &pElement->bufferInfo;
-	//			break;
-	//		case VK_DESCRIPTOR_TYPE_SAMPLER:
-	//		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-	//		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-	//			writeDescriptor.pImageInfo = &pElement->imageInfo;
-	//			break;
-	//		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-	//		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-	//			writeDescriptor.pTexelBufferView = &pElement->bufferView;
-	//			break;
-	//		}
-	//	}
-	//}
-
 	vkUpdateDescriptorSets(m_pDevice->GetHandle(), (u32)writeSets.Size(), writeSets.Data(), 0, nullptr);
 }
 

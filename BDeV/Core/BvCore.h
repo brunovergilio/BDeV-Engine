@@ -5,9 +5,15 @@
 // Platform definitions
 // =================================
 #define BV_PLATFORM_WIN32 1
+#define BV_PLATFORM_MACOS 2
+#define BV_PLATFORM_LINUX 3
 
 #if defined(_WIN32) || defined(_WIN64)
 	#define BV_PLATFORM BV_PLATFORM_WIN32
+#elif defined(__APPLE__)
+	#define BV_PLATFORM BV_PLATFORM_MACOS
+#elif defined(__linux__)
+	#define BV_PLATFORM BV_PLATFORM_LINUX
 #endif
 
 
@@ -182,7 +188,6 @@ constexpr size_t kCacheLineSize = std::hardware_destructive_interference_size;
 
 constexpr size_t kPointerSize = sizeof(void*);
 constexpr size_t kDefaultAlignmentSize = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
-constexpr size_t kMinAllocationSize = kPointerSize;
 
 
 constexpr u64 operator""_kb(size_t bytes)

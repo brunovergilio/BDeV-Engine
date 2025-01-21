@@ -7,7 +7,6 @@
 #include <process.h>
 
 
-BvFiber& GetThreadFiberInternal();
 u32 CALLBACK ThreadEntryPoint(void* pData);
 
 
@@ -31,7 +30,7 @@ BvThread & BvThread::operator =(BvThread && rhs) noexcept
 		std::swap(m_ThreadId, rhs.m_ThreadId);
 		std::swap(m_hThread, rhs.m_hThread);
 		std::swap(m_pTask, rhs.m_pTask);
-		std::swap(m_Suspended, rhs.m_Suspended);
+		std::swap(m_IsRunning, rhs.m_IsRunning);
 	}
 
 	return *this;
@@ -47,9 +46,9 @@ BvThread::~BvThread()
 void BvThread::Start()
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
-	if (m_Suspended)
+	if (!m_IsRunning)
 	{
-		m_Suspended = false;
+		m_IsRunning = true;
 		ResumeThread(m_hThread);
 	}
 }
@@ -58,9 +57,10 @@ void BvThread::Start()
 void BvThread::Wait()
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
-	if (!m_Suspended)
+	if (m_IsRunning)
 	{
 		WaitForSingleObject(m_hThread, INFINITE);
+		m_IsRunning = false;
 	}
 }
 
@@ -176,47 +176,35 @@ u32 BvThread::GetCurrentProcessor()
 }
 
 
-void BvThread::ConvertToFiber()
+BvFiber& BvThread::ConvertToFiber()
 {
-	//auto& fiber = GetThreadFiberInternal();
-	//BV_ASSERT(fiber.m_hFiber == nullptr, "Fiber already converted / created");
-	//fiber.m_hFiber = ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
-	//BV_ASSERT(fiber.m_hFiber != nullptr, "Couldn't convert Thread to Fiber");
+	return BvFiber::CreateForThread();
 }
 
 
 void BvThread::ConvertFromFiber()
 {
-	//auto& fiber = GetThreadFiberInternal();
-	//BV_ASSERT(fiber.m_hFiber != nullptr, "Thread not yet converted to Fiber");
-	//BOOL result = ConvertFiberToThread();
-	//BV_ASSERT(result, "Couldn't convert Fiber to Thread");
-	//fiber.m_hFiber = nullptr;
+	BvFiber::DestroyForThread();
 }
 
 
-const BvFiber& BvThread::GetThreadFiber() const
+BvFiber& BvThread::GetFiber()
 {
-	return GetThreadFiberInternal();
+	return BvFiber::GetThreadFiber();
 }
 
 
-bool BvThread::IsFiber() const
+bool BvThread::IsFiber()
 {
-	return false;
-}
-
-
-void BvThread::Create()
-{
-	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0U, ThreadEntryPoint, m_pTask, 0U, reinterpret_cast<u32*>(&m_ThreadId)));
+	return GetFiber().m_IsThreadSetup;
 }
 
 
 void BvThread::Create(const CreateInfo& createInfo)
 {
+	m_IsRunning = !createInfo.m_CreateSuspended;
 	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, m_pTask,
-		createInfo.m_CreateSuspended ? CREATE_SUSPENDED : 0u, reinterpret_cast<u32*>(&m_ThreadId)));
+		m_IsRunning ? 0u : CREATE_SUSPENDED, reinterpret_cast<u32*>(&m_ThreadId)));
 	if (createInfo.m_Priority != Priority::kAuto)
 	{
 		SetPriority(createInfo.m_Priority);
@@ -225,35 +213,16 @@ void BvThread::Create(const CreateInfo& createInfo)
 	{
 		SetAffinityMask(createInfo.m_AffinityMask);
 	}
-
-	m_Suspended = createInfo.m_CreateSuspended;
 }
 
 
 void BvThread::Destroy()
 {
-	if (m_hThread == GetCurrentThread().m_hThread)
-	{
-		//auto& fiber = GetThreadFiberInternal();
-		//if (fiber.m_hFiber)
-		//{
-		//	ConvertFromFiber();
-		//}
-	}
-
 	if (m_hThread && m_pTask)
 	{
 		CloseHandle(m_hThread);
 		BV_DELETE_ARRAY((u8*)m_pTask);
 	}
-}
-
-
-BvFiber& GetThreadFiberInternal()
-{
-	static thread_local BvFiber thisFiber;
-
-	return thisFiber;
 }
 
 

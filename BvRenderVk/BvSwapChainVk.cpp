@@ -92,7 +92,7 @@ bool BvSwapChainVk::Create()
 	u32 height = m_pWindow->GetHeight();
 
 	auto device = m_pDevice->GetHandle();
-	auto physicalDevice = m_pDevice->GetGPUInfo().m_PhysicalDevice;
+	auto physicalDevice = m_pDevice->GetPhysicalDeviceHandle();
 
 	VkBool32 presentationSupported = VK_FALSE;
 	u32 queueFamilyIndex = m_pCommandQueue->GetFamilyIndex();
@@ -300,7 +300,7 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
 	swapchainCreateInfo.imageArrayLayers = 1;
 
-	swapchainCreateInfo.imageSharingMode = queueFamilyIndex == m_pDevice->GetGPUInfo().m_GraphicsQueueInfo.m_QueueFamilyIndex ?
+	swapchainCreateInfo.imageSharingMode = queueFamilyIndex == m_pDevice->GetDeviceInfo()->m_GraphicsQueueInfo.m_QueueFamilyIndex ?
 		VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
 	swapchainCreateInfo.queueFamilyIndexCount = 0;
 	swapchainCreateInfo.pQueueFamilyIndices = nullptr;

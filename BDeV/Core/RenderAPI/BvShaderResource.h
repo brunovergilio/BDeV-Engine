@@ -23,8 +23,8 @@ class BvTextureView;
 // RWTexture*					UAV							Storage Image				uniform image*
 // cbuffer						CBV							Uniform Buffer				uniform{ ... }
 // ConstantBuffer				CBV							Uniform Buffer				uniform{ ... }
-// tbuffer						CBV							Storage Buffer				-
-// TextureBuffer				CBV							Storage Buffer				-
+// tbuffer						SRV							Uniform Texel Buffer		uniform samplerBuffer
+// TextureBuffer				SRV							Uniform Texel Buffer		uniform samplerBuffer
 // StructuredBuffer				SRV							Storage Buffer				buffer{ ... }
 // RWStructuredBuffer			UAV							Storage Buffer				buffer{ ... }
 // ByteAddressBuffer			SRV							Storage Buffer				-
@@ -137,14 +137,6 @@ struct ShaderResourceSetDesc
 };
 
 
-struct ShaderResourceLayoutDesc2
-{
-	u32 m_ResourceSetCount;
-	const ShaderResourceSetDesc* m_pResourceSets;
-	ShaderResourceConstantDesc m_ResourceConstant;
-};
-
-
 struct ShaderResourceLayoutDesc
 {
 	BvRobinMap<u32, BvRobinMap<u32, ShaderResourceDesc>> m_ShaderResources;
@@ -174,13 +166,23 @@ class BvShaderResourceParams
 	BV_NOCOPYMOVE(BvShaderResourceParams);
 
 public:
-	virtual void SetResources(u32 count, const BvBufferView* const* ppBuffers, u32 binding, u32 startIndex = 0) = 0;
-	virtual void SetResources(u32 count, const BvTextureView* const* ppTextures, u32 binding, u32 startIndex = 0) = 0;
-	virtual void SetResources(u32 count, const BvSampler* const* ppSamplers, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetTextures(u32 count, const BvTextureView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetSamplers(u32 count, const BvSampler* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
 
-	void SetResource(const BvBufferView* pBuffer, u32 binding, u32 startIndex = 0) { SetResources(1, &pBuffer, binding, startIndex); }
-	void SetResource(const BvTextureView* pTexture, u32 binding, u32 startIndex = 0) { SetResources(1, &pTexture, binding, startIndex); }
-	void SetResource(const BvSampler* pSampler, u32 binding, u32 startIndex = 0) { SetResources(1, &pSampler, binding, startIndex); }
+	void SetConstantBuffer(u32 count, const BvBufferView* pResource, u32 binding, u32 startIndex = 0) { SetConstantBuffers(1, &pResource, binding, startIndex); }
+	void SetStructuredBuffer(u32 count, const BvBufferView* pResource, u32 binding, u32 startIndex = 0) { SetStructuredBuffers(1, &pResource, binding, startIndex); }
+	void SetRWStructuredBuffer(u32 count, const BvBufferView* pResource, u32 binding, u32 startIndex = 0) { SetRWStructuredBuffers(1, &pResource, binding, startIndex); }
+	void SetFormattedBuffer(u32 count, const BvBufferView* pResource, u32 binding, u32 startIndex = 0) { SetFormattedBuffers(1, &pResource, binding, startIndex); }
+	void SetRWFormattedBuffer(u32 count, const BvBufferView* pResource, u32 binding, u32 startIndex = 0) { SetRWFormattedBuffers(1, &pResource, binding, startIndex); }
+	void SetTexture(u32 count, const BvTextureView* pResource, u32 binding, u32 startIndex = 0) { SetTextures(1, &pResource, binding, startIndex); }
+	void SetRWTexture(u32 count, const BvTextureView* pResource, u32 binding, u32 startIndex = 0) { SetRWTextures(1, &pResource, binding, startIndex); }
+	void SetSampler(u32 count, const BvSampler* pResource, u32 binding, u32 startIndex = 0) { SetSamplers(1, &pResource, binding, startIndex); }
 	
 	virtual void Bind() = 0;
 

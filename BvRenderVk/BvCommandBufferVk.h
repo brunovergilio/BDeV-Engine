@@ -7,13 +7,11 @@
 #include "BDeV/Core/Container/BvFixedVector.h"
 
 
-constexpr u32 kMaxSemaphores = 8;
-
-
 class BvRenderDeviceVk;
 class BvSwapChainVk;
 class BvGraphicsPipelineStateVk;
 class BvComputePipelineStateVk;
+class BvShaderResourceLayoutVk;
 class BvFrameDataVk;
 class BvSampler;
 class BvBufferView;
@@ -40,8 +38,8 @@ public:
 	};
 
 	BvCommandBufferVk(const BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData);
-	BvCommandBufferVk(BvCommandBufferVk&& rhs) noexcept;
-	BvCommandBufferVk& operator=(BvCommandBufferVk&& rhs) noexcept;
+	BvCommandBufferVk(BvCommandBufferVk&& rhs) noexcept = default;
+	BvCommandBufferVk& operator=(BvCommandBufferVk&& rhs) noexcept = default;
 	~BvCommandBufferVk();
 
 	void Reset();
@@ -60,10 +58,15 @@ public:
 	void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline);
 	void SetComputePipeline(const BvComputePipelineState* pPipeline);
 
-	void SetShaderResourceParams(u32 setCount, BvShaderResourceParams* const* ppSets, u32 firstSet);
-	void SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex);
-	void SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex);
-	void SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex);
+	void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetSamplers(u32 count, const BvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetShaderConstants(u32 size, const void* pData, u32 offset);
 
 	void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0);
@@ -123,9 +126,10 @@ private:
 	BvVector<BvSwapChainVk*> m_SwapChains;
 	
 	BvVector<VkWriteDescriptorSet> m_WriteSets;
+	BvVector<VkDescriptorSet> m_DescriptorSets;
 
-	BvVector<VkBufferImageCopy> m_BufferImageCopyRegions{};
-	BvVector<VkImageCopy> m_ImageCopyRegions{};
+	BvVector<VkBufferImageCopy> m_BufferImageCopyRegions;
+	BvVector<VkImageCopy> m_ImageCopyRegions;
 
 	BvVector<VkImageMemoryBarrier2> m_PreRenderBarriers;
 	BvVector<VkImageMemoryBarrier2> m_PostRenderBarriers;
@@ -135,6 +139,7 @@ private:
 
 	const BvGraphicsPipelineStateVk* m_pGraphicsPipeline = nullptr;
 	const BvComputePipelineStateVk* m_pComputePipeline = nullptr;
+	BvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
 
 	State m_CurrentState = State::kRecording;
 };

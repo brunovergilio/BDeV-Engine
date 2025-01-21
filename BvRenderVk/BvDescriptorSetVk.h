@@ -12,33 +12,39 @@ class BvTextureViewVk;
 class BvSamplerVk;
 
 
+struct ResourceIdVk
+{
+	u32 m_Set;
+	u32 m_Binding;
+	u32 m_ArrayIndex;
+
+	friend bool operator==(const ResourceIdVk& lhs, const ResourceIdVk& rhs)
+	{
+		return lhs.m_Set == rhs.m_Set && lhs.m_Binding == rhs.m_Binding && lhs.m_ArrayIndex == rhs.m_ArrayIndex;
+	}
+};
+
+struct ResourceDataVk
+{
+	union Data
+	{
+		VkDescriptorBufferInfo m_BufferInfo;
+		VkDescriptorImageInfo m_ImageInfo;
+		VkBufferView m_BufferView;
+	};
+
+	Data m_Data;
+	VkDescriptorType m_DescriptorType;
+
+	void Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource);
+	void Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource);
+	void Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource);
+};
+
+
 class BvResourceBindingStateVk final
 {
 public:
-	struct ResourceId
-	{
-		u32 m_Set;
-		u32 m_Binding;
-		u32 m_ArrayIndex;
-
-		friend bool operator==(const ResourceId& lhs, const ResourceId& rhs)
-		{
-			return lhs.m_Set == rhs.m_Set && lhs.m_Binding == rhs.m_Binding && lhs.m_ArrayIndex == rhs.m_ArrayIndex;
-		}
-	};
-
-	struct ResourceData
-	{
-		union Data
-		{
-			VkDescriptorBufferInfo m_BufferInfo;
-			VkDescriptorImageInfo m_ImageInfo;
-			VkBufferView m_BufferView;
-		};
-
-		Data m_Data;
-		VkDescriptorType m_DescriptorType;
-	};
 
 	BvResourceBindingStateVk();
 	BvResourceBindingStateVk(BvResourceBindingStateVk&& rhs) noexcept;
@@ -51,14 +57,16 @@ public:
 
 	void Reset();
 
-	const ResourceData* GetResource(const ResourceId& resId) const;
+	const ResourceDataVk* GetResource(const ResourceIdVk& resId) const;
+
+	BV_INLINE bool IsEmpty() const { return m_Resources.Empty(); }
 
 private:
-	ResourceData& AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex);
+	ResourceDataVk& AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex);
 
 private:
-	BvRobinMap<ResourceId, u32> m_Bindings;
-	BvVector<ResourceData> m_Resources;
+	BvRobinMap<ResourceIdVk, u32> m_Bindings;
+	BvVector<ResourceDataVk> m_Resources;
 };
 
 

@@ -62,7 +62,7 @@ void BvGraphicsPipelineStateVk::Create()
 	vertexDivisorStateCI.pVertexBindingDivisors = divisorDescs.Data();
 
 	VkPipelineVertexInputStateCreateInfo vertexCI{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-	vertexCI.pNext = m_pDevice->GetGPUInfo().m_FeaturesSupported.vertexAttributeDivisor && divisorDescs.Size() > 0 ? &vertexDivisorStateCI : nullptr;
+	vertexCI.pNext = m_pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME) != kU64Max && divisorDescs.Size() > 0 ? &vertexDivisorStateCI : nullptr;
 	if (bindingDescs.Size() > 0)
 	{
 		vertexCI.vertexBindingDescriptionCount = (u32)bindingDescs.Size();
@@ -97,16 +97,16 @@ void BvGraphicsPipelineStateVk::Create()
 	rasterizerCI.lineWidth = 1.0f;
 
 	VkPipelineRasterizationDepthClipStateCreateInfoEXT depthClip{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
-	if (m_pDevice->GetGPUInfo().m_ExtendedFeatures.depthClibEnableFeature.depthClipEnable)
+	if (m_pDevice->GetDeviceInfo()->m_ExtendedFeatures.depthClibEnableFeature.depthClipEnable)
 	{
 		depthClip.depthClipEnable = VK_TRUE;
 		rasterizerCI.pNext = &depthClip;
 	}
 
 	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
-	if (m_pDevice->GetGPUInfo().m_FeaturesSupported.conservativeRasterization && m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
+	if (m_pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME) != kU64Max && m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization)
 	{
-		const auto & conservativeRasterProps = m_pDevice->GetGPUInfo().m_ExtendedProperties.convervativeRasterizationProps;
+		const auto & conservativeRasterProps = m_pDevice->GetDeviceInfo()->m_ExtendedProperties.convervativeRasterizationProps;
 
 		if (conservativeRasterProps.maxExtraPrimitiveOverestimationSize > 0.0f)
 		{
@@ -194,11 +194,11 @@ void BvGraphicsPipelineStateVk::Create()
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
-	if (m_pDevice->GetGPUInfo().m_DeviceFeatures.features.depthBounds)
+	if (m_pDevice->GetDeviceInfo()->m_DeviceFeatures.features.depthBounds)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
 	}
-	if (m_pDevice->GetGPUInfo().m_FeaturesSupported.fragmentShading)
+	if (m_pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME) != kU64Max)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
 	}

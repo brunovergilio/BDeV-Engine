@@ -6,16 +6,11 @@
 #include "BvRenderTools/ShaderCompiler/BvShaderBlob.h"
 
 
-BV_IBVOBJECT_CREATE_REFCOUNT_BASE(BvShaderCompilerRefCount, IBvShaderCompiler);
-
-
-class BvSPIRVCompiler final : public BvShaderCompilerRefCount
+class BvSPIRVCompiler final : public IBvShaderCompiler
 {
 	BV_NOCOPYMOVE(BvSPIRVCompiler);
 
 public:
-	BV_IBVOBJECT_IMPL_INTERFACE(BvSPIRVCompiler, IBvShaderCompiler);
-
 	BvSPIRVCompiler();
 	~BvSPIRVCompiler();
 

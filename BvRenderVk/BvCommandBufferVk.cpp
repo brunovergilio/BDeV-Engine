@@ -18,27 +18,13 @@
 #include "BvQueryVk.h"
 #include "BvCommandQueueVk.h"
 #include "BvCommandContextVk.h"
+#include "BvShaderResourceVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
 BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
 	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData)
 {
-}
-
-
-BvCommandBufferVk::BvCommandBufferVk(BvCommandBufferVk&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvCommandBufferVk& BvCommandBufferVk::operator=(BvCommandBufferVk&& rhs) noexcept
-{
-	m_pDevice = rhs.m_pDevice;
-	m_CommandBuffer = rhs.m_CommandBuffer;
-
-	return *this;
 }
 
 
@@ -405,6 +391,7 @@ void BvCommandBufferVk::SetGraphicsPipeline(const BvGraphicsPipelineState* pPipe
 {
 	m_pComputePipeline = nullptr;
 	m_pGraphicsPipeline = static_cast<const BvGraphicsPipelineStateVk*>(pPipeline);
+	m_pShaderResourceLayout = TO_VK(m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout);
 	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGraphicsPipeline->GetHandle());
 }
 
@@ -415,69 +402,106 @@ void BvCommandBufferVk::SetComputePipeline(const BvComputePipelineState* pPipeli
 
 	m_pGraphicsPipeline = nullptr;
 	m_pComputePipeline = static_cast<const BvComputePipelineStateVk*>(pPipeline);
+	m_pShaderResourceLayout = TO_VK(m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
 	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE, m_pComputePipeline->GetHandle());
 }
 
 
-void BvCommandBufferVk::SetShaderResourceParams(u32 setCount, BvShaderResourceParams* const* ppSets, u32 firstSet)
+void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex)
 {
+	for (auto i = 0; i < resourceParamsCount; ++i)
+	{
+		auto pSRP = TO_VK(ppResourceParams[i]);
+		auto& set = m_DescriptorSets.EmplaceBack(pSRP ? pSRP->GetHandle() : VK_NULL_HANDLE);
+	}
+
+	auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+	if (m_pComputePipeline)
+	{
+		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
+	}
+
+	vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), startIndex, resourceParamsCount, m_DescriptorSets.Data(), 0, nullptr);
 }
 
 
-void BvCommandBufferVk::SetShaderResource(const BvBufferView* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvCommandBufferVk::SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
-	auto& shaderResourceLayout = m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout->GetDesc();
-	auto resourceSet = shaderResourceLayout.m_ShaderResources.FindKey(set);
-	if (resourceSet == shaderResourceLayout.m_ShaderResources.cend())
-	{
-		return;
-	}
-	auto resource = resourceSet->second.FindKey(binding);
-	if (resource == resourceSet->second.cend())
-	{
-		return;
-	}
-
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
-	bindingState.SetResource(GetVkDescriptorType(resource->second.m_ShaderResourceType), static_cast<const BvBufferViewVk*>(pResource), set, binding, arrayIndex);
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
 }
 
 
-void BvCommandBufferVk::SetShaderResource(const BvTextureView* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvCommandBufferVk::SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
-	auto& shaderResourceLayout = m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout->GetDesc();
-	auto resourceSet = shaderResourceLayout.m_ShaderResources.FindKey(set);
-	if (resourceSet == shaderResourceLayout.m_ShaderResources.cend())
-	{
-		return;
-	}
-	auto resource = resourceSet->second.FindKey(binding);
-	if (resource == resourceSet->second.cend())
-	{
-		return;
-	}
-
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
-	bindingState.SetResource(GetVkDescriptorType(resource->second.m_ShaderResourceType), static_cast<const BvTextureViewVk*>(pResource), set, binding, arrayIndex);
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
 }
 
 
-void BvCommandBufferVk::SetShaderResource(const BvSampler* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvCommandBufferVk::SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
-	auto& shaderResourceLayout = m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout->GetDesc();
-	auto resourceSet = shaderResourceLayout.m_ShaderResources.FindKey(set);
-	if (resourceSet == shaderResourceLayout.m_ShaderResources.cend())
-	{
-		return;
-	}
-	auto resource = resourceSet->second.FindKey(binding);
-	if (resource == resourceSet->second.cend())
-	{
-		return;
-	}
-
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
-	bindingState.SetResource(GetVkDescriptorType(resource->second.m_ShaderResourceType), static_cast<const BvSamplerVk*>(pResource), set, binding, arrayIndex);
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
+}
+
+
+void BvCommandBufferVk::SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
+}
+
+
+void BvCommandBufferVk::SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
+}
+
+
+void BvCommandBufferVk::SetTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
+}
+
+
+void BvCommandBufferVk::SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
+}
+
+
+void BvCommandBufferVk::SetSamplers(u32 count, const BvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_SAMPLER, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
 }
 
 
@@ -986,16 +1010,19 @@ void BvCommandBufferVk::EndQuery(BvQuery* pQuery)
 void BvCommandBufferVk::FlushDescriptorSets()
 {
 	auto& rbs = m_pFrameData->GetResourceBindingState();
+	if (rbs.IsEmpty())
+	{
+		return;
+	}
 
-	auto pSRL = TO_VK(m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout);
-	for (auto& resourceSet : pSRL->GetDesc().m_ShaderResources)
+	for (auto& resourceSet : m_pShaderResourceLayout->GetDesc().m_ShaderResources)
 	{
 		u32 set = resourceSet.first;
 		for (auto& resource : resourceSet.second)
 		{
 			for (auto i = 0u; i < resource.second.m_Count; i++)
 			{
-				BvResourceBindingStateVk::ResourceId resId{ set, resource.first, i };
+				ResourceIdVk resId{ set, resource.first, i };
 				if (auto pResourceData = rbs.GetResource(resId))
 				{
 					m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
@@ -1026,15 +1053,18 @@ void BvCommandBufferVk::FlushDescriptorSets()
 			}
 		}
 
-		auto descriptorSet = m_pFrameData->RequestDescriptorSet(set, pSRL, m_WriteSets);
-		auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-		if (m_pComputePipeline)
+		if (!m_WriteSets.Empty())
 		{
-			pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
-		}
+			auto descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets);
+			auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+			if (m_pComputePipeline)
+			{
+				pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
+			}
 
-		vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, pSRL->GetPipelineLayoutHandle(), set, 1, &descriptorSet, 0, nullptr);
-		m_WriteSets.Clear();
+			vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), set, 1, &descriptorSet, 0, nullptr);
+			m_WriteSets.Clear();
+		}
 	}
 }
 

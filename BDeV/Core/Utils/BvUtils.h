@@ -24,7 +24,7 @@ public:											  		\
 	className & operator =(className &&) = default;		\
 
 
-#define BvBit(bit) (1 << (bit))
+#define BvBit(bit) (1ull << (bit))
 
 
 template<u32 N, class Type>

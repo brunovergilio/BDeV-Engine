@@ -270,7 +270,6 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 		}
 		return false;
 	}
-	program.mapIO();
 
 	std::vector<u32> spv;
 	glslang::GlslangToSpv(*program.getIntermediate(shader.getStage()), spv);

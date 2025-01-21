@@ -74,16 +74,16 @@ public:
 	static void Yield();
 	static const BvThread& GetCurrentThread();
 	static u32 GetCurrentProcessor();
-	static void ConvertToFiber();
+
+	static BvFiber& ConvertToFiber();
 	static void ConvertFromFiber();
+	static BvFiber& GetFiber();
+	static bool IsFiber();
 
 	BV_INLINE u64 GetId() const { return m_ThreadId; }
 	BV_INLINE OSThreadHandle GetHandle() const { return m_hThread; }
-	const BvFiber& GetThreadFiber() const;
-	bool IsFiber() const;
 
 private:
-	void Create();
 	void Create(const CreateInfo& createInfo);
 	void Destroy();
 
@@ -91,5 +91,5 @@ private:
 	u64 m_ThreadId = 0;
 	OSThreadHandle m_hThread = nullptr;
 	IBvTask* m_pTask = nullptr;
-	bool m_Suspended = false;
+	bool m_IsRunning = false;
 };

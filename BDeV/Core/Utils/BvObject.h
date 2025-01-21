@@ -4,6 +4,7 @@
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/System/Memory/BvMemoryArena.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
+#include "BDeV/Core/Utils/BvUUID.h"
 #include <atomic>
 
 
@@ -16,27 +17,26 @@
 	)
 #define _BV_IBVOBJECT_FOR_EACH() BV_IBVOBJECT_FOR_EACH
 
-#define BV_IBVOBJECT_IMPL_INTERFACE_BASE(objType) static constexpr BvStringId GetId() { return ConstexprMurmurHash64A(#objType); }
-#define BV_IBVOBJECT_IMPL_INTERFACE(objType, ...) static constexpr BvStringId GetId() { return ConstexprMurmurHash64A(#objType); } \
-void* QueryInterface(BvStringId id) override { if (id == this->GetId() __VA_OPT__ ( EVAL(BV_IBVOBJECT_FOR_EACH(id, __VA_ARGS__)) ) || id == IBvObject::GetId() ) { this->AddRef(); return this; } return nullptr; }
+//#define BV_IBVOBJECT_IMPL_INTERFACE(objType, ...) void* QueryInterface(const BvUUID& id) override { if (id == this->GetId() __VA_OPT__ ( EVAL(BV_IBVOBJECT_FOR_EACH(id, __VA_ARGS__)) ) || id == IBvObject::GetId() ) { this->AddRef(); return this; } return nullptr; }
+#define BV_IBVOBJECT_CREATE_ID(objType, uuid) namespace Internal \
+{ \
+	constexpr BvUUID objType##_UUID = MakeUUIDv4(uuid); \
+}
+#define BV_IBVOBJECT_ID(objType) Internal::objType##_UUID
 
 
 // This is a ref-counted object type, similar to a COM object
 // Any derived classes must be created with either
 // BV_MNEW or BV_NEW
+BV_IBVOBJECT_CREATE_ID(IBvObject, "00000000-0000-0000-0000-000000000000")
 class IBvObject
 {
 	BV_NOCOPYMOVE(IBvObject);
 
 public:
-	static constexpr BvStringId GetId()
-	{
-		return ConstexprMurmurHash64A("IBvObject");
-	}
-
 	virtual u32 AddRef() = 0;
 	virtual u32 Release() = 0;
-	virtual void* QueryInterface(BvStringId id) = 0;
+	virtual void* QueryInterface(const BvUUID& id) = 0;
 
 protected:
 	IBvObject() {}
@@ -44,45 +44,40 @@ protected:
 };
 
 
-#define BV_IBVOBJECT_CREATE_REFCOUNT_BASE(ObjName, BaseObjName)				\
-class ObjName : public BaseObjName											\
-{																			\
-	BV_NOCOPYMOVE(ObjName);													\
-																			\
-public:																		\
-	u32 AddRef() override final												\
-	{																		\
-		return ++m_RefCount;												\
-	}																		\
-																			\
-	u32 Release() override final											\
-	{																		\
-		auto refCount = --m_RefCount;										\
-		if (refCount == 0)													\
-		{																	\
-			if (m_pArena)													\
-			{																\
-				BV_MDELETE(*m_pArena, this);								\
-			}																\
-			else															\
-			{																\
-				BV_DELETE(this);											\
-			}																\
-		}																	\
-																			\
-		return refCount;													\
-	}																		\
-																			\
-	ObjName() : m_RefCount(1u) {}											\
-	ObjName(IBvMemoryArena* pArena) : m_pArena(pArena), m_RefCount(1u) {}	\
-	virtual ~ObjName() {}													\
-																			\
-protected:																	\
-	IBvMemoryArena* m_pArena = nullptr;										\
-	std::atomic<u32> m_RefCount = 0;										\
-};
+template<typename T>
+class BvRefCounted : public T
+{
+	u32 AddRef() override final
+	{
+		return ++m_RefCount;
+	}
 
-#define BV_IBVOBJECT_CREATE_REFCOUNT_BASE_DEFAULT(ObjName) BV_IBVOBJECT_CREATE_REFCOUNT_BASE(ObjName, IBvObject)
+	u32 Release() override final
+	{
+		auto refCount = --m_RefCount;
+		if (refCount == 0)
+		{
+			if (m_pArena)
+			{
+				BV_MDELETE(*m_pArena, this);
+			}
+			else
+			{
+				BV_DELETE(this);
+			}
+		}
+
+		return refCount;
+	}
+
+	BvRefCounted() : m_RefCount(1u) {}
+	BvRefCounted(IBvMemoryArena* pArena) : m_pArena(pArena), m_RefCount(1u) {}
+	virtual ~BvRefCounted() {}
+
+protected:
+	IBvMemoryArena* m_pArena = nullptr;
+	std::atomic<u32> m_RefCount = 0;
+};
 
 
 namespace Internal

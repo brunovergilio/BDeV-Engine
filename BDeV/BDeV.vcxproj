@@ -48,13 +48,13 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>$(SolutionDir)BDeV\Core\RenderAPI\Vulkan\Third Party;$(IncludePath)</IncludePath>
+    <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
-    <IncludePath>$(SolutionDir)BDeV\Core\RenderAPI\Vulkan\Third Party;$(IncludePath)</IncludePath>
+    <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -68,7 +68,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -89,7 +89,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -115,7 +115,6 @@
     <ClInclude Include="Core\System\Memory\BvMemoryArena.h" />
     <ClInclude Include="Core\Utils\BvLog.h" />
     <ClInclude Include="Core\Utils\BvObject.h" />
-    <ClInclude Include="Engine\JobSystem\BvFBJS.h" />
     <ClInclude Include="Core\Container\BvFixedVector.h" />
     <ClInclude Include="Core\Container\BvIterator.h" />
     <ClInclude Include="Core\Container\BvQueue.h" />
@@ -124,9 +123,6 @@
     <ClInclude Include="Core\Container\BvString.h" />
     <ClInclude Include="Core\Container\BvStringId.h" />
     <ClInclude Include="Core\Container\BvVector.h" />
-    <ClInclude Include="Engine\JobSystem\BvRingBuffer.h" />
-    <ClInclude Include="Engine\Memory\BvAllocationModule.h" />
-    <ClInclude Include="Engine\Memory\BvMemorySystem.h" />
     <ClInclude Include="Engine\TBJobSystem\BvTBJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
     <ClInclude Include="Engine\JobSystem\BvJobSystemTLS.h" />
@@ -197,9 +193,7 @@
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
     <ClCompile Include="Core\System\Memory\BvMemoryArea.cpp" />
     <ClCompile Include="Core\Utils\BvLog.cpp" />
-    <ClCompile Include="Engine\JobSystem\BvFBJS.cpp" />
     <ClCompile Include="Core\Container\BvStringId.cpp" />
-    <ClCompile Include="Engine\Memory\BvAllocationModule.cpp" />
     <ClCompile Include="Engine\TBJobSystem\BvTBJobSystem.cpp" />
     <ClCompile Include="Engine\JobSystem\BvJobSystem.cpp" />
     <ClCompile Include="Engine\JobSystem\BvJobSystemTLS.cpp" />

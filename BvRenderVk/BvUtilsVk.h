@@ -6,7 +6,7 @@
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 
 
-#define BvDebugVkResult(result) BvDebug::PrintF("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)
+#define BvDebugVkResult(result) BvDebug::Print("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)
 #define BvCheckErrorReturnVk(result, ret) if (result != VK_SUCCESS) \
 {																	\
 	BvDebugVkResult(result);										\

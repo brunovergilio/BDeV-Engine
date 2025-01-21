@@ -5,7 +5,20 @@
 #include "BDeV/Core/Container/BvString.h"
 
 
-enum class GPUVendorId : u32
+#if defined(DeviceCapabilities)
+#undef DeviceCapabilities
+#endif
+
+
+enum class GPUType : u8
+{
+	kUnknown,
+	kDiscrete,
+	kIntegrated
+};
+
+
+enum class GPUVendor : u8
 {
 	kUnknown,
 	kAMD,
@@ -17,37 +30,18 @@ enum class GPUVendorId : u32
 };
 
 
-enum GUPCapabilities : u64
-{
-	kWireframe,
-	kTesselationShader,
-	kGeometryShader,
-	kShadingRate,
-	kMeshShader,
-	kRayTracing,
-	kRayQuery,
-	kCustomBorderColor,
-	kConservativeRasterization,
-	kIndirectDraw,
-	kPredication,
-	kTimestampQueries,
-	kOcclusionQueries,
-};
-
-enum class GPUType : u8
-{
-	kUnknown,
-	kDiscrete,
-	kIntegrated
-};
-
-
 struct BvGPUInfo
 {
-	const char* m_DeviceName = nullptr;
-	u64 m_DeviceMemory = 0;
-	u32 m_DeviceId = 0;
-	u32 m_VendorId = 0;
-	GPUVendorId m_Vendor = GPUVendorId::kUnknown;
-	GPUType m_Type = GPUType::kUnknown;
+	static constexpr u32 kMaxDeviceNameSize = 256;
+
+	char m_DeviceName[kMaxDeviceNameSize];
+	u32 m_DeviceId;
+	u32 m_VendorId;
+	u64 m_DeviceMemory;
+	u32 m_GraphicsContextCount;
+	u32 m_ComputeContextCount;
+	u32 m_TransferContextCount;
+	GPUType m_Type;
+	GPUVendor m_Vendor;
+	void* m_pPhysicalDevice;
 };

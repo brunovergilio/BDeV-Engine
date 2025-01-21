@@ -149,7 +149,7 @@ BvFiber* pFb2 = nullptr;
 
 int main()
 {
-	BvFiber& mfb = BvFiber::CreateForThread();
+	BvFiber& mfb = BvThread::ConvertToFiber();
 
 	BvSignal s;
 	BvFiber fb;
@@ -171,7 +171,7 @@ int main()
 
 	BvThread t([]()
 		{
-			BvFiber& mfb = BvFiber::CreateForThread();
+			BvFiber& mfb = BvThread::ConvertToFiber();
 			a = 1;
 
 			pFb2 = &mfb;

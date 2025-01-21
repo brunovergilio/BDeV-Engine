@@ -48,6 +48,8 @@ public:
 	virtual bool SupportsQueryType(QueryType queryType, CommandType commandType) const = 0;
 	virtual bool IsFormatSupported(Format format) const = 0;
 
+	virtual RenderDeviceCapabilities GetDeviceCaps() const = 0;
+
 protected:
 	BvRenderDevice() {}
 	virtual ~BvRenderDevice() = 0 {};

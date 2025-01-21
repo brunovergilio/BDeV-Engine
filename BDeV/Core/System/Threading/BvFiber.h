@@ -33,11 +33,12 @@ public:
 	}
 
 	void Switch(BvFiber& fiber);
+	static BvFiber* GetCurrent();
 
+private:
+	static BvFiber& GetThreadFiber();
 	static BvFiber& CreateForThread();
 	static void DestroyForThread();
-	static BvFiber& GetCurrent();
-private:
 
 	void Create(size_t stackSize);
 	void Destroy();
@@ -45,4 +46,5 @@ private:
 private:
 	OSFiberHandle m_hFiber = kNullOSFiberHandle;
 	IBvTask* m_pTask = nullptr;
+	bool m_IsThreadSetup = false;
 };

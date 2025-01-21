@@ -30,6 +30,26 @@ constexpr u32 kMaxVertexBindings = 16;
 constexpr u32 kMaxVertexBuffers = 16;
 
 
+enum RenderDeviceCapabilities : u32
+{
+	kNone							= 0,
+	kWireframe						= BvBit(0),
+	kGeometryShader					= BvBit(1),
+	kTesselationShader				= BvBit(2),
+	kDepthBoundsTest				= BvBit(3),
+	kTimestampQueries				= BvBit(4),
+	kIndirectDrawCount				= BvBit(5),
+	kCustomBorderColor				= BvBit(6),
+	kPredication					= BvBit(7),
+	kConservativeRasterization		= BvBit(8),
+	kShadingRate					= BvBit(9),
+	kMeshShader						= BvBit(10),
+	kRayTracing						= BvBit(11),
+	kRayQuery						= BvBit(12),
+};
+BV_USE_ENUM_CLASS_OPERATORS(RenderDeviceCapabilities);
+
+
 enum class CommandType : u8
 {
 	kGraphics,
