@@ -6,7 +6,7 @@
 #include "BvUtilsVk.h"
 
 
-VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode, const VkShaderStageFlagBits shaderStage);
+VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode, VkShaderStageFlagBits shaderStage);
 
 
 BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, const VkPipelineCache pipelineCache)
@@ -283,10 +283,10 @@ void BvComputePipelineStateVk::Create()
 	VkComputePipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
 	pipelineCI.layout = static_cast<BvShaderResourceLayoutVk *>(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
 	pipelineCI.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	pipelineCI.stage.pName = m_PipelineStateDesc.m_ShaderByteCodeDesc.m_pEntryPoint;
-	pipelineCI.stage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_ShaderByteCodeDesc.m_ShaderStage);
-	pipelineCI.stage.module = CreateShaderModule(m_pDevice->GetHandle(), m_PipelineStateDesc.m_ShaderByteCodeDesc.m_ByteCodeSize,
-	m_PipelineStateDesc.m_ShaderByteCodeDesc.m_pByteCode, pipelineCI.stage.stage);
+	pipelineCI.stage.pName = m_PipelineStateDesc.m_pShader->GetEntryPoint();
+	pipelineCI.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	auto& blob = m_PipelineStateDesc.m_pShader->GetShaderBlob();
+	pipelineCI.stage.module = CreateShaderModule(m_pDevice->GetHandle(), blob.Size(), blob.Data(), pipelineCI.stage.stage);
 	pipelineCI.basePipelineIndex = -1;
 
 	auto result = vkCreateComputePipelines(m_pDevice->GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
@@ -306,8 +306,7 @@ void BvComputePipelineStateVk::Destroy()
 }
 
 
-VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode,
-	const VkShaderStageFlagBits shaderStage)
+VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode, VkShaderStageFlagBits shaderStage)
 {
 	VkShaderModuleCreateInfo shaderCI{};
 	shaderCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

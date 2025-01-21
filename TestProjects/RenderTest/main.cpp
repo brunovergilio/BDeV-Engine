@@ -1,7 +1,5 @@
 #include "BDeV/BDeV.h"
 #include "BvRenderVk/BvRenderEngineVk.h"
-#include "BvRenderVk/Third Party/slang/slang.h"
-#include "BvRenderVk/Third Party/slang/slang-com-ptr.h"
 
 
 static const char* pVSShader =

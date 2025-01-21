@@ -40,7 +40,7 @@ struct GraphicsPipelineStateDesc
 
 struct ComputePipelineStateDesc
 {
-	ShaderByteCodeDesc			m_ShaderByteCodeDesc;
+	BvShader*					m_pShader = nullptr;
 	BvShaderResourceLayout*		m_pShaderResourceLayout = nullptr;
 };
 
@@ -50,7 +50,7 @@ class BvGraphicsPipelineState : public IBvRenderDeviceChild
 	BV_NOCOPYMOVE(BvGraphicsPipelineState);
 
 public:
-	BV_INLINE const GraphicsPipelineStateDesc & GetDesc() const { return m_PipelineStateDesc; }
+	BV_INLINE const GraphicsPipelineStateDesc& GetDesc() const { return m_PipelineStateDesc; }
 
 protected:
 	BvGraphicsPipelineState(const GraphicsPipelineStateDesc & pipelineStateDesc)
@@ -67,7 +67,7 @@ class BvComputePipelineState : public IBvRenderDeviceChild
 	BV_NOCOPYMOVE(BvComputePipelineState);
 
 public:
-	BV_INLINE const ComputePipelineStateDesc & GetDesc() const { return m_PipelineStateDesc; }
+	BV_INLINE const ComputePipelineStateDesc& GetDesc() const { return m_PipelineStateDesc; }
 
 protected:
 	BvComputePipelineState(const ComputePipelineStateDesc & pipelineStateDesc)

@@ -319,13 +319,13 @@ Format GetFormat(const VkFormat format)
 VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags)
 {
 	VkBufferUsageFlags bufferUsageFlags = 0;
-	if ((usageFlags & BufferUsage::kUniformBuffer		) == BufferUsage::kUniformBuffer		)	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kStorageBuffer		) == BufferUsage::kStorageBuffer		)	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kUniformTexelBuffer	) == BufferUsage::kUniformTexelBuffer	)	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kStorageTexelBuffer	) == BufferUsage::kStorageTexelBuffer	)	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kVertexBuffer		) == BufferUsage::kVertexBuffer			)	{ bufferUsageFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kIndexBuffer			) == BufferUsage::kIndexBuffer			)	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT; }
-	if ((usageFlags & BufferUsage::kIndirectBuffer		) == BufferUsage::kIndirectBuffer		)	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kUniformBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kStorageBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kUniformTexelBuffer	))	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kStorageTexelBuffer	))	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kVertexBuffer			))	{ bufferUsageFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kIndexBuffer			))	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kIndirectBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT; }
 
 	return bufferUsageFlags | (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 }
@@ -334,12 +334,12 @@ VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags)
 VkImageUsageFlags GetVkImageUsageFlags(const TextureUsage usageFlags)
 {
 	VkImageUsageFlags imageUsageFlags = 0;
-	if ((usageFlags & TextureUsage::kTransferSrc		) == TextureUsage::kTransferSrc			)	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; }
-	if ((usageFlags & TextureUsage::kTransferDst		) == TextureUsage::kTransferDst			)	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; }
-	if ((usageFlags & TextureUsage::kShaderResource		) == TextureUsage::kShaderResource		)	{ imageUsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT; }
-	if ((usageFlags & TextureUsage::kUnorderedAccess	) == TextureUsage::kUnorderedAccess		)	{ imageUsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT; }
-	if ((usageFlags & TextureUsage::kColorTarget		) == TextureUsage::kColorTarget			)	{ imageUsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; }
-	if ((usageFlags & TextureUsage::kDepthStencilTarget	) == TextureUsage::kDepthStencilTarget	)	{ imageUsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kTransferSrc			))	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kTransferDst			))	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kShaderResource		))	{ imageUsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kUnorderedAccess		))	{ imageUsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kColorTarget			))	{ imageUsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kDepthStencilTarget	))	{ imageUsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; }
 
 	return imageUsageFlags != 0 ? imageUsageFlags : (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 }
@@ -576,6 +576,9 @@ VkShaderStageFlagBits GetVkShaderStageFlagBits(const ShaderStage shaderStage)
 	case ShaderStage::kGeometry:			return VK_SHADER_STAGE_GEOMETRY_BIT;
 	case ShaderStage::kPixelOrFragment:		return VK_SHADER_STAGE_FRAGMENT_BIT;
 	case ShaderStage::kCompute:				return VK_SHADER_STAGE_COMPUTE_BIT;
+	case ShaderStage::kMesh:				return VK_SHADER_STAGE_MESH_BIT_EXT;
+	case ShaderStage::kAmplificationOrTask:	return VK_SHADER_STAGE_TASK_BIT_EXT;
+		// TODO: Add ray tracing
 	}
 
 	return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
@@ -603,12 +606,14 @@ VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType)
 VkShaderStageFlags GetVkShaderStageFlags(const ShaderStage stages)
 {
 	VkShaderStageFlags shaderStages = 0;
-	if ((stages & ShaderStage::kVertex				) == ShaderStage::kVertex				) { shaderStages |= VK_SHADER_STAGE_VERTEX_BIT;					}
-	if ((stages & ShaderStage::kHullOrControl		) == ShaderStage::kHullOrControl		) { shaderStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;	}
-	if ((stages & ShaderStage::kDomainOrEvaluation	) == ShaderStage::kDomainOrEvaluation	) { shaderStages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; }
-	if ((stages & ShaderStage::kGeometry			) == ShaderStage::kGeometry				) { shaderStages |= VK_SHADER_STAGE_GEOMETRY_BIT;				}
-	if ((stages & ShaderStage::kPixelOrFragment		) == ShaderStage::kPixelOrFragment		) { shaderStages |= VK_SHADER_STAGE_FRAGMENT_BIT;				}
-	if ((stages & ShaderStage::kCompute				) == ShaderStage::kCompute				) { shaderStages |= VK_SHADER_STAGE_COMPUTE_BIT;				}
+	if (EHasFlag(stages, ShaderStage::kVertex				)) { shaderStages |= VK_SHADER_STAGE_VERTEX_BIT;					}
+	if (EHasFlag(stages, ShaderStage::kHullOrControl		)) { shaderStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;		}
+	if (EHasFlag(stages, ShaderStage::kDomainOrEvaluation	)) { shaderStages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;	}
+	if (EHasFlag(stages, ShaderStage::kGeometry				)) { shaderStages |= VK_SHADER_STAGE_GEOMETRY_BIT;					}
+	if (EHasFlag(stages, ShaderStage::kPixelOrFragment		)) { shaderStages |= VK_SHADER_STAGE_FRAGMENT_BIT;					}
+	if (EHasFlag(stages, ShaderStage::kCompute				)) { shaderStages |= VK_SHADER_STAGE_COMPUTE_BIT;					}
+	if (EHasFlag(stages, ShaderStage::kMesh					)) { shaderStages |= VK_SHADER_STAGE_MESH_BIT_EXT;					}
+	if (EHasFlag(stages, ShaderStage::kAmplificationOrTask	)) { shaderStages |= VK_SHADER_STAGE_TASK_BIT_EXT;					}
 
 	return shaderStages;
 }
@@ -672,24 +677,24 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess)
 {
 	VkAccessFlags2 accessFlags = 0;
 
-	if ((resourceAccess & ResourceAccess::kIndirectRead		) == ResourceAccess::kIndirectRead		)	{ accessFlags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kIndexRead		) == ResourceAccess::kIndexRead			)	{ accessFlags |= VK_ACCESS_2_INDEX_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kVertexInputRead	) == ResourceAccess::kVertexInputRead	)	{ accessFlags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kUniformRead		) == ResourceAccess::kUniformRead		)	{ accessFlags |= VK_ACCESS_2_UNIFORM_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kShaderRead		) == ResourceAccess::kShaderRead		)	{ accessFlags |= VK_ACCESS_2_SHADER_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kShaderWrite		) == ResourceAccess::kShaderWrite		)	{ accessFlags |= VK_ACCESS_2_SHADER_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kRenderTargetRead	) == ResourceAccess::kRenderTargetRead	)	{ accessFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kRenderTargetWrite) == ResourceAccess::kRenderTargetWrite	)	{ accessFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kDepthStencilRead	) == ResourceAccess::kDepthStencilRead	)	{ accessFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kDepthStencilWrite) == ResourceAccess::kDepthStencilWrite	)	{ accessFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kTransferRead		) == ResourceAccess::kTransferRead		)	{ accessFlags |= VK_ACCESS_2_TRANSFER_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kTransferWrite	) == ResourceAccess::kTransferWrite		)	{ accessFlags |= VK_ACCESS_2_TRANSFER_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kHostRead			) == ResourceAccess::kHostRead			)	{ accessFlags |= VK_ACCESS_2_HOST_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kHostWrite		) == ResourceAccess::kHostWrite			)	{ accessFlags |= VK_ACCESS_2_HOST_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kMemoryRead		) == ResourceAccess::kMemoryRead		)	{ accessFlags |= VK_ACCESS_2_MEMORY_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kMemoryWrite		) == ResourceAccess::kMemoryWrite		)	{ accessFlags |= VK_ACCESS_2_MEMORY_WRITE_BIT; }
-	if ((resourceAccess & ResourceAccess::kInputAttachmentRead) == ResourceAccess::kInputAttachmentRead) { accessFlags |= VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT; }
-	if ((resourceAccess & ResourceAccess::kShadingRateRead) == ResourceAccess::kShadingRateRead) { accessFlags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kIndirectRead			))	{ accessFlags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kIndexRead				))	{ accessFlags |= VK_ACCESS_2_INDEX_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kVertexInputRead		))	{ accessFlags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kUniformRead			))	{ accessFlags |= VK_ACCESS_2_UNIFORM_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kShaderRead			))	{ accessFlags |= VK_ACCESS_2_SHADER_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kShaderWrite			))	{ accessFlags |= VK_ACCESS_2_SHADER_WRITE_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kRenderTargetRead		))	{ accessFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kRenderTargetWrite		))	{ accessFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kDepthStencilRead		))	{ accessFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kDepthStencilWrite		))	{ accessFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kTransferRead			))	{ accessFlags |= VK_ACCESS_2_TRANSFER_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kTransferWrite			))	{ accessFlags |= VK_ACCESS_2_TRANSFER_WRITE_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kHostRead				))	{ accessFlags |= VK_ACCESS_2_HOST_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kHostWrite				))	{ accessFlags |= VK_ACCESS_2_HOST_WRITE_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kMemoryRead			))	{ accessFlags |= VK_ACCESS_2_MEMORY_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kMemoryWrite			))	{ accessFlags |= VK_ACCESS_2_MEMORY_WRITE_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kInputAttachmentRead	))	{ accessFlags |= VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kShadingRateRead		))	{ accessFlags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR; }
 
 	return accessFlags;
 }
@@ -721,13 +726,13 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags)
 {
 	VkAccessFlags2 flags = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
-	if ((usageFlags & BufferUsage::kUniformBuffer) == BufferUsage::kUniformBuffer) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
-	if ((usageFlags & BufferUsage::kStorageBuffer) == BufferUsage::kStorageBuffer) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
-	if ((usageFlags & BufferUsage::kUniformTexelBuffer) == BufferUsage::kUniformTexelBuffer) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
-	if ((usageFlags & BufferUsage::kStorageTexelBuffer) == BufferUsage::kStorageTexelBuffer) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
-	if ((usageFlags & BufferUsage::kVertexBuffer) == BufferUsage::kVertexBuffer) { flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
-	if ((usageFlags & BufferUsage::kIndexBuffer) == BufferUsage::kIndexBuffer) { flags |= VK_ACCESS_2_INDEX_READ_BIT; }
-	if ((usageFlags & BufferUsage::kIndirectBuffer) == BufferUsage::kIndirectBuffer) { flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kUniformBuffer		)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kStorageBuffer		)) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kUniformTexelBuffer	)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kStorageTexelBuffer	)) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kVertexBuffer			)) { flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kIndexBuffer			)) { flags |= VK_ACCESS_2_INDEX_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kIndirectBuffer		)) { flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }
 
 	return flags;
 }
@@ -798,20 +803,20 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage)
 {
 	VkPipelineStageFlags2 stageFlags = 0;
 
-	if ((pipelineStage & PipelineStage::kBeginning				) == PipelineStage::kBeginning				) { stageFlags |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT; }
-	if ((pipelineStage & PipelineStage::kIndirectDraw			) == PipelineStage::kIndirectDraw			) { stageFlags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT; }
-	if ((pipelineStage & PipelineStage::kVertexInput			) == PipelineStage::kVertexInput			) { stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT; }
-	if ((pipelineStage & PipelineStage::kVertexShader			) == PipelineStage::kVertexShader			) { stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kTessHullOrControlShader) == PipelineStage::kTessHullOrControlShader) { stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kTessDomainOrEvalShader	) == PipelineStage::kTessDomainOrEvalShader	) { stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kGeometryShader			) == PipelineStage::kGeometryShader			) { stageFlags |= VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kPixelOrFragmentShader	) == PipelineStage::kPixelOrFragmentShader	) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kDepth					) == PipelineStage::kDepth					) { stageFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT; }
-	if ((pipelineStage & PipelineStage::kRenderTarget			) == PipelineStage::kRenderTarget			) { stageFlags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT; }
-	if ((pipelineStage & PipelineStage::kComputeShader			) == PipelineStage::kComputeShader			) { stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT; }
-	if ((pipelineStage & PipelineStage::kTransfer				) == PipelineStage::kTransfer				) { stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT; }
-	if ((pipelineStage & PipelineStage::kEnd					) == PipelineStage::kEnd					) { stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT; }
-	if ((pipelineStage & PipelineStage::kShadingRate			) == PipelineStage::kShadingRate			) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR; }
+	if (EHasFlag(pipelineStage, PipelineStage::kBeginning				)) { stageFlags |= VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kIndirectDraw			)) { stageFlags |= VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kVertexInput				)) { stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kVertexShader			)) { stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kTessHullOrControlShader	)) { stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kTessDomainOrEvalShader	)) { stageFlags |= VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kGeometryShader			)) { stageFlags |= VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kPixelOrFragmentShader	)) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kDepth					)) { stageFlags |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kRenderTarget			)) { stageFlags |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kComputeShader			)) { stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kTransfer				)) { stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kEnd						)) { stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kShadingRate				)) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR; }
 
 	return stageFlags;
 }
