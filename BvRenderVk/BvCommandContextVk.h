@@ -17,6 +17,7 @@ class BvBufferVk;
 class BvTextureVk;
 class BvQueryHeapManagerVk;
 class BvQueryVk;
+class BvSwapChainVk;
 
 
 class BvFrameDataVk final
@@ -139,6 +140,9 @@ public:
 	BV_INLINE BvSemaphoreVk* GetSemaphore() { return m_Frames[m_ActiveFrameIndex].GetSemaphore(); }
 	BV_INLINE BvCommandBufferVk* GetCurrentCommandBuffer() const { return m_pCurrCommandBuffer; }
 
+	void AddSwapChain(BvSwapChainVk* pSwapChain);
+	void RemoveSwapChain(BvSwapChainVk* pSwapChain);
+
 private:
 	void SetupCommandBufferIfNotReady();
 
@@ -146,6 +150,7 @@ private:
 	BvCommandQueueVk m_Queue;
 	BvVector<BvFrameDataVk> m_Frames;
 	BvVector<std::pair<BvSemaphoreVk, u64>> m_WaitSemaphores;
+	BvVector<BvSwapChainVk*> m_SwapChains;
 	BvCommandBufferVk* m_pCurrCommandBuffer = nullptr;
 	BvFrameDataVk* m_pCurrFrame = nullptr;
 	u32 m_ActiveFrameIndex = 0;

@@ -39,5 +39,9 @@ public:
 	// Checks if the key is up
 	bool KeyIsUp(BvKey key) const;
 
+	// Retrieves a key's full state
 	const KeyState& GetKeyState(BvKey key) const;
+
+	// Retrieves all key state changes from the last message loop
+	u32 GetKeyStateChanges(KeyState* pKeyStates = nullptr) const;
 };

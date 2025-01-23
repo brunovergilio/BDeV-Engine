@@ -10,7 +10,7 @@ u32 g_KeyStateChangeCount = 0;
 
 
 void SetKeyStateFromKeyEvent(u32 vkCode, u32 scanCode, bool isKeyDown);
-void SetKeyStateFromCharEvent(u32 vkCode, u32 codePoinnt, bool isDeadKey);
+void SetKeyStateFromCharEvent(u32 vkCode, u32 codePoint, bool isDeadKey);
 
 
 void UpdateInputBuffers()
@@ -64,6 +64,21 @@ bool BvKeyboard::KeyIsUp(BvKey key) const
 const BvKeyboard::KeyState& BvKeyboard::GetKeyState(BvKey key) const
 {
 	return g_CurrGlobalKeyStates[u32(key)];
+}
+
+
+u32 BvKeyboard::GetKeyStateChanges(BvKeyboard::KeyState* pKeyStates) const
+{
+	if (pKeyStates)
+	{
+		for (auto i = 0u; i < g_KeyStateChangeCount; ++i)
+		{
+			u32 vkCode = g_KeyStateChangeIndices[i];
+			pKeyStates[i] = g_CurrGlobalKeyStates[vkCode];
+		}
+	}
+
+	return g_KeyStateChangeCount;
 }
 
 
@@ -276,9 +291,9 @@ void SetKeyStateFromKeyEvent(u32 vkCode, u32 scanCode, bool isKeyDown)
 }
 
 
-void SetKeyStateFromCharEvent(u32 vkCode, u32 codePoinnt, bool isDeadKey)
+void SetKeyStateFromCharEvent(u32 vkCode, u32 codePoint, bool isDeadKey)
 {
 	auto& keyState = g_CurrGlobalKeyStates[vkCode];
-	keyState.m_CodePoint = codePoinnt;
+	keyState.m_CodePoint = codePoint;
 	keyState.m_IsDeadKey = isDeadKey;
 }

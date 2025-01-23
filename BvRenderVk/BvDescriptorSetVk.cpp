@@ -12,11 +12,6 @@ void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* 
 {
 	switch (descriptorType)
 	{
-	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-		m_Data.m_BufferView = pResource->GetHandle();
-		m_DescriptorType = descriptorType;
-		break;
 	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 	{
@@ -29,6 +24,11 @@ void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* 
 		m_DescriptorType = descriptorType;
 		break;
 	}
+	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+		m_Data.m_BufferView = pResource->GetHandle();
+		m_DescriptorType = descriptorType;
+		break;
 	default:
 		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
@@ -98,6 +98,7 @@ BvResourceBindingStateVk& BvResourceBindingStateVk::operator=(BvResourceBindingS
 	if (this != &rhs)
 	{
 		std::swap(m_Bindings, rhs.m_Bindings);
+		std::swap(m_Resources, rhs.m_Resources);
 	}
 
 	return *this;

@@ -39,6 +39,7 @@ void BvCommandBufferVk::Reset()
 	m_SwapChains.Clear();
 	m_pGraphicsPipeline = nullptr;
 	m_pComputePipeline = nullptr;
+	m_pShaderResourceLayout = nullptr;
 	m_CurrentState = State::kRecording;
 }
 
@@ -1022,14 +1023,14 @@ void BvCommandBufferVk::FlushDescriptorSets()
 		{
 			for (auto i = 0u; i < resource.second.m_Count; i++)
 			{
-				ResourceIdVk resId{ set, resource.first, i };
+				ResourceIdVk resId{ set, resource.second.m_Binding, i };
 				if (auto pResourceData = rbs.GetResource(resId))
 				{
 					m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
 					auto& writeSet = m_WriteSets.Back();
 					//writeSet.dstSet = nullptr; // This is set in BvDescriptorSetVk::Update()
 					writeSet.descriptorType = pResourceData->m_DescriptorType;
-					writeSet.dstBinding = resource.first;
+					writeSet.dstBinding = resource.second.m_Binding;
 					writeSet.dstArrayElement = i;
 					writeSet.descriptorCount = 1;
 

@@ -3,6 +3,7 @@
 #include "BvShaderResourceVk.h"
 #include "BvCommandBufferVk.h"
 #include "BvQueryVk.h"
+#include "BvSwapChainVk.h"
 
 
 BvFrameDataVk::BvFrameDataVk()
@@ -204,6 +205,11 @@ void BvCommandContextVk::Flush()
 
 	// Wait for frame's signal value
 	m_Frames[m_ActiveFrameIndex].Reset();
+
+	for (auto& pSwapChain : m_SwapChains)
+	{
+		pSwapChain->AcquireImage();
+	}
 }
 
 
@@ -545,6 +551,25 @@ void BvCommandContextVk::EndQuery(BvQuery* pQuery)
 	SetupCommandBufferIfNotReady();
 
 	m_pCurrCommandBuffer->EndQuery(pQuery);
+}
+
+
+void BvCommandContextVk::AddSwapChain(BvSwapChainVk* pSwapChain)
+{
+	m_SwapChains.EmplaceBack(pSwapChain);
+}
+
+
+void BvCommandContextVk::RemoveSwapChain(BvSwapChainVk* pSwapChain)
+{
+	for (auto it = m_SwapChains.begin(); it != m_SwapChains.end(); ++it)
+	{
+		if (*it == pSwapChain)
+		{
+			m_SwapChains.Erase(it);
+			break;
+		}
+	}
 }
 
 

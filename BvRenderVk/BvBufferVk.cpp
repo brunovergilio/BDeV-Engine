@@ -144,7 +144,7 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	m_NeedsFlush = ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0);
 
 	if (m_BufferDesc.m_MemoryType != MemoryType::kDevice
-		&& (m_BufferDesc.m_CreateFlags & BufferCreateFlags::kCreateMapped) == BufferCreateFlags::kCreateMapped)
+		&& (EHasFlag(m_BufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped)))
 	{
 		Map(kU64Max, 0);
 	}

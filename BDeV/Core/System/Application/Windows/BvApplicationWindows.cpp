@@ -16,7 +16,7 @@ extern void ProcessCharInputMessage(u32 codePoint, LPARAM lParam, bool isDeadKey
 
 #define BvDispatchEvent(app, e, ...) do										\
 {																			\
-	for (auto pMessageHandler : app->m_pImpl->m_MessageHandlers)			\
+	for (auto pMessageHandler : s_pApp->m_pImpl->m_MessageHandlers)	\
 	{																		\
 		pMessageHandler->On##e(__VA_ARGS__);								\
 	}																		\
@@ -33,9 +33,12 @@ struct Pimpl
 	u32 m_HighSurrogate = 0;
 };
 
+static thread_local BvApplication* s_pApp;
+
 
 BvApplication::BvApplication()
 {
+	s_pApp = this;
 }
 
 
@@ -234,7 +237,6 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 	
 	pWindow = reinterpret_cast<BvWindow*>(GetWindowLongPtrW(hWnd, GWLP_USERDATA));
-	auto pApp = pWindow->m_pApplication;
 
 	switch (uMsg)
 	{
@@ -273,7 +275,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	case WM_SYSKEYDOWN:
 	case WM_SYSKEYUP:
 	{
-		if (pApp->m_pImpl->m_KeyboardUsesRawInput)
+		if (s_pApp->m_pImpl->m_KeyboardUsesRawInput)
 		{
 			break;
 		}
@@ -298,15 +300,15 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	{
 		if (IS_HIGH_SURROGATE(wParam))
 		{
-			pApp->m_pImpl->m_HighSurrogate = u32(wParam);
+			s_pApp->m_pImpl->m_HighSurrogate = u32(wParam);
 			return 0;
 		}
 
 		u32 codePoint;
-		if (IS_SURROGATE_PAIR(pApp->m_pImpl->m_HighSurrogate, wParam))
+		if (IS_SURROGATE_PAIR(s_pApp->m_pImpl->m_HighSurrogate, wParam))
 		{
-			codePoint = ((pApp->m_pImpl->m_HighSurrogate - HIGH_SURROGATE_START) << 10) + (u32(wParam) - LOW_SURROGATE_START) + 0x10000;
-			pApp->m_pImpl->m_HighSurrogate = 0;
+			codePoint = ((s_pApp->m_pImpl->m_HighSurrogate - HIGH_SURROGATE_START) << 10) + (u32(wParam) - LOW_SURROGATE_START) + 0x10000;
+			s_pApp->m_pImpl->m_HighSurrogate = 0;
 		}
 		else
 		{

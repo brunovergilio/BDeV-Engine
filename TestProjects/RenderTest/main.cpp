@@ -4,6 +4,24 @@
 
 static const char* pVSShader =
 R"raw(
+	#version 450
+
+	vec2 vertices[] = 
+	{
+		vec2(-0.7f,  0.7f),
+		vec2( 0.0f, -0.7f),
+		vec2( 0.7f,  0.7f)
+	};
+
+	void main()
+	{
+		gl_Position = vec4(vertices[gl_VertexIndex], 0.0f, 1.0f);
+	}
+		)raw";
+
+
+static const char* pVSShader2 =
+R"raw(
 			#version 450
 
 			layout (location = 0) in vec3 inPos;
@@ -20,6 +38,33 @@ R"raw(
 			{
 				outColor = inColor;
 				gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
+			}
+		)raw";
+
+
+static const char* pPSShader =
+R"raw(
+			#version 450
+
+			layout (location = 0) out vec4 outColor;
+
+			void main()
+			{
+				outColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+		)raw";
+
+static const char* pPSShader2 =
+R"raw(
+			#version 450
+
+			layout (location = 0) in vec4 inColor;
+
+			layout (location = 0) out vec4 outColor;
+
+			void main()
+			{
+				outColor = inColor;
 			}
 		)raw";
 
@@ -70,6 +115,7 @@ int main()
 	// Create uniform buffer
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
+	//auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(0, nullptr, ShaderResourceConstantDesc());
 	auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(1, &resourceDesc, ShaderResourceConstantDesc());
 
 	auto pVB = CreateVB(pDevice);
@@ -87,22 +133,25 @@ int main()
 	auto pUBView = pDevice->CreateBufferView(ubViewDesc);
 
 	GraphicsPipelineStateDesc pipelineDesc;
-	pipelineDesc.m_Shaders.PushBack(GetVS(pDevice));
-	pipelineDesc.m_Shaders.PushBack(GetPS(pDevice));
-	pipelineDesc.m_BlendStateDesc.m_BlendAttachments.PushBack(BlendAttachmentStateDesc());
+	pipelineDesc.m_Shaders[0] = GetVS(pDevice);
+	pipelineDesc.m_Shaders[1] = GetPS(pDevice);
+	//pipelineDesc.m_BlendStateDesc.m_BlendAttachments.PushBack(BlendAttachmentStateDesc());
 	//pipelineDesc.m_pRenderPass = pRenderPass;
 	pipelineDesc.m_RenderTargetFormats[0] = pSwapChain->GetDesc().m_Format;
 	pipelineDesc.m_pShaderResourceLayout = pShaderResourceLayout;
 	pipelineDesc.m_InputAssemblyStateDesc.m_Topology = Topology::kTriangleList;
 	
-	pipelineDesc.m_VertexInputDesc.Resize(2);
-	pipelineDesc.m_VertexInputDesc[0].m_Format = Format::kRGB32_Float;
-	pipelineDesc.m_VertexInputDesc[0].m_Stride = sizeof(PosColorVertex);
-
-	pipelineDesc.m_VertexInputDesc[1].m_Format = Format::kRGBA32_Float;
-	pipelineDesc.m_VertexInputDesc[1].m_Location = 1;
-	pipelineDesc.m_VertexInputDesc[1].m_Stride = sizeof(PosColorVertex);
-	pipelineDesc.m_VertexInputDesc[1].m_Offset = sizeof(Float3);
+	VertexInputDesc inputDescs[2]{};
+	inputDescs[0].m_Format = Format::kRGB32_Float;
+	inputDescs[0].m_Stride = sizeof(PosColorVertex);
+	
+	inputDescs[1].m_Format = Format::kRGBA32_Float;
+	inputDescs[1].m_Location = 1;
+	inputDescs[1].m_Stride = sizeof(PosColorVertex);
+	inputDescs[1].m_Offset = sizeof(Float3);
+	
+	pipelineDesc.m_VertexInputDescCount = 2;
+	pipelineDesc.m_pVertexInputDescs = inputDescs;
 
 	auto pPSO = pDevice->CreateGraphicsPipeline(pipelineDesc);
 
@@ -197,8 +246,8 @@ BvShader* GetVS(BvRenderDevice* pDevice)
 	ShaderCreateDesc shaderDesc;
 	shaderDesc.m_ShaderStage = ShaderStage::kVertex;
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
-	shaderDesc.m_pSourceCode = pVSShader;
-	shaderDesc.m_SourceCodeSize = strlen(pVSShader);
+	shaderDesc.m_pSourceCode = pVSShader2;
+	shaderDesc.m_SourceCodeSize = strlen(pVSShader2);
 	IBvShaderBlob* shader;
 	auto result = g_pCompiler->Compile(shaderDesc, &shader);
 	BV_ASSERT(result, "Invalid Shader");
@@ -212,25 +261,11 @@ BvShader* GetVS(BvRenderDevice* pDevice)
 
 BvShader* GetPS(BvRenderDevice* pDevice)
 {
-	static const char* pShader =
-		R"raw(
-			#version 450
-
-			layout (location = 0) in vec4 inColor;
-
-			layout (location = 0) out vec4 outColor;
-
-			void main()
-			{
-				outColor = inColor;
-			}
-		)raw";
-
 	ShaderCreateDesc shaderDesc;
 	shaderDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
-	shaderDesc.m_pSourceCode = pShader;
-	shaderDesc.m_SourceCodeSize = strlen(pShader);
+	shaderDesc.m_pSourceCode = pPSShader2;
+	shaderDesc.m_SourceCodeSize = strlen(pPSShader2);
 	IBvShaderBlob* shader;
 	auto result = g_pCompiler->Compile(shaderDesc, &shader);
 	BV_ASSERT(result, "Invalid Shader");

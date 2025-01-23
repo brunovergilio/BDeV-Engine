@@ -734,8 +734,8 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 
 	if (memoryBudget)
 	{
-		*pNextProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties;
-		pNextProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties.pNext;
+		*pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties;
+		pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties.pNext;
 
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 	}

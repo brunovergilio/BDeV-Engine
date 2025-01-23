@@ -660,6 +660,7 @@ BV_INLINE mf32 BV_VCALL MatrixLookAt(cvf32 eyePos, cvf32 dirVec, cvf32 upVec)
 	r.r[0] = x;
 	r.r[1] = y;
 	r.r[2] = z;
+	r.r[3] = VectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 
 	r = MatrixTranspose(r);
 	{

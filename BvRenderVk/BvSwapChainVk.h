@@ -10,6 +10,7 @@
 class BvTextureVk;
 class BvTextureViewVk;
 class BvCommandQueueVk;
+class BvCommandContextVk;
 
 
 class BvSwapChainVk final : public BvSwapChain
@@ -18,6 +19,7 @@ public:
 	BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext);
 	~BvSwapChainVk();
 
+	void AcquireImage();
 	void Present(bool vSync) override;
 
 	BvRenderDevice* GetDevice() override;
@@ -33,13 +35,13 @@ private:
 	void CreateSurface();
 	void DestroySurface();
 	void Resize();
-	void AcquireImage();
 	void CreateSynchronizationResources();
 	void DestroySynchronizationResources();
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvCommandQueueVk* m_pCommandQueue = nullptr;
+	BvCommandContextVk* m_pCommandContext = nullptr;
 
 	VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 	VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;

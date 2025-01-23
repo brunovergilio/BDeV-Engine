@@ -9,19 +9,11 @@
 #include "BDeV/Core/Container/BvString.h"
 
 
-struct BlendStateDesc
-{
-	BvFixedVector<BlendAttachmentStateDesc, kMaxRenderTargets> m_BlendAttachments;
-	LogicOp m_LogicOp = LogicOp::kClear;
-	bool m_LogicEnable = false;
-	bool m_AlphaToCoverageEnable = false;
-};
-
-
 struct GraphicsPipelineStateDesc
 {
-	BvFixedVector<VertexInputDesc, kMaxVertexAttributes>		m_VertexInputDesc;
-	BvFixedVector<BvShader*, kMaxShaderStages>					m_Shaders;
+	u32															m_VertexInputDescCount = 0;
+	VertexInputDesc*											m_pVertexInputDescs = nullptr;
+	BvShader*													m_Shaders[kMaxShaderStages]{};
 	InputAssemblyStateDesc										m_InputAssemblyStateDesc;
 	TessellationStateDesc										m_TessellationStateDesc;
 	ViewportStateDesc											m_ViewportStateDesc;
@@ -31,8 +23,9 @@ struct GraphicsPipelineStateDesc
 	u32															m_SampleCount = 1;
 	BvShaderResourceLayout*										m_pShaderResourceLayout = nullptr;
 	BvRenderPass*												m_pRenderPass = nullptr;
-	BvFixedVector<Format, kMaxRenderTargets>					m_RenderTargetFormats;
+	Format														m_RenderTargetFormats[kMaxRenderTargets]{};
 	Format														m_DepthStencilFormat = Format::kUnknown;
+	bool														m_ShadingRateEnabled = false;
 	u32															m_SampleMask = kMax<u32>;
 	u32															m_SubpassIndex = 0;
 };

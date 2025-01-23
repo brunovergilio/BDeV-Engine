@@ -11,19 +11,49 @@
 
 
 BvSwapChainVk::BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext)
-	: BvSwapChain(pWindow, swapChainParams), m_pDevice(pDevice), m_pCommandQueue(static_cast<BvCommandContextVk*>(pContext)->GetCommandQueue())
+	: BvSwapChain(pWindow, swapChainParams), m_pDevice(pDevice), m_pCommandContext(static_cast<BvCommandContextVk*>(pContext)),
+	m_pCommandQueue(static_cast<BvCommandContextVk*>(pContext)->GetCommandQueue())
 {
 	CreateSurface();
 
 	Create();
+
+	m_pCommandContext->AddSwapChain(this);
 }
 
 
 BvSwapChainVk::~BvSwapChainVk()
 {
+	m_pCommandContext->RemoveSwapChain(this);
+
 	Destroy();
 
 	DestroySurface();
+}
+
+
+void BvSwapChainVk::AcquireImage()
+{
+	auto result = vkAcquireNextImageKHR(m_pDevice->GetHandle(), m_Swapchain, UINT64_MAX,
+		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex].GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
+	if (result != VkResult::VK_SUCCESS)
+	{
+		if (result == VkResult::VK_SUBOPTIMAL_KHR || result == VkResult::VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			Resize();
+			return;
+		}
+		else
+		{
+			BvDebugVkResult(result);
+		}
+	}
+
+	if (m_CurrImageIndex != m_CurrSemaphoreIndex)
+	{
+		std::swap(m_ImageAcquiredSemaphores[m_CurrImageIndex], m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]);
+		std::swap(m_RenderCompleteSemaphores[m_CurrImageIndex], m_RenderCompleteSemaphores[m_CurrSemaphoreIndex]);
+	}
 }
 
 
@@ -70,8 +100,6 @@ void BvSwapChainVk::Present(bool vSync)
 	}
 
 	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % (u32)m_SwapChainTextures.Size();
-
-	AcquireImage();
 }
 
 
@@ -414,31 +442,6 @@ void BvSwapChainVk::Resize()
 	m_pCommandQueue->WaitIdle();
 
 	Create();
-}
-
-
-void BvSwapChainVk::AcquireImage()
-{
-	auto result = vkAcquireNextImageKHR(m_pDevice->GetHandle(), m_Swapchain, UINT64_MAX,
-		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex].GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
-	if (result != VkResult::VK_SUCCESS)
-	{
-		if (result == VkResult::VK_SUBOPTIMAL_KHR || result == VkResult::VK_ERROR_OUT_OF_DATE_KHR)
-		{
-			Resize();
-			return;
-		}
-		else
-		{
-			BvDebugVkResult(result);
-		}
-	}
-
-	if (m_CurrImageIndex != m_CurrSemaphoreIndex)
-	{
-		std::swap(m_ImageAcquiredSemaphores[m_CurrImageIndex], m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]);
-		std::swap(m_RenderCompleteSemaphores[m_CurrImageIndex], m_RenderCompleteSemaphores[m_CurrSemaphoreIndex]);
-	}
 }
 
 

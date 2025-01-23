@@ -1206,3 +1206,12 @@ struct BlendAttachmentStateDesc
 	BlendOp m_AlphaBlendOp = BlendOp::kAdd;
 	u8 m_RenderTargetWriteMask = 0xF;
 };
+
+
+struct BlendStateDesc
+{
+	BlendAttachmentStateDesc m_BlendAttachments[kMaxRenderTargets];
+	LogicOp m_LogicOp = LogicOp::kClear;
+	bool m_LogicEnable = false;
+	bool m_AlphaToCoverageEnable = false;
+};
