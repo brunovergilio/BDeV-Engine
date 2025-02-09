@@ -217,7 +217,11 @@ void BvRenderEngineVk::Create()
 
 	if (IsInstanceExtensionSupported(supportedExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
 	{
+		m_HasDebugUtils = true;
+
+#if BV_DEBUG
 		m_pDebugReport = BV_NEW(BvDebugReportVk)(m_Instance);
+#endif
 	}
 }
 
@@ -358,3 +362,15 @@ void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo)
 
 	gpuInfo.m_pPhysicalDevice = gpu;
 };
+
+
+namespace BvRenderVk
+{
+	extern "C"
+	{
+		BV_API BvRenderEngine* GetRenderEngine()
+		{
+			return BvRenderEngineVk::GetInstance();
+		}
+	}
+}

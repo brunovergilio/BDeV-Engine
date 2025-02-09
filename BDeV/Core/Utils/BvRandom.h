@@ -40,7 +40,7 @@ public:
 		// Calculate the output using the old state
 		T xorshifted = static_cast<T>(((oldState >> 18ull) ^ oldState) >> 27ull);
 		T rot = static_cast<T>(oldState >> 59ull);
-		return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+		return (xorshifted >> rot) | (xorshifted << (u64(-i64(rot)) & 31ull));
 	}
 
 	T Next(T min, T max)

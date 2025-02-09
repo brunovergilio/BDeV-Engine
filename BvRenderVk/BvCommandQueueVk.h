@@ -22,6 +22,7 @@ public:
 	~BvCommandQueueVk();
 
 	void AddWaitSemaphore(VkSemaphore waitSemaphore, u64 value);
+	void AddSignalSemaphore(VkSemaphore signalSemaphore, u64 value);
 	void Submit(const BvVector<BvCommandBufferVk*>& commandBuffers, VkSemaphore signalSemaphore, u64 value);
 	void WaitIdle();
 

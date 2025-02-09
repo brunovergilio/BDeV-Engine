@@ -46,9 +46,9 @@ struct FramebufferDesc
 
 
 template<>
-struct BvHash<FramebufferDesc>
+struct std::hash<FramebufferDesc>
 {
-	u64 operator()(const FramebufferDesc& val) const
+	size_t operator()(const FramebufferDesc& val) const
 	{
 		u64 hash = 0;
 		HashCombine(hash, val.m_Views.Size());

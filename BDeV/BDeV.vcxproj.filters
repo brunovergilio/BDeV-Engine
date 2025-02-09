@@ -83,6 +83,8 @@
     <ClInclude Include="Core\Math\BvIntersections.h" />
     <ClInclude Include="Core\System\Diagnostics\BvDiagnostics.h" />
     <ClInclude Include="Core\System\BvPlatformHeaders.h" />
+    <ClInclude Include="Core\RenderAPI\BvGPUFence.h" />
+    <ClInclude Include="Core\RenderAPI\BvTextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />

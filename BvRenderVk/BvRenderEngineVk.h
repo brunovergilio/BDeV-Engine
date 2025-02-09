@@ -26,6 +26,7 @@ public:
 	static BvRenderEngineVk* GetInstance();
 
 	BV_INLINE VkInstance GetHandle() const { return m_Instance; }
+	BV_INLINE bool HasDebugUtils() const { return m_HasDebugUtils; }
 
 private:
 	BvRenderEngineVk();
@@ -39,4 +40,14 @@ private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
 	BvVector<BvRenderDeviceVk*> m_Devices;
 	BvDebugReportVk* m_pDebugReport = nullptr;
+	bool m_HasDebugUtils = false;
 };
+
+
+namespace BvRenderVk
+{
+	extern "C"
+	{
+		BV_API BvRenderEngine* GetRenderEngine();
+	}
+}

@@ -100,6 +100,7 @@
     <ClInclude Include="BvDebugReportVk.h" />
     <ClInclude Include="BvDescriptorSetVk.h" />
     <ClInclude Include="BvFramebufferVk.h" />
+    <ClInclude Include="BvGPUFenceVk.h" />
     <ClInclude Include="BvPipelineStateVk.h" />
     <ClInclude Include="BvQueryVk.h" />
     <ClInclude Include="BvRenderDeviceVk.h" />
@@ -126,6 +127,7 @@
     <ClCompile Include="BvDebugReportVk.cpp" />
     <ClCompile Include="BvDescriptorSetVk.cpp" />
     <ClCompile Include="BvFramebufferVk.cpp" />
+    <ClCompile Include="BvGPUFenceVk.cpp" />
     <ClCompile Include="BvPipelineStateVk.cpp" />
     <ClCompile Include="BvQueryVk.cpp" />
     <ClCompile Include="BvRenderDeviceVk.cpp" />
@@ -146,6 +148,9 @@
     <ProjectReference Include="..\BDeV\BDeV.vcxproj">
       <Project>{5abfc153-e6bd-4f67-bfa0-f123ca883b95}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BvRenderVk.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

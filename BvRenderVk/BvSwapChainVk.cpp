@@ -8,6 +8,7 @@
 #include "BvFramebufferVk.h"
 #include "BvCommandContextVk.h"
 #include "BvRenderDeviceVk.h"
+#include "BvGPUFenceVk.h"
 
 
 BvSwapChainVk::BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext)
@@ -34,6 +35,17 @@ BvSwapChainVk::~BvSwapChainVk()
 
 void BvSwapChainVk::AcquireImage()
 {
+	if (m_IsReady)
+	{
+		return;
+	}
+
+	auto& fenceData = m_Fences[m_CurrImageIndex];
+	if (fenceData.m_pFence)
+	{
+		fenceData.m_pFence->Wait(fenceData.m_Value);
+	}
+
 	auto result = vkAcquireNextImageKHR(m_pDevice->GetHandle(), m_Swapchain, UINT64_MAX,
 		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex].GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
 	if (result != VkResult::VK_SUCCESS)
@@ -54,15 +66,18 @@ void BvSwapChainVk::AcquireImage()
 		std::swap(m_ImageAcquiredSemaphores[m_CurrImageIndex], m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]);
 		std::swap(m_RenderCompleteSemaphores[m_CurrImageIndex], m_RenderCompleteSemaphores[m_CurrSemaphoreIndex]);
 	}
+
+	m_IsReady = true;
 }
 
 
 void BvSwapChainVk::Present(bool vSync)
 {
-	if (!m_pWindow->IsVisible())
+	if (!m_pWindow->IsVisible() || !m_IsReady)
 	{
 		return;
 	}
+	m_IsReady = false;
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -103,6 +118,12 @@ void BvSwapChainVk::Present(bool vSync)
 }
 
 
+void BvSwapChainVk::SetCurrentFence(BvGPUFenceVk* pFence, u64 value)
+{
+	m_Fences[m_CurrImageIndex] = FenceData{ pFence, value };
+}
+
+
 BvRenderDevice* BvSwapChainVk::GetDevice()
 {
 	return m_pDevice;
@@ -113,11 +134,8 @@ bool BvSwapChainVk::Create()
 {
 	for (auto pView : m_SwapChainTextureViews)
 	{
-		m_pDevice->GetFramebufferManager()->RemoveFramebuffersWithView(pView->GetHandle());
+		m_pCommandContext->RemoveFramebuffers(pView->GetHandle());
 	}
-
-	u32 width = m_pWindow->GetWidth();
-	u32 height = m_pWindow->GetHeight();
 
 	auto device = m_pDevice->GetHandle();
 	auto physicalDevice = m_pDevice->GetPhysicalDeviceHandle();
@@ -222,6 +240,8 @@ bool BvSwapChainVk::Create()
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModes.Data());
 	BvCheckErrorReturnVk(result, false);
 
+	u32 width = m_pWindow->GetWidth();
+	u32 height = m_pWindow->GetHeight();
 	VkExtent2D swapchainExtent = {};
 	// If width (and height) equals the special value 0xFFFFFFFF, the size of the surface will be set by the swapchain
 	if (surfCaps.currentExtent.width == u32(-1))
@@ -367,8 +387,8 @@ bool BvSwapChainVk::Create()
 	{
 		for (auto i = 0u; i < m_SwapChainTextures.Size(); i++)
 		{
-			delete m_SwapChainTextureViews[i];
-			delete m_SwapChainTextures[i];
+			BV_DELETE(m_SwapChainTextureViews[i]);
+			BV_DELETE(m_SwapChainTextures[i]);
 		}
 		vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
 	}
@@ -389,10 +409,10 @@ bool BvSwapChainVk::Create()
 
 	for (auto i = 0u; i < imageCount; i++)
 	{
-		m_SwapChainTextures[i] = new BvTextureVk(m_pDevice, this, textureDesc, swapChainImages[i]);
+		m_SwapChainTextures[i] = BV_NEW(BvTextureVk)(m_pDevice, this, textureDesc, swapChainImages[i]);
 
 		textureViewDesc.m_pTexture = m_SwapChainTextures[i];
-		m_SwapChainTextureViews[i] = new BvTextureViewVk(m_pDevice, textureViewDesc);
+		m_SwapChainTextureViews[i] = BV_NEW(BvTextureViewVk)(m_pDevice, textureViewDesc);
 	}
 
 	CreateSynchronizationResources();
@@ -409,16 +429,16 @@ void BvSwapChainVk::Destroy()
 
 	DestroySynchronizationResources();
 
-	for (auto&& pTextureView : m_SwapChainTextureViews)
+	for (auto& pTextureView : m_SwapChainTextureViews)
 	{
 		auto pResource = static_cast<BvTextureViewVk*>(pTextureView);
-		delete pResource;
+		BV_DELETE(pResource);
 		pTextureView = nullptr;
 	}
 
-	for (auto&& pTexture : m_SwapChainTextures)
+	for (auto& pTexture : m_SwapChainTextures)
 	{
-		delete pTexture;
+		BV_DELETE(pTexture);
 	}
 
 	vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_Swapchain, nullptr);
@@ -460,6 +480,8 @@ void BvSwapChainVk::CreateSynchronizationResources()
 	{
 		m_RenderCompleteSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice->GetHandle(), 0, false));
 	}
+
+	m_Fences.Resize(m_SwapChainTextures.Size());
 }
 
 
@@ -467,4 +489,5 @@ void BvSwapChainVk::DestroySynchronizationResources()
 {
 	m_ImageAcquiredSemaphores.Clear();
 	m_RenderCompleteSemaphores.Clear();
+	m_Fences.Clear();
 }

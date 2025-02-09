@@ -11,6 +11,7 @@ class BvTextureVk;
 class BvTextureViewVk;
 class BvCommandQueueVk;
 class BvCommandContextVk;
+class BvGPUFenceVk;
 
 
 class BvSwapChainVk final : public BvSwapChain
@@ -21,6 +22,7 @@ public:
 
 	void AcquireImage();
 	void Present(bool vSync) override;
+	void SetCurrentFence(BvGPUFenceVk* pFence, u64 value);
 
 	BvRenderDevice* GetDevice() override;
 	BV_INLINE u32 GetCurrentImageIndex() const override { return m_CurrImageIndex; }
@@ -52,8 +54,17 @@ private:
 	BvVector<BvSemaphoreVk> m_ImageAcquiredSemaphores;
 	BvVector<BvSemaphoreVk> m_RenderCompleteSemaphores;
 	u32 m_CurrSemaphoreIndex = 0;
-
 	u32 m_CurrImageIndex = 0;
+
+	struct FenceData
+	{
+		BvGPUFenceVk* m_pFence = nullptr;
+		u64 m_Value = 0;
+	};
+	BvVector<FenceData> m_Fences;
+
+	// Make sure only one image has been acquired per presentation / frame
+	bool m_IsReady = false;
 };
 
 

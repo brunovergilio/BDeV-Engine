@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvRenderTools/TextureLoader/BvTextureLoader.h"
+#include "BvRenderTools/TextureLoader/BvDDSTextureLoader.h"
 
 
 #ifdef __clang__
@@ -175,7 +175,7 @@ enum DXGIFormat
 enum DDSResourceDimension
 {
 	kUnknown = 0,
-	kBuffer = 1,
+	//kBuffer = 1,
 	kTexture1D = 2,
 	kTexture2D = 3,
 	kTexture3D = 4
@@ -198,20 +198,6 @@ constexpr uint32_t kReqTextureCubeDimension = 16384;
 // See DDS.h in the 'Texconv' sample and the 'DirectXTex' library
 //--------------------------------------------------------------------------------------
 #pragma pack(push,1)
-
-const uint32_t DDS_MAGIC = 0x20534444; // "DDS "
-
-struct DDS_PIXELFORMAT
-{
-	uint32_t    size;
-	uint32_t    flags;
-	uint32_t    fourCC;
-	uint32_t    RGBBitCount;
-	uint32_t    RBitMask;
-	uint32_t    GBitMask;
-	uint32_t    BBitMask;
-	uint32_t    ABitMask;
-};
 
 #define DDS_FOURCC      0x00000004  // DDPF_FOURCC
 #define DDS_RGB         0x00000040  // DDPF_RGB
@@ -241,6 +227,95 @@ enum DDS_MISC_FLAGS2
 	DDS_MISC_FLAGS2_ALPHA_MODE_MASK = 0x7L,
 };
 
+
+constexpr u32 MakeFourCC(u32 ch0, u32 ch1, u32 ch2, u32 ch3)
+{
+	return ((uint32_t)(uint8_t)(ch0) | ((uint32_t)(uint8_t)(ch1) << 8) | ((uint32_t)(uint8_t)(ch2) << 16) | ((uint32_t)(uint8_t)(ch3) << 24));
+}
+
+constexpr u32 kFourCC_DDS = MakeFourCC('D', 'D', 'S', ' ');
+
+const uint32_t DDS_MAGIC = 0x20534444; // "DDS "
+
+// dwFlags (DDS_HEADER)
+constexpr u32 kDDSD_CAPS = 0x1; // Required in every.dds file.
+constexpr u32 kDDSD_HEIGHT = 0x2; // Required in every.dds file.
+constexpr u32 kDDSD_WIDTH = 0x4; // Required in every.dds file.
+constexpr u32 kDDSD_PITCH = 0x8; // Required when pitch is provided for an uncompressed texture.
+constexpr u32 kDDSD_PIXELFORMAT = 0x1000; // Required in every.dds file.
+constexpr u32 kDDSD_MIPMAPCOUNT = 0x20000; // Required in a mipmapped texture.
+constexpr u32 kDDSD_LINEARSIZE = 0x80000; // Required when pitch is provided for a compressed texture.
+constexpr u32 kDDSD_DEPTH = 0x800000; // Required in a depth texture.
+constexpr u32 kDDSD_REQUIRED_FLAGS = kDDSD_CAPS | kDDSD_WIDTH | kDDSD_HEIGHT | kDDSD_PIXELFORMAT;
+
+// dwCaps (DDS_HEADER)
+constexpr u32 kDDSCAPS_COMPLEX = 0x8; // Optional; must be used on any file that contains more than one surface(a mipmap, a cubic environment map, or mipmapped volume texture).
+constexpr u32 kDDSCAPS_MIPMAP = 0x400000; // Optional; should be used for a mipmap.
+constexpr u32 kDDSCAPS_TEXTURE = 0x1000; // Required
+
+// dwCaps2 (DDS_HEADER)
+constexpr u32 kDDSCAPS2_CUBEMAP = 0x200; // Required for a cube map.
+constexpr u32 kDDSCAPS2_CUBEMAP_POSITIVEX = 0x400; // Required when these surfaces are stored in a cube map.
+constexpr u32 kDDSCAPS2_CUBEMAP_NEGATIVEX = 0x800; // Required when these surfaces are stored in a cube map.
+constexpr u32 kDDSCAPS2_CUBEMAP_POSITIVEY = 0x1000; // Required when these surfaces are stored in a cube map.
+constexpr u32 kDDSCAPS2_CUBEMAP_NEGATIVEY = 0x2000; // Required when these surfaces are stored in a cube map.
+constexpr u32 kDDSCAPS2_CUBEMAP_POSITIVEZ = 0x4000; // Required when these surfaces are stored in a cube map.
+constexpr u32 kDDSCAPS2_CUBEMAP_NEGATIVEZ = 0x8000; // Required when these surfaces are stored in a cube map.
+constexpr u32 kDDSCAPS2_CUBEMAP_ALLFACES = kDDSCAPS2_CUBEMAP | kDDSCAPS2_CUBEMAP_POSITIVEX | kDDSCAPS2_CUBEMAP_NEGATIVEX | kDDSCAPS2_CUBEMAP_POSITIVEY
+	| kDDSCAPS2_CUBEMAP_NEGATIVEY | kDDSCAPS2_CUBEMAP_POSITIVEZ | kDDSCAPS2_CUBEMAP_NEGATIVEZ;
+
+constexpr u32 kDDSCAPS2_VOLUME = 0x200000; // Required for a volume texture.
+
+// dwFlags (DDS_PIXELFORMAT)
+constexpr u32 kDDPF_ALPHAPIXELS = 0x1; // Texture contains alpha data; dwRGBAlphaBitMask contains valid data.
+constexpr u32 kDDPF_ALPHA = 0x2; // Used in some older DDS files for alpha channel only uncompressed data(dwRGBBitCount contains the alpha channel bitcount; dwABitMask contains valid data)
+constexpr u32 kDDPF_FOURCC = 0x4; // Texture contains compressed RGB data; dwFourCC contains valid data.
+constexpr u32 kDDPF_RGB = 0x40; // Texture contains uncompressed RGB data; dwRGBBitCount and the RGB masks(dwRBitMask, dwGBitMask, dwBBitMask) contain valid data.
+constexpr u32 kDDPF_YUV = 0x200; // Used in some older DDS files for YUV uncompressed data(dwRGBBitCount contains the YUV bit count; dwRBitMask contains the Y mask, dwGBitMask contains the U mask, dwBBitMask contains the V mask)
+constexpr u32 kDDPF_LUMINANCE = 0x20000; // Used in some older DDS files for single channel color uncompressed data(dwRGBBitCount contains the luminance channel bit count; dwRBitMask contains the channel mask).Can be combined with DDPF_ALPHAPIXELS for a two channel DDS file.
+
+// dwFourCC (DDS_PIXELFORMAT)
+constexpr u32 kFourCC_DX10 = MakeFourCC('D', 'X', '1', '0');
+constexpr u32 kFourCC_DXT1 = MakeFourCC('D', 'X', 'T', '1');
+constexpr u32 kFourCC_DXT2 = MakeFourCC('D', 'X', 'T', '2');
+constexpr u32 kFourCC_DXT3 = MakeFourCC('D', 'X', 'T', '3');
+constexpr u32 kFourCC_DXT4 = MakeFourCC('D', 'X', 'T', '4');
+constexpr u32 kFourCC_DXT5 = MakeFourCC('D', 'X', 'T', '5');
+
+constexpr u32 kFourCC_ATI1 = MakeFourCC('A', 'T', 'I', '1');
+constexpr u32 kFourCC_BC4U = MakeFourCC('B', 'C', '4', 'U');
+constexpr u32 kFourCC_BC4S = MakeFourCC('B', 'C', '4', 'S');
+
+constexpr u32 kFourCC_ATI2 = MakeFourCC('A', 'T', 'I', '2');
+constexpr u32 kFourCC_BC5U = MakeFourCC('B', 'C', '5', 'U');
+constexpr u32 kFourCC_BC5S = MakeFourCC('B', 'C', '5', 'S');
+
+constexpr u32 kFourCC_RGBG = MakeFourCC('R', 'G', 'B', 'G');
+constexpr u32 kFourCC_GRGB = MakeFourCC('G', 'R', 'G', 'B');
+constexpr u32 kFourCC_YUY2 = MakeFourCC('Y', 'U', 'Y', '2');
+
+// miscFlag (DDS_HEADER_DXT10)
+constexpr u32 kDDS_RESOURCE_MISC_TEXTURECUBE = 0x4; // Indicates a 2D texture is a cube-map texture.
+
+// miscFlags2 (DDS_HEADER_DXT10)
+constexpr u32 kDDS_ALPHA_MODE_UNKNOWN = 0x0; // Alpha channel content is unknown.This is the value for legacy files, which typically is assumed to be 'straight' alpha.
+constexpr u32 kDDS_ALPHA_MODE_STRAIGHT = 0x1; // Any alpha channel content is presumed to use straight alpha.
+constexpr u32 kDDS_ALPHA_MODE_PREMULTIPLIED = 0x2; // Any alpha channel content is using premultiplied alpha.The only legacy file formats that indicate this information are 'DX2' and 'DX4'.
+constexpr u32 kDDS_ALPHA_MODE_OPAQUE = 0x3; // Any alpha channel content is all set to fully opaque.
+constexpr u32 kDDS_ALPHA_MODE_CUSTOM = 0x4; // Any alpha channel content is being used as a 4th channel and is not intended to represent transparency(straight or premultiplied).
+
+struct DDS_PIXELFORMAT
+{
+	uint32_t    size;
+	uint32_t    flags;
+	uint32_t    fourCC;
+	uint32_t    RGBBitCount;
+	uint32_t    RBitMask;
+	uint32_t    GBitMask;
+	uint32_t    BBitMask;
+	uint32_t    ABitMask;
+};
+
 struct DDS_HEADER
 {
 	uint32_t        size;
@@ -268,7 +343,53 @@ struct DDS_HEADER_DXT10
 	uint32_t        miscFlags2;
 };
 
+constexpr u32 kMinDDSHeaderSize = sizeof(u32) + sizeof(DDS_HEADER);
+constexpr u32 kMinDDSDX10HeaderSize = kMinDDSHeaderSize + sizeof(DDS_HEADER_DXT10);
+
 #pragma pack(pop)
 
 
-LoaderResult LoadDDSTexture(const uint8_t* bitData, size_t bitSize, IBvTextureBlob::Info& textureInfo, BvVector<SubresourceData>& subresources) noexcept(false);
+IBvTextureLoader::Result LoadDDSTexture(const uint8_t* bitData, size_t bitSize, IBvTextureBlob::Info& textureInfo, BvVector<SubresourceData>& subresources) noexcept(false);
+
+
+class BvDDS
+{
+	BV_NOCOPY(BvDDS);
+
+public:
+	BvDDS();
+	BvDDS(const void* pData, size_t size);
+	BvDDS(BvDDS&& rhs) noexcept;
+	BvDDS& operator=(BvDDS&& rhs) noexcept;
+
+	DXGIFormat GetDXGIFormat() const;
+	Format GetFormat() const;
+	TextureType GetType() const;
+	u32 GetWidth() const;
+	u32 GetHeight() const;
+	u32 GetDepth() const;
+	u32 GetMipCount() const;
+	u32 GetArraySize() const;
+	u32 GetPlaneCount() const;
+	bool IsCubeMap() const;
+	DDS_ALPHA_MODE GetAlphaMode() const;
+	bool IsValid() const;
+	bool HasDX10Header() const;
+
+	u32 GetSubresourceCount() const;
+	void GetSubresourceData(SubresourceData& subresource, u32 mipLevel = 0, u32 arraySlice = 0, u32 planeSlice = 0) const;
+	u32 GetAllSubresourceData(SubresourceData* pSubresources, u32 subresourceCount) const;
+
+private:
+	void ProcessHeaders();
+	bool ValidateData();
+	DXGIFormat GetDXGIFormat(const DDS_PIXELFORMAT& ddpf) const;
+
+private:
+	const u8* m_pData = nullptr;
+	size_t m_Size = 0;
+	const DDS_HEADER* m_pDDSHeader = nullptr;
+	const DDS_HEADER_DXT10* m_pDDSHeaderDX10 = nullptr;
+	const u8* m_pTextureData = nullptr;
+	size_t m_TextureDataSize = 0;
+};

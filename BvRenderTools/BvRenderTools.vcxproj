@@ -127,14 +127,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ShaderCompiler\BvShaderBlob.h" />
-    <ClInclude Include="TextureLoader\BvTextureLoader.h" />
+    <ClInclude Include="TextureLoader\BvDDSTextureLoader.h" />
+    <ClInclude Include="TextureLoader\BvTextureLoaderCommon.h" />
     <ClInclude Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.h" />
     <ClInclude Include="TextureLoader\DDS\BvDDS.h" />
+    <ClInclude Include="TextureLoader\BvSTBTextureLoader.h" />
     <ClInclude Include="TextureLoader\STB\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ShaderCompiler\BvShaderBlob.cpp" />
-    <ClCompile Include="TextureLoader\BvTextureLoader.cpp" />
+    <ClCompile Include="TextureLoader\BvDDSTextureLoader.cpp" />
+    <ClCompile Include="TextureLoader\BvSTBTextureLoader.cpp" />
     <ClCompile Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.cpp" />
     <ClCompile Include="TextureLoader\DDS\BvDDS.cpp" />
   </ItemGroup>

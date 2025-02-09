@@ -46,12 +46,12 @@ public:
 	WindowMode GetWindowMode() const { return m_WindowMode; }
 	const WindowDesc& GetWindowDesc() const { return m_WindowDesc; }
 
-	void OnSizeChanged(u32 width, u32 height);
-	void OnPosChanged(i32 x, i32 y);
-
 	void* GetHandle() const;
 
 private:
+	void OnSizeChanged(u32 width, u32 height);
+	void OnPosChanged(i32 x, i32 y);
+
 	void Create(bool createNew = true);
 	void Destroy();
 

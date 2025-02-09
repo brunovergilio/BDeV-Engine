@@ -84,17 +84,43 @@ BvBuffer* CreateVB(BvRenderDevice* pDevice);
 BvBuffer* CreateUB(BvRenderDevice* pDevice);
 
 
+BV_IBVOBJECT_DEFINE_IID(BvTest, "A8000000-C200-0000-0000-000000000000")
+class BvTest : public BvObjectBase
+{
+public:
+	BvTest() { printf("Hello "); }
+	~BvTest() { printf("and bye\n"); }
+};
+
+
+BV_IBVOBJECT_DEFINE_IID(BvTest2, "A84E00FF-C200-0000-0000-000000000000")
+class BvTest2 : public BvTest
+{
+public:
+	BV_IBVOBJECT_IMPL_INTERFACE(BvTest2, BvTest);
+
+	BvTest2() { printf("Hello "); }
+	~BvTest2() { printf("and bye\n"); }
+};
+
+
 int main()
 {
+	{
+		BvTest2* pObj;
+		BvTest* ptt = BV_OBJECT_CREATE(BvTest2);
+		ptt->QueryInterface(BV_IBVOBJECT_IID(BvTest2), (IBvObject**)&pObj);
+		ptt->Release();
+		pObj->Release();
+	}
+
 	BvApplication app;
 	app.Initialize();
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
-	typedef bool (*pFNGetShaderCompiler)(IBvShaderCompiler**);
-	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
-	compilerFn(&g_pCompiler);
-	//ShaderDesc compDesc = { "main", ShaderStage::kVertex, ShaderLanguage::kGLSL };
-	//pCompiler->CompileFromFile("D:\\Bruno\\C++\\test.vert", compDesc);
+	typedef IBvShaderCompiler*(*pFNGetShaderCompiler)();
+	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("GetSPIRVCompiler");
+	g_pCompiler = compilerFn();
 
 	auto pEngine = BvRenderEngineVk::GetInstance();
 	auto pDevice = pEngine->CreateRenderDevice(BvRenderDeviceCreateDesc());
@@ -115,8 +141,8 @@ int main()
 	// Create uniform buffer
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
-	//auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(0, nullptr, ShaderResourceConstantDesc());
-	auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(1, &resourceDesc, ShaderResourceConstantDesc());
+	//auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(0, nullptr);
+	auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(1, &resourceDesc);
 
 	auto pVB = CreateVB(pDevice);
 	BufferViewDesc vbViewDesc;
@@ -143,11 +169,8 @@ int main()
 	
 	VertexInputDesc inputDescs[2]{};
 	inputDescs[0].m_Format = Format::kRGB32_Float;
-	inputDescs[0].m_Stride = sizeof(PosColorVertex);
 	
 	inputDescs[1].m_Format = Format::kRGBA32_Float;
-	inputDescs[1].m_Location = 1;
-	inputDescs[1].m_Stride = sizeof(PosColorVertex);
 	inputDescs[1].m_Offset = sizeof(Float3);
 	
 	pipelineDesc.m_VertexInputDescCount = 2;
@@ -212,6 +235,12 @@ int main()
 			MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4),
 			pUB->GetMappedDataAsT<float>());
 
+		u64 ts = 0;
+		if (pQuery->GetResult(&ts, 8))
+		{
+			BvConsole::Print("ts - %llu\n", ts);
+		}
+
 		//float f = fmodf((float)GetTickCount64(), 360.0f) / 360.0f;
 		BvTextureView *pRenderTargets[] = { pSwapChain->GetCurrentTextureView() };
 		ClearColorValue cl[] = { ClearColorValue(
@@ -219,6 +248,7 @@ int main()
 			0.1f,
 			0.3f) };
 		auto renderTarget = RenderTargetDesc::AsSwapChain(pRenderTargets[0], *cl);
+		pGraphicsContext->NewCommandList();
 		pGraphicsContext->BeginQuery(pQuery);
 		pGraphicsContext->SetRenderTarget(renderTarget);
 		pGraphicsContext->SetGraphicsPipeline(pPSO);
@@ -228,11 +258,11 @@ int main()
 		pGraphicsContext->SetConstantBuffer(pUBView, 0, 0, 0);
 		pGraphicsContext->Draw(3);
 		pGraphicsContext->EndQuery(pQuery);
-		pGraphicsContext->Signal();
+		pGraphicsContext->Execute();
 
 		pSwapChain->Present(false);
 
-		pGraphicsContext->Flush();
+		pGraphicsContext->FlushFrame();
 	}
 
 	app.Shutdown();

@@ -25,6 +25,6 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API bool CreateSPIRVCompiler(IBvShaderCompiler** ppCompiler);
+		BV_API IBvShaderCompiler* GetSPIRVCompiler();
 	}
 }

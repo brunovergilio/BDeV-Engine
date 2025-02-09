@@ -136,7 +136,7 @@ constexpr FormatMapVk kFormats[] =
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kUnknown,
 	{ VK_FORMAT_G8_B8R8_2PLANE_422_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::kP208,
 	{ VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT, {} },	// Format::kV208,
-	{ VK_FORMAT_R8G8B8A8_UNORM,				VK_IMAGE_ASPECT_COLOR_BIT, {} },	// Format::kV408,
+	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kV408,
 };
 
 
@@ -295,6 +295,24 @@ VkImageViewType GetVkImageViewType(const TextureViewType viewType)
 const FormatMapVk& GetVkFormatMap(Format format)
 {
 	return kFormats[(u8)format];
+}
+
+VkImageAspectFlags GetVkImageAspectFlags(Format format, u32 planeSlice)
+{
+	auto info = GetVkFormatMap(format);
+	if (info.aspectFlags & VK_IMAGE_ASPECT_PLANE_0_BIT)
+	{
+		switch (planeSlice)
+		{
+		case 0: return VK_IMAGE_ASPECT_PLANE_0_BIT;
+		case 1: return VK_IMAGE_ASPECT_PLANE_1_BIT;
+		case 2: return VK_IMAGE_ASPECT_PLANE_2_BIT;
+		default:
+			break;
+		}
+	}
+	
+	return info.aspectFlags;
 }
 
 

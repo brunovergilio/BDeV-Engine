@@ -25,6 +25,7 @@
     <ClInclude Include="BvTextureVk.h" />
     <ClInclude Include="BvTypeConversionsVk.h" />
     <ClInclude Include="BvUtilsVk.h" />
+    <ClInclude Include="BvGPUFenceVk.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Windows\BvSwapChainVkWindows.cpp" />
@@ -52,5 +53,9 @@
     <ClCompile Include="BvTextureVk.cpp" />
     <ClCompile Include="BvTypeConversionsVk.cpp" />
     <ClCompile Include="BvUtilsVk.cpp" />
+    <ClCompile Include="BvGPUFenceVk.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BvRenderVk.def" />
   </ItemGroup>
 </Project>

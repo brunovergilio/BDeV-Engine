@@ -200,7 +200,7 @@ struct RenderPassDesc
 
 
 template<>
-struct BvHash<RenderPassDesc>
+struct std::hash<RenderPassDesc>
 {
 	size_t operator()(const RenderPassDesc& renderPassDesc) const
 	{

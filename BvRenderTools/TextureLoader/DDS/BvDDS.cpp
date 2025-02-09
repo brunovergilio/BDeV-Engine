@@ -1,5 +1,5 @@
 #include "BvDDS.h"
-
+#include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 //--------------------------------------------------------------------------------------
 namespace
@@ -9,14 +9,7 @@ namespace
 		if (width == 0 || height == 0)
 			return 0;
 
-		uint32_t count = 1;
-		while (width > 1 || height > 1)
-		{
-			width >>= 1;
-			height >>= 1;
-			count++;
-		}
-		return count;
+		return static_cast<u32>(std::floorf(std::log2f(std::max(width, height))) + 1);
 	}
 
 	//--------------------------------------------------------------------------------------
@@ -172,7 +165,7 @@ namespace
 	//--------------------------------------------------------------------------------------
 	// Get surface information for a particular format
 	//--------------------------------------------------------------------------------------
-	LoaderResult GetSurfaceInfo(
+	IBvTextureLoader::Result GetSurfaceInfo(
 		size_t width,
 		size_t height,
 		DXGIFormat fmt,
@@ -254,12 +247,12 @@ namespace
 			uint64_t numBlocksWide = 0;
 			if (width > 0)
 			{
-				numBlocksWide = std::max<uint64_t>(1u, (uint64_t(width) + 3u) / 4u);
+				numBlocksWide = std::max<uint64_t>(1u, (uint64_t(width) + 3u) >> 2u);
 			}
 			uint64_t numBlocksHigh = 0;
 			if (height > 0)
 			{
-				numBlocksHigh = std::max<uint64_t>(1u, (uint64_t(height) + 3u) / 4u);
+				numBlocksHigh = std::max<uint64_t>(1u, (uint64_t(height) + 3u) >> 2u);
 			}
 			rowBytes = numBlocksWide * bpe;
 			numRows = numBlocksHigh;
@@ -287,9 +280,9 @@ namespace
 		{
 			size_t bpp = BitsPerPixel(fmt);
 			if (!bpp)
-				return LoaderResult::kInvalidArg;
+				return IBvTextureLoader::Result::kInvalidArg;
 
-			rowBytes = (uint64_t(width) * bpp + 7u) / 8u; // round up to nearest byte
+			rowBytes = (uint64_t(width) * bpp + 7u) >> 3; // round up to nearest byte
 			numRows = uint64_t(height);
 			numBytes = rowBytes * height;
 		}
@@ -297,7 +290,7 @@ namespace
 #if defined(_M_IX86) || defined(_M_ARM) || defined(_M_HYBRID_X86_ARM64)
 		static_assert(sizeof(size_t) == 4, "Not a 32-bit platform!");
 		if (numBytes > UINT32_MAX || rowBytes > UINT32_MAX || numRows > UINT32_MAX)
-			return LoaderResult::kArithmeticOverflow;
+			return IBvTextureLoader::Result::kArithmeticOverflow;
 #else
 		static_assert(sizeof(size_t) == 8, "Not a 64-bit platform!");
 #endif
@@ -315,7 +308,7 @@ namespace
 			*outNumRows = static_cast<size_t>(numRows);
 		}
 
-		return LoaderResult::kOk;
+		return IBvTextureLoader::Result::kOk;
 	}
 
 
@@ -744,7 +737,7 @@ namespace
 
 
 	//--------------------------------------------------------------------------------------
-	LoaderResult FillInitData(size_t width,
+	IBvTextureLoader::Result FillInitData(size_t width,
 		size_t height,
 		size_t depth,
 		size_t mipCount,
@@ -762,7 +755,7 @@ namespace
 	{
 		if (!bitData)
 		{
-			return LoaderResult::kBadPointer;
+			return IBvTextureLoader::Result::kBadPointer;
 		}
 
 		skipMip = 0;
@@ -787,12 +780,12 @@ namespace
 				size_t d = depth;
 				for (size_t i = 0; i < mipCount; i++)
 				{
-					LoaderResult hr = GetSurfaceInfo(w, h, format, &NumBytes, &RowBytes, nullptr);
-					if (hr != LoaderResult::kOk)
+					IBvTextureLoader::Result hr = GetSurfaceInfo(w, h, format, &NumBytes, &RowBytes, nullptr);
+					if (hr != IBvTextureLoader::Result::kOk)
 						return hr;
 
 					if (NumBytes > UINT32_MAX || RowBytes > UINT32_MAX)
-						return LoaderResult::kArithmeticOverflow;
+						return IBvTextureLoader::Result::kArithmeticOverflow;
 
 					if ((mipCount <= 1) || !maxsize || (w <= maxsize && h <= maxsize && d <= maxsize))
 					{
@@ -822,7 +815,7 @@ namespace
 
 					if (pSrcBits + (NumBytes * d) > pEndBits)
 					{
-						return LoaderResult::kEOF;
+						return IBvTextureLoader::Result::kEOF;
 					}
 
 					pSrcBits += NumBytes * d;
@@ -846,18 +839,18 @@ namespace
 			}
 		}
 
-		return initData.Empty() ? LoaderResult::kFail : LoaderResult::kOk;
+		return initData.Empty() ? IBvTextureLoader::Result::kFail : IBvTextureLoader::Result::kOk;
 	}
 
 	//--------------------------------------------------------------------------------------
-	LoaderResult CreateTextureFromDDS(const DDS_HEADER* header,
+	IBvTextureLoader::Result CreateTextureFromDDS(const DDS_HEADER* header,
 		const uint8_t* bitData,
 		size_t bitSize,
 		size_t maxsize,
 		IBvTextureBlob::Info& textureInfo,
 		BvVector<SubresourceData>& subresources) noexcept(false)
 	{
-		LoaderResult hr = LoaderResult::kOk;
+		IBvTextureLoader::Result hr = IBvTextureLoader::Result::kOk;
 
 		uint32_t width = header->width;
 		uint32_t height = header->height;
@@ -882,7 +875,7 @@ namespace
 			arraySize = d3d10ext->arraySize;
 			if (arraySize == 0)
 			{
-				return LoaderResult::kInvalidData;
+				return IBvTextureLoader::Result::kInvalidData;
 			}
 
 			switch (d3d10ext->dxgiFormat)
@@ -891,12 +884,12 @@ namespace
 			case DXGIFormat::DXGI_FORMAT_IA44:
 			case DXGIFormat::DXGI_FORMAT_P8:
 			case DXGIFormat::DXGI_FORMAT_A8P8:
-				return LoaderResult::kNotSupported;
+				return IBvTextureLoader::Result::kNotSupported;
 
 			default:
 				if (BitsPerPixel(d3d10ext->dxgiFormat) == 0)
 				{
-					return LoaderResult::kNotSupported;
+					return IBvTextureLoader::Result::kNotSupported;
 				}
 			}
 
@@ -908,7 +901,7 @@ namespace
 				// D3DX writes 1D textures with a fixed Height of 1
 				if ((header->flags & DDS_HEIGHT) && height != 1)
 				{
-					return LoaderResult::kInvalidData;
+					return IBvTextureLoader::Result::kInvalidData;
 				}
 				height = depth = 1;
 				break;
@@ -925,17 +918,17 @@ namespace
 			case DDSResourceDimension::kTexture3D:
 				if (!(header->flags & DDS_HEADER_FLAGS_VOLUME))
 				{
-					return LoaderResult::kInvalidData;
+					return IBvTextureLoader::Result::kInvalidData;
 				}
 
 				if (arraySize > 1)
 				{
-					return LoaderResult::kNotSupported;
+					return IBvTextureLoader::Result::kNotSupported;
 				}
 				break;
 
 			default:
-				return LoaderResult::kNotSupported;
+				return IBvTextureLoader::Result::kNotSupported;
 			}
 
 			resDim = static_cast<DDSResourceDimension>(d3d10ext->resourceDimension);
@@ -946,7 +939,7 @@ namespace
 
 			if (format == DXGIFormat::DXGI_FORMAT_UNKNOWN)
 			{
-				return LoaderResult::kNotSupported;
+				return IBvTextureLoader::Result::kNotSupported;
 			}
 
 			if (header->flags & DDS_HEADER_FLAGS_VOLUME)
@@ -960,7 +953,7 @@ namespace
 					// We require all six faces to be defined
 					if ((header->caps2 & DDS_CUBEMAP_ALLFACES) != DDS_CUBEMAP_ALLFACES)
 					{
-						return LoaderResult::kNotSupported;
+						return IBvTextureLoader::Result::kNotSupported;
 					}
 
 					arraySize = 6;
@@ -979,7 +972,7 @@ namespace
 		// Bound sizes (for security purposes we don't trust DDS file metadata larger than the Direct3D hardware requirements)
 		if (mipCount > kReqMipLevels)
 		{
-			return LoaderResult::kNotSupported;
+			return IBvTextureLoader::Result::kNotSupported;
 		}
 
 		switch (resDim)
@@ -988,7 +981,7 @@ namespace
 			if ((arraySize > kReqTexture1DArrayAxisDimension) ||
 				(width > kReqTexture1DUDimension))
 			{
-				return LoaderResult::kNotSupported;
+				return IBvTextureLoader::Result::kNotSupported;
 			}
 			break;
 
@@ -1000,14 +993,14 @@ namespace
 					(width > kReqTextureCubeDimension) ||
 					(height > kReqTextureCubeDimension))
 				{
-					return LoaderResult::kNotSupported;
+					return IBvTextureLoader::Result::kNotSupported;
 				}
 			}
 			else if ((arraySize > kReqTexture2DArrayAxisDimension) ||
 				(width > kReqTexture2DUOrVDimension) ||
 				(height > kReqTexture2DUOrVDimension))
 			{
-				return LoaderResult::kNotSupported;
+				return IBvTextureLoader::Result::kNotSupported;
 			}
 			break;
 
@@ -1017,22 +1010,22 @@ namespace
 				(height > kReqTexture3DUVOrWDimension) ||
 				(depth > kReqTexture3DUVOrWDimension))
 			{
-				return LoaderResult::kNotSupported;
+				return IBvTextureLoader::Result::kNotSupported;
 			}
 			break;
 
 		default:
-			return LoaderResult::kNotSupported;
+			return IBvTextureLoader::Result::kNotSupported;
 		}
 
 		uint32_t numberOfPlanes = GetFormatPlaneCount(format);
 		if (!numberOfPlanes)
-			return LoaderResult::kInvalidArg;
+			return IBvTextureLoader::Result::kInvalidArg;
 
 		if ((numberOfPlanes > 1) && IsDepthStencil(format))
 		{
 			// DirectX 12 uses planes for stencil, DirectX 11 does not
-			return LoaderResult::kNotSupported;
+			return IBvTextureLoader::Result::kNotSupported;
 		}
 
 		//if (outIsCubeMap != nullptr)
@@ -1046,7 +1039,7 @@ namespace
 		numberOfResources *= numberOfPlanes;
 
 		if (numberOfResources > kReqSubresources)
-			return LoaderResult::kInvalidArg;
+			return IBvTextureLoader::Result::kInvalidArg;
 
 		subresources.Reserve(numberOfResources);
 
@@ -1054,7 +1047,7 @@ namespace
 		textureInfo.m_Height = height;
 		textureInfo.m_Depth = depth;
 		textureInfo.m_MipLevels = mipCount;
-		textureInfo.m_LayerCount = arraySize;
+		textureInfo.m_ArraySize = arraySize;
 		textureInfo.m_IsCubeMap = isCubeMap;
 		textureInfo.m_Format = (Format)format;
 		textureInfo.m_PlaneCount = numberOfPlanes;
@@ -1080,7 +1073,7 @@ namespace
 			maxsize, bitSize, bitData,
 			twidth, theight, tdepth, skipMip, subresources);
 
-		if (hr != LoaderResult::kOk)
+		if (hr != IBvTextureLoader::Result::kOk)
 		{
 			subresources.Clear();
 		}
@@ -1120,28 +1113,28 @@ namespace
 		return DDS_ALPHA_MODE_UNKNOWN;
 	}
 
-	LoaderResult ReadDDSHeader(const u8* pBuffer, size_t bufferSize, DDS_HEADER& hdr, DDS_HEADER_DXT10& dxt10Hdr, const u8*& pTextureData, u64& textureDataSize)
+	IBvTextureLoader::Result ReadDDSHeader(const u8* pBuffer, size_t bufferSize, DDS_HEADER& hdr, DDS_HEADER_DXT10& dxt10Hdr, const u8*& pTextureData, u64& textureDataSize)
 	{
 		if (!bufferSize)
 		{
-			return LoaderResult::kBadPointer;
+			return IBvTextureLoader::Result::kBadPointer;
 		}
 
 		if (bufferSize > UINT32_MAX)
 		{
-			return LoaderResult::kFail;
+			return IBvTextureLoader::Result::kFail;
 		}
 
 		if (bufferSize < (sizeof(uint32_t) + sizeof(DDS_HEADER)))
 		{
-			return LoaderResult::kFail;
+			return IBvTextureLoader::Result::kFail;
 		}
 
 		// DDS files always start with the same magic number ("DDS ")
 		auto dwMagicNumber = *reinterpret_cast<const uint32_t*>(pBuffer);
 		if (dwMagicNumber != DDS_MAGIC)
 		{
-			return LoaderResult::kFail;
+			return IBvTextureLoader::Result::kFail;
 		}
 
 		hdr = *reinterpret_cast<const DDS_HEADER*>(pBuffer + sizeof(uint32_t));
@@ -1150,7 +1143,7 @@ namespace
 		if (hdr.size != sizeof(DDS_HEADER) ||
 			hdr.ddspf.size != sizeof(DDS_PIXELFORMAT))
 		{
-			return LoaderResult::kFail;
+			return IBvTextureLoader::Result::kFail;
 		}
 
 		// Check for DX10 extension
@@ -1161,7 +1154,7 @@ namespace
 			// Must be long enough for both headers and magic value
 			if (bufferSize < (sizeof(uint32_t) + sizeof(DDS_HEADER) + sizeof(DDS_HEADER_DXT10)))
 			{
-				return LoaderResult::kFail;
+				return IBvTextureLoader::Result::kFail;
 			}
 
 			bDXT10Header = true;
@@ -1175,12 +1168,12 @@ namespace
 		pTextureData = pBuffer + offset;
 		textureDataSize = bufferSize - offset;
 
-		return LoaderResult::kOk;
+		return IBvTextureLoader::Result::kOk;
 	}
 } // anonymous namespace
 
 
-LoaderResult LoadDDSTexture(const uint8_t* bitData, size_t bitSize, IBvTextureBlob::Info& textureInfo, BvVector<SubresourceData>& subresources) noexcept(false)
+IBvTextureLoader::Result LoadDDSTexture(const uint8_t* bitData, size_t bitSize, IBvTextureBlob::Info& textureInfo, BvVector<SubresourceData>& subresources) noexcept(false)
 {
 	DDS_HEADER hdr;
 	DDS_HEADER_DXT10 dxt10Hdr;
@@ -1188,7 +1181,7 @@ LoaderResult LoadDDSTexture(const uint8_t* bitData, size_t bitSize, IBvTextureBl
 	size_t textureDataSize;
 
 	auto result = ReadDDSHeader(bitData, bitSize, hdr, dxt10Hdr, pTextureData, textureDataSize);
-	if (result != LoaderResult::kOk)
+	if (result != IBvTextureLoader::Result::kOk)
 	{
 		return result;
 	}
@@ -1198,3 +1191,686 @@ LoaderResult LoadDDSTexture(const uint8_t* bitData, size_t bitSize, IBvTextureBl
 
 
 //--------------------------------------------------------------------------------------
+
+
+BvDDS::BvDDS()
+{
+}
+
+
+BvDDS::BvDDS(const void* pData, size_t size)
+	: m_pData(reinterpret_cast<const u8*>(pData)), m_Size(size)
+{
+	ProcessHeaders();
+}
+
+
+BvDDS::BvDDS(BvDDS&& rhs) noexcept
+{
+	*this = std::move(rhs);
+}
+
+
+BvDDS& BvDDS::operator=(BvDDS&& rhs) noexcept
+{
+	if (this != &rhs)
+	{
+		std::swap(m_pData, rhs.m_pData);
+		std::swap(m_Size, rhs.m_Size);
+		std::swap(m_pDDSHeader, rhs.m_pDDSHeader);
+		std::swap(m_pDDSHeaderDX10, rhs.m_pDDSHeaderDX10);
+	}
+
+	return *this;
+}
+
+
+DXGIFormat BvDDS::GetDXGIFormat() const
+{
+	if (HasDX10Header())
+	{
+		return m_pDDSHeaderDX10->dxgiFormat;
+	}
+
+	return GetDXGIFormat(m_pDDSHeader->ddspf);
+}
+
+
+Format BvDDS::GetFormat() const
+{
+	return (Format)GetDXGIFormat();
+}
+
+
+TextureType BvDDS::GetType() const
+{
+	if (HasDX10Header())
+	{
+		switch (m_pDDSHeaderDX10->resourceDimension)
+		{
+		case DDSResourceDimension::kTexture1D:
+			return TextureType::kTexture1D;
+		case DDSResourceDimension::kTexture2D:
+			return TextureType::kTexture2D;
+		case DDSResourceDimension::kTexture3D:
+			return TextureType::kTexture3D;
+		}
+	}
+
+	if (m_pDDSHeader->flags & kDDSD_DEPTH)
+	{
+		return TextureType::kTexture3D;
+	}
+
+	return TextureType::kTexture2D;
+}
+
+
+u32 BvDDS::GetWidth() const
+{
+	return m_pDDSHeader->width;
+}
+
+
+u32 BvDDS::GetHeight() const
+{
+	return m_pDDSHeader->height;
+}
+
+
+u32 BvDDS::GetDepth() const
+{
+	return m_pDDSHeader->depth;
+}
+
+
+u32 BvDDS::GetMipCount() const
+{
+	return m_pDDSHeader->mipMapCount > 0 ? m_pDDSHeader->mipMapCount : 1;
+}
+
+
+u32 BvDDS::GetArraySize() const
+{
+	u32 arraySize = 1;
+	if (HasDX10Header())
+	{
+		arraySize = m_pDDSHeaderDX10->arraySize;
+	}
+
+	if (IsCubeMap())
+	{
+		arraySize *= 6;
+	}
+
+	return arraySize;
+}
+
+
+u32 BvDDS::GetPlaneCount() const
+{
+	auto formatInfo = GetFormatInfo(GetFormat());
+	return formatInfo.m_PlaneCount;
+}
+
+
+bool BvDDS::IsCubeMap() const
+{
+	if (HasDX10Header())
+	{
+		return bool(m_pDDSHeaderDX10->miscFlag & kDDS_RESOURCE_MISC_TEXTURECUBE);
+	}
+
+	// We require all six faces to be defined
+	return (m_pDDSHeader->caps2 & kDDSCAPS2_CUBEMAP_ALLFACES) == kDDSCAPS2_CUBEMAP_ALLFACES;
+}
+
+
+DDS_ALPHA_MODE BvDDS::GetAlphaMode() const
+{
+	if (HasDX10Header())
+	{
+		auto mode = static_cast<DDS_ALPHA_MODE>(m_pDDSHeaderDX10->miscFlags2 & DDS_MISC_FLAGS2_ALPHA_MODE_MASK);
+		switch (mode)
+		{
+		case DDS_ALPHA_MODE_STRAIGHT:
+		case DDS_ALPHA_MODE_PREMULTIPLIED:
+		case DDS_ALPHA_MODE_OPAQUE:
+		case DDS_ALPHA_MODE_CUSTOM:
+			return mode;
+
+		case DDS_ALPHA_MODE_UNKNOWN:
+		default:
+			break;
+		}
+	}
+	else if ((kFourCC_DXT2 == m_pDDSHeader->ddspf.fourCC)
+		|| (kFourCC_DXT4 == m_pDDSHeader->ddspf.fourCC))
+	{
+		return DDS_ALPHA_MODE_PREMULTIPLIED;
+	}
+
+	return DDS_ALPHA_MODE_UNKNOWN;
+}
+
+
+bool BvDDS::IsValid() const
+{
+	return m_pTextureData != nullptr;
+}
+
+
+bool BvDDS::HasDX10Header() const
+{
+	return m_pDDSHeaderDX10 != nullptr;
+}
+
+
+u32 BvDDS::GetSubresourceCount() const
+{
+	return GetMipCount() * GetArraySize() * GetPlaneCount();
+}
+
+
+void BvDDS::GetSubresourceData(SubresourceData& subresource, u32 mipLevel, u32 arraySlice, u32 planeSlice) const
+{
+	u32 mipCount = GetMipCount();
+	u32 arraySize = GetArraySize();
+	u32 planeCount = GetPlaneCount();
+
+	Format format = GetFormat();
+	u32 w = GetWidth();
+	u32 h = GetHeight();
+	u32 d = GetDepth();
+
+	TextureSubresourceInfo texSubresource;
+	for (auto p = 0u; p < planeCount; ++p)
+	{
+		auto pData = m_pTextureData;
+		for (auto a = 0u; a < arraySize; ++a)
+		{
+			for (auto m = 0u; m < mipCount; ++m)
+			{
+				GetTextureSubresourceInfo(texSubresource, format, { w, h, d }, m);
+				subresource.m_pData = pData;
+				subresource.m_RowPitch = texSubresource.m_RowPitch;
+				subresource.m_SlicePitch = texSubresource.m_SlicePitch;
+
+				pData += texSubresource.m_MipSize;
+				if (pData > m_pData + texSubresource.m_MipSize)
+				{
+					return;
+				}
+
+				AdjustPlaneSubresourceData(format, h, p, subresource);
+
+				if (p == planeSlice && a == arraySlice && m == mipLevel)
+				{
+					return;
+				}
+			}
+		}
+	}
+}
+
+
+u32 BvDDS::GetAllSubresourceData(SubresourceData* pSubresources, u32 subresourceCount) const
+{
+	u32 mipCount = GetMipCount();
+	u32 arraySize = GetArraySize();
+	u32 planeCount = GetPlaneCount();
+
+	Format format = GetFormat();
+	u32 w = GetWidth();
+	u32 h = GetHeight();
+	u32 d = GetDepth();
+
+	u32 subresourceIndex = 0;
+	TextureSubresourceInfo texSubresource;
+	for (auto p = 0; p < planeCount; ++p)
+	{
+		auto pData = m_pTextureData;
+		for (auto a = 0; a < arraySize; ++a)
+		{
+			for (auto m = 0; m < mipCount; ++m, ++subresourceIndex)
+			{
+				if (subresourceIndex == subresourceCount)
+				{
+					return subresourceIndex;
+				}
+
+				GetTextureSubresourceInfo(texSubresource, format, { w, h, d }, m);
+				auto& subresource = pSubresources[subresourceIndex];
+				subresource.m_pData = pData;
+				subresource.m_RowPitch = texSubresource.m_RowPitch;
+				subresource.m_SlicePitch = texSubresource.m_SlicePitch;
+
+				pData += texSubresource.m_MipSize;
+				if (pData > m_pData + texSubresource.m_MipSize)
+				{
+					return subresourceIndex;
+				}
+
+				AdjustPlaneSubresourceData(format, h, p, subresource);
+			}
+		}
+	}
+
+	return subresourceIndex;
+}
+
+
+void BvDDS::ProcessHeaders()
+{
+	if (m_Size < kMinDDSHeaderSize)
+	{
+		return;
+	}
+
+	u32 magicValue = *reinterpret_cast<const u32*>(m_pData);
+	if (magicValue != kFourCC_DDS)
+	{
+		return;
+	}
+
+	m_pDDSHeader = reinterpret_cast<const DDS_HEADER*>(m_pData + sizeof(u32));
+
+	// Verify header to validate DDS file
+	if (m_pDDSHeader->size != sizeof(DDS_HEADER) ||
+		m_pDDSHeader->ddspf.size != sizeof(DDS_PIXELFORMAT))
+	{
+		return;
+	}
+
+	size_t textureOffset = kMinDDSHeaderSize;
+
+	// Check for DX10 extension
+	if ((m_pDDSHeader->ddspf.flags & kDDPF_FOURCC) &&
+		(m_pDDSHeader->ddspf.fourCC == kFourCC_DX10))
+	{
+		// Must be long enough for both headers and magic value
+		if (m_Size < kMinDDSDX10HeaderSize)
+		{
+			return;
+		}
+
+		textureOffset += sizeof(DDS_HEADER_DXT10);
+
+		m_pDDSHeaderDX10 = reinterpret_cast<const DDS_HEADER_DXT10*>(m_pData + kMinDDSHeaderSize);
+	}
+
+	if (!ValidateData())
+	{
+		return;
+	}
+
+	m_pTextureData = m_pData + textureOffset;
+	m_TextureDataSize = m_Size - textureOffset;
+}
+
+
+bool BvDDS::ValidateData()
+{
+	u32 width = m_pDDSHeader->width;
+	u32 height = m_pDDSHeader->height;
+	u32 depth = m_pDDSHeader->depth;
+	u32 arraySize = 1;
+	bool isCubeMap = false;
+	DXGIFormat format = DXGIFormat::DXGI_FORMAT_UNKNOWN;
+	DDSResourceDimension dim = DDSResourceDimension::kUnknown;
+
+	// Flags DDSD_CAPS, DDSD_WIDTH, DDSD_HEIGHT, DDSD_PIXELFORMAT all have to be set
+	if ((m_pDDSHeader->flags & kDDSD_REQUIRED_FLAGS) != kDDSD_REQUIRED_FLAGS)
+	{
+		return false;
+	}
+
+	if (HasDX10Header())
+	{
+		arraySize = m_pDDSHeaderDX10->arraySize;
+		isCubeMap = bool(m_pDDSHeaderDX10->miscFlag & kDDS_RESOURCE_MISC_TEXTURECUBE);
+		if (isCubeMap)
+		{
+			arraySize *= 6;
+		}
+		format = m_pDDSHeaderDX10->dxgiFormat;
+		dim = (DDSResourceDimension)m_pDDSHeaderDX10->resourceDimension;
+	}
+	else
+	{
+		arraySize = 1;
+		isCubeMap = bool(m_pDDSHeader->caps2 & kDDSCAPS2_CUBEMAP);
+		if (isCubeMap)
+		{
+			// If the cubemap flag is set, we require all 6 faces to be present
+			if (isCubeMap && (m_pDDSHeader->caps2 & kDDSCAPS2_CUBEMAP_ALLFACES) != kDDSCAPS2_CUBEMAP_ALLFACES)
+			{
+				return false;
+			}
+			arraySize *= 6;
+		}
+
+
+		format = GetDXGIFormat(m_pDDSHeader->ddspf);
+		dim = bool(m_pDDSHeader->flags & kDDSD_DEPTH) ? DDSResourceDimension::kTexture3D : DDSResourceDimension::kTexture2D;
+	}
+
+	// Array size needs to be valid
+	if (arraySize == 0)
+	{
+		return false;
+	}
+
+	// Format has to be supported
+	if (format == DXGIFormat::DXGI_FORMAT_AI44 || format == DXGIFormat::DXGI_FORMAT_IA44
+		|| format == DXGIFormat::DXGI_FORMAT_P8 || format == DXGIFormat::DXGI_FORMAT_A8P8 || format == DXGIFormat::DXGI_FORMAT_UNKNOWN)
+	{
+		return false;
+	}
+
+	switch (dim)
+	{
+	case DDSResourceDimension::kTexture1D:
+		// If it's a 1D texture, height has to be 1
+		if (((m_pDDSHeader->flags & kDDSD_HEIGHT) && height != 1)
+			|| (arraySize > kReqTexture1DArrayAxisDimension)
+			|| (width > kReqTexture1DUDimension))
+		{
+			return false;
+		}
+		break;
+	case DDSResourceDimension::kTexture2D:
+	{
+		if ((arraySize > kReqTexture2DArrayAxisDimension)
+			|| (width > kReqTexture2DUOrVDimension)
+			|| (height > kReqTexture2DUOrVDimension))
+		{
+			return false;
+		}
+	}
+	break;
+	case DDSResourceDimension::kTexture3D:
+		// If it's a 3D / volume texture, the depth flag has to be set
+		if (!(m_pDDSHeader->flags & kDDSD_DEPTH)
+			|| (arraySize > 1)
+			|| (width > kReqTexture3DUVOrWDimension)
+			|| (height > kReqTexture3DUVOrWDimension)
+			|| (depth > kReqTexture3DUVOrWDimension))
+		{
+			return false;
+		}
+		break;
+	default:
+		return false;
+	}
+
+	return false;
+}
+
+
+DXGIFormat BvDDS::GetDXGIFormat(const DDS_PIXELFORMAT& ddpf) const
+{
+#define ISBITMASK(r, g, b, a) (ddpf.RBitMask == r && ddpf.GBitMask == g && ddpf.BBitMask == b && ddpf.ABitMask == a)
+	if (ddpf.flags & DDS_RGB)
+	{
+		// Note that sRGB formats are written using the "DX10" extended header
+
+		switch (ddpf.RGBBitCount)
+		{
+		case 32:
+			if (ISBITMASK(0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8G8B8A8_UNORM;
+			}
+
+			if (ISBITMASK(0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000))
+			{
+				return DXGIFormat::DXGI_FORMAT_B8G8R8A8_UNORM;
+			}
+
+			if (ISBITMASK(0x00ff0000, 0x0000ff00, 0x000000ff, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_B8G8R8X8_UNORM;
+			}
+
+			// No DXGI format maps to ISBITMASK(0x000000ff,0x0000ff00,0x00ff0000,0) aka D3DFMT_X8B8G8R8
+
+			// Note that many common DDS reader/writers (including D3DX) swap the
+			// the RED/BLUE masks for 10:10:10:2 formats. We assume
+			// below that the 'backwards' header mask is being used since it is most
+			// likely written by D3DX. The more robust solution is to use the 'DX10'
+			// header extension and specify the DXGIFormat::DXGI_FORMAT_R10G10B10A2_UNORM format directly
+
+			// For 'correct' writers, this should be 0x000003ff,0x000ffc00,0x3ff00000 for RGB data
+			if (ISBITMASK(0x3ff00000, 0x000ffc00, 0x000003ff, 0xc0000000))
+			{
+				return DXGIFormat::DXGI_FORMAT_R10G10B10A2_UNORM;
+			}
+
+			// No DXGI format maps to ISBITMASK(0x000003ff,0x000ffc00,0x3ff00000,0xc0000000) aka D3DFMT_A2R10G10B10
+
+			if (ISBITMASK(0x0000ffff, 0xffff0000, 0, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_R16G16_UNORM;
+			}
+
+			if (ISBITMASK(0xffffffff, 0, 0, 0))
+			{
+				// Only 32-bit color channel format in D3D9 was R32F
+				return DXGIFormat::DXGI_FORMAT_R32_FLOAT; // D3DX writes this out as a FourCC of 114
+			}
+			break;
+
+		case 24:
+			// No 24bpp DXGI formats aka D3DFMT_R8G8B8
+			break;
+
+		case 16:
+			if (ISBITMASK(0x7c00, 0x03e0, 0x001f, 0x8000))
+			{
+				return DXGIFormat::DXGI_FORMAT_B5G5R5A1_UNORM;
+			}
+			if (ISBITMASK(0xf800, 0x07e0, 0x001f, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_B5G6R5_UNORM;
+			}
+
+			// No DXGI format maps to ISBITMASK(0x7c00,0x03e0,0x001f,0) aka D3DFMT_X1R5G5B5
+
+			if (ISBITMASK(0x0f00, 0x00f0, 0x000f, 0xf000))
+			{
+				return DXGIFormat::DXGI_FORMAT_B4G4R4A4_UNORM;
+			}
+
+			// NVTT versions 1.x wrote this as RGB instead of LUMINANCE
+			if (ISBITMASK(0x00ff, 0, 0, 0xff00))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8G8_UNORM;
+			}
+			if (ISBITMASK(0xffff, 0, 0, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_R16_UNORM;
+			}
+
+			// No DXGI format maps to ISBITMASK(0x0f00,0x00f0,0x000f,0) aka D3DFMT_X4R4G4B4
+
+			// No 3:3:2:8 or paletted DXGI formats aka D3DFMT_A8R3G3B2, D3DFMT_A8P8, etc.
+			break;
+
+		case 8:
+			// NVTT versions 1.x wrote this as RGB instead of LUMINANCE
+			if (ISBITMASK(0xff, 0, 0, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8_UNORM;
+			}
+
+			// No 3:3:2 or paletted DXGI formats aka D3DFMT_R3G3B2, D3DFMT_P8
+			break;
+		}
+	}
+	else if (ddpf.flags & DDS_LUMINANCE)
+	{
+		switch (ddpf.RGBBitCount)
+		{
+		case 16:
+			if (ISBITMASK(0xffff, 0, 0, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_R16_UNORM; // D3DX10/11 writes this out as DX10 extension
+			}
+			if (ISBITMASK(0x00ff, 0, 0, 0xff00))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8G8_UNORM; // D3DX10/11 writes this out as DX10 extension
+			}
+			break;
+
+		case 8:
+			if (ISBITMASK(0xff, 0, 0, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8_UNORM; // D3DX10/11 writes this out as DX10 extension
+			}
+
+			// No DXGI format maps to ISBITMASK(0x0f,0,0,0xf0) aka D3DFMT_A4L4
+
+			if (ISBITMASK(0x00ff, 0, 0, 0xff00))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8G8_UNORM; // Some DDS writers assume the bitcount should be 8 instead of 16
+			}
+			break;
+		}
+	}
+	else if (ddpf.flags & DDS_ALPHA)
+	{
+		if (8 == ddpf.RGBBitCount)
+		{
+			return DXGIFormat::DXGI_FORMAT_A8_UNORM;
+		}
+	}
+	else if (ddpf.flags & DDS_BUMPDUDV)
+	{
+		switch (ddpf.RGBBitCount)
+		{
+		case 32:
+			if (ISBITMASK(0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8G8B8A8_SNORM; // D3DX10/11 writes this out as DX10 extension
+			}
+			if (ISBITMASK(0x0000ffff, 0xffff0000, 0, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_R16G16_SNORM; // D3DX10/11 writes this out as DX10 extension
+			}
+
+			// No DXGI format maps to ISBITMASK(0x3ff00000, 0x000ffc00, 0x000003ff, 0xc0000000) aka D3DFMT_A2W10V10U10
+			break;
+
+		case 16:
+			if (ISBITMASK(0x00ff, 0xff00, 0, 0))
+			{
+				return DXGIFormat::DXGI_FORMAT_R8G8_SNORM; // D3DX10/11 writes this out as DX10 extension
+			}
+			break;
+		}
+
+		// No DXGI format maps to DDPF_BUMPLUMINANCE aka D3DFMT_L6V5U5, D3DFMT_X8L8V8U8
+	}
+	else if (ddpf.flags & DDS_FOURCC)
+	{
+		if (kFourCC_DXT1 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC1_UNORM;
+		}
+		if (kFourCC_DXT3 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC2_UNORM;
+		}
+		if (kFourCC_DXT5 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC3_UNORM;
+		}
+
+		// While pre-multiplied alpha isn't directly supported by the DXGI formats,
+		// they are basically the same as these BC formats so they can be mapped
+		if (kFourCC_DXT2 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC2_UNORM;
+		}
+		if (kFourCC_DXT4 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC3_UNORM;
+		}
+
+		if (kFourCC_ATI1 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC4_UNORM;
+		}
+		if (kFourCC_BC4U == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC4_UNORM;
+		}
+		if (kFourCC_BC4S == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC4_SNORM;
+		}
+
+		if (kFourCC_ATI2 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC5_UNORM;
+		}
+		if (kFourCC_BC5U == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC5_UNORM;
+		}
+		if (kFourCC_BC5S == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_BC5_SNORM;
+		}
+
+		// BC6H and BC7 are written using the "DX10" extended header
+
+		if (kFourCC_RGBG == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_R8G8_B8G8_UNORM;
+		}
+		if (kFourCC_GRGB == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_G8R8_G8B8_UNORM;
+		}
+
+		if (kFourCC_YUY2 == ddpf.fourCC)
+		{
+			return DXGIFormat::DXGI_FORMAT_YUY2;
+		}
+
+		// Check for D3DFORMAT enums being set here
+		switch (ddpf.fourCC)
+		{
+		case 36: // D3DFMT_A16B16G16R16
+			return DXGIFormat::DXGI_FORMAT_R16G16B16A16_UNORM;
+
+		case 110: // D3DFMT_Q16W16V16U16
+			return DXGIFormat::DXGI_FORMAT_R16G16B16A16_SNORM;
+
+		case 111: // D3DFMT_R16F
+			return DXGIFormat::DXGI_FORMAT_R16_FLOAT;
+
+		case 112: // D3DFMT_G16R16F
+			return DXGIFormat::DXGI_FORMAT_R16G16_FLOAT;
+
+		case 113: // D3DFMT_A16B16G16R16F
+			return DXGIFormat::DXGI_FORMAT_R16G16B16A16_FLOAT;
+
+		case 114: // D3DFMT_R32F
+			return DXGIFormat::DXGI_FORMAT_R32_FLOAT;
+
+		case 115: // D3DFMT_G32R32F
+			return DXGIFormat::DXGI_FORMAT_R32G32_FLOAT;
+
+		case 116: // D3DFMT_A32B32G32R32F
+			return DXGIFormat::DXGI_FORMAT_R32G32B32A32_FLOAT;
+
+			// No DXGI format maps to D3DFMT_CxV8U8
+		}
+	}
+
+	return DXGIFormat::DXGI_FORMAT_UNKNOWN;
+#undef  ISBITMASK
+}

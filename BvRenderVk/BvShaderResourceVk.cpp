@@ -10,7 +10,7 @@
 
 
 BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, u32 shaderResourceCount,
-	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc)
+	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc)
 	: m_pDevice(pDevice)
 {
 	u32 samplerCount = 0;
@@ -40,7 +40,7 @@ BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, u3
 		}
 	}
 
-	m_ShaderResourceLayoutDesc.m_ShaderResourceConstant = shaderResourceConstantDesc;
+	m_ShaderResourceLayoutDesc.m_ShaderResourceConstant = pShaderResourceConstantDesc ? *pShaderResourceConstantDesc : ShaderResourceConstantDesc{};
 
 	Create();
 }
@@ -79,7 +79,7 @@ void BvShaderResourceLayoutVk::Create()
 			{
 				for (auto i = 0; i < currResource.m_Count; ++i)
 				{
-					samplers.PushBack(reinterpret_cast<const BvSamplerVk*>(currResource.m_ppStaticSamplers[i])->GetHandle());
+					samplers.PushBack(TO_VK(currResource.m_ppStaticSamplers[i])->GetHandle());
 				}
 				bindings.PushBack({ currResource.m_Binding, VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
 					currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), samplers.Data() + currSamplerIndex });

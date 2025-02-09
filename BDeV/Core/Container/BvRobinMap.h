@@ -10,7 +10,7 @@
 #include <utility>
 
 
-template<typename Key, typename Value, typename MemoryArenaType = IBvMemoryArena, typename Hash = BvHash<Key>, typename Comparer = std::equal_to<Key>>
+template<typename Key, typename Value, typename MemoryArenaType = IBvMemoryArena, typename Hash = std::hash<Key>, typename Comparer = std::equal_to<Key>>
 class BvRobinMap
 {
 public:

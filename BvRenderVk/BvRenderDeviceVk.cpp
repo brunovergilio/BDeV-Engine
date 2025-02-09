@@ -84,9 +84,9 @@ BvRenderPass* BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPas
 
 
 BvShaderResourceLayout* BvRenderDeviceVk::CreateShaderResourceLayout(u32 shaderResourceCount,
-	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc)
+	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc)
 {
-	return CreateShaderResourceLayoutVk(shaderResourceCount, pShaderResourceDescs, shaderResourceConstantDesc);
+	return CreateShaderResourceLayoutVk(shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc);
 }
 
 
@@ -170,9 +170,9 @@ BvRenderPassVk* BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& rende
 }
 
 
-BvShaderResourceLayoutVk* BvRenderDeviceVk::CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc)
+BvShaderResourceLayoutVk* BvRenderDeviceVk::CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc)
 {
-	auto pObj = BV_NEW(BvShaderResourceLayoutVk)(this, shaderResourceCount, pShaderResourceDescs, shaderResourceConstantDesc);
+	auto pObj = BV_NEW(BvShaderResourceLayoutVk)(this, shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc);
 	m_DeviceObjects.PushBack(pObj);
 	return pObj;
 }
@@ -227,84 +227,6 @@ void BvRenderDeviceVk::WaitIdle() const
 }
 
 
-const u32 BvRenderDeviceVk::GetMemoryTypeIndex(const u32 memoryTypeBits, const VkMemoryPropertyFlags properties) const
-{
-	u32 index = UINT32_MAX;
-	u32 typeBits = memoryTypeBits;
-
-	auto& memoryProperties = m_pDeviceInfo->m_DeviceMemoryProperties;
-	for (u32 i = 0; i < memoryProperties.memoryProperties.memoryTypeCount; i++)
-	{
-		if ((typeBits & 1) == 1)
-		{
-			if ((memoryProperties.memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
-			{
-				index = i;
-				break;
-			}
-		}
-		typeBits >>= 1;
-	}
-
-	return index;
-}
-
-
-const VkFormat BvRenderDeviceVk::GetBestDepthFormat(const VkFormat format /*= VK_FORMAT_UNDEFINED*/) const
-{
-	VkFormat chosenFormat = VK_FORMAT_UNDEFINED;
-
-	// Since all depth formats may be optional, we need to find a suitable depth format to use
-	VkFormat depthFormats[] =
-	{
-		VK_FORMAT_D24_UNORM_S8_UINT, // 24-bit depths are better for optimal performance
-		VK_FORMAT_D32_SFLOAT_S8_UINT, // 32-bit depth is costlier, use if you need more precision
-		VK_FORMAT_D32_SFLOAT,
-		VK_FORMAT_D16_UNORM_S8_UINT,
-		VK_FORMAT_D16_UNORM
-	};
-
-	VkFormatProperties formatProps;
-	for (auto & depthFormat : depthFormats)
-	{
-		vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, depthFormat, &formatProps);
-		// Format must support depth stencil attachment for optimal tiling
-		if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-		{
-			chosenFormat = depthFormat;
-			if (format == VK_FORMAT_UNDEFINED || format == chosenFormat)
-			{
-				break;
-			}
-		}
-	}
-
-	return chosenFormat;
-}
-
-
-bool BvRenderDeviceVk::HasFormatSupport(Format format)
-{
-	const auto& vkFormatMap = GetVkFormatMap(format);
-
-	VkFormatProperties formatProperties{};
-	vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, GetVkFormat(format), &formatProperties);
-
-	VkFormatFeatureFlags featureFlags = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
-	if (vkFormatMap.aspectFlags & VK_IMAGE_ASPECT_COLOR_BIT)
-	{
-		featureFlags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-	}
-	else if ((vkFormatMap.aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT) || (vkFormatMap.aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT))
-	{
-		featureFlags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	}
-
-	return (formatProperties.optimalTilingFeatures & featureFlags) == featureFlags
-		|| (formatProperties.linearTilingFeatures & featureFlags) == featureFlags;
-}
-
-
 BvCommandContext* BvRenderDeviceVk::GetGraphicsContext(u32 index) const
 {
 	return index < m_GraphicsContexts.Size() ? m_GraphicsContexts[index] : nullptr;
@@ -325,27 +247,8 @@ BvCommandContext* BvRenderDeviceVk::GetTransferContext(u32 index) const
 
 void BvRenderDeviceVk::GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize) const
 {
-	u64 totalSize = 0;
-	u64 offset = 0;
-	u32 subresourceIndex = 0;
-	for (auto layer = 0u; layer < textureDesc.m_LayerCount; ++layer)
-	{
-		for (auto mip = 0u; mip < textureDesc.m_MipLevels; ++mip)
-		{
-			offset = totalSize;
-			
-			TextureSubresource subresource;
-			GetTextureSubresourceData(textureDesc, mip, subresource);
-			if (pSubresources)
-			{
-				pSubresources[subresourceIndex].m_Subresource = subresource;
-				pSubresources[subresourceIndex].m_Offset = offset;
-			}
-			totalSize += RoundToNearestPowerOf2(subresource.m_MipSize, 4);
-
-			++subresourceIndex;
-		}
-	}
+	u64 totalSize = GetBufferSizeForTexture(textureDesc, m_pDeviceInfo->m_DeviceProperties.properties.limits.optimalBufferCopyOffsetAlignment,
+		subresourceCount, pSubresources);
 
 	if (pTotalSize)
 	{
@@ -392,9 +295,123 @@ bool BvRenderDeviceVk::SupportsQueryType(QueryType queryType, CommandType comman
 }
 
 
-bool BvRenderDeviceVk::IsFormatSupported(Format format) const
+FormatFeatures BvRenderDeviceVk::GetFormatFeatures(Format format) const
 {
-	return GetVkFormat(format) != VK_FORMAT_UNDEFINED;
+	FormatFeatures formatFeatures = FormatFeatures::kNone;
+
+	const auto& vkFormatMap = GetVkFormatMap(format);
+	if (vkFormatMap.format == VK_FORMAT_UNDEFINED)
+	{
+		return formatFeatures;
+	}
+
+	VkImageFormatProperties2 imageFormatProperties{ VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2 };
+	VkPhysicalDeviceImageFormatInfo2 imageFormatInfo{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2 };
+	imageFormatInfo.format = vkFormatMap.format;
+	imageFormatInfo.tiling = VK_IMAGE_TILING_OPTIMAL; // We only care about optimal tiling
+
+	VkFormatProperties2 formatProperties{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
+	vkGetPhysicalDeviceFormatProperties2(m_PhysicalDevice, vkFormatMap.format, &formatProperties);
+	auto textureFeatures = formatProperties.formatProperties.optimalTilingFeatures;
+	if ((textureFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)
+		&& (textureFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+	{
+		formatFeatures |= FormatFeatures::kSampling;
+		formatFeatures |= FormatFeatures::kComparisonSampling;
+
+		imageFormatInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		imageFormatInfo.type = VK_IMAGE_TYPE_1D;
+		if (vkGetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageFormatInfo, &imageFormatProperties) == VK_SUCCESS)
+		{
+			formatFeatures |= FormatFeatures::kTexture1D;
+		}
+
+		imageFormatInfo.type = VK_IMAGE_TYPE_2D;
+		if (vkGetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageFormatInfo, &imageFormatProperties) == VK_SUCCESS)
+		{
+			formatFeatures |= FormatFeatures::kTexture2D;
+		}
+
+		imageFormatInfo.type = VK_IMAGE_TYPE_3D;
+		if (vkGetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageFormatInfo, &imageFormatProperties) == VK_SUCCESS)
+		{
+			formatFeatures |= FormatFeatures::kTexture3D;
+		}
+
+		imageFormatInfo.type = VK_IMAGE_TYPE_2D;
+		imageFormatInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		if (vkGetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageFormatInfo, &imageFormatProperties) == VK_SUCCESS)
+		{
+			formatFeatures |= FormatFeatures::kTextureCube;
+		}
+		imageFormatInfo.flags = 0;
+	}
+
+	if (textureFeatures & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT)
+	{
+		formatFeatures |= FormatFeatures::kRWTexture;
+	}
+
+	if (textureFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT)
+	{
+		imageFormatInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+		imageFormatInfo.type = VK_IMAGE_TYPE_2D;
+		if (vkGetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageFormatInfo, &imageFormatProperties) == VK_SUCCESS)
+		{
+			formatFeatures |= FormatFeatures::kRenderTarget;
+			if (imageFormatProperties.imageFormatProperties.sampleCounts > VK_SAMPLE_COUNT_1_BIT)
+			{
+				formatFeatures |= FormatFeatures::kMultisampleRenderTarget;
+			}
+		}
+	}
+
+	if (textureFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT)
+	{
+		imageFormatInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+		imageFormatInfo.type = VK_IMAGE_TYPE_2D;
+		if (vkGetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageFormatInfo, &imageFormatProperties) == VK_SUCCESS)
+		{
+			formatFeatures |= FormatFeatures::kBlendable;
+		}
+	}
+
+	if (textureFeatures & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)
+	{
+		imageFormatInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+		imageFormatInfo.type = VK_IMAGE_TYPE_2D;
+		if (vkGetPhysicalDeviceImageFormatProperties2(m_PhysicalDevice, &imageFormatInfo, &imageFormatProperties) == VK_SUCCESS)
+		{
+			formatFeatures |= FormatFeatures::kDepthStencil;
+		}
+	}
+
+	if ((textureFeatures & VK_FORMAT_FEATURE_2_BLIT_SRC_BIT) && (textureFeatures & VK_FORMAT_FEATURE_2_BLIT_DST_BIT))
+	{
+		formatFeatures |= FormatFeatures::kResolve;
+	}
+
+	auto bufferFeatures = formatProperties.formatProperties.bufferFeatures;
+	if (bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
+	{
+		formatFeatures |= FormatFeatures::kVertexBuffer;
+	}
+
+	if (bufferFeatures & VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT)
+	{
+		formatFeatures |= FormatFeatures::kBuffer;
+	}
+
+	if (bufferFeatures & VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT)
+	{
+		formatFeatures |= FormatFeatures::kRWBuffer;
+	}
+	
+	return formatFeatures;
 }
 
 
@@ -487,10 +504,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 	CreateVMA();
 
-	m_pFramebufferManager = new BvFramebufferManagerVk();
-
 	u32 querySizes[kQueryTypeCount]{ 16, 16, 16 };
-	m_pQueryHeapManager = new BvQueryHeapManagerVk(this, querySizes, 3);
 
 	m_DeviceCaps = deviceCaps;
 }
@@ -504,8 +518,6 @@ void BvRenderDeviceVk::Destroy()
 	{
 		BV_DELETE(m_DeviceObjects[i]);
 	}
-
-	delete m_pFramebufferManager;
 
 	DestroyVMA();
 

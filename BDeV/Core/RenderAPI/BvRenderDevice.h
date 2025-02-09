@@ -29,7 +29,7 @@ public:
 	virtual BvSampler* CreateSampler(const SamplerDesc& desc) = 0;
 	virtual BvRenderPass* CreateRenderPass(const RenderPassDesc& renderPassDesc) = 0;
 	virtual BvShaderResourceLayout* CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc& shaderResourceConstantDesc) = 0;
+		const ShaderResourceConstantDesc* pShaderResourceConstantDesc = nullptr) = 0;
 	virtual BvShader* CreateShader(const ShaderCreateDesc& shaderDesc) = 0;
 	virtual BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) = 0;
 	virtual BvComputePipelineState* CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) = 0;
@@ -46,7 +46,7 @@ public:
 	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr) const = 0;
 
 	virtual bool SupportsQueryType(QueryType queryType, CommandType commandType) const = 0;
-	virtual bool IsFormatSupported(Format format) const = 0;
+	virtual FormatFeatures GetFormatFeatures(Format format) const = 0;
 
 	virtual RenderDeviceCapabilities GetDeviceCaps() const = 0;
 

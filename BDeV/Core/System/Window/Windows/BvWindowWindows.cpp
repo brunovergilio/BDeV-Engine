@@ -334,6 +334,12 @@ bool BvWindow::IsValid() const
 }
 
 
+void* BvWindow::GetHandle() const
+{
+	return m_hWnd;
+}
+
+
 void BvWindow::OnSizeChanged(u32 width, u32 height)
 {
 	m_Width = width;
@@ -345,12 +351,6 @@ void BvWindow::OnPosChanged(i32 x, i32 y)
 {
 	m_X = x;
 	m_Y = y;
-}
-
-
-void* BvWindow::GetHandle() const
-{
-	return m_hWnd;
 }
 
 

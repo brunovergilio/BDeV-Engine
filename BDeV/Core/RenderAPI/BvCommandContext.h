@@ -2,6 +2,7 @@
 
 
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
+#include "BDeV/Core/RenderAPI/BvGPUFence.h"
 
 
 class BvBuffer;
@@ -16,14 +17,32 @@ class BvShaderResourceParams;
 class BvQuery;
 
 
+class BvGPUOp
+{
+public:
+	BvGPUOp() = default;
+	BV_INLINE BvGPUOp(BvGPUFence* pFence, u64 signalValue)
+		: m_pFence(pFence), m_SignalValue(signalValue) {}
+	BV_DEFAULTCOPYMOVE(BvGPUOp);
+
+	BV_INLINE bool IsDone() { return m_pFence->IsDone(m_SignalValue); }
+	BV_INLINE bool Wait(u64 timeout = kU64Max) { return m_pFence->Wait(m_SignalValue, timeout); }
+
+private:
+	BvGPUFence* m_pFence = nullptr;
+	u64 m_SignalValue = 0;
+};
+
+
 class BvCommandContext
 {
 public:
-	virtual void AddDeferredContext(BvCommandContext* pDeferredContext) = 0;
-	virtual void Signal() = 0;
-	virtual void Signal(u64 value) = 0;
+	virtual BvGPUOp Execute() = 0;
+	virtual BvGPUOp Execute(u64 value) = 0;
+	virtual void Execute(BvGPUFence* pFence, u64 value) = 0;
 	virtual void Wait(BvCommandContext* pCommandContext, u64 value) = 0;
-	virtual void Flush() = 0;
+	virtual void NewCommandList() = 0;
+	virtual void FlushFrame() = 0;
 	virtual void WaitForGPU() = 0;
 
 	virtual void BeginRenderPass(const BvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets) = 0;
@@ -116,6 +135,10 @@ public:
 
 	virtual void BeginQuery(BvQuery* pQuery) = 0;
 	virtual void EndQuery(BvQuery* pQuery) = 0;
+
+	virtual void BeginEvent(const char* pName, const BvColor& color = BvColor::Black) = 0;
+	virtual void EndEvent() = 0;
+	virtual void SetMarker(const char* pName, const BvColor& color = BvColor::Black) = 0;
 
 protected:
 	BvCommandContext() {}

@@ -1,7 +1,7 @@
 #include "BvRenderGL/BvContextGl.h"
 #include <GL/glew.h>
 #include <GL/wglew.h>
-#include "BDeV/System/Window/BvWindow.h"
+#include "BDeV/Core/System/Window/BvWindow.h"
 
 
 // Use discrete GPU by default.

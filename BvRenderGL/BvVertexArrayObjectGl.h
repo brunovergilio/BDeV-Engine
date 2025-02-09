@@ -44,9 +44,9 @@ struct VAODesc
 
 
 template<>
-struct BvHash<VAODesc>
+struct std::hash<VAODesc>
 {
-	u64 operator()(const VAODesc& val) const
+	size_t operator()(const VAODesc& val) const
 	{
 		u64 hash = 0;
 		HashCombine(hash, val.m_VertexAttributeDesc.Size());

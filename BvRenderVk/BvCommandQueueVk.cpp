@@ -40,13 +40,23 @@ BvCommandQueueVk::~BvCommandQueueVk()
 }
 
 
-void BvCommandQueueVk::AddWaitSemaphore(VkSemaphore waitSemaphore, u64 waitValue)
+void BvCommandQueueVk::AddWaitSemaphore(VkSemaphore waitSemaphore, u64 value)
 {
 	auto& waitInfo = m_WaitSemaphores.EmplaceBack();
 	waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 	waitInfo.semaphore = waitSemaphore;
-	waitInfo.value = waitValue;
+	waitInfo.value = value;
 	waitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+}
+
+
+void BvCommandQueueVk::AddSignalSemaphore(VkSemaphore signalSemaphore, u64 value)
+{
+	auto& signalInfo = m_SignalSemaphores.EmplaceBack();
+	signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+	signalInfo.semaphore = signalSemaphore;
+	signalInfo.value = value;
+	signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 }
 
 

@@ -33,27 +33,40 @@ void BvGraphicsPipelineStateVk::Create()
 	BvFixedVector<VkVertexInputAttributeDescription, kMaxVertexBindings> attributeDescs(m_PipelineStateDesc.m_VertexInputDescCount, {});
 	BvFixedVector<VkVertexInputBindingDescription, kMaxVertexBindings> bindingDescs;
 	BvFixedVector<VkVertexInputBindingDivisorDescriptionEXT, kMaxVertexBindings> divisorDescs;
-	BvFixedVector<u32, kMaxVertexBindings> bindingIndices(kMaxVertexBindings, kU32Max);
-	for (auto i = 0u; i < attributeDescs.Size(); i++)
+	
 	{
-		attributeDescs[i].location = m_PipelineStateDesc.m_pVertexInputDescs[i].m_Location;
-		attributeDescs[i].binding = m_PipelineStateDesc.m_pVertexInputDescs[i].m_Binding;
-		attributeDescs[i].format = GetVkFormat(m_PipelineStateDesc.m_pVertexInputDescs[i].m_Format);
-		attributeDescs[i].offset = m_PipelineStateDesc.m_pVertexInputDescs[i].m_Offset;
-
-		// We keep track of each binding that hasn't already been set, and add the elements
-		// when a new one is found (which means bindingIndex == kU32Max)
-		auto& bindingIndex = bindingIndices[m_PipelineStateDesc.m_pVertexInputDescs[i].m_Binding];
-		if (bindingIndex == kU32Max)
+		BvFixedVector<u32, kMaxVertexBindings> bindingIndices(kMaxVertexBindings, kU32Max);
+		BvFixedVector<u32, kMaxVertexBindings> bindingElemLocations(kMaxVertexBindings, 0);
+		for (auto i = 0u; i < attributeDescs.Size(); i++)
 		{
-			bindingDescs.PushBack({ m_PipelineStateDesc.m_pVertexInputDescs[i].m_Binding, m_PipelineStateDesc.m_pVertexInputDescs[i].m_Stride,
-				GetVkVertexInputRate(m_PipelineStateDesc.m_pVertexInputDescs[i].m_InputRate) });
-			bindingIndex = bindingDescs.Size() - 1;
-		}
+			auto& viDesc = m_PipelineStateDesc.m_pVertexInputDescs[i];
+			u32 stride = GetFormatInfo(viDesc.m_Format).m_BitsPerPixel >> 3;
 
-		if (m_PipelineStateDesc.m_pVertexInputDescs[i].m_InputRate == InputRate::kPerInstance)
-		{
-			divisorDescs.PushBack({ m_PipelineStateDesc.m_pVertexInputDescs[i].m_Binding, m_PipelineStateDesc.m_pVertexInputDescs[i].m_InstanceRate});
+			// We keep track of each binding that hasn't already been set, and add the elements
+			// when a new one is found (which means bindingIndex == kU32Max)
+			auto& bindingIndex = bindingIndices[viDesc.m_Binding];
+			if (bindingIndex == kU32Max)
+			{
+				bindingDescs.PushBack({ viDesc.m_Binding, 0,
+					GetVkVertexInputRate(viDesc.m_InputRate) });
+				bindingIndex = bindingDescs.Size() - 1;
+			}
+
+			attributeDescs[i].format = GetVkFormat(viDesc.m_Format);
+			attributeDescs[i].location = bindingElemLocations[viDesc.m_Binding]++;
+			attributeDescs[i].binding = viDesc.m_Binding;
+			attributeDescs[i].offset = viDesc.m_Offset;
+			if (attributeDescs[i].offset == VertexInputDesc::kAutoOffset)
+			{
+				attributeDescs[i].offset = bindingDescs[bindingIndex].stride;
+			}
+
+			bindingDescs[bindingIndex].stride += stride;
+
+			if (viDesc.m_InputRate == InputRate::kPerInstance)
+			{
+				divisorDescs.PushBack({ viDesc.m_Binding, viDesc.m_InstanceRate });
+			}
 		}
 	}
 

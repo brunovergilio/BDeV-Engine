@@ -18,6 +18,8 @@ class BvTextureVk;
 class BvQueryHeapManagerVk;
 class BvQueryVk;
 class BvSwapChainVk;
+class BvGPUFenceVk;
+class BvFramebufferManagerVk;
 
 
 class BvFrameDataVk final
@@ -26,7 +28,7 @@ class BvFrameDataVk final
 
 public:
 	BvFrameDataVk();
-	BvFrameDataVk(const BvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex);
+	BvFrameDataVk(const BvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex, BvQueryHeapManagerVk* pQueryHeapManager);
 	BvFrameDataVk(BvFrameDataVk&& rhs) noexcept;
 	BvFrameDataVk& operator=(BvFrameDataVk&& rhs) noexcept;
 	~BvFrameDataVk();
@@ -38,14 +40,16 @@ public:
 	void UpdateSignalValue();
 	void ClearActiveCommandBuffers();
 	void AddQuery(BvQueryVk* pQuery);
-	BvQueryHeapManagerVk* GetQueryHeapManager() const;
-	VkFramebuffer GetFramebuffer(const FramebufferDesc& fbDesc) const;
+	VkFramebuffer GetFramebuffer(const FramebufferDesc& fbDesc);
+	void RemoveFramebuffers(VkImageView view);
+	void UpdateQueryData();
 	
 	BV_INLINE const auto& GetCommandBuffers() const { return m_CommandBuffers; }
 	BV_INLINE auto& GetResourceBindingState() { return m_ResourceBindingState; }
-	BV_INLINE BvSemaphoreVk* GetSemaphore() { return &m_SignalSemaphore; }
+	BV_INLINE BvGPUFenceVk* GetGPUFence() { return m_pFence; }
 	BV_INLINE std::pair<u64, u64> GetSemaphoreValueIndex() const { return m_SignaValueIndex; }
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
+	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pQueryHeapManager; }
 
 private:
 	const BvRenderDeviceVk* m_pDevice = nullptr;
@@ -54,9 +58,12 @@ private:
 	BvResourceBindingStateVk m_ResourceBindingState;
 	BvRobinMap<u64, BvDescriptorPoolVk> m_DescriptorPools;
 	BvRobinMap<u64, BvDescriptorSetVk> m_DescriptorSets;
+	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr;
 	//BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
+	BvFramebufferManagerVk* m_pFramebufferManager = nullptr;
 	BvVector<BvQueryVk*> m_Queries;
-	BvSemaphoreVk m_SignalSemaphore;
+	u32 m_UpdatedQueries = 0;
+	BvGPUFenceVk* m_pFence = nullptr;
 	std::pair<u64, u64> m_SignaValueIndex;
 	u32 m_FrameIndex;
 };
@@ -67,14 +74,15 @@ class BvCommandContextVk final : public BvCommandContext
 	BV_NOCOPYMOVE(BvCommandContextVk);
 
 public:
-	BvCommandContextVk(const BvRenderDeviceVk* pDevice, u32 frameCount, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex);
+	BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex);
 	~BvCommandContextVk();
 
-	void AddDeferredContext(BvCommandContext* pDeferredContext) override;
-	void Signal() override;
-	void Signal(u64 value) override;
+	BvGPUOp Execute() override;
+	BvGPUOp Execute(u64 value) override;
+	void Execute(BvGPUFence* pFence, u64 value) override;
 	void Wait(BvCommandContext* pCommandContext, u64 value) override;
-	void Flush() override;
+	void NewCommandList() override;
+	void FlushFrame() override;
 	void WaitForGPU() override;
 
 	void BeginRenderPass(const BvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets) override;
@@ -136,23 +144,26 @@ public:
 	void BeginQuery(BvQuery* pQuery) override;
 	void EndQuery(BvQuery* pQuery) override;
 
+	virtual void BeginEvent(const char* pName, const BvColor& color = BvColor::Black) override;
+	virtual void EndEvent() override;
+	virtual void SetMarker(const char* pName, const BvColor& color = BvColor::Black) override;
+
 	BV_INLINE BvCommandQueueVk* GetCommandQueue() { return &m_Queue; }
-	BV_INLINE BvSemaphoreVk* GetSemaphore() { return m_Frames[m_ActiveFrameIndex].GetSemaphore(); }
+	BV_INLINE BvGPUFenceVk* GetCurrentGPUFence() { return m_Frames[m_ActiveFrameIndex].GetGPUFence(); }
+	BV_INLINE u64 GetCurrentValue() { return m_Frames[m_ActiveFrameIndex].GetSemaphoreValueIndex().first; }
 	BV_INLINE BvCommandBufferVk* GetCurrentCommandBuffer() const { return m_pCurrCommandBuffer; }
 
 	void AddSwapChain(BvSwapChainVk* pSwapChain);
 	void RemoveSwapChain(BvSwapChainVk* pSwapChain);
-
-private:
-	void SetupCommandBufferIfNotReady();
+	void RemoveFramebuffers(VkImageView view);
 
 private:
 	BvCommandQueueVk m_Queue;
 	BvVector<BvFrameDataVk> m_Frames;
-	BvVector<std::pair<BvSemaphoreVk, u64>> m_WaitSemaphores;
 	BvVector<BvSwapChainVk*> m_SwapChains;
 	BvCommandBufferVk* m_pCurrCommandBuffer = nullptr;
 	BvFrameDataVk* m_pCurrFrame = nullptr;
+	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr; // Query Manager can be placed here as it's used for all frames
 	u32 m_ActiveFrameIndex = 0;
 };
 

@@ -7,19 +7,30 @@
 
 struct BvUUID
 {
-	u32 m_Data1;
-	u16 m_Data2;
-	u16 m_Data3;
-	u16 m_Data4;
-	u8 m_Data5[6];
+	union
+	{
+		struct
+		{
+			u32 m_Data1;
+			u16 m_Data2;
+			u16 m_Data3;
+			u16 m_Data4;
+			u8 m_Data5[6];
+		};
+		struct
+		{
+			u64 m_ULL1;
+			u64 m_ULL2;
+		};
+	};
 
 	friend constexpr bool operator==(const BvUUID& lhs, const BvUUID& rhs)
 	{
-		return lhs.m_Data1 == rhs.m_Data1 && lhs.m_Data2 == rhs.m_Data2
-			&& lhs.m_Data3 == rhs.m_Data3 && lhs.m_Data4 == rhs.m_Data4
+		return lhs.m_ULL1 == rhs.m_ULL1 && lhs.m_ULL2 == rhs.m_ULL2
+			/*&& lhs.m_Data3 == rhs.m_Data3 && lhs.m_Data4 == rhs.m_Data4
 			&& lhs.m_Data5[0] == rhs.m_Data5[0] && lhs.m_Data5[1] == rhs.m_Data5[1]
 			&& lhs.m_Data5[2] == rhs.m_Data5[2] && lhs.m_Data5[3] == rhs.m_Data5[3]
-			&& lhs.m_Data5[4] == rhs.m_Data5[4] && lhs.m_Data5[5] == rhs.m_Data5[5];
+			&& lhs.m_Data5[4] == rhs.m_Data5[4] && lhs.m_Data5[5] == rhs.m_Data5[5]*/;
 	}
 
 	friend constexpr bool operator!=(const BvUUID& lhs, const BvUUID& rhs)

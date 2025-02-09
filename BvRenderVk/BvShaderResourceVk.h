@@ -12,7 +12,7 @@ class BvShaderResourceLayoutVk final : public BvShaderResourceLayout
 {
 public:
 	BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, u32 shaderResourceCount,
-		const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc& shaderResourceConstantDesc);
+		const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc);
 	~BvShaderResourceLayoutVk();
 
 	BvRenderDevice* GetDevice() override;

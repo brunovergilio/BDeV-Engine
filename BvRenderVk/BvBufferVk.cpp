@@ -207,6 +207,7 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	copyRegion.size = std::min(m_BufferDesc.m_Size, pInitData->m_Size);
 
 	auto pContext = static_cast<BvCommandContextVk*>(pInitData->m_pContext);
+	pContext->NewCommandList();
 	pContext->CopyBuffer(&srcBuffer, this, copyRegion);
 
 	VkBufferMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
@@ -225,6 +226,6 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	
 	pContext->ResourceBarrier(1, &barrier, 0, nullptr, 0, nullptr);
-	pContext->Signal();
+	pContext->Execute();
 	pContext->WaitForGPU();
 }

@@ -204,14 +204,19 @@ enum class Format : u8
 
 struct FormatInfo
 {
-	u8 m_ElementCount : 3;
-	u8 m_ElementSize : 5;
-	u8 m_BlockWidth : 3;
-	u8 m_BlockHeight : 3;
-	bool m_IsCompressed : 1;
+	u8 m_BitsPerPixel;
+	u8 m_ElementCount;
+	u8 m_ElementSize;
+	u8 m_BlockWidth;
+	u8 m_BlockHeight;
+	u8 m_BlocksPerElement;
+	Format m_SRGBOrLinearVariant;
 	bool m_IsSRGBFormat : 1;
-	Format m_SRGBVariant;
-	Format m_NonSRGBVariant;
+	bool m_IsDepthStencil : 1;
+	bool m_IsCompressed : 1;
+	bool m_IsPacked : 1;
+	bool m_IsPlanar : 1;
+	u8 m_PlaneCount : 3;
 };
 
 
@@ -219,143 +224,165 @@ constexpr FormatInfo GetFormatInfo(Format format)
 {
 	constexpr FormatInfo kFormatInfos[] =
 	{
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kUnknown
-		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_Typeless
-		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_Float
-		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_UInt
-		{ 4, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA32_SInt
-		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_Typeless
-		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_Float
-		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_UInt
-		{ 3, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB32_SInt
-		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_Typeless
-		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_Float
-		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_UNorm
-		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_UInt
-		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_SNorm
-		{ 4, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA16_SInt
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_Typeless
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_Float
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_UInt
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG32_SInt
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32G8X24_Typeless
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD32_Float_S8X24_UInt
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_Float_X8X24_Typeless
-		{ 2, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kX32_Typeless_G8X24_UInt
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10A2_Typeless
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10A2_UNorm
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10A2_UInt
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG11B10_Float
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_Typeless
-		{ 4, 1, 1, 1, false, false, Format::kRGBA8_UNorm_SRGB, Format::kRGBA8_UNorm },// kRGBA8_UNorm
-		{ 4, 1, 1, 1, false, true, Format::kRGBA8_UNorm_SRGB, Format::kRGBA8_UNorm },// kRGBA8_UNorm_SRGB
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_UInt
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_SNorm
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGBA8_SInt
-		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_Typeless
-		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_Float
-		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_UNorm
-		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_UInt
-		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_SNorm
-		{ 2, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG16_SInt
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_Typeless
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD32_Float
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_Float
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_UInt
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR32_SInt
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR24G8_Typeless
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD24_UNorm_S8_UInt
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR24_UNorm_X8_Typeless
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kX24_Typeless_G8_UInt
-		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_Typeless
-		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_UNorm
-		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_UInt
-		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_SNorm
-		{ 2, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_SInt
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_Typeless
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_Float
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kD16_UNorm
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_UNorm
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_UInt
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_SNorm
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR16_SInt
-		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_Typeless
-		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_UNorm
-		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_UInt
-		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_SNorm
-		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR8_SInt
-		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kA8_UNorm
-		{ 1, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kR1_UNorm
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB9E5_SHAREDEXP
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRG8_BG8_UNorm
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kGR8_GB8_UNorm
-		{ 3, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC1_Typeless
-		{ 3, 8, 4, 4, true, false, Format::kBC1_UNorm_SRGB, Format::kBC1_UNorm },// kBC1_UNorm
-		{ 3, 8, 4, 4, true, true, Format::kBC1_UNorm_SRGB, Format::kBC1_UNorm },// kBC1_UNorm_SRGB
-		{ 4, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC2_Typeless
-		{ 4, 16, 4, 4, true, false, Format::kBC2_UNorm_SRGB, Format::kBC2_UNorm },// kBC2_UNorm
-		{ 4, 16, 4, 4, true, true, Format::kBC2_UNorm_SRGB, Format::kBC2_UNorm },// kBC2_UNorm_SRGB
-		{ 4, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC3_Typeless
-		{ 4, 16, 4, 4, true, false, Format::kBC3_UNorm_SRGB, Format::kBC3_UNorm },// kBC3_UNorm
-		{ 4, 16, 4, 4, true, true, Format::kBC3_UNorm_SRGB, Format::kBC3_UNorm },// kBC3_UNorm_SRGB
-		{ 1, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC4_Typeless
-		{ 1, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC4_UNorm
-		{ 1, 8, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC4_SNorm
-		{ 2, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC5_Typeless
-		{ 2, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC5_UNorm
-		{ 2, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC5_SNorm
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kB5G6R5_UNorm
-		{ 1, 2, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kBGR5A1_UNorm
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kBGRA8_UNorm
-		{ 4, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kBGRX8_UNorm
-		{ 1, 4, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kRGB10_XR_BIAS_A2_UNorm
-		{ 4, 1, 1, 1, false, false, Format::kBGRA8_UNorm_SRGB, Format::kBGRA8_Typeless },// kBGRA8_Typeless
-		{ 4, 1, 1, 1, false, true, Format::kBGRA8_UNorm_SRGB, Format::kBGRA8_Typeless },// kBGRA8_UNorm_SRGB
-		{ 4, 1, 1, 1, false, false, Format::kBGRX8_UNorm_SRGB, Format::kBGRX8_Typeless },// kBGRX8_Typeless
-		{ 4, 1, 1, 1, false, true, Format::kBGRX8_UNorm_SRGB, Format::kBGRX8_Typeless },// kBGRX8_UNorm_SRGB
-		{ 3, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC6H_Typeless
-		{ 3, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC6H_UF16
-		{ 3, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC6H_SF16
-		{ 4, 16, 4, 4, true, false, Format::kUnknown, Format::kUnknown },// kBC7_Typeless
-		{ 4, 16, 4, 4, true, false, Format::kBC7_UNorm_SRGB, Format::kBC7_UNorm },// kBC7_UNorm
-		{ 4, 16, 4, 4, true, true, Format::kBC7_UNorm_SRGB, Format::kBC7_UNorm },// kBC7_UNorm_SRGB
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kAYUV
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY410
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY416
-		{ 3, 1, 1, 1, false, false, Format::kUnknown, Format::kUnknown },// kNV12
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP010
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP016
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// k420_OPAQUE
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kYUY2
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY210
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kY216
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kNV11
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kAI44
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kIA44
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP8
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kA8P8
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kBGRA4_UNorm
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// Undefined
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kP208
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kV208
-		{ 0, 0, 0, 0, false, false, Format::kUnknown, Format::kUnknown },// kV408
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// kUnknown
+		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_Typeless
+		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_Float
+		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_UInt
+		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_SInt
+		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_Typeless
+		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_Float
+		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_UInt
+		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_SInt
+		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_Typeless
+		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_Float
+		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_UNorm
+		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_UInt
+		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_SNorm
+		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_SInt
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_Typeless
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_Float
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_UInt
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_SInt
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR32G8X24_Typeless
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD32_Float_S8X24_UInt
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR32_Float_X8X24_Typeless
+		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kX32_Typeless_G8X24_UInt
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10A2_Typeless
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10A2_UNorm
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10A2_UInt
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG11B10_Float
+		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_Typeless
+		{ 32, 4, 1, 1, 1, 1, Format::kRGBA8_UNorm_SRGB, false, false, false, false, false, 1 },// kRGBA8_UNorm
+		{ 32, 4, 1, 1, 1, 1, Format::kRGBA8_UNorm, true, false, false, false, false, 1 },// kRGBA8_UNorm_SRGB
+		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_UInt
+		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_SNorm
+		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_SInt
+		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_Typeless
+		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_Float
+		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_UNorm
+		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_UInt
+		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_SNorm
+		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_SInt
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_Typeless
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD32_Float
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_Float
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_UInt
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_SInt
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR24G8_Typeless
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD24_UNorm_S8_UInt
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR24_UNorm_X8_Typeless
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kX24_Typeless_G8_UInt
+		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_Typeless
+		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_UNorm
+		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_UInt
+		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_SNorm
+		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_SInt
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_Typeless
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_Float
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD16_UNorm
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_UNorm
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_UInt
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_SNorm
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_SInt
+		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_Typeless
+		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_UNorm
+		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_UInt
+		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_SNorm
+		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_SInt
+		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kA8_UNorm
+		{ 1, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR1_UNorm
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB9E5_SHAREDEXP
+		{ 32, 4, 1, 1, 1, 4, Format::kUnknown, false, false, false, true, false, 1 },// kRG8_BG8_UNorm
+		{ 32, 4, 1, 1, 1, 4, Format::kUnknown, false, false, false, true, false, 1 },// kGR8_GB8_UNorm
+		{ 4, 3, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC1_Typeless
+		{ 4, 3, 8, 4, 4, 8, Format::kBC1_UNorm_SRGB, false, false, true, false, false, 1 },// kBC1_UNorm
+		{ 4, 3, 8, 4, 4, 8, Format::kBC1_UNorm, true, false, true, false, false, 1 },// kBC1_UNorm_SRGB
+		{ 8, 4, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC2_Typeless
+		{ 8, 4, 16, 4, 4, 16, Format::kBC2_UNorm_SRGB, false, false, true, false, false, 1 },// kBC2_UNorm
+		{ 8, 4, 16, 4, 4, 16, Format::kBC2_UNorm, true, false, true, false, false, 1 },// kBC2_UNorm_SRGB
+		{ 8, 4, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC3_Typeless
+		{ 8, 4, 16, 4, 4, 16, Format::kBC3_UNorm_SRGB, false, false, true, false, false, 1 },// kBC3_UNorm
+		{ 8, 4, 16, 4, 4, 16, Format::kBC3_UNorm, true, false, true, false, false, 1 },// kBC3_UNorm_SRGB
+		{ 4, 1, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC4_Typeless
+		{ 4, 1, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC4_UNorm
+		{ 4, 1, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC4_SNorm
+		{ 8, 2, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC5_Typeless
+		{ 8, 2, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC5_UNorm
+		{ 8, 2, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC5_SNorm
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kB5G6R5_UNorm
+		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGR5A1_UNorm
+		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGRA8_UNorm
+		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGRX8_UNorm
+		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10_XR_BIAS_A2_UNorm
+		{ 32, 4, 1, 1, 1, 1, Format::kBGRA8_UNorm_SRGB, false, false, false, false, false, 1 },// kBGRA8_Typeless
+		{ 32, 4, 1, 1, 1, 1, Format::kBGRA8_Typeless, true, false, false, false, false, 1 },// kBGRA8_UNorm_SRGB
+		{ 32, 4, 1, 1, 1, 1, Format::kBGRX8_UNorm_SRGB, false, false, false, false, false, 1 },// kBGRX8_Typeless
+		{ 32, 4, 1, 1, 1, 1, Format::kBGRX8_Typeless, true, false, false, false, false, 1 },// kBGRX8_UNorm_SRGB
+		{ 8, 3, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC6H_Typeless
+		{ 8, 3, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC6H_UF16
+		{ 8, 3, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC6H_SF16
+		{ 8, 4, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC7_Typeless
+		{ 8, 4, 16, 4, 4, 16, Format::kBC7_UNorm_SRGB, false, false, true, false, false, 1 },// kBC7_UNorm
+		{ 8, 4, 16, 4, 4, 16, Format::kBC7_UNorm, true, false, true, false, false, 1 },// kBC7_UNorm_SRGB
+		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kAYUV
+		{ 32, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kY410
+		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kY416
+		{ 12, 3, 1, 2, 2, 2, Format::kUnknown, false, false, false, false, true, 2 },// kNV12
+		{ 24, 3, 2, 2, 2, 4, Format::kUnknown, false, false, false, false, true, 2 },// kP010
+		{ 24, 3, 2, 2, 2, 4, Format::kUnknown, false, false, false, false, true, 2 },// kP016
+		{ 12, 3, 1, 1, 1, 2, Format::kUnknown, false, false, false, false, true, 2 },// k420_OPAQUE
+		{ 32, 3, 1, 2, 1, 4, Format::kUnknown, false, false, false, true, false, 1 },// kYUY2
+		{ 64, 3, 2, 2, 1, 8, Format::kUnknown, false, false, false, true, false, 1 },// kY210
+		{ 64, 3, 2, 2, 1, 8, Format::kUnknown, false, false, false, true, false, 1 },// kY216
+		{ 12, 3, 1, 4, 2, 1, Format::kUnknown, false, false, false, false, true, 2 },// kNV11
+		{ 8, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kAI44
+		{ 8, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kIA44
+		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kP8
+		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kA8P8
+		{ 16, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGRA4_UNorm
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
+		{ 16, 3, 1, 2, 2, 2, Format::kUnknown, false, false, false, false, true, 2 },// kP208
+		{ 16, 3, 1, 2, 2, 1, Format::kUnknown, false, false, false, false, true, 3 },// kV208
+		{ 24, 3, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, true, 4 },// kV408
 	};
 
 	return kFormatInfos[static_cast<u32>(format)];
 }
+
+
+enum class FormatFeatures : u16
+{
+	kNone =						0,
+	kTexture1D =				BvBit(0),
+	kTexture2D =				BvBit(1),
+	kTexture3D =				BvBit(2),
+	kTextureCube =				BvBit(3),
+	kBuffer =					BvBit(4),
+	kRWBuffer =					BvBit(5),
+	kVertexBuffer =				BvBit(6),
+	kRenderTarget =				BvBit(7),
+	kBlendable =				BvBit(8),
+	kDepthStencil =				BvBit(9),
+	kSampling =					BvBit(10),
+	kComparisonSampling =		BvBit(11),
+	kRWTexture =				BvBit(12),
+	kResolve =					BvBit(13),
+	kMultisampleRenderTarget =	BvBit(14),
+};
+BV_USE_ENUM_CLASS_OPERATORS(FormatFeatures)
 
 
 enum class CompareOp : u8
@@ -595,8 +622,8 @@ struct TextureDesc
 {
 	Extent3D m_Size{ 1,1,1 };
 	u32 m_Alignment = 0;
-	u8 m_MipLevels = 1;
-	u8 m_LayerCount = 1;
+	u32 m_MipLevels = 1;
+	u32 m_ArraySize = 1;
 	u8 m_SampleCount = 1;
 	TextureType m_ImageType = TextureType::kTexture2D;
 	Format m_Format = Format::kUnknown;
@@ -628,12 +655,12 @@ struct SubresourceDesc
 };
 
 
-struct TextureSubresource
+struct TextureSubresourceInfo
 {
 	u32 m_Width;
 	u32 m_Height;
 	u32 m_Detph;
-	u32 m_NumRows;
+	u64 m_NumRows;
 	u64 m_RowPitch;
 	u64 m_SlicePitch;
 	u64 m_MipSize;
@@ -643,7 +670,7 @@ struct TextureSubresource
 struct SubresourceFootprint
 {
 	u64 m_Offset;
-	TextureSubresource m_Subresource;
+	TextureSubresourceInfo m_Subresource;
 };
 
 
@@ -908,6 +935,7 @@ enum class QueryType : u8
 	kOcclusion,
 	kOcclusionBinary,
 };
+constexpr u32 kQueryTypeCount = 3;
 
 
 enum class PredicationOp : u8
@@ -1109,30 +1137,27 @@ struct ShaderByteCodeDesc
 
 struct VertexInputDesc
 {
+	static constexpr u32 kAutoOffset = kU32Max;
+
+	// Element name
+	const char* m_pName = nullptr;
 	// Index of the input attribute (In Vulkan and OpenGL, this maps to the location index that an input variable is.
 	// In D3D this is only used if there are multiple elements with the same semantic.
-	u32			m_Location = 0;
-	// Buffer slot this attribute refers to
 	u32			m_Binding = 0;
-	// The stride of the variable or struct used to represent this element
-	u32			m_Stride = 0;
 	// The offset of this variable in the struct
 	u32			m_Offset = 0;
+	// Variable format
+	Format		m_Format = Format::kUnknown;
+	// The input rate, can be per vertex or per instance
+	InputRate	m_InputRate = InputRate::kPerVertex;
 	// The instance rate / step, which determines how many instances will be drawn with the same per-instance
 	// data before moving to the next one - this should be 0 if the input rate is InputRate::kPerVertex
 	u32			m_InstanceRate = 0;
-	// The input rate, can be per vertex or per instance
-	InputRate	m_InputRate = InputRate::kPerVertex;
-	// Variable format
-	Format		m_Format = Format::kUnknown;
-	// Determines whether the variable data is normalized ([-1, 1] for signed types, [0, 1] for unsigned types)
-	bool		m_Normalized = false;
 
 	bool operator==(const VertexInputDesc& rhs) const
 	{
-		return m_Location == rhs.m_Location && m_Binding == rhs.m_Binding && m_Stride == rhs.m_Stride
-			&& m_Offset == rhs.m_Offset && m_InputRate == rhs.m_InputRate && m_InstanceRate == rhs.m_InstanceRate
-			&& m_Format == rhs.m_Format && m_Normalized == rhs.m_Normalized;
+		return m_pName == m_pName && m_Binding == rhs.m_Binding && m_Offset == rhs.m_Offset && m_Format == rhs.m_Format
+			&& m_InstanceRate == rhs.m_InstanceRate && m_InputRate == rhs.m_InputRate;
 	}
 };
 

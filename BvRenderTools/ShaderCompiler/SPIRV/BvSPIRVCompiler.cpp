@@ -438,11 +438,10 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API bool CreateSPIRVCompiler(IBvShaderCompiler** ppCompiler)
+		BV_API IBvShaderCompiler* GetSPIRVCompiler()
 		{
-			*ppCompiler = BV_NEW(BvSPIRVCompiler)();
-
-			return true;
+			static BvSPIRVCompiler spvCompiler;
+			return &spvCompiler;
 		}
 	}
 }

@@ -9,7 +9,7 @@
 #include <utility>
 
 
-template<typename Key, typename MemoryArenaType = IBvMemoryArena, typename Hash = BvHash<Key>, typename Comparer = std::equal_to<Key>>
+template<typename Key, typename MemoryArenaType = IBvMemoryArena, typename Hash = std::hash<Key>, typename Comparer = std::equal_to<Key>>
 class BvRobinSet
 {
 public:

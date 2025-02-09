@@ -61,7 +61,7 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	imageCreateInfo.format = GetVkFormat(m_TextureDesc.m_Format);
 	imageCreateInfo.extent = { m_TextureDesc.m_Size.width, m_TextureDesc.m_Size.height, m_TextureDesc.m_Size.depth };
 	imageCreateInfo.mipLevels = m_TextureDesc.m_MipLevels;
-	imageCreateInfo.arrayLayers = m_TextureDesc.m_LayerCount;
+	imageCreateInfo.arrayLayers = m_TextureDesc.m_ArraySize;
 	imageCreateInfo.samples = GetVkSampleCountFlagBits(m_TextureDesc.m_SampleCount);
 	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCreateInfo.usage = GetVkImageUsageFlags(m_TextureDesc.m_UsageFlags);
@@ -129,36 +129,21 @@ void BvTextureVk::Destroy()
 void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitData, u32 mipCount)
 {
 	auto pContext = TO_VK(pInitData->m_pContext);
-
+	pContext->NewCommandList();
+	auto fi = GetFormatInfo(m_TextureDesc.m_Format);
+	u32 planeCount = fi.m_PlaneCount;
+	u32 alignment = m_pDevice->GetDeviceInfo()->m_DeviceProperties.properties.limits.optimalBufferCopyOffsetAlignment;
 	ResourceState currState = ResourceState::kCommon;
-	bool isValidTextureData = pInitData->m_SubresourceCount == (u32)m_TextureDesc.m_LayerCount * mipCount && pInitData->m_pSubresources != nullptr;
+	bool isValidTextureData = pInitData->m_SubresourceCount == (planeCount * m_TextureDesc.m_ArraySize * mipCount) && pInitData->m_pSubresources != nullptr;
 	if (isValidTextureData)
 	{
 		BvVector<VkBufferImageCopy> copyRegions(pInitData->m_SubresourceCount);
-		u32 index = 0;
+		BvVector<SubresourceFootprint> footprints(pInitData->m_SubresourceCount);
 		u64 bufferSize = 0;
-		// Calculate copy regions
-		for (auto layer = 0u; layer < m_TextureDesc.m_LayerCount; ++layer)
 		{
-			for (auto mip = 0u; mip < mipCount; ++mip, ++index)
-			{
-				auto& copyRegion = copyRegions[index];
-				copyRegion.bufferOffset = bufferSize;
-				copyRegion.bufferImageHeight = 0;
-				copyRegion.bufferRowLength = 0;
-
-				TextureSubresource subresource;
-				GetTextureSubresourceData(m_TextureDesc, mip, subresource);
-
-				copyRegion.imageOffset = { 0, 0, 0 };
-				copyRegion.imageExtent = { subresource.m_Width, subresource.m_Detph, subresource.m_Height };
-				copyRegion.imageSubresource.aspectMask = GetVkFormatMap(m_TextureDesc.m_Format).aspectFlags;
-				copyRegion.imageSubresource.mipLevel = mip;
-				copyRegion.imageSubresource.baseArrayLayer = layer;
-				copyRegion.imageSubresource.layerCount = 1;
-
-				bufferSize += RoundToNearestMultiple(bufferSize, 4u);
-			}
+			TextureDesc tmpDesc = m_TextureDesc;
+			tmpDesc.m_MipLevels = mipCount;
+			bufferSize = GetBufferSizeForTexture(tmpDesc, alignment, pInitData->m_SubresourceCount, footprints.Data());
 		}
 
 		BufferDesc bufferDesc;
@@ -169,26 +154,34 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		BvBufferVk buffer(m_pDevice, bufferDesc, nullptr);
 		auto pDstData = static_cast<u8*>(buffer.GetMappedData());
 
-		// Copy initial data to staging buffer
-		index = 0;
-		for (auto layer = 0u; layer < m_TextureDesc.m_LayerCount; ++layer)
+		// Calculate copy regions
+		u32 index = 0;
+		for (auto plane = 0u; plane < planeCount; ++plane)
 		{
-			for (auto mip = 0u; mip < mipCount; ++mip, ++index)
+			for (auto layer = 0u; layer < m_TextureDesc.m_ArraySize; ++layer)
 			{
-				auto& copyRegion = copyRegions[index];
-				auto& srcSubresource = pInitData->m_pSubresources[index];
-				
-				TextureSubresource dstSubresource;
-				GetTextureSubresourceData(m_TextureDesc, mip, dstSubresource);
-
-				for (auto z = 0u; z < dstSubresource.m_Detph; ++z)
+				for (auto mip = 0u; mip < mipCount && index < pInitData->m_SubresourceCount; ++mip, ++index)
 				{
-					for (auto y = 0u; y < dstSubresource.m_NumRows; ++y)
-					{
-						auto pSrc = srcSubresource.m_pData + y * srcSubresource.m_RowPitch + srcSubresource.m_SlicePitch * z;
-						auto pDst = pDstData + copyRegion.bufferOffset + y * dstSubresource.m_RowPitch + dstSubresource.m_SlicePitch * z;
-						memcpy(pDst, pSrc, dstSubresource.m_RowPitch);
-					}
+					auto& copyRegion = copyRegions[index];
+					auto& footprint = footprints[index];
+
+					copyRegion.bufferOffset = footprint.m_Offset;
+					copyRegion.bufferImageHeight = 0;
+					copyRegion.bufferRowLength = 0;
+
+					copyRegion.imageOffset = { 0, 0, 0 };
+					copyRegion.imageExtent = { footprint.m_Subresource.m_Width, footprint.m_Subresource.m_Height, footprint.m_Subresource.m_Detph };
+					copyRegion.imageSubresource.aspectMask = GetVkImageAspectFlags(m_TextureDesc.m_Format, plane);
+					copyRegion.imageSubresource.mipLevel = mip;
+					copyRegion.imageSubresource.baseArrayLayer = layer;
+					copyRegion.imageSubresource.layerCount = 1;
+
+					auto& srcSubresourceData = pInitData->m_pSubresources[index];
+
+					BV_ASSERT(srcSubresourceData.m_SlicePitch == footprint.m_Subresource.m_SlicePitch, "Slice pitch is different between src and dst");
+
+					auto pDst = pDstData + copyRegion.bufferOffset;
+					memcpy(pDst, srcSubresourceData.m_pData, srcSubresourceData.m_SlicePitch * footprint.m_Subresource.m_Detph);
 				}
 			}
 		}
@@ -210,7 +203,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 			copySrcBarrier.m_SrcLayout = ResourceState::kTransferDst;
 			copySrcBarrier.m_DstLayout = ResourceState::kTransferSrc;
 			copySrcBarrier.m_Subresource.firstLayer = 0;
-			copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_LayerCount;
+			copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
 			copySrcBarrier.m_Subresource.firstMip = 0;
 			copySrcBarrier.m_Subresource.mipCount = 1;
 
@@ -230,65 +223,68 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		pContext->ResourceBarrier(1, &barrier);
 	}
 
-	pContext->Signal();
+	pContext->Execute();
 	pContext->WaitForGPU();
 }
 
 
 void BvTextureVk::GenerateMips(BvCommandContextVk* pContext)
 {
-	auto aspectMask = GetVkFormatMap(m_TextureDesc.m_Format).aspectFlags;
-	for (auto i = 1; i < m_TextureDesc.m_MipLevels; ++i)
+	for (auto d = 0; d < GetFormatInfo(m_TextureDesc.m_Format).m_PlaneCount; ++d)
 	{
-		VkImageBlit2 imageBlit{ VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
+		auto aspectMask = GetVkImageAspectFlags(m_TextureDesc.m_Format, d);
+		for (auto i = 1; i < m_TextureDesc.m_MipLevels; ++i)
+		{
+			VkImageBlit2 imageBlit{ VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
 
-		// Source
-		imageBlit.srcSubresource.aspectMask = aspectMask;
-		imageBlit.srcSubresource.layerCount = m_TextureDesc.m_LayerCount;
-		imageBlit.srcSubresource.mipLevel = i - 1;
-		imageBlit.srcOffsets[1].x = i32(std::max(m_TextureDesc.m_Size.width >> (i - 1), 1u));
-		imageBlit.srcOffsets[1].y = i32(std::max(m_TextureDesc.m_Size.height >> (i - 1), 1u));
-		imageBlit.srcOffsets[1].z = i32(std::max(m_TextureDesc.m_Size.depth >> (i - 1), 1u));
+			// Source
+			imageBlit.srcSubresource.aspectMask = aspectMask;
+			imageBlit.srcSubresource.layerCount = m_TextureDesc.m_ArraySize;
+			imageBlit.srcSubresource.mipLevel = i - 1;
+			imageBlit.srcOffsets[1].x = i32(std::max(m_TextureDesc.m_Size.width >> (i - 1), 1u));
+			imageBlit.srcOffsets[1].y = i32(std::max(m_TextureDesc.m_Size.height >> (i - 1), 1u));
+			imageBlit.srcOffsets[1].z = i32(std::max(m_TextureDesc.m_Size.depth >> (i - 1), 1u));
 
-		// Destination
-		imageBlit.dstSubresource.aspectMask = aspectMask;
-		imageBlit.dstSubresource.layerCount = m_TextureDesc.m_LayerCount;
-		imageBlit.dstSubresource.mipLevel = i;
-		imageBlit.dstOffsets[1].x = i32(std::max(m_TextureDesc.m_Size.width >> i, 1u));
-		imageBlit.dstOffsets[1].y = i32(std::max(m_TextureDesc.m_Size.height >> i, 1u));
-		imageBlit.dstOffsets[1].z = i32(std::max(m_TextureDesc.m_Size.depth >> i, 1u));
+			// Destination
+			imageBlit.dstSubresource.aspectMask = aspectMask;
+			imageBlit.dstSubresource.layerCount = m_TextureDesc.m_ArraySize;
+			imageBlit.dstSubresource.mipLevel = i;
+			imageBlit.dstOffsets[1].x = i32(std::max(m_TextureDesc.m_Size.width >> i, 1u));
+			imageBlit.dstOffsets[1].y = i32(std::max(m_TextureDesc.m_Size.height >> i, 1u));
+			imageBlit.dstOffsets[1].z = i32(std::max(m_TextureDesc.m_Size.depth >> i, 1u));
 
-		ResourceBarrierDesc copyDstBarrier;
-		copyDstBarrier.m_pTexture = this;
-		copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
-		copyDstBarrier.m_Subresource.firstLayer = 0;
-		copyDstBarrier.m_Subresource.layerCount = m_TextureDesc.m_LayerCount;
-		copyDstBarrier.m_Subresource.firstMip = i;
-		copyDstBarrier.m_Subresource.mipCount = 1;
+			ResourceBarrierDesc copyDstBarrier;
+			copyDstBarrier.m_pTexture = this;
+			copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
+			copyDstBarrier.m_Subresource.firstLayer = 0;
+			copyDstBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
+			copyDstBarrier.m_Subresource.firstMip = i;
+			copyDstBarrier.m_Subresource.mipCount = 1;
 
-		pContext->ResourceBarrier(1, &copyDstBarrier);
+			pContext->ResourceBarrier(1, &copyDstBarrier);
 
-		VkBlitImageInfo2 blitInfo{ VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2 };
-		blitInfo.srcImage = m_Image;
-		blitInfo.dstImage = m_Image;
-		blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		blitInfo.regionCount = 1;
-		blitInfo.pRegions = &imageBlit;
-		blitInfo.filter = VK_FILTER_LINEAR;
+			VkBlitImageInfo2 blitInfo{ VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2 };
+			blitInfo.srcImage = m_Image;
+			blitInfo.dstImage = m_Image;
+			blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			blitInfo.regionCount = 1;
+			blitInfo.pRegions = &imageBlit;
+			blitInfo.filter = VK_FILTER_LINEAR;
 
-		// Blitting isn't a function I'm providing right now, so I do it separately here
-		vkCmdBlitImage2(pContext->GetCurrentCommandBuffer()->GetHandle(), &blitInfo);
+			// Blitting isn't a function I'm providing right now, so I do it separately here
+			vkCmdBlitImage2(pContext->GetCurrentCommandBuffer()->GetHandle(), &blitInfo);
 
-		ResourceBarrierDesc copySrcBarrier;
-		copySrcBarrier.m_pTexture = this;
-		copySrcBarrier.m_SrcLayout = ResourceState::kTransferDst;
-		copySrcBarrier.m_DstLayout = ResourceState::kTransferSrc;
-		copySrcBarrier.m_Subresource.firstLayer = 0;
-		copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_LayerCount;
-		copySrcBarrier.m_Subresource.firstMip = i;
-		copySrcBarrier.m_Subresource.mipCount = 1;
+			ResourceBarrierDesc copySrcBarrier;
+			copySrcBarrier.m_pTexture = this;
+			copySrcBarrier.m_SrcLayout = ResourceState::kTransferDst;
+			copySrcBarrier.m_DstLayout = ResourceState::kTransferSrc;
+			copySrcBarrier.m_Subresource.firstLayer = 0;
+			copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
+			copySrcBarrier.m_Subresource.firstMip = i;
+			copySrcBarrier.m_Subresource.mipCount = 1;
 
-		pContext->ResourceBarrier(1, &copySrcBarrier);
+			pContext->ResourceBarrier(1, &copySrcBarrier);
+		}
 	}
 }

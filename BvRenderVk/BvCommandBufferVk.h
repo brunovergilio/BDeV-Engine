@@ -111,6 +111,10 @@ public:
 	void BeginQuery(BvQuery* pQuery);
 	void EndQuery(BvQuery* pQuery);
 
+	void BeginEvent(const char* pName, const BvColor& color);
+	void EndEvent();
+	void SetMarker(const char* pName, const BvColor& color);
+
 	BV_INLINE const VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
 	BV_INLINE const BvVector<BvSwapChainVk*>& GetSwapChains() const { return m_SwapChains; }
 
@@ -142,4 +146,5 @@ private:
 	BvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
 
 	State m_CurrentState = State::kRecording;
+	bool m_HasDebugUtils = false;
 };

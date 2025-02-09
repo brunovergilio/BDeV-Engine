@@ -16,7 +16,6 @@ class BvShaderVk;
 class BvGraphicsPipelineStateVk;
 class BvComputePipelineStateVk;
 class BvQueryVk;
-class BvFramebufferManagerVk;
 class BvCommandContextVk;
 class BvQueryHeapManagerVk;
 
@@ -88,7 +87,7 @@ public:
 	BvSampler* CreateSampler(const SamplerDesc& desc) override;
 	BvRenderPass* CreateRenderPass(const RenderPassDesc & renderPassDesc) override;
 	BvShaderResourceLayout* CreateShaderResourceLayout(u32 shaderResourceCount,	const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc& shaderResourceConstantDesc) override;
+		const ShaderResourceConstantDesc* pShaderResourceConstantDesc = nullptr) override;
 	BvShader* CreateShader(const ShaderCreateDesc& shaderDesc) override;
 	BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc) override;
 	BvComputePipelineState* CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) override;
@@ -102,7 +101,7 @@ public:
 	BvSamplerVk* CreateSamplerVk(const SamplerDesc& desc);
 	BvRenderPassVk* CreateRenderPassVk(const RenderPassDesc& renderPassDesc);
 	BvShaderResourceLayoutVk* CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc& shaderResourceConstantDesc);
+		const ShaderResourceConstantDesc* pShaderResourceConstantDesc = nullptr);
 	BvShaderVk* CreateShaderVk(const ShaderCreateDesc& shaderDesc);
 	BvGraphicsPipelineStateVk* CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc);
 	BvComputePipelineStateVk* CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc);
@@ -112,26 +111,21 @@ public:
 
 	void WaitIdle() const override;
 
-	const u32 GetMemoryTypeIndex(const u32 memoryTypeBits, const VkMemoryPropertyFlags properties) const;
-	const VkFormat GetBestDepthFormat(const VkFormat format = VK_FORMAT_UNDEFINED) const;
-	bool HasFormatSupport(Format format);
-
 	BvCommandContext* GetGraphicsContext(u32 index = 0) const override;
 	BvCommandContext* GetComputeContext(u32 index = 0) const override;
 	BvCommandContext* GetTransferContext(u32 index = 0) const override;
 	
 	void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize) const override;
 	bool SupportsQueryType(QueryType queryType, CommandType commandType) const override;
-	bool IsFormatSupported(Format format) const override;
+	FormatFeatures GetFormatFeatures(Format format) const override;
 	BV_INLINE RenderDeviceCapabilities GetDeviceCaps() const override { return m_DeviceCaps; }
 
 	BV_INLINE const VkDevice GetHandle() const { return m_Device; }
 	BV_INLINE const VkPhysicalDevice GetPhysicalDeviceHandle() const { return m_PhysicalDevice; }
 	BV_INLINE VkInstance GetInstanceHandle() const { return m_pEngine->GetHandle(); }
 	BV_INLINE VmaAllocator GetAllocator() const { return m_VMA; }
-	BV_INLINE BvFramebufferManagerVk* GetFramebufferManager() const { return m_pFramebufferManager; }
-	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pQueryHeapManager; }
 	BV_INLINE const BvDeviceInfoVk* GetDeviceInfo() const { return m_pDeviceInfo; }
+	BV_INLINE BvRenderEngineVk* GetEngine() const { return m_pEngine; }
 
 private:
 	void Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc);
@@ -147,8 +141,6 @@ private:
 	BvVector<BvCommandContextVk*> m_GraphicsContexts;
 	BvVector<BvCommandContextVk*> m_ComputeContexts;
 	BvVector<BvCommandContextVk*> m_TransferContexts;
-	BvFramebufferManagerVk* m_pFramebufferManager;
-	BvQueryHeapManagerVk* m_pQueryHeapManager;
 	BvVector<IBvRenderDeviceChild*> m_DeviceObjects;
 	VmaAllocator m_VMA{};
 	BvDeviceInfoVk* m_pDeviceInfo = nullptr;

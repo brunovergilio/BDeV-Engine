@@ -353,10 +353,7 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		auto width = (i32)LOWORD(lParam);
 		auto height = (i32)HIWORD(lParam);
 
-		if (pWindow->GetWindowMode() != WindowMode::kWindowed)
-		{
-			pWindow->OnSizeChanged(width, height);
-		}
+		pWindow->OnSizeChanged(width, height);
 
 		WindowState currState = WindowState::kDefault;
 		if (wParam == SIZE_MINIMIZED)

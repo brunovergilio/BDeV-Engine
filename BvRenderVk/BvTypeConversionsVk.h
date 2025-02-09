@@ -20,6 +20,7 @@ struct FormatMapVk
 VkImageType GetVkImageType(const TextureType type);
 VkImageViewType GetVkImageViewType(const TextureViewType viewType);
 const FormatMapVk& GetVkFormatMap(Format format);
+VkImageAspectFlags GetVkImageAspectFlags(Format format, u32 planeSlice = 0);
 VkFormat GetVkFormat(const Format format);
 Format GetFormat(const VkFormat format);
 VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags);

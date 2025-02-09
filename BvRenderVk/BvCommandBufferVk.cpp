@@ -1,5 +1,7 @@
 #include "BvCommandBufferVk.h"
 #include "BvUtilsVk.h"
+#include "BvRenderEngineVk.h"
+#include "BvRenderDeviceVk.h"
 #include "BvFramebufferVk.h"
 #include "BvTextureViewVk.h"
 #include "BvRenderPassVk.h"
@@ -23,7 +25,7 @@
 
 
 BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
-	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData)
+	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetEngine()->HasDebugUtils())
 {
 }
 
@@ -86,7 +88,7 @@ void BvCommandBufferVk::BeginRenderPass(const BvRenderPass* pRenderPass, u32 ren
 		auto& desc = viewDesc.m_pTexture->GetDesc();
 		fbDesc.m_Width = std::min(desc.m_Size.width, fbDesc.m_Width);
 		fbDesc.m_Height = std::min(desc.m_Size.height, fbDesc.m_Height);
-		fbDesc.m_LayerCount = std::min((viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_LayerCount : viewDesc.m_SubresourceDesc.layerCount)
+		fbDesc.m_LayerCount = std::min((viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_ArraySize : viewDesc.m_SubresourceDesc.layerCount)
 			- viewDesc.m_SubresourceDesc.firstLayer, fbDesc.m_LayerCount);
 
 		fbDesc.m_Views.EmplaceBack(viewVk->GetHandle());
@@ -169,7 +171,7 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		auto& desc = renderTarget.m_pView->GetTexture()->GetDesc();
 		auto& viewDesc = renderTarget.m_pView->GetDesc();
 
-		layerCount = std::min(layerCount, (viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_LayerCount : viewDesc.m_SubresourceDesc.layerCount)
+		layerCount = std::min(layerCount, (viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_ArraySize : viewDesc.m_SubresourceDesc.layerCount)
 			 - viewDesc.m_SubresourceDesc.firstLayer);
 		renderArea.width = std::min(renderArea.width, desc.m_Size.width);
 		renderArea.height = std::min(renderArea.height, desc.m_Size.height);
@@ -391,7 +393,7 @@ void BvCommandBufferVk::SetScissors(u32 scissorCount, const Rect* pScissors)
 void BvCommandBufferVk::SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline)
 {
 	m_pComputePipeline = nullptr;
-	m_pGraphicsPipeline = static_cast<const BvGraphicsPipelineStateVk*>(pPipeline);
+	m_pGraphicsPipeline = TO_VK(pPipeline);
 	m_pShaderResourceLayout = TO_VK(m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout);
 	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGraphicsPipeline->GetHandle());
 }
@@ -402,7 +404,7 @@ void BvCommandBufferVk::SetComputePipeline(const BvComputePipelineState* pPipeli
 	ResetRenderTargets();
 
 	m_pGraphicsPipeline = nullptr;
-	m_pComputePipeline = static_cast<const BvComputePipelineStateVk*>(pPipeline);
+	m_pComputePipeline = TO_VK(pPipeline);
 	m_pShaderResourceLayout = TO_VK(m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
 	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE, m_pComputePipeline->GetHandle());
 }
@@ -538,7 +540,7 @@ void BvCommandBufferVk::SetIndexBufferView(const BvBufferView* pIndexBufferView,
 {
 	auto formatVk = GetVkIndexType(indexFormat);
 	
-	vkCmdBindIndexBuffer(m_CommandBuffer, static_cast<BvBufferVk*>(pIndexBufferView->GetBuffer())->GetHandle(), pIndexBufferView->GetDesc().m_Offset, formatVk);
+	vkCmdBindIndexBuffer(m_CommandBuffer, TO_VK(pIndexBufferView->GetBuffer())->GetHandle(), pIndexBufferView->GetDesc().m_Offset, formatVk);
 }
 
 
@@ -613,7 +615,7 @@ void BvCommandBufferVk::DrawIndirect(const BvBuffer* pBuffer, u32 drawCount, u64
 {
 	FlushDescriptorSets();
 
-	auto pBufferVk = static_cast<const BvBufferVk*>(pBuffer)->GetHandle();
+	auto pBufferVk = TO_VK(pBuffer)->GetHandle();
 	vkCmdDrawIndirect(m_CommandBuffer, pBufferVk, offset, drawCount, (u32)sizeof(VkDrawIndirectCommand));
 }
 
@@ -622,7 +624,7 @@ void BvCommandBufferVk::DrawIndexedIndirect(const BvBuffer* pBuffer, u32 drawCou
 {
 	FlushDescriptorSets();
 
-	auto pBufferVk = static_cast<const BvBufferVk*>(pBuffer)->GetHandle();
+	auto pBufferVk = TO_VK(pBuffer)->GetHandle();
 	vkCmdDrawIndexedIndirect(m_CommandBuffer, pBufferVk, offset, drawCount, (u32)sizeof(VkDrawIndexedIndirectCommand));
 }
 
@@ -631,7 +633,7 @@ void BvCommandBufferVk::DispatchIndirect(const BvBuffer* pBuffer, u64 offset)
 {
 	FlushDescriptorSets();
 
-	auto pBufferVk = static_cast<const BvBufferVk*>(pBuffer)->GetHandle();
+	auto pBufferVk = TO_VK(pBuffer)->GetHandle();
 	vkCmdDispatchIndirect(m_CommandBuffer, pBufferVk, offset);
 }
 
@@ -670,8 +672,8 @@ void BvCommandBufferVk::CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuf
 	region.dstOffset = 0;
 	region.size = std::min(pSrcBuffer->GetDesc().m_Size, pDstBuffer->GetDesc().m_Size);
 
-	auto pSrc = static_cast<const BvBufferVk*>(pSrcBuffer);
-	auto pDst = static_cast<BvBufferVk*>(pDstBuffer);
+	auto pSrc = TO_VK(pSrcBuffer);
+	auto pDst = TO_VK(pDstBuffer);
 
 	CopyBuffer(pSrc, pDst, region);
 }
@@ -684,8 +686,8 @@ void BvCommandBufferVk::CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuf
 	region.dstOffset = copyDesc.m_DstOffset;
 	region.size = std::min(copyDesc.m_SrcSize, pSrcBuffer->GetDesc().m_Size);
 
-	auto pSrc = static_cast<const BvBufferVk*>(pSrcBuffer);
-	auto pDst = static_cast<BvBufferVk*>(pDstBuffer);
+	auto pSrc = TO_VK(pSrcBuffer);
+	auto pDst = TO_VK(pDstBuffer);
 
 	CopyBuffer(pSrc, pDst, region);
 }
@@ -699,12 +701,12 @@ void BvCommandBufferVk::CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDs
 	auto& dstDesc = pDstTexture->GetDesc();
 
 	if (srcDesc.m_Format != dstDesc.m_Format || srcDesc.m_Size != dstDesc.m_Size
-		|| srcDesc.m_MipLevels != dstDesc.m_MipLevels || srcDesc.m_LayerCount != dstDesc.m_LayerCount)
+		|| srcDesc.m_MipLevels != dstDesc.m_MipLevels || srcDesc.m_ArraySize != dstDesc.m_ArraySize)
 	{
 		return;
 	}
 
-	for (auto layer = 0u; layer < srcDesc.m_LayerCount; ++layer)
+	for (auto layer = 0u; layer < srcDesc.m_ArraySize; ++layer)
 	{
 		for (auto mip = 0u; mip < srcDesc.m_MipLevels; ++mip)
 		{
@@ -728,8 +730,8 @@ void BvCommandBufferVk::CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDs
 		}
 	}
 
-	auto pSrc = static_cast<const BvTextureVk*>(pSrcTexture);
-	auto pDst = static_cast<BvTextureVk*>(pDstTexture);
+	auto pSrc = TO_VK(pSrcTexture);
+	auto pDst = TO_VK(pDstTexture);
 
 	vkCmdCopyImage(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		pDst->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -778,8 +780,8 @@ void BvCommandBufferVk::CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDs
 		std::min(copyDesc.m_Size.depth, std::min(srcDesc.m_Size.depth, dstDesc.m_Size.depth))
 	};
 
-	auto pSrc = static_cast<const BvTextureVk*>(pSrcTexture);
-	auto pDst = static_cast<BvTextureVk*>(pDstTexture);
+	auto pSrc = TO_VK(pSrcTexture);
+	auto pDst = TO_VK(pDstTexture);
 
 	vkCmdCopyImage(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		pDst->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -798,8 +800,8 @@ void BvCommandBufferVk::CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvText
 
 void BvCommandBufferVk::CopyBufferToTexture(const BvBuffer* pSrcBuffer, BvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs)
 {
-	auto pSrc = static_cast<const BvBufferVk* const>(pSrcBuffer);
-	auto pDst = static_cast<BvTextureVk*>(pDstTexture);
+	auto pSrc = TO_VK(pSrcBuffer);
+	auto pDst = TO_VK(pDstTexture);
 
 	m_BufferImageCopyRegions.Resize(copyCount, {});
 	for (auto i = 0u; i < copyCount; ++i)
@@ -832,8 +834,8 @@ void BvCommandBufferVk::CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBu
 
 void BvCommandBufferVk::CopyTextureToBuffer(const BvTexture* pSrcTexture, BvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs)
 {
-	auto pSrc = static_cast<const BvTextureVk*>(pSrcTexture);
-	auto pDst = static_cast<BvBufferVk*>(pDstBuffer);
+	auto pSrc = TO_VK(pSrcTexture);
+	auto pDst = TO_VK(pDstBuffer);
 
 	m_BufferImageCopyRegions.Resize(copyCount, {});
 	for (auto i = 0u; i < copyCount; ++i)
@@ -894,7 +896,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 		{
 			auto& barrier = m_BufferBarriers.EmplaceBack(VkBufferMemoryBarrier2{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
-			barrier.buffer = static_cast<BvBufferVk *>(pBarriers[i].m_pBuffer)->GetHandle();
+			barrier.buffer = TO_VK(pBarriers[i].m_pBuffer)->GetHandle();
 			barrier.size = VK_WHOLE_SIZE;
 			//barrier.offset = 0;
 
@@ -915,7 +917,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 		{
 			auto& barrier = m_ImageBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
-			barrier.image = static_cast<BvTextureVk *>(pBarriers[i].m_pTexture)->GetHandle();
+			barrier.image = TO_VK(pBarriers[i].m_pTexture)->GetHandle();
 			barrier.subresourceRange.aspectMask = GetVkFormatMap(pBarriers[i].m_pTexture->GetDesc().m_Format).aspectFlags;
 			barrier.subresourceRange.baseMipLevel = pBarriers[i].m_Subresource.firstMip;
 			barrier.subresourceRange.levelCount = pBarriers[i].m_Subresource.mipCount;
@@ -979,11 +981,11 @@ void BvCommandBufferVk::BeginQuery(BvQuery* pQuery)
 {
 	auto pQueryVk = TO_VK(pQuery);
 	auto queryType = pQueryVk->GetQueryType();
-	auto pData = pQueryVk->Allocate(m_pFrameData->GetQueryHeapManager(), 1, m_pFrameData->GetFrameIndex());
+	auto pData = pQueryVk->Allocate(m_pFrameData->GetQueryHeapManager(), m_pFrameData->GetFrameIndex());
 	if (queryType != QueryType::kTimestamp)
 	{
 		VkQueryControlFlags flags = queryType == QueryType::kOcclusion ? VK_QUERY_CONTROL_PRECISE_BIT : 0;
-		vkCmdBeginQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(), pData->m_QueryIndex, flags);
+		vkCmdBeginQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex), pData->m_QueryIndex, flags);
 	}
 
 	m_pFrameData->AddQuery(pQueryVk);
@@ -996,15 +998,71 @@ void BvCommandBufferVk::EndQuery(BvQuery* pQuery)
 
 	auto pQueryVk = TO_VK(pQuery);
 	auto queryType = pQueryVk->GetQueryType();
-	auto pData = pQueryVk->GetQueryData(m_pFrameData->GetFrameIndex());
+	auto frameIndex = m_pFrameData->GetFrameIndex();
+	auto pData = pQueryVk->GetQueryData(frameIndex);
+	auto pool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex);
 	if (queryType == QueryType::kTimestamp)
 	{
-		vkCmdWriteTimestamp2(m_CommandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, pData->m_pQueryHeap->GetHandle(), pData->m_QueryIndex);
+		vkCmdWriteTimestamp2(m_CommandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, pool, pData->m_QueryIndex);
 	}
 	else
 	{
-		vkCmdEndQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(), pData->m_QueryIndex);
+		vkCmdEndQuery(m_CommandBuffer, pool, pData->m_QueryIndex);
 	}
+	VkBuffer buffer;
+	u64 stride = 0, offset = 0;
+	pData->m_pQueryHeap->GetBufferInformation(pData->m_HeapIndex, frameIndex, pData->m_QueryIndex, buffer, offset, stride);
+	VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
+	if (queryType == QueryType::kOcclusionBinary)
+	{
+		flags |= VK_QUERY_RESULT_PARTIAL_BIT;
+	}
+	vkCmdCopyQueryPoolResults(m_CommandBuffer, pool, pData->m_QueryIndex, 1, buffer, offset, stride, flags);
+}
+
+
+void BvCommandBufferVk::BeginEvent(const char* pName, const BvColor& color)
+{
+	if (!m_HasDebugUtils)
+	{
+		return;
+	}
+
+	VkDebugUtilsLabelEXT label{ VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+	label.pLabelName = pName;
+	label.color[0] = color.m_Red;
+	label.color[1] = color.m_Green;
+	label.color[2] = color.m_Blue;
+	label.color[3] = color.m_Alpha;
+	vkCmdBeginDebugUtilsLabelEXT(m_CommandBuffer, &label);
+}
+
+
+void BvCommandBufferVk::EndEvent()
+{
+	if (!m_HasDebugUtils)
+	{
+		return;
+	}
+
+	vkCmdEndDebugUtilsLabelEXT(m_CommandBuffer);
+}
+
+
+void BvCommandBufferVk::SetMarker(const char* pName, const BvColor& color)
+{
+	if (!m_HasDebugUtils)
+	{
+		return;
+	}
+
+	VkDebugUtilsLabelEXT label{ VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+	label.pLabelName = pName;
+	label.color[0] = color.m_Red;
+	label.color[1] = color.m_Green;
+	label.color[2] = color.m_Blue;
+	label.color[3] = color.m_Alpha;
+	vkCmdInsertDebugUtilsLabelEXT(m_CommandBuffer, &label);
 }
 
 
