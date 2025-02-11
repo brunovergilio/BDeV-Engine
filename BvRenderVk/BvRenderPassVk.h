@@ -11,6 +11,7 @@
 class BvRenderDeviceVk;
 
 
+BV_OBJECT_DEFINE_ID(BvRenderPassVk, "1be279e7-57e1-49a2-98f0-61bb54edac9b");
 class BvRenderPassVk final : public BvRenderPass
 {
 public:
@@ -19,6 +20,9 @@ public:
 
 	BvRenderDevice* GetDevice() override;
 	BV_INLINE const VkRenderPass GetHandle() const { return m_RenderPass; }
+	BV_INLINE bool IsValid() const { return m_RenderPass != VK_NULL_HANDLE; }
+
+	BV_OBJECT_IMPL_INTERFACE(BvRenderPassVk, BvRenderPass, IBvRenderDeviceObject);
 
 private:
 	void Create();
@@ -35,6 +39,7 @@ private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkRenderPass m_RenderPass = VK_NULL_HANDLE;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderPassVk);
 
 
 BV_CREATE_CAST_TO_VK(BvRenderPass)

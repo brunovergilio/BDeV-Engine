@@ -3,9 +3,11 @@
 
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Core/Container/BvVector.h"
+#include "BvRenderDeviceObject.h"
 
 
-class BvShader : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvShader, "21c6bb95-306d-4e87-8c73-1ec34ddc383b");
+class BvShader : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvShader);
 
@@ -24,3 +26,4 @@ protected:
 	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
 	const char* m_pEntryPoint = "main";
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvShader);

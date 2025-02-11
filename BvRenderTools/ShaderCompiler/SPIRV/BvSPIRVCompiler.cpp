@@ -255,7 +255,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_NEW(BvShaderBlob)(shader.getInfoLog());
+			*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, shader.getInfoLog());
 		}
 		return false;
 	}
@@ -266,7 +266,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_NEW(BvShaderBlob)(program.getInfoLog());
+			*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, program.getInfoLog());
 		}
 		return false;
 	}
@@ -281,7 +281,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_NEW(BvShaderBlob)("Error optimizing spirv binary.");
+			*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, "Error optimizing spirv binary.");
 		}
 		return false;
 	}
@@ -289,7 +289,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	BvVector<u8> compiledShaderBlob(spvOpt.size() * sizeof(u32));
 	memcpy(compiledShaderBlob.Data(), spvOpt.data(), compiledShaderBlob.Size());
 
-	*ppShaderBlob = BV_NEW(BvShaderBlob)(compiledShaderBlob);
+	*ppShaderBlob = BV_OBJECT_CREATE(BvShaderBlob, compiledShaderBlob);
 
 	return true;
 }
@@ -438,10 +438,10 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API IBvShaderCompiler* GetSPIRVCompiler()
+		BV_API bool CreateSPIRVCompiler(IBvShaderCompiler** ppObj)
 		{
-			static BvSPIRVCompiler spvCompiler;
-			return &spvCompiler;
+			*ppObj = BV_OBJECT_CREATE(BvSPIRVCompiler);
+			return true;
 		}
 	}
 }

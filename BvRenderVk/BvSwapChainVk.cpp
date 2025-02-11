@@ -166,6 +166,7 @@ bool BvSwapChainVk::Create()
 		// the most commonly accepted formats for a swap chain
 		requestedFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	}
+	VkColorSpaceKHR requestedColorSpace = GetVkColorSpace(m_SwapChainDesc.m_ColorSpace);
 
 	VkFormat format = VkFormat::VK_FORMAT_UNDEFINED;
 	VkColorSpaceKHR colorSpace = VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -186,7 +187,10 @@ bool BvSwapChainVk::Create()
 			{
 				format = surfaceFormat.format;
 				colorSpace = surfaceFormat.colorSpace;
-				break;
+				if (requestedColorSpace == colorSpace || m_SwapChainDesc.m_ColorSpace == ColorSpace::kAuto)
+				{
+					break;
+				}
 			}
 		}
 
@@ -208,7 +212,10 @@ bool BvSwapChainVk::Create()
 				{
 					format = surfaceFormat.format;
 					colorSpace = surfaceFormat.colorSpace;
-					break;
+					if (requestedColorSpace == colorSpace || m_SwapChainDesc.m_ColorSpace == ColorSpace::kAuto)
+					{
+						break;
+					}
 				}
 			}
 
@@ -223,7 +230,16 @@ bool BvSwapChainVk::Create()
 
 	// Update the SwapChain's format in case it changed - if it ends up being Format::Unknown,
 	// then that means it's using a format not on the list, but nevertheless supported
-	m_SwapChainDesc.m_Format = GetFormat(format);
+	switch (format)
+	{
+	case VK_FORMAT_R8G8B8A8_UNORM: m_SwapChainDesc.m_Format = Format::kRGBA8_UNorm; break;
+	case VK_FORMAT_B8G8R8A8_UNORM: m_SwapChainDesc.m_Format = Format::kBGRA8_UNorm; break;
+	case VK_FORMAT_R8G8B8A8_SRGB: m_SwapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB; break;
+	case VK_FORMAT_B8G8R8A8_SRGB: m_SwapChainDesc.m_Format = Format::kBGRA8_UNorm_SRGB; break;
+	case VK_FORMAT_R16G16B16A16_SFLOAT: m_SwapChainDesc.m_Format = Format::kRGBA16_Float; break;
+	case VK_FORMAT_A2B10G10R10_UNORM_PACK32: m_SwapChainDesc.m_Format = Format::kRGB10A2_UNorm; break;
+	default: m_SwapChainDesc.m_Format = Format::kUnknown; break;
+	}
 
 	// Get physical device surface properties and formats
 	VkSurfaceCapabilitiesKHR surfCaps;
@@ -472,13 +488,13 @@ void BvSwapChainVk::CreateSynchronizationResources()
 	m_ImageAcquiredSemaphores.Reserve(m_SwapChainTextures.Size());
 	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
 	{
-		m_ImageAcquiredSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice->GetHandle(), 0, false));
+		m_ImageAcquiredSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice, 0, false));
 	}
 
 	m_RenderCompleteSemaphores.Reserve(m_SwapChainTextures.Size());
 	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
 	{
-		m_RenderCompleteSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice->GetHandle(), 0, false));
+		m_RenderCompleteSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice, 0, false));
 	}
 
 	m_Fences.Resize(m_SwapChainTextures.Size());

@@ -8,6 +8,7 @@
 class BvRenderDeviceVk;
 
 
+BV_OBJECT_DEFINE_ID(BvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
 class BvShaderResourceLayoutVk final : public BvShaderResourceLayout
 {
 public:
@@ -18,6 +19,9 @@ public:
 	BvRenderDevice* GetDevice() override;
 	BV_INLINE const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const { return m_Layouts; }
 	BV_INLINE VkPipelineLayout GetPipelineLayoutHandle() const { return m_PipelineLayout; }
+	BV_INLINE bool IsValid() const { return m_PipelineLayout != VK_NULL_HANDLE; }
+
+	BV_OBJECT_IMPL_INTERFACE(BvShaderResourceLayoutVk, BvShaderResourceLayout, IBvRenderDeviceObject);
 
 private:
 	void Create();
@@ -28,6 +32,7 @@ private:
 	BvRobinMap<u32, VkDescriptorSetLayout> m_Layouts{};
 	VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderResourceLayoutVk);
 
 
 class BvShaderResourceParamsVk final : public BvShaderResourceParams

@@ -3,30 +3,7 @@
 
 #include "BvRenderCommon.h"
 #include "BDeV/Core/Utils/BvUtils.h"
-
-
-enum class Filter : u8
-{
-	kPoint,
-	kLinear,
-};
-
-
-enum class MipMapFilter : u8
-{
-	kPoint,
-	kLinear,
-};
-
-
-enum class AddressMode : u8
-{
-	kWrap,
-	kMirror,
-	kClamp,
-	kBorder,
-	kMirrorOnce,
-};
+#include "BvRenderDeviceObject.h"
 
 
 struct SamplerDesc
@@ -49,7 +26,8 @@ struct SamplerDesc
 
 
 
-class BvSampler : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvSampler, "2110750d-806b-4758-b844-a66f75ac383a");
+class BvSampler : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvSampler);
 
@@ -64,3 +42,4 @@ protected:
 protected:
 	SamplerDesc m_SamplerDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvSampler);

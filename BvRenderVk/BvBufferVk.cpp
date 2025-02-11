@@ -115,6 +115,7 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	if (result != VK_SUCCESS)
 	{
 		BvDebugVkResult(result);
+		return;
 	}
 
 	auto vma = m_pDevice->GetAllocator();
@@ -137,6 +138,7 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	{
 		BvDebugVkResult(result);
 		vmaFreeMemory(vma, vmaA);
+		return;
 	}
 	m_VMAAllocation = vmaA;
 

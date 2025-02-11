@@ -5,7 +5,8 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 
 
-class BvBufferView : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvBufferView, "22f4c138-f83b-4f9b-aef3-61dbb1724ae9");
+class BvBufferView : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvBufferView);
 
@@ -21,3 +22,4 @@ protected:
 protected:
 	BufferViewDesc m_BufferViewDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvBufferView);

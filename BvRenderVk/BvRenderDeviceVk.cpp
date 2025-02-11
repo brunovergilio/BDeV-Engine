@@ -19,6 +19,7 @@
 #include "BvTypeConversionsVk.h"
 #include "BvCommandContextVk.h"
 #include "BvQueryVk.h"
+#include "BvGPUFenceVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
@@ -41,183 +42,345 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 }
 
 
-BvSwapChain* BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext)
+bool BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext, BvSwapChain** ppObj)
 {
-	return CreateSwapChainVk(pWindow, swapChainDesc, pContext);
-}
-
-
-BvBuffer* BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData)
-{
-	return CreateBufferVk(desc, pInitData);
-}
-
-
-BvBufferView* BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc)
-{
-	return CreateBufferViewVk(desc);
-}
-
-
-BvTexture* BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData)
-{
-	return CreateTextureVk(desc, pInitData);
-}
-
-
-BvTextureView* BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc)
-{
-	return CreateTextureViewVk(desc);
-}
-
-
-BvSampler* BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc)
-{
-	return CreateSamplerVk(desc);
-}
-
-
-BvRenderPass* BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc)
-{
-	return CreateRenderPassVk(renderPassDesc);
-}
-
-
-BvShaderResourceLayout* BvRenderDeviceVk::CreateShaderResourceLayout(u32 shaderResourceCount,
-	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc)
-{
-	return CreateShaderResourceLayoutVk(shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc);
-}
-
-
-BvShader* BvRenderDeviceVk::CreateShader(const ShaderCreateDesc& shaderDesc)
-{
-	return CreateShaderVk(shaderDesc);
-}
-
-
-BvGraphicsPipelineState* BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
-{
-	return CreateGraphicsPipelineVk(graphicsPipelineStateDesc);
-}
-
-
-BvComputePipelineState* BvRenderDeviceVk::CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc)
-{
-	return CreateComputePipelineVk(computePipelineStateDesc);
-}
-
-
-BvQuery* BvRenderDeviceVk::CreateQuery(QueryType queryType)
-{
-	return CreateQueryVk(queryType);
-}
-
-
-BvSwapChainVk* BvRenderDeviceVk::CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext)
-{
-	auto pObj = BV_NEW(BvSwapChainVk)(this, pWindow, swapChainDesc, pContext);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvBufferVk* BvRenderDeviceVk::CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData /*= nullptr*/)
-{
-	auto pObj = BV_NEW(BvBufferVk)(this, desc, pInitData);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvBufferViewVk* BvRenderDeviceVk::CreateBufferViewVk(const BufferViewDesc& desc)
-{
-	auto pObj = BV_NEW(BvBufferViewVk)(this, desc);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvTextureVk* BvRenderDeviceVk::CreateTextureVk(const TextureDesc& desc, const TextureInitData* pInitData /*= nullptr*/)
-{
-	auto pObj = BV_NEW(BvTextureVk)(this, desc, pInitData);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvTextureViewVk* BvRenderDeviceVk::CreateTextureViewVk(const TextureViewDesc& desc)
-{
-	auto pObj = BV_NEW(BvTextureViewVk)(this, desc);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvSamplerVk* BvRenderDeviceVk::CreateSamplerVk(const SamplerDesc& desc)
-{
-	auto pObj = BV_NEW(BvSamplerVk)(this, desc);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvRenderPassVk* BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& renderPassDesc)
-{
-	auto pObj = BV_NEW(BvRenderPassVk)(this, renderPassDesc);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvShaderResourceLayoutVk* BvRenderDeviceVk::CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc)
-{
-	auto pObj = BV_NEW(BvShaderResourceLayoutVk)(this, shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvShaderVk* BvRenderDeviceVk::CreateShaderVk(const ShaderCreateDesc& shaderDesc)
-{
-	auto pObj = BV_NEW(BvShaderVk)(this, shaderDesc);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvGraphicsPipelineStateVk* BvRenderDeviceVk::CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
-{
-	auto pObj = BV_NEW(BvGraphicsPipelineStateVk)(this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvComputePipelineStateVk* BvRenderDeviceVk::CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc)
-{
-	auto pObj = BV_NEW(BvComputePipelineStateVk)(this, computePipelineStateDesc, VK_NULL_HANDLE);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-BvQueryVk* BvRenderDeviceVk::CreateQueryVk(QueryType queryType)
-{
-	auto pObj = BV_NEW(BvQueryVk)(this, queryType, 3);
-	m_DeviceObjects.PushBack(pObj);
-	return pObj;
-}
-
-
-void BvRenderDeviceVk::Release(IBvRenderDeviceChild* pDeviceObj)
-{
-	auto index = m_DeviceObjects.Find(pDeviceObj);
-	if (index != kU64Max)
+	BvSwapChainVk* pObjVk;
+	if (CreateSwapChainVk(pWindow, swapChainDesc, pContext, &pObjVk))
 	{
-		BV_DELETE(pDeviceObj);
-		m_DeviceObjects.Erase(index);
+		*ppObj = pObjVk;
+		return true;
 	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData, BvBuffer** ppObj)
+{
+	BvBufferVk* pObjVk;
+	if (CreateBufferVk(desc, pInitData, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc, BvBufferView** ppObj)
+{
+	BvBufferViewVk* pObjVk;
+	if (CreateBufferViewVk(desc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData, BvTexture** ppObj)
+{
+	BvTextureVk* pObjVk;
+	if (CreateTextureVk(desc, pInitData, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc, BvTextureView** ppObj)
+{
+	BvTextureViewVk* pObjVk;
+	if (CreateTextureViewVk(desc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc, BvSampler** ppObj)
+{
+	BvSamplerVk* pObjVk;
+	if (CreateSamplerVk(desc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc, BvRenderPass** ppObj)
+{
+	BvRenderPassVk* pObjVk;
+	if (CreateRenderPassVk(renderPassDesc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateShaderResourceLayout(u32 shaderResourceCount,
+	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayout** ppObj)
+{
+	BvShaderResourceLayoutVk* pObjVk;
+	if (CreateShaderResourceLayoutVk(shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateShader(const ShaderCreateDesc& shaderDesc, BvShader** ppObj)
+{
+	BvShaderVk* pObjVk;
+	if (CreateShaderVk(shaderDesc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineState** ppObj)
+{
+	BvGraphicsPipelineStateVk* pObjVk;
+	if (CreateGraphicsPipelineVk(graphicsPipelineStateDesc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineState** ppObj)
+{
+	BvComputePipelineStateVk* pObjVk;
+	if (CreateComputePipelineVk(computePipelineStateDesc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateQuery(QueryType queryType, BvQuery** ppObj)
+{
+	BvQueryVk* pObjVk;
+	if (CreateQueryVk(queryType, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateFence(u64 value, BvGPUFence** ppObj)
+{
+	BvGPUFenceVk* pObjVk;
+	if (CreateFenceVk(value, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext, BvSwapChainVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvSwapChainVk, this, pWindow, swapChainDesc, pContext);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData, BvBufferVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvBufferVk, this, desc, pInitData);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateBufferViewVk(const BufferViewDesc& desc, BvBufferViewVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvBufferViewVk, this, desc);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateTextureVk(const TextureDesc& desc, const TextureInitData* pInitData, BvTextureVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvTextureVk, this, desc, pInitData);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateTextureViewVk(const TextureViewDesc& desc, BvTextureViewVk** ppObj)
+{
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateSamplerVk(const SamplerDesc& desc, BvSamplerVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvSamplerVk, this, desc);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& renderPassDesc, BvRenderPassVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvRenderPassVk, this, renderPassDesc);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
+	const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayoutVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvShaderResourceLayoutVk, this, shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateShaderVk(const ShaderCreateDesc& shaderDesc, BvShaderVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvShaderVk, this, shaderDesc);
+	m_DeviceObjects.PushBack(*ppObj);
+
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineStateVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvGraphicsPipelineStateVk, this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineStateVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvComputePipelineStateVk, this, computePipelineStateDesc, VK_NULL_HANDLE);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateQueryVk(QueryType queryType, BvQueryVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvQueryVk, this, queryType, 3);
+	m_DeviceObjects.PushBack(*ppObj);
+
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateFenceVk(u64 value, BvGPUFenceVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvGPUFenceVk, this, value);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
 }
 
 
@@ -537,7 +700,7 @@ void BvRenderDeviceVk::CreateVMA()
 	vmaACI.instance = m_pEngine->GetHandle();
 	vmaACI.device = m_Device;
 	vmaACI.physicalDevice = m_PhysicalDevice;
-	vmaACI.vulkanApiVersion = m_pDeviceInfo->m_DeviceProperties.properties.apiVersion;
+	vmaACI.vulkanApiVersion = VK_API_VERSION_1_3;
 
 	if (m_pDeviceInfo->m_DeviceFeatures1_2.bufferDeviceAddress)
 	{
@@ -873,7 +1036,7 @@ u32 GetQueueFamilyIndex(const BvVector<VkQueueFamilyProperties2>& queueFamilyPro
 
 	// Dedicated queue for compute
 	// Try to find a queue family index that supports compute but not graphics
-	if (queueFlags == VK_QUEUE_COMPUTE_BIT)
+	if (queueFlags & VK_QUEUE_COMPUTE_BIT)
 	{
 		for (u32 i = 0; i < static_cast<u32>(queueFamilyProperties.Size()); i++)
 		{
@@ -889,7 +1052,7 @@ u32 GetQueueFamilyIndex(const BvVector<VkQueueFamilyProperties2>& queueFamilyPro
 
 	// Dedicated queue for transfer
 	// Try to find a queue family index that supports transfer but not graphics and compute
-	else if (queueFlags == VK_QUEUE_TRANSFER_BIT)
+	else if (queueFlags & VK_QUEUE_TRANSFER_BIT)
 	{
 		for (u32 i = 0; i < static_cast<u32>(queueFamilyProperties.Size()); i++)
 		{

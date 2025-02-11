@@ -4,7 +4,8 @@
 #include "BvTexture.h"
 
 
-class BvTextureView : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvTextureView, "6178f332-f7bc-4465-bf96-a6713c733ece");
+class BvTextureView : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvTextureView);
 
@@ -20,3 +21,4 @@ protected:
 protected:
 	TextureViewDesc m_TextureViewDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvTextureView);

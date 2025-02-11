@@ -198,7 +198,13 @@ void BvQueryHeapVk::Create()
 	bufferDesc.m_Size = GetQuerySize() * m_QueryCount * m_FrameCount;
 	bufferDesc.m_MemoryType = MemoryType::kReadBack;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_QueryHeapData.EmplaceBack(BvQueryHeapVk::HeapData{ pool, BvVector<u32>(m_FrameCount), m_pDevice->CreateBufferVk(bufferDesc) });
+	BvBufferVk* pBuffer;
+	if (!m_pDevice->CreateBufferVk(bufferDesc, nullptr, &pBuffer))
+	{
+		return;
+	}
+
+	m_QueryHeapData.EmplaceBack(BvQueryHeapVk::HeapData{ pool, BvVector<u32>(m_FrameCount), pBuffer });
 
 	vkResetQueryPool(m_pDevice->GetHandle(), pool, 0, m_QueryCount * m_FrameCount);
 }

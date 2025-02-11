@@ -13,10 +13,12 @@ BvFrameDataVk::BvFrameDataVk()
 }
 
 
-BvFrameDataVk::BvFrameDataVk(const BvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, BvQueryHeapManagerVk* pQueryHeapManager)
-	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_pFence(BV_NEW(BvGPUFenceVk)(pDevice, 0)), m_FrameIndex(frameIndex),
+BvFrameDataVk::BvFrameDataVk(BvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, BvQueryHeapManagerVk* pQueryHeapManager)
+	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_FrameIndex(frameIndex),
 	m_pQueryHeapManager(pQueryHeapManager)
 {
+	pDevice->CreateFenceVk(0, &m_pFence);
+	BV_ASSERT(m_pFence->IsValid(), "Fence has to be valid");
 }
 
 
@@ -47,7 +49,7 @@ BvFrameDataVk& BvFrameDataVk::operator=(BvFrameDataVk&& rhs) noexcept
 
 BvFrameDataVk::~BvFrameDataVk()
 {
-	BV_DELETE(m_pFence);
+	m_pFence->Release();
 }
 
 

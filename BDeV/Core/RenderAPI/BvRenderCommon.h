@@ -1,25 +1,25 @@
 #pragma once
 
 
+//BV_IBVOBJECT_DEFINE_ID(, "11ee119e-5ecb-4675-9b95-f13439e1a3aa");
+//BV_IBVOBJECT_DEFINE_ID(, "70617509-5657-4c47-9a4e-dc318b535076");
+//BV_IBVOBJECT_DEFINE_ID(, "e04f4570-bb75-4ff2-b9e2-02ba4affb9de");
+//BV_IBVOBJECT_DEFINE_ID(, "5ab21c28-09a4-4a86-a001-776e28fa3324");
+//BV_IBVOBJECT_DEFINE_ID(, "9f90a079-c378-4b59-9522-958685fdea9c");
+//BV_IBVOBJECT_DEFINE_ID(, "0bb5abad-c53b-47bd-b939-989cb9d2e58d");
+//BV_IBVOBJECT_DEFINE_ID(, "8a9c658d-963e-49a2-9d67-7e5316f1a8fc");
+//BV_IBVOBJECT_DEFINE_ID(, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
+
+
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Utils/BvObject.h"
-#include <cmath>
+#include <algorithm>
 
 
 class BvBuffer;
 class BvTexture;
 class BvTextureView;
 class BvCommandContext;
-class BvRenderDevice;
-
-
-class IBvRenderDeviceChild
-{
-public:
-	virtual ~IBvRenderDeviceChild() {}
-	virtual BvRenderDevice* GetDevice() = 0;
-};
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -199,6 +199,15 @@ enum class Format : u8
 	kP208 = 130, // 2 planes (Y plane and interleaved UV plane)
 	kV208 = 131, // 3 planes (Y plane, V plane, and U plane)
 	kV408 = 132, // 3 planes (Y plane, V plane, and U plane)
+};
+
+
+enum class ColorSpace
+{
+	kAuto,
+	kSRGBNonLinear,
+	kExtendedLinear,
+	kHDR10
 };
 
 
@@ -548,13 +557,13 @@ struct Offset3D
 enum class BufferUsage : u16
 {
 	kNone = 0,
-	kUniformBuffer = BvBit(1),
-	kStorageBuffer = BvBit(2),
-	kUniformTexelBuffer = BvBit(3),
-	kStorageTexelBuffer = BvBit(4),
-	kIndexBuffer = BvBit(5),
-	kVertexBuffer = BvBit(6),
-	kIndirectBuffer = BvBit(7),
+	kUniformBuffer =		BvBit(0),
+	kStorageBuffer =		BvBit(1),
+	kUniformTexelBuffer =	BvBit(2),
+	kStorageTexelBuffer =	BvBit(3),
+	kIndexBuffer =			BvBit(4),
+	kVertexBuffer =			BvBit(5),
+	kIndirectBuffer =		BvBit(6),
 };
 BV_USE_ENUM_CLASS_OPERATORS(BufferUsage);
 
@@ -597,13 +606,13 @@ enum class TextureType : u8
 
 enum class TextureUsage : u8
 {
-	kDefault = 0x0,
-	kTransferSrc = 0x1,
-	kTransferDst = 0x2,
-	kShaderResource = 0x4,
-	kUnorderedAccess = 0x8,
-	kColorTarget = 0x10,
-	kDepthStencilTarget = 0x20,
+	kDefault = 0,
+	kTransferSrc =			BvBit(0),
+	kTransferDst =			BvBit(1),
+	kShaderResource =		BvBit(2),
+	kUnorderedAccess =		BvBit(3),
+	kColorTarget =			BvBit(4),
+	kDepthStencilTarget =	BvBit(5),
 };
 BV_USE_ENUM_CLASS_OPERATORS(TextureUsage);
 
@@ -831,6 +840,44 @@ struct ResourceBarrierDesc
 	PipelineStage m_DstPipelineStage = PipelineStage::kAuto;
 
 	SubresourceDesc m_Subresource;
+};
+
+
+enum class ShaderResourceType : u8
+{
+	kUnknown,
+	kConstantBuffer,
+	kStructuredBuffer,
+	kRWStructuredBuffer,
+	kFormattedBuffer,
+	kRWFormattedBuffer,
+	kTexture,
+	kRWTexture,
+	kSampler,
+};
+
+
+enum class Filter : u8
+{
+	kPoint,
+	kLinear,
+};
+
+
+enum class MipMapFilter : u8
+{
+	kPoint,
+	kLinear,
+};
+
+
+enum class AddressMode : u8
+{
+	kWrap,
+	kMirror,
+	kClamp,
+	kBorder,
+	kMirrorOnce,
 };
 
 

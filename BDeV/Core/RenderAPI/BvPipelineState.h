@@ -1,12 +1,16 @@
 #pragma once
 
 
-#include "BvShaderResource.h"
-#include "BvRenderPass.h"
-#include "BvShader.h"
+#include "BvRenderCommon.h"
+#include "BvRenderDeviceObject.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Container/BvFixedVector.h"
 #include "BDeV/Core/Container/BvString.h"
+
+
+class BvShaderResourceLayout;
+class BvShader;
+class BvRenderPass;
 
 
 struct GraphicsPipelineStateDesc
@@ -38,7 +42,8 @@ struct ComputePipelineStateDesc
 };
 
 
-class BvGraphicsPipelineState : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvGraphicsPipelineState, "863fd051-1ea0-4913-bd1c-2dd02f69589f");
+class BvGraphicsPipelineState : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvGraphicsPipelineState);
 
@@ -53,9 +58,11 @@ protected:
 protected:
 	GraphicsPipelineStateDesc m_PipelineStateDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvGraphicsPipelineState);
 
 
-class BvComputePipelineState : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvComputePipelineState, "3d4b6d6a-9cb4-42ff-bc14-ec6a328b2801");
+class BvComputePipelineState : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvComputePipelineState);
 
@@ -70,3 +77,4 @@ protected:
 protected:
 	ComputePipelineStateDesc m_PipelineStateDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvComputePipelineState);

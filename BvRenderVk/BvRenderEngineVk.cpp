@@ -10,16 +10,22 @@ bool IsDeviceSuitable(VkPhysicalDevice gpu);
 void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo);
 
 
-BvRenderDevice* BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc)
+bool BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc, BvRenderDevice** ppObj)
 {
 	BvRenderDeviceCreateDescVk descVk;
 	memcpy(&descVk, &deviceCreateDesc, sizeof(BvRenderDeviceCreateDesc));
+	BvRenderDeviceVk* pObjVk;
+	if (CreateRenderDeviceVk(descVk, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
 
-	return CreateRenderDeviceVk(descVk);
+	return false;
 }
 
 
-BvRenderDeviceVk* BvRenderEngineVk::CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc)
+bool BvRenderEngineVk::CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc, BvRenderDeviceVk** ppObj)
 {
 	u32 gpuIndex = deviceDesc.m_GPUIndex;
 	if (gpuIndex >= m_GPUs.Size())
@@ -35,10 +41,22 @@ BvRenderDeviceVk* BvRenderEngineVk::CreateRenderDeviceVk(const BvRenderDeviceCre
 		}
 	}
 
-	BV_ASSERT(m_Devices[gpuIndex] == nullptr, "Render Device has already been created");
-	m_Devices[gpuIndex] = BV_NEW(BvRenderDeviceVk)(this, (VkPhysicalDevice)m_GPUs[gpuIndex].m_pPhysicalDevice, deviceDesc);
+	auto& pDevice = m_Devices[gpuIndex];
+	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
+	if (!pDevice)
+	{
+		pDevice = BV_OBJECT_CREATE(BvRenderDeviceVk, this, (VkPhysicalDevice)m_GPUs[gpuIndex].m_pPhysicalDevice, deviceDesc);
+		if (!pDevice->IsValid())
+		{
+			pDevice->Release();
+			pDevice = nullptr;
+			return false;
+		}
+	}
 
-	return m_Devices[gpuIndex];
+	*ppObj = pDevice;
+
+	return true;
 }
 
 
@@ -368,9 +386,26 @@ namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API BvRenderEngine* GetRenderEngine()
+		BV_API bool CreateRenderEngine(BvRenderEngine** ppObj)
 		{
-			return BvRenderEngineVk::GetInstance();
+			static bool initialized = false;
+			static BvRenderEngineVk* pEngine = nullptr;
+			if (initialized)
+			{
+				*ppObj = pEngine;
+			}
+			else
+			{
+				initialized = true;
+				pEngine = BV_NEW(BvRenderEngineVk)();
+				if (pEngine->GetGPUs().Size() == 0)
+				{
+					BV_DELETE(pEngine);
+					pEngine = nullptr;
+				}
+			}
+
+			return pEngine != nullptr;
 		}
 	}
 }

@@ -18,6 +18,7 @@ class BvComputePipelineStateVk;
 class BvQueryVk;
 class BvCommandContextVk;
 class BvQueryHeapManagerVk;
+class BvGPUFenceVk;
 
 
 struct BvDeviceInfoVk
@@ -73,41 +74,42 @@ struct BvDeviceInfoVk
 };
 
 
+BV_OBJECT_DEFINE_ID(BvRenderDeviceVk, "ec44c0fd-f4c4-4718-8c6b-5a56f9adc22e");
 class BvRenderDeviceVk final : public BvRenderDevice
 {
 public:
 	BvRenderDeviceVk(BvRenderEngineVk* pEngine, VkPhysicalDevice physicalDevice, const BvRenderDeviceCreateDescVk& deviceDesc);
 	~BvRenderDeviceVk();
 
-	BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext) override;
-	BvBuffer* CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData = nullptr) override;
-	BvBufferView* CreateBufferView(const BufferViewDesc& desc) override;
-	BvTexture* CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData = nullptr) override;
-	BvTextureView* CreateTextureView(const TextureViewDesc& desc) override;
-	BvSampler* CreateSampler(const SamplerDesc& desc) override;
-	BvRenderPass* CreateRenderPass(const RenderPassDesc & renderPassDesc) override;
-	BvShaderResourceLayout* CreateShaderResourceLayout(u32 shaderResourceCount,	const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc* pShaderResourceConstantDesc = nullptr) override;
-	BvShader* CreateShader(const ShaderCreateDesc& shaderDesc) override;
-	BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc & graphicsPipelineStateDesc) override;
-	BvComputePipelineState* CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) override;
-	BvQuery* CreateQuery(QueryType queryType) override;
+	bool CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext, BvSwapChain** ppObj) override;
+	bool CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData, BvBuffer** ppObj) override;
+	bool CreateBufferView(const BufferViewDesc& desc, BvBufferView** ppObj) override;
+	bool CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData, BvTexture** ppObj) override;
+	bool CreateTextureView(const TextureViewDesc& desc, BvTextureView** ppObj) override;
+	bool CreateSampler(const SamplerDesc& desc, BvSampler** ppObj) override;
+	bool CreateRenderPass(const RenderPassDesc& renderPassDesc, BvRenderPass** ppObj) override;
+	bool CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
+		const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayout** ppObj) override;
+	bool CreateShader(const ShaderCreateDesc& shaderDesc, BvShader** ppObj) override;
+	bool CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineState** ppObj) override;
+	bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineState** ppObj) override;
+	bool CreateQuery(QueryType queryType, BvQuery** ppObj) override;
+	bool CreateFence(u64 value, BvGPUFence** ppObj) override;
 
-	BvSwapChainVk* CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext);
-	BvBufferVk* CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData = nullptr);
-	BvBufferViewVk* CreateBufferViewVk(const BufferViewDesc& desc);
-	BvTextureVk* CreateTextureVk(const TextureDesc& desc, const TextureInitData* pInitData = nullptr);
-	BvTextureViewVk* CreateTextureViewVk(const TextureViewDesc& desc);
-	BvSamplerVk* CreateSamplerVk(const SamplerDesc& desc);
-	BvRenderPassVk* CreateRenderPassVk(const RenderPassDesc& renderPassDesc);
-	BvShaderResourceLayoutVk* CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc* pShaderResourceConstantDesc = nullptr);
-	BvShaderVk* CreateShaderVk(const ShaderCreateDesc& shaderDesc);
-	BvGraphicsPipelineStateVk* CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc);
-	BvComputePipelineStateVk* CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc);
-	BvQueryVk* CreateQueryVk(QueryType queryType);
-
-	void Release(IBvRenderDeviceChild* pDeviceObj) override;
+	bool CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext, BvSwapChainVk** ppObj);
+	bool CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData, BvBufferVk** ppObj);
+	bool CreateBufferViewVk(const BufferViewDesc& desc, BvBufferViewVk** ppObj);
+	bool CreateTextureVk(const TextureDesc& desc, const TextureInitData* pInitData, BvTextureVk** ppObj);
+	bool CreateTextureViewVk(const TextureViewDesc& desc, BvTextureViewVk** ppObj);
+	bool CreateSamplerVk(const SamplerDesc& desc, BvSamplerVk** ppObj);
+	bool CreateRenderPassVk(const RenderPassDesc& renderPassDesc, BvRenderPassVk** ppObj);
+	bool CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
+		const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayoutVk** ppObj);
+	bool CreateShaderVk(const ShaderCreateDesc& shaderDesc, BvShaderVk** ppObj);
+	bool CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineStateVk** ppObj);
+	bool CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineStateVk** ppObj);
+	bool CreateQueryVk(QueryType queryType, BvQueryVk** ppObj);
+	bool CreateFenceVk(u64 value, BvGPUFenceVk** ppObj);
 
 	void WaitIdle() const override;
 
@@ -126,6 +128,9 @@ public:
 	BV_INLINE VmaAllocator GetAllocator() const { return m_VMA; }
 	BV_INLINE const BvDeviceInfoVk* GetDeviceInfo() const { return m_pDeviceInfo; }
 	BV_INLINE BvRenderEngineVk* GetEngine() const { return m_pEngine; }
+	BV_INLINE bool IsValid() const { return m_Device != VK_NULL_HANDLE; }
+
+	BV_OBJECT_IMPL_INTERFACE(BvRenderDeviceVk, BvRenderDevice);
 
 private:
 	void Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc);
@@ -141,11 +146,12 @@ private:
 	BvVector<BvCommandContextVk*> m_GraphicsContexts;
 	BvVector<BvCommandContextVk*> m_ComputeContexts;
 	BvVector<BvCommandContextVk*> m_TransferContexts;
-	BvVector<IBvRenderDeviceChild*> m_DeviceObjects;
+	BvVector<IBvRenderDeviceObject*> m_DeviceObjects;
 	VmaAllocator m_VMA{};
 	BvDeviceInfoVk* m_pDeviceInfo = nullptr;
 	RenderDeviceCapabilities m_DeviceCaps;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderDeviceVk);
 
 
 BV_CREATE_CAST_TO_VK(BvRenderDevice)

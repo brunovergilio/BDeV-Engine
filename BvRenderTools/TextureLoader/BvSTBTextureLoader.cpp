@@ -18,10 +18,6 @@ BvSTBTextureLoader::BvSTBTextureLoader()
 
 BvSTBTextureLoader::~BvSTBTextureLoader()
 {
-	for (auto pBlob : m_Textures)
-	{
-		delete pBlob;
-	}
 }
 
 
@@ -153,8 +149,7 @@ IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& b
 	memcpy(buffer.Data(), pData, buffer.Size());
 	stbi_image_free(pData);
 
-	auto pBlob = new BvTextureBlob(buffer, textureInfo, subresources);
-	m_Textures.Emplace(pBlob);
+	auto pBlob = BV_OBJECT_CREATE(BvTextureBlob, buffer, textureInfo, subresources);
 	*ppTextureBlob = pBlob;
 
 	return IBvTextureLoader::Result::kOk;
@@ -165,10 +160,10 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API IBvTextureLoader* GetSTBTextureLoader()
+		BV_API bool CreateSTBTextureLoader(IBvTextureLoader** ppObj)
 		{
-			static BvSTBTextureLoader textureLoader;
-			return &textureLoader;
+			*ppObj = BV_OBJECT_CREATE(BvSTBTextureLoader);
+			return true;
 		}
 	}
 }

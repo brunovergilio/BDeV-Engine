@@ -28,7 +28,7 @@ class BvFrameDataVk final
 
 public:
 	BvFrameDataVk();
-	BvFrameDataVk(const BvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex, BvQueryHeapManagerVk* pQueryHeapManager);
+	BvFrameDataVk(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex, BvQueryHeapManagerVk* pQueryHeapManager);
 	BvFrameDataVk(BvFrameDataVk&& rhs) noexcept;
 	BvFrameDataVk& operator=(BvFrameDataVk&& rhs) noexcept;
 	~BvFrameDataVk();
@@ -52,7 +52,7 @@ public:
 	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pQueryHeapManager; }
 
 private:
-	const BvRenderDeviceVk* m_pDevice = nullptr;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvCommandPoolVk m_CommandPool;
 	BvVector<BvCommandBufferVk*> m_CommandBuffers;
 	BvResourceBindingStateVk m_ResourceBindingState;

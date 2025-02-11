@@ -5,6 +5,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Container/BvFixedVector.h"
 #include "BDeV/Core/Utils/BvHash.h"
+#include "BvRenderDeviceObject.h"
 
 
 struct AttachmentRef
@@ -265,7 +266,8 @@ struct std::hash<RenderPassDesc>
 };
 
 
-class BvRenderPass : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvRenderPass, "cdaf2dfb-3ab4-458f-846b-f560d415a023");
+class BvRenderPass : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvRenderPass);
 
@@ -280,3 +282,4 @@ protected:
 protected:
 	RenderPassDesc m_RenderPassDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderPass);

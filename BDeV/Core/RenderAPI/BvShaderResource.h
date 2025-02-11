@@ -7,6 +7,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BvRenderCommon.h"
 #include "BDeV/Core/Container/BvStringId.h"
+#include "BvRenderDeviceObject.h"
 
 
 class BvSampler;
@@ -31,20 +32,6 @@ class BvTextureView;
 // RWByteAddressBuffer			UAV							Storage Buffer				-
 // AppendStructuredBuffer		UAV							Storage Buffer				-
 // ConsumeStructuredBuffer		UAV							Storage Buffer				-
-
-
-enum class ShaderResourceType : u8
-{
-	kUnknown,
-	kConstantBuffer,
-	kStructuredBuffer,
-	kRWStructuredBuffer,
-	kFormattedBuffer,
-	kRWFormattedBuffer,
-	kTexture,
-	kRWTexture,
-	kSampler,
-};
 
 
 struct ShaderResourceDesc
@@ -145,7 +132,8 @@ struct ShaderResourceLayoutDesc
 };
 
 
-class BvShaderResourceLayout : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvShaderResourceLayout, "79547e0c-dc23-4354-9a51-c1af70d20b83");
+class BvShaderResourceLayout : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvShaderResourceLayout);
 
@@ -159,6 +147,7 @@ protected:
 protected:
 	ShaderResourceLayoutDesc m_ShaderResourceLayoutDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderResourceLayout);
 
 
 class BvShaderResourceParams

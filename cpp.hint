@@ -31,3 +31,19 @@ static constexpr const char * const GetTypeName()	\
 private:											\
 
 #define BV_INIT_TEST_UNIT_SYSTEM() Internal::TestUnitSystem g_TestUnitSystem;#define BV_INLINE
+
+#define BV_IBVOBJECT_IMPL_INTERFACE(objType, ...) \
+bool QueryInterface(const BvUUID& id, IBvObject** ppInterface) override \
+{ \
+	if (!ppInterface) \
+	{ \
+		return false; \
+	} \
+	if (id == BV_IBVOBJECT_ID(objType) __VA_OPT__ ( EVAL ( BV_IBVOBJECT_FOR_EACH(id, __VA_ARGS__) ) ) ) \
+	{ \
+		*ppInterface = this; \
+		this->AddRef(); \
+		return true; \
+	} \
+	return BvObjectBase::QueryInterface(id, ppInterface); \
+}

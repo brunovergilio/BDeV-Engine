@@ -15,7 +15,7 @@ class BvSemaphoreVk final
 
 public:
 	BvSemaphoreVk();
-	BvSemaphoreVk(VkDevice device, u64 initialValue = 0, bool isTimelineSemaphore = true);
+	BvSemaphoreVk(BvRenderDeviceVk* pDevice, u64 initialValue = 0, bool isTimelineSemaphore = true);
 	BvSemaphoreVk(BvSemaphoreVk&& rhs) noexcept;
 	BvSemaphoreVk& operator=(BvSemaphoreVk&& rhs) noexcept;
 	~BvSemaphoreVk();
@@ -25,33 +25,13 @@ public:
 	u64 GetCompletedValue();
 
 	BV_INLINE VkSemaphore GetHandle() const { return m_Semaphore; }
+	BV_INLINE BvRenderDeviceVk* GetDevice() const { return m_pDevice; }
 
 private:
 	void Create(u64 initialValue, bool isTimelineSemaphore);
 	void Destroy();
 	
 private:
-	VkDevice m_Device = VK_NULL_HANDLE;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkSemaphore m_Semaphore = VK_NULL_HANDLE;
-};
-
-
-class BvSemaphorePoolVk
-{
-	BV_NOCOPY(BvSemaphorePoolVk);
-
-public:
-	BvSemaphorePoolVk();
-	BvSemaphorePoolVk(VkDevice device);
-	BvSemaphorePoolVk(BvSemaphorePoolVk&& rhs) noexcept;
-	BvSemaphorePoolVk& operator=(BvSemaphorePoolVk&& rhs) noexcept;
-	~BvSemaphorePoolVk();
-
-	BvSemaphoreVk* GetSemaphore();
-	void Reset();
-
-private:
-	VkDevice m_Device = VK_NULL_HANDLE;
-	BvVector<BvSemaphoreVk> m_Semaphores;
-	u32 m_ActiveSemaphoreCount = 0;
 };

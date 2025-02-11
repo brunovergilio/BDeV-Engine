@@ -1,5 +1,7 @@
 #include "BDeV/BDeV.h"
 #include "BvRenderVk/BvRenderEngineVk.h"
+#include "BvRenderVk/BvRenderDeviceVk.h"
+#include "BvRenderVk/BvSwapChainVk.h"
 
 
 static const char* pVSShader =
@@ -84,46 +86,19 @@ BvBuffer* CreateVB(BvRenderDevice* pDevice);
 BvBuffer* CreateUB(BvRenderDevice* pDevice);
 
 
-BV_IBVOBJECT_DEFINE_IID(BvTest, "A8000000-C200-0000-0000-000000000000")
-class BvTest : public BvObjectBase
-{
-public:
-	BvTest() { printf("Hello "); }
-	~BvTest() { printf("and bye\n"); }
-};
-
-
-BV_IBVOBJECT_DEFINE_IID(BvTest2, "A84E00FF-C200-0000-0000-000000000000")
-class BvTest2 : public BvTest
-{
-public:
-	BV_IBVOBJECT_IMPL_INTERFACE(BvTest2, BvTest);
-
-	BvTest2() { printf("Hello "); }
-	~BvTest2() { printf("and bye\n"); }
-};
-
-
 int main()
 {
-	{
-		BvTest2* pObj;
-		BvTest* ptt = BV_OBJECT_CREATE(BvTest2);
-		ptt->QueryInterface(BV_IBVOBJECT_IID(BvTest2), (IBvObject**)&pObj);
-		ptt->Release();
-		pObj->Release();
-	}
-
 	BvApplication app;
 	app.Initialize();
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
-	typedef IBvShaderCompiler*(*pFNGetShaderCompiler)();
-	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("GetSPIRVCompiler");
-	g_pCompiler = compilerFn();
+	typedef bool(*pFNGetShaderCompiler)(IBvShaderCompiler**);
+	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
+	compilerFn(&g_pCompiler);
 
 	auto pEngine = BvRenderEngineVk::GetInstance();
-	auto pDevice = pEngine->CreateRenderDevice(BvRenderDeviceCreateDesc());
+	BvRenderDeviceVk* pDevice;
+	pEngine->CreateRenderDeviceVk(BvRenderDeviceCreateDescVk(), &pDevice);
 
 	BvKeyboard keyboard;
 	auto pKeyboard = &keyboard;
@@ -136,27 +111,31 @@ int main()
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
 	auto pGraphicsContext = pDevice->GetGraphicsContext();
-	BvSwapChain* pSwapChain = pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext);
+	BvObjectHandle<BvSwapChainVk> scvk;
+	pDevice->CreateSwapChainVk(pWindow, swapChainDesc, pGraphicsContext, &scvk);
 
-	// Create uniform buffer
+	BvSwapChain* pSwapChain;
+	pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext, &pSwapChain);
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
-	//auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(0, nullptr);
-	auto pShaderResourceLayout = pDevice->CreateShaderResourceLayout(1, &resourceDesc);
+	BvShaderResourceLayout* pShaderResourceLayout;
+	pDevice->CreateShaderResourceLayout(1, &resourceDesc, nullptr, &pShaderResourceLayout);
 
 	auto pVB = CreateVB(pDevice);
 	BufferViewDesc vbViewDesc;
 	vbViewDesc.m_pBuffer = pVB;
 	vbViewDesc.m_Stride = sizeof(PosColorVertex);
 	vbViewDesc.m_ElementCount = 3;
-	auto pVBView = pDevice->CreateBufferView(vbViewDesc);
+	BvBufferView* pVBView;
+	pDevice->CreateBufferView(vbViewDesc, &pVBView);
 
 	auto pUB = CreateUB(pDevice);
 	BufferViewDesc ubViewDesc;
 	ubViewDesc.m_pBuffer = pUB;
 	ubViewDesc.m_Stride = sizeof(Float44);
 	ubViewDesc.m_ElementCount = 1;
-	auto pUBView = pDevice->CreateBufferView(ubViewDesc);
+	BvBufferView* pUBView;
+	pDevice->CreateBufferView(ubViewDesc, &pUBView);
 
 	GraphicsPipelineStateDesc pipelineDesc;
 	pipelineDesc.m_Shaders[0] = GetVS(pDevice);
@@ -176,9 +155,11 @@ int main()
 	pipelineDesc.m_VertexInputDescCount = 2;
 	pipelineDesc.m_pVertexInputDescs = inputDescs;
 
-	auto pPSO = pDevice->CreateGraphicsPipeline(pipelineDesc);
+	BvGraphicsPipelineState* pPSO;
+	pDevice->CreateGraphicsPipeline(pipelineDesc, &pPSO);
 
-	auto pQuery = pDevice->CreateQuery(QueryType::kTimestamp);
+	BvQuery* pQuery;
+	pDevice->CreateQuery(QueryType::kTimestamp, &pQuery);
 
 	auto currIndex = 0;
 	u64 frame = 0;
@@ -285,7 +266,10 @@ BvShader* GetVS(BvRenderDevice* pDevice)
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	return pDevice->CreateShader(shaderDesc);
+	BvShader* pShader;
+	pDevice->CreateShader(shaderDesc, &pShader);
+
+	return pShader;
 }
 
 
@@ -303,7 +287,10 @@ BvShader* GetPS(BvRenderDevice* pDevice)
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	return pDevice->CreateShader(shaderDesc);
+	BvShader* pShader;
+	pDevice->CreateShader(shaderDesc, &pShader);
+
+	return pShader;
 }
 
 BvBuffer* CreateVB(BvRenderDevice* pDevice)
@@ -322,7 +309,8 @@ BvBuffer* CreateVB(BvRenderDevice* pDevice)
 	bufferData.m_pContext = pDevice->GetGraphicsContext();
 	bufferData.m_pData = verts;
 	bufferData.m_Size = sizeof(verts);
-	auto pVB = pDevice->CreateBuffer(vbBufferDesc, &bufferData);
+	BvBuffer* pVB;
+	pDevice->CreateBuffer(vbBufferDesc, &bufferData, &pVB);
 
 	return pVB;
 }
@@ -333,8 +321,9 @@ BvBuffer* CreateUB(BvRenderDevice* pDevice)
 	uniformBufferDesc.m_Size = sizeof(Float44);
 	uniformBufferDesc.m_MemoryType = MemoryType::kUpload;
 	uniformBufferDesc.m_UsageFlags = BufferUsage::kUniformBuffer;
-	auto pUniform = pDevice->CreateBuffer(uniformBufferDesc);
-	pUniform->Map();
+	uniformBufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
+	BvBuffer* pUniform;
+	pDevice->CreateBuffer(uniformBufferDesc, nullptr, &pUniform);
 	
 	return pUniform;
 }

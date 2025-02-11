@@ -4,9 +4,11 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/Utils/BvObject.h"
 
 
-class IBvTextureBlob
+BV_OBJECT_DEFINE_ID(IBvTextureBlob, "8fd865cd-3b81-4a99-9497-0d0d0a07df59");
+class IBvTextureBlob : public BvObjectBase
 {
 	BV_NOCOPYMOVE(IBvTextureBlob);
 
@@ -29,11 +31,13 @@ public:
 
 protected:
 	IBvTextureBlob() {}
-	virtual ~IBvTextureBlob() {}
+	~IBvTextureBlob() {}
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureBlob);
 
 
-class IBvTextureLoader
+BV_OBJECT_DEFINE_ID(IBvTextureLoader, "8dcfd9b9-56cf-447d-ba1c-0c545b29d706");
+class IBvTextureLoader : public BvObjectBase
 {
 	BV_NOCOPYMOVE(IBvTextureLoader);
 
@@ -57,5 +61,6 @@ public:
 
 protected:
 	IBvTextureLoader() {}
-	virtual ~IBvTextureLoader() {}
+	~IBvTextureLoader() {}
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureLoader);

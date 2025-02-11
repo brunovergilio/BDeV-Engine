@@ -3,9 +3,11 @@
 
 #include "BvRenderCommon.h"
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "BvRenderDeviceObject.h"
 
 
-class BvBuffer : public IBvRenderDeviceChild
+BV_OBJECT_DEFINE_ID(BvBuffer, "6184cda7-615d-4b60-a31c-92f679f62d03");
+class BvBuffer : public IBvRenderDeviceObject
 {
 	BV_NOCOPYMOVE(BvBuffer);
 
@@ -29,3 +31,4 @@ protected:
 	BufferDesc m_BufferDesc;
 	void* m_pMapped = nullptr;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvBuffer);

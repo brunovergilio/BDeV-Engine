@@ -30,9 +30,9 @@ namespace BvVirtualMemory
 namespace Internal
 {
 	template<typename Type>
-	void* New(size_t alignment, const BvSourceInfo& sourceInfo)
+	void* New(const BvSourceInfo& sourceInfo)
 	{
-		MemType mem{ BvMemory::Allocate(sizeof(Type), alignment, 0) };
+		MemType mem{ BvMemory::Allocate(sizeof(Type), alignof(Type), 0)};
 
 		BvConsole::Print(BvColorI::BrightBlue, "New called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, sizeof(Type),
 			sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
@@ -55,9 +55,9 @@ namespace Internal
 	}
 
 	template<typename Type>
-	Type* NewArray(size_t count, size_t alignment, const BvSourceInfo& sourceInfo)
+	Type* NewArray(size_t count, const BvSourceInfo& sourceInfo)
 	{
-		MemType mem{ BvMemory::Allocate(count * sizeof(Type), alignment, sizeof(size_t)) };
+		MemType mem{ BvMemory::Allocate(count * sizeof(Type), alignof(Type), sizeof(size_t)) };
 
 		// Store the count right before the first element
 		*mem.pAsSizeTPtr++ = count;
@@ -126,9 +126,9 @@ namespace Internal
 	}
 
 	template<typename Type, class Allocator>
-	void* New(size_t alignment, Allocator& allocator, const BvSourceInfo& sourceInfo)
+	void* New(Allocator& allocator, const BvSourceInfo& sourceInfo)
 	{
-		MemType mem{ allocator.Allocate(sizeof(Type), alignment, 0, sourceInfo) };
+		MemType mem{ allocator.Allocate(sizeof(Type), alignof(Type), 0, sourceInfo) };
 
 		return mem.pAsVoidPtr;
 	}
@@ -146,9 +146,9 @@ namespace Internal
 	}
 
 	template<typename Type, class Allocator>
-	Type* NewArray(size_t count, size_t alignment, Allocator& allocator, const BvSourceInfo& sourceInfo)
+	Type* NewArray(size_t count, Allocator& allocator, const BvSourceInfo& sourceInfo)
 	{
-		MemType mem{ allocator.Allocate(count * sizeof(Type), alignment, sizeof(size_t), sourceInfo) };
+		MemType mem{ allocator.Allocate(count * sizeof(Type), alignof(Type), sizeof(size_t), sourceInfo) };
 
 		// Store the count right before the first element
 		*mem.pAsSizeTPtr++ = count;
@@ -211,15 +211,18 @@ namespace Internal
 // Managed new / delete / alloc / free macros
 
 // Allocate type
-#define BV_MNEW(allocator, Type) new(Internal::New<Type>(alignof(Type), allocator, BV_SOURCE_INFO)) Type
+#define BV_MNEW(allocator, Type) new(Internal::New<Type>(allocator, BV_SOURCE_INFO)) Type
+#define BV_MNEW_SI(allocator, sourceInfo, Type) new(Internal::New<Type>(allocator, sourceInfo)) Type
 // Free type
 #define BV_MDELETE(allocator, pObj) Internal::Delete(pObj, allocator, BV_SOURCE_INFO)
 // Allocate array of type
-#define BV_MNEW_ARRAY(allocator, Type, count) Internal::NewArray<Type>(count, alignof(Type), allocator, BV_SOURCE_INFO)
+#define BV_MNEW_ARRAY(allocator, Type, count) Internal::NewArray<Type>(count, allocator, BV_SOURCE_INFO)
+#define BV_MNEW_ARRAY_SI(allocator, sourceInfo, Type, count) Internal::NewArray<Type>(count, allocator, sourceInfo)
 // Free array of type
 #define BV_MDELETE_ARRAY(allocator, pObjs) Internal::DeleteArray(pObjs, allocator, BV_SOURCE_INFO)
 // Allocate block of bytes with custom alignment
 #define BV_MALLOC(allocator, size, alignment) Internal::Alloc(size, alignment, allocator, BV_SOURCE_INFO))
+#define BV_MALLOC_SI(allocator, sourceInfo, size, alignment) Internal::Alloc(size, alignment, allocator, sourceInfo))
 // Free block of bytes
 #define BV_MFREE(allocator, pObj) Internal::Free(pObj, allocator, BV_SOURCE_INFO)
 
@@ -227,14 +230,17 @@ namespace Internal
 // Unmanaged new / delete / alloc / free macros
 
 // Allocate type
-#define BV_NEW(Type) new(Internal::New<Type>(alignof(Type), BV_SOURCE_INFO)) Type
+#define BV_NEW(Type) new(Internal::New<Type>(BV_SOURCE_INFO)) Type
+#define BV_NEW_SI(sourceInfo, Type) new(Internal::New<Type>(sourceInfo)) Type
 // Free type
 #define BV_DELETE(pObj) Internal::Delete(pObj, BV_SOURCE_INFO)
 // Allocate array of type
-#define BV_NEW_ARRAY(Type, count) Internal::NewArray<Type>(count, alignof(Type), BV_SOURCE_INFO)
+#define BV_NEW_ARRAY(Type, count) Internal::NewArray<Type>(count, BV_SOURCE_INFO)
+#define BV_NEW_ARRAY_SI(sourceInfo, Type, count) Internal::NewArray<Type>(count, sourceInfo)
 // Free array of type
 #define BV_DELETE_ARRAY(pObjs) Internal::DeleteArray(pObjs, BV_SOURCE_INFO)
 // Allocate block of bytes with custom alignment
 #define BV_ALLOC(size, alignment) Internal::Alloc(size, alignment, BV_SOURCE_INFO)
+#define BV_ALLOC_SI(sourceInfo, size, alignment) Internal::Alloc(size, alignment, sourceInfo)
 // Free block of bytes
 #define BV_FREE(pObj) Internal::Free(pObj, BV_SOURCE_INFO)

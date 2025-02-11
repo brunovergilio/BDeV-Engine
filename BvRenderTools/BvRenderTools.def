@@ -1,4 +1,4 @@
 EXPORTS
-	GetSPIRVCompiler
-	GetDDSTextureLoader
-	GetSTBTextureLoader
+	CreateSPIRVCompiler
+	CreateDDSTextureLoader
+	CreateSTBTextureLoader

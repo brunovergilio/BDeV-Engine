@@ -2,8 +2,8 @@
 #include "BvRenderDeviceVk.h"
 
 
-BvGPUFenceVk::BvGPUFenceVk(const BvRenderDeviceVk* pDevice, u64 initialValue)
-	: m_Semaphore(pDevice->GetHandle(), initialValue)
+BvGPUFenceVk::BvGPUFenceVk(BvRenderDeviceVk* pDevice, u64 initialValue)
+	: m_Semaphore(pDevice, initialValue)
 {
 }
 
@@ -28,4 +28,10 @@ bool BvGPUFenceVk::Wait(u64 value, u64 timeout /*= kU64Max*/)
 u64 BvGPUFenceVk::GetCompletedValue()
 {
 	return m_Semaphore.GetCompletedValue();
+}
+
+
+BvRenderDevice* BvGPUFenceVk::GetDevice()
+{
+	return m_Semaphore.GetDevice();
 }

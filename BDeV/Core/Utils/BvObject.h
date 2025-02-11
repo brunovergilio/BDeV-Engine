@@ -98,39 +98,60 @@ protected:
 };
 
 
-#define BV_IBVOBJECT_DEFINE_IID(objType, uuid) namespace Internal \
-{ \
-	constexpr BvUUID objType##_UUID = MakeUUIDv4(uuid); \
+namespace Internal
+{
+	template<typename T>
+	constexpr const BvUUID GetObjectUUID()
+	{
+		return BvUUID{};
+	}
 }
-#define BV_IBVOBJECT_IID(objType) Internal::objType##_UUID
 
-#define BV_IBVOBJECT_FOR_EACH(id, first, ...) || first::::QueryInterface(id, ppInterface) \
+
+// Creates a UUID for a specific object type
+#define BV_OBJECT_DEFINE_ID(objType, uuid) namespace Internal \
+{ \
+	constexpr const BvUUID objType##_UUID = MakeUUIDv4(uuid); \
+}
+
+// Enables the operator BV_OBJECT_ID() to be used for a specific type
+#define BV_OBJECT_ENABLE_ID_OPERATOR(objType) template<> constexpr const BvUUID Internal::GetObjectUUID<objType>() \
+{ \
+	return Internal::objType##_UUID; \
+}
+
+// Returns the UUID of a specific object type
+#define BV_OBJECT_ID(objType) Internal::GetObjectUUID<objType>()
+
+
+#define BV_OBJECT_IMPL_INTERFACE_FOR_EACH(id, first, ...) || id == Internal::first##_UUID \
 	IF_ELSE(HAS_ARGS(__VA_ARGS__))			\
 	(										\
-		DEFER2(_BV_IBVOBJECT_FOR_EACH)()(id, __VA_ARGS__)	\
+		DEFER2(_BV_OBJECT_IMPL_INTERFACE_FOR_EACH)()(id, __VA_ARGS__)	\
 	)										\
 	(										\
 	)
-#define _BV_IBVOBJECT_FOR_EACH() BV_IBVOBJECT_FOR_EACH
+#define _BV_OBJECT_IMPL_INTERFACE_FOR_EACH() BV_OBJECT_IMPL_INTERFACE_FOR_EACH
 
-#define BV_IBVOBJECT_IMPL_INTERFACE(objType, baseType, ...) \
+// Implements IBvObject::QueryInterface() with the object type and other allowed types
+#define BV_OBJECT_IMPL_INTERFACE(objType, ...) \
 bool QueryInterface(const BvUUID& id, IBvObject** ppInterface) override \
 { \
 	if (!ppInterface) \
 	{ \
 		return false; \
 	} \
-	if (id == BV_IBVOBJECT_IID(objType)) \
+	if (id == Internal::objType##_UUID __VA_OPT__ ( EVAL ( BV_OBJECT_IMPL_INTERFACE_FOR_EACH(id, __VA_ARGS__) ) ) ) \
 	{ \
 		*ppInterface = this; \
 		this->AddRef(); \
 		return true; \
 	} \
-	return baseType::QueryInterface(id, ppInterface) __VA_OPT__ ( EVAL ( BV_IBVOBJECT_FOR_EACH(id, __VA_ARGS__) ) ); \
+	return BvObjectBase::QueryInterface(id, ppInterface); \
 }
 
 // Base COM-like object
-BV_IBVOBJECT_DEFINE_IID(IBvObject, "00000000-0000-0000-0000-000000000000")
+BV_OBJECT_DEFINE_ID(IBvObject, "00000000-0000-0000-0000-000000000000")
 class IBvObject
 {
 	BV_NOCOPYMOVE(IBvObject);
@@ -191,8 +212,7 @@ public:
 			return false;
 		}
 
-		*ppInterface = nullptr;
-		if (id == BV_IBVOBJECT_IID(IBvObject))
+		if (id == BV_OBJECT_ID(IBvObject))
 		{
 			*ppInterface = this;
 			(*ppInterface)->AddRef();
@@ -205,7 +225,7 @@ public:
 
 protected:
 	BvObjectBase() {}
-	virtual ~BvObjectBase() {}
+	~BvObjectBase() {}
 };
 
 
@@ -214,10 +234,10 @@ class BvObjectCreator
 {
 public:
 	template<typename T, typename... Args>
-	static T* Create(Args&&... args)
+	static T* Create(const BvSourceInfo& sourceInfo, Args&&... args)
 	{
-		auto pCB = BV_NEW(BvControlBlock<T>)();
-		auto pNewObj = BV_NEW(T)(std::forward<Args>(args)...);
+		auto pCB = BV_NEW_SI(sourceInfo, BvControlBlock<T>)();
+		auto pNewObj = BV_NEW_SI(sourceInfo, T)(std::forward<Args>(args)...);
 		pCB->SetObject(pNewObj);
 		pNewObj->SetControlBlock(pCB);
 
@@ -225,10 +245,10 @@ public:
 	}
 
 	template<typename T, typename A, typename... Args>
-	static T* CreateManaged(A* pArena, Args&&... args)
+	static T* CreateManaged(const BvSourceInfo& sourceInfo, A* pArena, Args&&... args)
 	{
-		auto pCB = BV_MNEW(*pArena, BvControlBlock<T>)(pArena);
-		auto pNewObj = BV_MNEW(*pArena, T)(std::forward<Args>(args)...);
+		auto pCB = BV_MNEW_SI(sourceInfo, *pArena, BvControlBlock<T>)(pArena);
+		auto pNewObj = BV_MNEW_SI(sourceInfo, *pArena, T)(std::forward<Args>(args)...);
 		pCB->SetObject(pNewObj);
 		pNewObj->SetControlBlock(pCB);
 
@@ -236,8 +256,8 @@ public:
 	}
 };
 
-#define BV_OBJECT_CREATE(Type, ...) BvObjectCreator::Create<Type>(__VA_ARGS__)
-#define BV_OBJECT_MCREATE(pArena, Type, ...) BvObjectCreator::CreateManaged<Type>(pArena __VA_OPT__(,) __VA_ARGS__)
+#define BV_OBJECT_CREATE(Type, ...) BvObjectCreator::Create<Type>(BV_SOURCE_INFO __VA_OPT__(,) __VA_ARGS__)
+#define BV_OBJECT_MCREATE(pArena, Type, ...) BvObjectCreator::CreateManaged<Type>(BV_SOURCE_INFO, pArena __VA_OPT__(,) __VA_ARGS__)
 
 
 namespace Internal
@@ -282,7 +302,7 @@ public:
 		if (pObj)
 		{
 			T* pNewObj = nullptr;
-			if (pObj->QueryInterface(T::GetId(), &pNewObj))
+			if (pObj->QueryInterface(BV_OBJECT_ID(T), (IBvObject**)&pNewObj))
 			{
 				m_pObj = pNewObj;
 			}
@@ -314,6 +334,24 @@ public:
 		return *this;
 	}
 
+	template<typename U>
+	BvObjectHandle& operator=(U* pObj)
+	{
+		if ((void*)m_pObj != (void*)pObj)
+		{
+			if (pObj)
+			{
+				T* pNewObj = nullptr;
+				if (pObj->QueryInterface(BV_OBJECT_ID(T), (IBvObject**)&pNewObj))
+				{
+					m_pObj = pNewObj;
+				}
+			}
+		}
+
+		return *this;
+	}
+
 	BvObjectHandle& operator=(const BvObjectHandle& rhs)
 	{
 		if (m_pObj != rhs.m_pObj)
@@ -326,7 +364,6 @@ public:
 
 	BvObjectHandle& operator=(BvObjectHandle&& rhs)
 	{
-		// Can't use &rhs since the & operator is overloaded
 		BvObjectHandle(static_cast<BvObjectHandle&&>(rhs)).Swap(*this);
 
 		return *this;

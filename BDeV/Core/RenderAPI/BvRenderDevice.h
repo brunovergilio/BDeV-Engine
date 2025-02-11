@@ -14,29 +14,31 @@
 #include "BvSampler.h"
 #include "BvQuery.h"
 #include "BvCommandContext.h"
+#include "BvRenderDeviceObject.h"
+#include "BvGPUFence.h"
 
 
-class BvRenderDevice
+BV_OBJECT_DEFINE_ID(BvRenderDevice, "31126d8a-8b56-489b-8b0c-0008de31a1d2");
+class BvRenderDevice : public BvObjectBase
 {
 	BV_NOCOPYMOVE(BvRenderDevice);
 
 public:
-	virtual BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, BvCommandContext* pContext) = 0;
-	virtual BvBuffer* CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData = nullptr) = 0;
-	virtual BvBufferView* CreateBufferView(const BufferViewDesc& desc) = 0;
-	virtual BvTexture* CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData = nullptr) = 0;
-	virtual BvTextureView* CreateTextureView(const TextureViewDesc& desc) = 0;
-	virtual BvSampler* CreateSampler(const SamplerDesc& desc) = 0;
-	virtual BvRenderPass* CreateRenderPass(const RenderPassDesc& renderPassDesc) = 0;
-	virtual BvShaderResourceLayout* CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc* pShaderResourceConstantDesc = nullptr) = 0;
-	virtual BvShader* CreateShader(const ShaderCreateDesc& shaderDesc) = 0;
-	virtual BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) = 0;
-	virtual BvComputePipelineState* CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) = 0;
-	virtual BvQuery* CreateQuery(QueryType queryType) = 0;
+	virtual bool CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, BvCommandContext* pContext, BvSwapChain** ppObj) = 0;
+	virtual bool CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData, BvBuffer** ppObj) = 0;
+	virtual bool CreateBufferView(const BufferViewDesc& desc, BvBufferView** ppObj) = 0;
+	virtual bool CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData, BvTexture** ppObj) = 0;
+	virtual bool CreateTextureView(const TextureViewDesc& desc, BvTextureView** ppObj) = 0;
+	virtual bool CreateSampler(const SamplerDesc& desc, BvSampler** ppObj) = 0;
+	virtual bool CreateRenderPass(const RenderPassDesc& renderPassDesc, BvRenderPass** ppObj) = 0;
+	virtual bool CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
+		const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayout** ppObj) = 0;
+	virtual bool CreateShader(const ShaderCreateDesc& shaderDesc, BvShader** ppObj) = 0;
+	virtual bool CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineState** ppObj) = 0;
+	virtual bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineState** ppObj) = 0;
+	virtual bool CreateQuery(QueryType queryType, BvQuery** ppObj) = 0;
+	virtual bool CreateFence(u64 value, BvGPUFence** ppObj) = 0;
 	
-	virtual void Release(IBvRenderDeviceChild* pDeviceObj) = 0;
-
 	virtual void WaitIdle() const = 0;
 
 	virtual BvCommandContext* GetGraphicsContext(u32 index = 0) const = 0;
@@ -54,3 +56,4 @@ protected:
 	BvRenderDevice() {}
 	virtual ~BvRenderDevice() = 0 {};
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderDevice);

@@ -15,23 +15,26 @@ struct BvRenderDeviceCreateDescVk : BvRenderDeviceCreateDesc
 };
 
 
+BV_OBJECT_DEFINE_ID(BvRenderEngineVk, "eb31d72c-fe50-4284-ab0c-a5dbccf3c72d");
 class BvRenderEngineVk final : public BvRenderEngine
 {
 	BV_NOCOPYMOVE(BvRenderEngineVk);
 
 public:
-	BvRenderDevice* CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc) override;
-	BvRenderDeviceVk* CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc);
+	bool CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc, BvRenderDevice** ppObj) override;
+	bool CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc, BvRenderDeviceVk** ppObj);
 
 	static BvRenderEngineVk* GetInstance();
+
+	BvRenderEngineVk();
+	~BvRenderEngineVk();
 
 	BV_INLINE VkInstance GetHandle() const { return m_Instance; }
 	BV_INLINE bool HasDebugUtils() const { return m_HasDebugUtils; }
 
-private:
-	BvRenderEngineVk();
-	~BvRenderEngineVk();
+	BV_OBJECT_IMPL_INTERFACE(BvRenderEngineVk, BvRenderEngine);
 
+private:
 	void Create();
 	void Destroy();
 
@@ -42,12 +45,13 @@ private:
 	BvDebugReportVk* m_pDebugReport = nullptr;
 	bool m_HasDebugUtils = false;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderEngineVk);
 
 
 namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API BvRenderEngine* GetRenderEngine();
+		BV_API bool CreateRenderEngine(BvRenderEngine** ppObj);
 	}
 }

@@ -2,11 +2,7 @@
 
 
 #include "BvCommonVk.h"
-#include "BDeV/Core/RenderAPI/BvTexture.h"
-#include "BDeV/Core/RenderAPI/BvTextureView.h"
-#include "BDeV/Core/RenderAPI/BvBuffer.h"
-#include "BDeV/Core/RenderAPI/BvSampler.h"
-#include "BDeV/Core/RenderAPI/BvPipelineState.h"
+#include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 
 
 struct FormatMapVk
@@ -22,7 +18,7 @@ VkImageViewType GetVkImageViewType(const TextureViewType viewType);
 const FormatMapVk& GetVkFormatMap(Format format);
 VkImageAspectFlags GetVkImageAspectFlags(Format format, u32 planeSlice = 0);
 VkFormat GetVkFormat(const Format format);
-Format GetFormat(const VkFormat format);
+VkColorSpaceKHR GetVkColorSpace(ColorSpace colorSpace);
 VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags);
 VkImageUsageFlags GetVkImageUsageFlags(const TextureUsage usageFlags);
 VkMemoryPropertyFlags GetVkMemoryPropertyFlags(const MemoryType memoryFlags);

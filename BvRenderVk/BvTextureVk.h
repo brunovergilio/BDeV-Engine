@@ -10,6 +10,7 @@ class BvSwapChainVk;
 class BvCommandContextVk;
 
 
+BV_OBJECT_DEFINE_ID(BvTextureVk, "be4459ed-ed7b-4674-a638-6eff292841d4");
 class BvTextureVk final : public BvTexture
 {
 	BV_NOCOPYMOVE(BvTextureVk);
@@ -23,6 +24,9 @@ public:
 
 	BV_INLINE VkImage GetHandle() const { return m_Image; }
 	BV_INLINE BvSwapChainVk* GetSwapChain() const { return m_pSwapChain; }
+	BV_INLINE bool IsValid() const { return m_Image != VK_NULL_HANDLE; }
+
+	BV_OBJECT_IMPL_INTERFACE(BvTextureVk, BvTexture, IBvRenderDeviceObject);
 
 private:
 	void Create(const TextureInitData* pInitData);
@@ -37,6 +41,7 @@ protected:
 	VmaAllocation m_VMAAllocation = nullptr;
 	BvSwapChainVk* m_pSwapChain = nullptr;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvTextureVk);
 
 
 BV_CREATE_CAST_TO_VK(BvTexture)

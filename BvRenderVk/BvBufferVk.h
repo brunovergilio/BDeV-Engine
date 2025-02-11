@@ -8,6 +8,7 @@
 class BvRenderDeviceVk;
 
 
+BV_OBJECT_DEFINE_ID(BvBufferVk, "4e59c7e7-48f1-4d95-a852-96391f35aa78");
 class BvBufferVk final : public BvBuffer
 {
 	BV_NOCOPYMOVE(BvBufferVk);
@@ -23,6 +24,9 @@ public:
 	BvRenderDevice* GetDevice() override;
 
 	BV_INLINE VkBuffer GetHandle() const { return m_Buffer; }
+	BV_INLINE bool IsValid() const { return m_Buffer != VK_NULL_HANDLE; }
+
+	BV_OBJECT_IMPL_INTERFACE(BvBufferVk, BvBuffer, IBvRenderDeviceObject);
 
 private:
 	void Create(const BufferInitData* pInitData);
@@ -35,6 +39,7 @@ private:
 	VmaAllocation m_VMAAllocation = nullptr;
 	bool m_NeedsFlush = false;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvBufferVk);
 
 
 BV_CREATE_CAST_TO_VK(BvBuffer)

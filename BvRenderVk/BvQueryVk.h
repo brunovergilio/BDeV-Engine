@@ -13,6 +13,7 @@ class BvBufferVk;
 class BvGPUFenceVk;
 
 
+BV_OBJECT_DEFINE_ID(BvQueryVk, "842f2026-34c0-471f-a6fc-4f3a639bdab9");
 class BvQueryVk final : public BvQuery
 {
 	BV_NOCOPYMOVE(BvQueryVk);
@@ -40,12 +41,15 @@ public:
 
 	BV_INLINE const BvQueryVk::Data* GetQueryData(u32 frameIndex) const { return &m_QueryData[frameIndex]; }
 
+	BV_OBJECT_IMPL_INTERFACE(BvQueryVk, BvQuery, IBvRenderDeviceObject);
+
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvVector<BvQueryVk::Data> m_QueryData;
 	QueryType m_QueryType = QueryType::kTimestamp;
 	u32 m_LatestResultIndex = 0;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvQueryVk);
 
 
 BV_CREATE_CAST_TO_VK(BvQuery)

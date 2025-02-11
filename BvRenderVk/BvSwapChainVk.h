@@ -14,6 +14,7 @@ class BvCommandContextVk;
 class BvGPUFenceVk;
 
 
+BV_OBJECT_DEFINE_ID(BvSwapChainVk, "68fe17c5-c20d-4c33-83dc-22ac819ab867");
 class BvSwapChainVk final : public BvSwapChain
 {
 public:
@@ -29,6 +30,9 @@ public:
 	BV_INLINE BvTextureView* GetTextureView(u32 index) const override { return m_SwapChainTextureViews[index]; }
 	BV_INLINE const BvSemaphoreVk* GetCurrentImageAcquiredSemaphore() const { return &m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
 	BV_INLINE const BvSemaphoreVk* GetCurrentRenderCompleteSemaphore() const { return &m_RenderCompleteSemaphores[m_CurrImageIndex]; }
+	BV_INLINE bool IsValid() const { return m_Swapchain != VK_NULL_HANDLE; }
+
+	BV_OBJECT_IMPL_INTERFACE(BvSwapChainVk, BvSwapChain, IBvRenderDeviceObject);
 
 private:
 	bool Create();
@@ -66,6 +70,7 @@ private:
 	// Make sure only one image has been acquired per presentation / frame
 	bool m_IsReady = false;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvSwapChainVk);
 
 
 BV_CREATE_CAST_TO_VK(BvSwapChain)
