@@ -318,13 +318,13 @@ public:
 	BvObjectHandle(BvObjectHandle&& rhs)
 	{
 		// Can't use &rhs since the & operator is overloaded
-		if (this != reinterpret_cast<BvObjectHandle*>(&reinterpret_cast<u8&>(rhs)))
+		if (this != std::addressof(rhs))
 		{
 			Swap(rhs);
 		}
 	}
 
-	BvObjectHandle& operator=(IBvObject* pObj)
+	BvObjectHandle& operator=(T* pObj)
 	{
 		if (m_pObj != pObj)
 		{
@@ -339,6 +339,8 @@ public:
 	{
 		if ((void*)m_pObj != (void*)pObj)
 		{
+			InternalRelease();
+
 			if (pObj)
 			{
 				T* pNewObj = nullptr;
@@ -396,6 +398,8 @@ public:
 		return &m_pObj;
 	}
 
+	BV_INLINE operator bool() const { return m_pObj != nullptr; }
+
 	BV_INLINE u32 Reset()
 	{
 		return InternalRelease();
@@ -446,7 +450,7 @@ private:
 		if (pObj)
 		{
 			m_pObj = nullptr;
-			refCount = m_pObj->Release();
+			refCount = pObj->Release();
 		}
 
 		return refCount;
