@@ -37,7 +37,7 @@ protected:
 		: m_pWindow(pWindow), m_SwapChainDesc(swapChainDesc)
 	{
 	}
-	virtual ~BvSwapChain() = 0 {}
+	~BvSwapChain() {}
 
 protected:
 	BvWindow* m_pWindow;

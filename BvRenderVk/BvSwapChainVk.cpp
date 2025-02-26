@@ -378,20 +378,18 @@ bool BvSwapChainVk::Create()
 	TextureDesc textureDesc;
 	textureDesc.m_Size = { swapchainExtent.width, swapchainExtent.height, 1 };
 	textureDesc.m_Format = m_SwapChainDesc.m_Format;
-	textureDesc.m_UsageFlags = TextureUsage::kColorTarget;
+	textureDesc.m_UsageFlags = TextureUsage::kRenderTarget;
 
 	// Enable transfer source on swap chain images if supported
 	if (surfCaps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
 	{
 		swapchainCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-		textureDesc.m_UsageFlags |= TextureUsage::kTransferSrc;
 	}
 
 	// Enable transfer destination on swap chain images if supported
 	if (surfCaps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	{
 		swapchainCreateInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-		textureDesc.m_UsageFlags |= TextureUsage::kTransferDst;
 	}
 
 	result = vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &m_Swapchain);

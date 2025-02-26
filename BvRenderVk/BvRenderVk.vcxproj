@@ -90,6 +90,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BvAccelerationStructureVk.h" />
     <ClInclude Include="BvBufferViewVk.h" />
     <ClInclude Include="BvBufferVk.h" />
     <ClInclude Include="BvCommandBufferVk.h" />
@@ -108,6 +109,7 @@
     <ClInclude Include="BvRenderPassVk.h" />
     <ClInclude Include="BvSamplerVk.h" />
     <ClInclude Include="BvSemaphoreVk.h" />
+    <ClInclude Include="BvShaderBindingTableVk.h" />
     <ClInclude Include="BvShaderResourceVk.h" />
     <ClInclude Include="BvShaderVk.h" />
     <ClInclude Include="BvSwapChainVk.h" />
@@ -117,6 +119,7 @@
     <ClInclude Include="BvUtilsVk.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BvAccelerationStructureVk.cpp" />
     <ClCompile Include="BvBufferViewVk.cpp" />
     <ClCompile Include="BvBufferVk.cpp" />
     <ClCompile Include="BvCommandBufferVk.cpp" />
@@ -135,6 +138,7 @@
     <ClCompile Include="BvRenderPassVk.cpp" />
     <ClCompile Include="BvSamplerVk.cpp" />
     <ClCompile Include="BvSemaphoreVk.cpp" />
+    <ClCompile Include="BvShaderBindingTableVk.cpp" />
     <ClCompile Include="BvShaderResourceVk.cpp" />
     <ClCompile Include="BvShaderVk.cpp" />
     <ClCompile Include="BvSwapChainVk.cpp" />

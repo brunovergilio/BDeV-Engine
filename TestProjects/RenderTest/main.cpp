@@ -88,6 +88,8 @@ BvBuffer* CreateUB(BvRenderDevice* pDevice);
 
 int main()
 {
+	RayTracingAccelerationStructureDesc de, df;
+	de = df;
 	BvApplication app;
 	app.Initialize();
 
@@ -118,8 +120,15 @@ int main()
 	pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext, &pSwapChain);
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
+	ShaderResourceSetDesc setDesc;
+	setDesc.m_Index = 0;
+	setDesc.m_ResourceCount = 1;
+	setDesc.m_pResources = &resourceDesc;
+	ShaderResourceLayoutDesc layoutDesc;
+	layoutDesc.m_ShaderResourceSetCount = 1;
+	layoutDesc.m_pShaderResourceSets = &setDesc;
 	BvShaderResourceLayout* pShaderResourceLayout;
-	pDevice->CreateShaderResourceLayout(1, &resourceDesc, nullptr, &pShaderResourceLayout);
+	pDevice->CreateShaderResourceLayout(layoutDesc, &pShaderResourceLayout);
 
 	auto pVB = CreateVB(pDevice);
 	BufferViewDesc vbViewDesc;
@@ -268,6 +277,7 @@ BvShader* GetVS(BvRenderDevice* pDevice)
 
 	BvShader* pShader;
 	pDevice->CreateShader(shaderDesc, &pShader);
+	shader->Release();
 
 	return pShader;
 }
@@ -289,6 +299,7 @@ BvShader* GetPS(BvRenderDevice* pDevice)
 
 	BvShader* pShader;
 	pDevice->CreateShader(shaderDesc, &pShader);
+	shader->Release();
 
 	return pShader;
 }

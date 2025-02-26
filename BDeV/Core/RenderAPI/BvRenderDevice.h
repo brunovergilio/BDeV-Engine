@@ -16,6 +16,8 @@
 #include "BvCommandContext.h"
 #include "BvRenderDeviceObject.h"
 #include "BvGPUFence.h"
+#include "BvAccelerationStructure.h"
+#include "BvShaderBindingTable.h"
 
 
 BV_OBJECT_DEFINE_ID(BvRenderDevice, "31126d8a-8b56-489b-8b0c-0008de31a1d2");
@@ -31,13 +33,14 @@ public:
 	virtual bool CreateTextureView(const TextureViewDesc& desc, BvTextureView** ppObj) = 0;
 	virtual bool CreateSampler(const SamplerDesc& desc, BvSampler** ppObj) = 0;
 	virtual bool CreateRenderPass(const RenderPassDesc& renderPassDesc, BvRenderPass** ppObj) = 0;
-	virtual bool CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayout** ppObj) = 0;
+	virtual bool CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc, BvShaderResourceLayout** ppObj) = 0;
 	virtual bool CreateShader(const ShaderCreateDesc& shaderDesc, BvShader** ppObj) = 0;
 	virtual bool CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineState** ppObj) = 0;
 	virtual bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineState** ppObj) = 0;
 	virtual bool CreateQuery(QueryType queryType, BvQuery** ppObj) = 0;
 	virtual bool CreateFence(u64 value, BvGPUFence** ppObj) = 0;
+	virtual bool CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructure** ppObj) = 0;
+	virtual bool CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTable** ppObj) = 0;
 	
 	virtual void WaitIdle() const = 0;
 
@@ -54,6 +57,6 @@ public:
 
 protected:
 	BvRenderDevice() {}
-	virtual ~BvRenderDevice() = 0 {};
+	~BvRenderDevice() {};
 };
 BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderDevice);

@@ -26,6 +26,8 @@
     <ClInclude Include="BvTypeConversionsVk.h" />
     <ClInclude Include="BvUtilsVk.h" />
     <ClInclude Include="BvGPUFenceVk.h" />
+    <ClInclude Include="BvAccelerationStructureVk.h" />
+    <ClInclude Include="BvShaderBindingTableVk.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Windows\BvSwapChainVkWindows.cpp" />
@@ -54,6 +56,8 @@
     <ClCompile Include="BvTypeConversionsVk.cpp" />
     <ClCompile Include="BvUtilsVk.cpp" />
     <ClCompile Include="BvGPUFenceVk.cpp" />
+    <ClCompile Include="BvAccelerationStructureVk.cpp" />
+    <ClCompile Include="BvShaderBindingTableVk.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BvRenderVk.def" />

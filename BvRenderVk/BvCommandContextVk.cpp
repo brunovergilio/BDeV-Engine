@@ -556,6 +556,18 @@ void BvCommandContextVk::SetMarker(const char* pName, const BvColor& color)
 }
 
 
+void BvCommandContextVk::BuildBLAS(const BLASBuildDesc& desc)
+{
+	m_pCurrCommandBuffer->BuildBLAS(desc);
+}
+
+
+void BvCommandContextVk::BuildTLAS(const TLASBuildDesc& desc)
+{
+	m_pCurrCommandBuffer->BuildTLAS(desc);
+}
+
+
 void BvCommandContextVk::AddSwapChain(BvSwapChainVk* pSwapChain)
 {
 	m_SwapChains.EmplaceBack(pSwapChain);

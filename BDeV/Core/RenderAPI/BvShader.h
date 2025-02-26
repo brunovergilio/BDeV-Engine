@@ -19,7 +19,7 @@ public:
 protected:
 	BvShader(ShaderStage shaderStage, const char* pEntryPoint)
 		: m_ShaderStage(shaderStage), m_pEntryPoint(pEntryPoint) {}
-	virtual ~BvShader() {}
+	~BvShader() {}
 
 protected:
 	BvVector<u8> m_ShaderBlob{};

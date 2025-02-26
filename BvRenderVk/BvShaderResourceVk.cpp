@@ -9,38 +9,67 @@
 #include <utility>
 
 
-BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, u32 shaderResourceCount,
-	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc)
-	: m_pDevice(pDevice)
+BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutDesc& srlDesc)
+	: BvShaderResourceLayout(srlDesc), m_pDevice(pDevice)
 {
-	u32 samplerCount = 0;
-	for (auto i = 0; i < shaderResourceCount; ++i)
+	u32 totalResourceCount = 0;
+	u32 totalSamplerCount = 0;
+	// Count all the resources we have so we can make internal copies of them
+	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
 	{
-		m_ShaderResourceLayoutDesc.m_ShaderResources[pShaderResourceDescs[i].m_Set][pShaderResourceDescs[i].m_Binding] = pShaderResourceDescs[i];
-		if (pShaderResourceDescs[i].m_ppStaticSamplers != nullptr)
+		auto& set = m_ShaderResourceLayoutDesc.m_pShaderResourceSets[i];
+		totalResourceCount += set.m_ResourceCount;
+		for (auto j = 0u; j < set.m_ResourceCount; ++j)
 		{
-			samplerCount += pShaderResourceDescs[i].m_Count;
-		}
-	}
-
-	m_ShaderResourceLayoutDesc.m_Samplers.Resize(samplerCount);
-	u32 samplerIndex = 0;
-	for (auto& set : m_ShaderResourceLayoutDesc.m_ShaderResources)
-	{
-		for (auto& resource : set.second)
-		{
-			if (resource.second.m_ppStaticSamplers)
+			auto& res = set.m_pResources[j];
+			if (res.m_ppStaticSamplers != nullptr)
 			{
-				for (auto i = 0; i < resource.second.m_Count; ++i)
-				{
-					m_ShaderResourceLayoutDesc.m_Samplers[samplerIndex++] = resource.second.m_ppStaticSamplers[i];
-				}
-				resource.second.m_ppStaticSamplers = m_ShaderResourceLayoutDesc.m_Samplers.Data() + samplerIndex;
+				totalSamplerCount += res.m_Count;
 			}
 		}
 	}
 
-	m_ShaderResourceLayoutDesc.m_ShaderResourceConstant = pShaderResourceConstantDesc ? *pShaderResourceConstantDesc : ShaderResourceConstantDesc{};
+	// Now we allocate space for the objects we need
+	m_pShaderResourceSets = m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount ?
+		BV_NEW_ARRAY(ShaderResourceSetDesc, m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount) : nullptr;
+	m_pShaderResources = totalResourceCount ? BV_NEW_ARRAY(ShaderResourceDesc, totalResourceCount) : nullptr;
+	m_ppStaticSamplers = totalSamplerCount ? BV_NEW_ARRAY(BvSampler*, totalSamplerCount) : nullptr;
+
+	// Start moving data
+	u32 currResource = 0;
+	u32 currSampler = 0;
+	if (m_ShaderResourceLayoutDesc.m_pShaderResourceConstant)
+	{
+		m_pShaderConstant = BV_NEW(ShaderResourceConstantDesc);
+		*m_pShaderConstant = *m_ShaderResourceLayoutDesc.m_pShaderResourceConstant;
+		m_ShaderResourceLayoutDesc.m_pShaderResourceConstant = m_pShaderConstant;
+	}
+
+	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
+	{
+		auto& set = m_ShaderResourceLayoutDesc.m_pShaderResourceSets[i];
+		m_pShaderResourceSets[i] = set;
+		m_pShaderResourceSets[i].m_pResources = &m_pShaderResources[currResource];
+
+		for (auto j = 0u; j < set.m_ResourceCount; ++j)
+		{
+			auto& res = set.m_pResources[j];
+			m_pShaderResources[currResource] = res;
+
+			m_Resources[set.m_Index][res.m_Binding] = &m_pShaderResources[currResource];
+
+			if (res.m_ppStaticSamplers != nullptr)
+			{
+				memcpy(&m_ppStaticSamplers[currSampler], res.m_ppStaticSamplers, sizeof(BvSampler*) * res.m_Count);
+				m_pShaderResources[currResource].m_ppStaticSamplers = &m_ppStaticSamplers[currSampler];
+				currSampler += res.m_Count;
+			}
+
+			++currResource;
+		}
+	}
+
+	m_ShaderResourceLayoutDesc.m_pShaderResourceSets = m_pShaderResourceSets;
 
 	Create();
 }
@@ -49,6 +78,26 @@ BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, u3
 BvShaderResourceLayoutVk::~BvShaderResourceLayoutVk()
 {
 	Destroy();
+
+	if (m_pShaderConstant)
+	{
+		BV_DELETE(m_pShaderConstant);
+	}
+
+	if (m_ppStaticSamplers)
+	{
+		BV_DELETE_ARRAY(m_ppStaticSamplers);
+	}
+
+	if (m_pShaderResources)
+	{
+		BV_DELETE_ARRAY(m_pShaderResources);
+	}
+
+	if (m_pShaderResourceSets)
+	{
+		BV_DELETE_ARRAY(m_ShaderResourceLayoutDesc.m_pShaderResourceSets);
+	}
 }
 
 
@@ -60,16 +109,17 @@ BvRenderDevice* BvShaderResourceLayoutVk::GetDevice()
 
 void BvShaderResourceLayoutVk::Create()
 {
-	BvVector<VkDescriptorSetLayout> layouts(m_ShaderResourceLayoutDesc.m_ShaderResources.Size());
+	BvVector<VkDescriptorSetLayout> layouts(m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount);
+
+	BvVector<VkDescriptorSetLayoutBinding> bindings;
+	BvVector<VkSampler> samplers;
 	u32 layoutIndex = 0;
-	for (auto& currSet : m_ShaderResourceLayoutDesc.m_ShaderResources)
+	for (auto& setPair : m_Resources)
 	{
-		BvVector<VkDescriptorSetLayoutBinding> bindings;
-		BvVector<VkSampler> samplers;
 		u32 currSamplerIndex = 0;
-		for (auto& currResourcePair : currSet.second)
+		for (auto& resPair : setPair.second)
 		{
-			auto& currResource = currResourcePair.second;
+			auto& currResource = *resPair.second;
 			if (currResource.m_ppStaticSamplers == nullptr)
 			{
 				bindings.PushBack({ currResource.m_Binding, GetVkDescriptorType(currResource.m_ShaderResourceType),
@@ -87,27 +137,27 @@ void BvShaderResourceLayoutVk::Create()
 			}
 		}
 
-		VkDescriptorSetLayoutCreateInfo layoutCI{};
-		layoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		VkDescriptorSetLayoutCreateInfo layoutCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 		layoutCI.bindingCount = bindings.Size();
 		layoutCI.pBindings = bindings.Data();
 
 		vkCreateDescriptorSetLayout(m_pDevice->GetHandle(), &layoutCI, nullptr, &layouts[layoutIndex]);
-		m_Layouts[currSet.first] = layouts[layoutIndex++];
+		m_Layouts[setPair.first] = layouts[layoutIndex++];
+
+		bindings.Clear();
+		samplers.Clear();
 	}
 
-	auto& shaderResourceConstant = m_ShaderResourceLayoutDesc.m_ShaderResourceConstant;
-	VkPushConstantRange pushConstants{ GetVkShaderStageFlags(shaderResourceConstant.m_ShaderStages), 0, shaderResourceConstant.m_Size };
-
-	VkPipelineLayoutCreateInfo pipelineCI{};
-	pipelineCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	VkPipelineLayoutCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 	if (layouts.Size() > 0)
 	{
-		pipelineCI.setLayoutCount = (u32)layouts.Size();
+		pipelineCI.setLayoutCount = u32(layouts.Size());
 		pipelineCI.pSetLayouts = layouts.Data();
 	}
-	if (pushConstants.size > 0)
+
+	if (m_pShaderConstant)
 	{
+		VkPushConstantRange pushConstants{ GetVkShaderStageFlags(m_pShaderConstant->m_ShaderStages), 0, m_pShaderConstant->m_Size };
 		pipelineCI.pushConstantRangeCount = 1;
 		pipelineCI.pPushConstantRanges = &pushConstants;
 	}
@@ -139,31 +189,30 @@ BvShaderResourceParamsVk::BvShaderResourceParamsVk(const BvRenderDeviceVk& devic
 	u32 imageInfoCount = 0;
 	u32 bufferViewCount = 0;
 
-	auto& sr = layout.GetDesc().m_ShaderResources;
-	auto itSet = sr.FindKey(m_Set);
-	if (itSet == sr.cend())
+	auto& resources = m_Layout.GetResources();
+	auto setIt = resources.FindKey(m_Set);
+	if (setIt != resources.cend())
 	{
-		return;
-	}
-
-	for (auto& res : itSet->second)
-	{
-		switch (res.second.m_ShaderResourceType)
+		for (auto& resIt : setIt->second)
 		{
-		case ShaderResourceType::kConstantBuffer:
-		case ShaderResourceType::kStructuredBuffer:
-		case ShaderResourceType::kRWStructuredBuffer:
-			bufferInfoCount += res.second.m_Count;
-			break;
-		case ShaderResourceType::kTexture:
-		case ShaderResourceType::kRWTexture:
-		case ShaderResourceType::kSampler:
-			imageInfoCount += res.second.m_Count;
-			break;
-		case ShaderResourceType::kFormattedBuffer:
-		case ShaderResourceType::kRWFormattedBuffer:
-			bufferViewCount += res.second.m_Count;
-			break;
+			auto& res = *resIt.second;
+			switch (res.m_ShaderResourceType)
+			{
+			case ShaderResourceType::kConstantBuffer:
+			case ShaderResourceType::kStructuredBuffer:
+			case ShaderResourceType::kRWStructuredBuffer:
+				bufferInfoCount += res.m_Count;
+				break;
+			case ShaderResourceType::kTexture:
+			case ShaderResourceType::kRWTexture:
+			case ShaderResourceType::kSampler:
+				imageInfoCount += res.m_Count;
+				break;
+			case ShaderResourceType::kFormattedBuffer:
+			case ShaderResourceType::kRWFormattedBuffer:
+				bufferViewCount += res.m_Count;
+				break;
+			}
 		}
 	}
 
@@ -369,17 +418,16 @@ VkWriteDescriptorSet& BvShaderResourceParamsVk::PrepareWriteSet(VkDescriptorType
 
 VkDescriptorType BvShaderResourceParamsVk::GetDescriptorType(u32 binding) const
 {
-	VkDescriptorType descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
-	auto& sr = m_Layout.GetDesc().m_ShaderResources;
-	auto itSet = sr.FindKey(m_Set);
-	if (itSet == sr.cend())
+	auto& resources = m_Layout.GetResources();
+	auto setIt = resources.FindKey(m_Set);
+	if (setIt != resources.cend())
 	{
-		auto itBinding = itSet->second.FindKey(binding);
-		if (itBinding == itSet->second.cend())
+		auto resIt = setIt->second.FindKey(binding);
+		if (resIt != setIt->second.cend())
 		{
-			descriptorType = GetVkDescriptorType(itBinding->second.m_ShaderResourceType);
+			return GetVkDescriptorType(resIt->second->m_ShaderResourceType);
 		}
 	}
 
-	return descriptorType;
+	return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 }

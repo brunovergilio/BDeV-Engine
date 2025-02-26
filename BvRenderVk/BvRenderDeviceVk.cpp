@@ -20,6 +20,8 @@
 #include "BvCommandContextVk.h"
 #include "BvQueryVk.h"
 #include "BvGPUFenceVk.h"
+#include "BvAccelerationStructureVk.h"
+#include "BvShaderBindingTableVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
@@ -133,11 +135,10 @@ bool BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc, Bv
 }
 
 
-bool BvRenderDeviceVk::CreateShaderResourceLayout(u32 shaderResourceCount,
-	const ShaderResourceDesc* pShaderResourceDescs, const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayout** ppObj)
+bool BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc, BvShaderResourceLayout** ppObj)
 {
 	BvShaderResourceLayoutVk* pObjVk;
-	if (CreateShaderResourceLayoutVk(shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc, &pObjVk))
+	if (CreateShaderResourceLayoutVk(srlDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
 		return true;
@@ -203,6 +204,32 @@ bool BvRenderDeviceVk::CreateFence(u64 value, BvGPUFence** ppObj)
 {
 	BvGPUFenceVk* pObjVk;
 	if (CreateFenceVk(value, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructure** ppObj)
+{
+	BvAccelerationStructureVk* pObjVk;
+	if (CreateAccelerationStructureVk(asDesc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTable** ppObj)
+{
+	BvShaderBindingTableVk* pObjVk;
+	if (CreateShaderBindingTableVk(sbtDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
 		return true;
@@ -309,10 +336,9 @@ bool BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& renderPassDesc, 
 }
 
 
-bool BvRenderDeviceVk::CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-	const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayoutVk** ppObj)
+bool BvRenderDeviceVk::CreateShaderResourceLayoutVk(const ShaderResourceLayoutDesc& srlDesc, BvShaderResourceLayoutVk** ppObj)
 {
-	*ppObj = BV_OBJECT_CREATE(BvShaderResourceLayoutVk, this, shaderResourceCount, pShaderResourceDescs, pShaderResourceConstantDesc);
+	*ppObj = BV_OBJECT_CREATE(BvShaderResourceLayoutVk, this, srlDesc);
 	if (!(*ppObj)->IsValid())
 	{
 		(*ppObj)->Release();
@@ -380,6 +406,29 @@ bool BvRenderDeviceVk::CreateFenceVk(u64 value, BvGPUFenceVk** ppObj)
 	}
 
 	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateAccelerationStructureVk(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructureVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvAccelerationStructureVk, this, asDesc);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateShaderBindingTableVk(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTableVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvShaderBindingTableVk, this, sbtDesc);
+	m_DeviceObjects.PushBack(*ppObj);
+
 	return true;
 }
 

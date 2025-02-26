@@ -21,6 +21,7 @@
 #include "BvCommandQueueVk.h"
 #include "BvCommandContextVk.h"
 #include "BvShaderResourceVk.h"
+#include "BvAccelerationStructureVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
@@ -513,7 +514,10 @@ void BvCommandBufferVk::SetShaderConstants(u32 size, const void* pData, u32 offs
 	auto pSRL = TO_VK(m_pGraphicsPipeline ? m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout :
 		m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
 
-	auto stageFlags = GetVkShaderStageFlags(pSRL->GetDesc().m_ShaderResourceConstant.m_ShaderStages);
+	auto pConstant = pSRL->GetDesc().m_pShaderResourceConstant;
+	BV_ASSERT(pConstant != nullptr, "Calling SetShaderConstants() with an invalid Shader Resource Layout");
+
+	auto stageFlags = GetVkShaderStageFlags(pConstant->m_ShaderStages);
 
 	vkCmdPushConstants(m_CommandBuffer, pSRL->GetPipelineLayoutHandle(), stageFlags, offset, size, pData);
 }
@@ -668,8 +672,6 @@ void BvCommandBufferVk::CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDs
 void BvCommandBufferVk::CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuffer)
 {
 	VkBufferCopy region{};
-	region.srcOffset = 0;
-	region.dstOffset = 0;
 	region.size = std::min(pSrcBuffer->GetDesc().m_Size, pDstBuffer->GetDesc().m_Size);
 
 	auto pSrc = TO_VK(pSrcBuffer);
@@ -892,24 +894,25 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
-		else if (pBarriers[i].m_pBuffer)
+		else if (pBarriers[i].m_pBuffer || pBarriers[i].m_pAS)
 		{
+			auto buffer = pBarriers[i].m_pBuffer ? TO_VK(pBarriers[i].m_pBuffer)->GetHandle() : TO_VK(pBarriers[i].m_pAS)->GetBuffer()->GetHandle();
 			auto& barrier = m_BufferBarriers.EmplaceBack(VkBufferMemoryBarrier2{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
-			barrier.buffer = TO_VK(pBarriers[i].m_pBuffer)->GetHandle();
+			barrier.buffer = buffer;
 			barrier.size = VK_WHOLE_SIZE;
 			//barrier.offset = 0;
-
+		
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcLayout) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_DstLayout) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-
+		
 			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
 			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
-
+		
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		}
@@ -1066,6 +1069,108 @@ void BvCommandBufferVk::SetMarker(const char* pName, const BvColor& color)
 }
 
 
+void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc)
+{
+	if (desc.m_GeometryCount > desc.m_pBLAS->GetDesc().m_BLAS.m_GeometryCount)
+	{
+		return;
+	}
+
+	auto pAS = TO_VK(desc.m_pBLAS);
+	auto& geoms = pAS->GetGeometries();
+	for (auto i = 0u; i < desc.m_GeometryCount; ++i)
+	{
+		auto& srcGeometry = desc.m_pGeometries[i];
+
+		// Try to find an index through the id; if not found,
+		// revert back to the current index in the loop
+		auto index = pAS->GetGeometryIndex(srcGeometry.m_Id);
+		if (index == kU32Max)
+		{
+			index = i;
+		}
+
+		// If the data doesn't match, don't include it
+		if (geoms[index].geometryType != GetVkGeometryType(srcGeometry.m_Type))
+		{
+			continue;
+		}
+
+		auto& geom = m_ASGeometries.EmplaceBack(VkAccelerationStructureGeometryKHR{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR});
+		auto& range = m_ASRanges.EmplaceBack();
+		geom = geoms[index];
+		if (srcGeometry.m_Type == RayTracingGeometryType::kTriangles)
+		{
+			auto& triangle = geom.geometry.triangles;
+			triangle.vertexData.deviceAddress = TO_VK(srcGeometry.m_Triangle.m_pVertexBuffer)->GetDeviceAddress() + srcGeometry.m_Triangle.m_VertexOffset;
+			if (srcGeometry.m_Triangle.m_pIndexBuffer)
+			{
+				triangle.indexData.deviceAddress = TO_VK(srcGeometry.m_Triangle.m_pIndexBuffer)->GetDeviceAddress() + srcGeometry.m_Triangle.m_IndexOffset;
+			}
+		}
+		else if (srcGeometry.m_Type == RayTracingGeometryType::kAABB)
+		{
+			auto& aabb = geom.geometry.aabbs;
+			aabb.data.deviceAddress = TO_VK(srcGeometry.m_AABB.m_pBuffer)->GetDeviceAddress() + srcGeometry.m_AABB.m_Offset;
+		}
+		range.primitiveCount = pAS->GetPrimitiveCounts()[index];
+	}
+
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+	buildInfo.flags = GetVkBuildAccelerationStructureFlags(pAS->GetDesc().m_Flags);
+	if (desc.m_Update)
+	{
+		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+		buildInfo.srcAccelerationStructure = pAS->GetHandle();
+	}
+	else
+	{
+		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+	}
+	buildInfo.dstAccelerationStructure = pAS->GetHandle();
+	buildInfo.geometryCount = u32(m_ASGeometries.Size());
+	buildInfo.pGeometries = m_ASGeometries.Data();
+	//buildInfo.ppGeometries = nullptr;
+	buildInfo.scratchData.deviceAddress = TO_VK(desc.m_pScratchBuffer)->GetDeviceAddress() + desc.m_ScratchBufferOffset;
+
+	auto pRanges = m_ASRanges.Data();
+	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, &pRanges);
+}
+
+
+void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc)
+{
+	auto pAS = TO_VK(desc.m_pTLAS);
+	auto geom = pAS->GetGeometries()[0];
+	geom.geometry.instances.data.deviceAddress = TO_VK(desc.m_pInstanceBuffer)->GetDeviceAddress() + desc.m_InstanceBufferOffset;
+
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+	buildInfo.flags = GetVkBuildAccelerationStructureFlags(pAS->GetDesc().m_Flags);
+	if (desc.m_Update)
+	{
+		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+		buildInfo.srcAccelerationStructure = pAS->GetHandle();
+	}
+	else
+	{
+		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+	}
+	buildInfo.dstAccelerationStructure = pAS->GetHandle();
+	buildInfo.geometryCount = 1;
+	buildInfo.pGeometries = &geom;
+	//buildInfo.ppGeometries = nullptr;
+	buildInfo.scratchData.deviceAddress = TO_VK(desc.m_pScratchBuffer)->GetDeviceAddress() + desc.m_ScratchBufferOffset;
+
+	VkAccelerationStructureBuildRangeInfoKHR range{};
+	range.primitiveCount = desc.m_InstanceCount;
+
+	VkAccelerationStructureBuildRangeInfoKHR* pRanges[] = {&range};
+	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, pRanges);
+}
+
+
 void BvCommandBufferVk::FlushDescriptorSets()
 {
 	auto& rbs = m_pFrameData->GetResourceBindingState();
@@ -1074,21 +1179,22 @@ void BvCommandBufferVk::FlushDescriptorSets()
 		return;
 	}
 
-	for (auto& resourceSet : m_pShaderResourceLayout->GetDesc().m_ShaderResources)
+	auto& resources = m_pShaderResourceLayout->GetResources();
+	for (auto& resourceSet : resources)
 	{
 		u32 set = resourceSet.first;
 		for (auto& resource : resourceSet.second)
 		{
-			for (auto i = 0u; i < resource.second.m_Count; i++)
+			for (auto i = 0u; i < resource.second->m_Count; i++)
 			{
-				ResourceIdVk resId{ set, resource.second.m_Binding, i };
+				ResourceIdVk resId{ set, resource.second->m_Binding, i };
 				if (auto pResourceData = rbs.GetResource(resId))
 				{
 					m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
 					auto& writeSet = m_WriteSets.Back();
 					//writeSet.dstSet = nullptr; // This is set in BvDescriptorSetVk::Update()
 					writeSet.descriptorType = pResourceData->m_DescriptorType;
-					writeSet.dstBinding = resource.second.m_Binding;
+					writeSet.dstBinding = resource.second->m_Binding;
 					writeSet.dstArrayElement = i;
 					writeSet.descriptorCount = 1;
 

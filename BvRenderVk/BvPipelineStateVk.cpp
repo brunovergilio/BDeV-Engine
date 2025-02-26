@@ -4,6 +4,7 @@
 #include "BvRenderPassVk.h"
 #include "BvShaderResourceVk.h"
 #include "BvUtilsVk.h"
+#include "BvShaderResourceVk.h"
 
 
 VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode, VkShaderStageFlagBits shaderStage);
@@ -12,6 +13,10 @@ VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShade
 BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, const VkPipelineCache pipelineCache)
 	: BvGraphicsPipelineState(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
 {
+	auto pVertexInputDescs = BV_NEW_ARRAY(VertexInputDesc, m_PipelineStateDesc.m_VertexInputDescCount);
+	memcpy(pVertexInputDescs, m_PipelineStateDesc.m_pVertexInputDescs, sizeof(VertexInputDesc) * m_PipelineStateDesc.m_VertexInputDescCount);
+	m_PipelineStateDesc.m_pVertexInputDescs = pVertexInputDescs;
+
 	Create();
 }
 
@@ -19,6 +24,8 @@ BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, 
 BvGraphicsPipelineStateVk::~BvGraphicsPipelineStateVk()
 {
 	Destroy();
+
+	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pVertexInputDescs);
 }
 
 
@@ -226,8 +233,7 @@ void BvGraphicsPipelineStateVk::Create()
 		const auto& byteCode = m_PipelineStateDesc.m_Shaders[i]->GetShaderBlob();
 		shaderStage.pName = m_PipelineStateDesc.m_Shaders[i]->GetEntryPoint();
 		shaderStage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_Shaders[i]->GetShaderStage());
-		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(),
-			byteCode.Data(), shaderStages[i].stage);
+		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -308,6 +314,116 @@ void BvComputePipelineStateVk::Create()
 
 
 void BvComputePipelineStateVk::Destroy()
+{
+	if (m_Pipeline)
+	{
+		vkDestroyPipeline(m_pDevice->GetHandle(), m_Pipeline, nullptr);
+		m_Pipeline = nullptr;
+		m_PipelineCache = nullptr;
+	}
+}
+
+
+BvRayTracingPipelineStateVk::BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc,
+	const VkPipelineCache pipelineCache)
+	: BvRayTracingPipelineState(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
+{
+	auto ppShaders = BV_NEW_ARRAY(BvShader*, m_PipelineStateDesc.m_ShaderCount);
+	memcpy(ppShaders, m_PipelineStateDesc.m_ppShaders, sizeof(BvShader*) * m_PipelineStateDesc.m_ShaderCount);
+	m_PipelineStateDesc.m_ppShaders = ppShaders;
+
+	auto pHitGroupDescs = BV_NEW_ARRAY(ShaderHitGroupDesc, m_PipelineStateDesc.m_ShaderHitGroupCount);
+	memcpy(pHitGroupDescs, m_PipelineStateDesc.m_pShaderHitGroupDescs, sizeof(ShaderHitGroupDesc) * m_PipelineStateDesc.m_ShaderHitGroupCount);
+	m_PipelineStateDesc.m_pShaderHitGroupDescs = pHitGroupDescs;
+
+	Create();
+}
+
+
+BvRayTracingPipelineStateVk::~BvRayTracingPipelineStateVk()
+{
+	Destroy();
+
+	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pShaderHitGroupDescs);
+	BV_DELETE_ARRAY(m_PipelineStateDesc.m_ppShaders);
+}
+
+
+BvRenderDevice* BvRayTracingPipelineStateVk::GetDevice()
+{
+	return m_pDevice;
+}
+
+
+void BvRayTracingPipelineStateVk::Create()
+{
+	BvVector<VkPipelineShaderStageCreateInfo> shaderStages(m_PipelineStateDesc.m_ShaderCount, { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
+	BvVector<VkRayTracingShaderGroupCreateInfoKHR> hitGroups(m_PipelineStateDesc.m_ShaderHitGroupCount, { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR });
+
+	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderCount; i++)
+	{
+		auto& shaderStage = shaderStages[i];
+		const auto& byteCode = m_PipelineStateDesc.m_ppShaders[i]->GetShaderBlob();
+		shaderStage.pName = m_PipelineStateDesc.m_ppShaders[i]->GetEntryPoint();
+		shaderStage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_ppShaders[i]->GetShaderStage());
+		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
+	}
+
+	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderHitGroupCount; ++i)
+	{
+		auto& hitGroupDesc = m_PipelineStateDesc.m_pShaderHitGroupDescs[i];
+		auto& hitGroup = hitGroups[i];
+
+		switch (hitGroupDesc.m_Type)
+		{
+		case ShaderHitGroupType::kNone:
+			BV_ASSERT(false, "Shader hit group type can't be kNone");
+			Destroy();
+			return;
+		case ShaderHitGroupType::kGeneral:
+			hitGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+			hitGroup.generalShader = hitGroupDesc.m_General;
+			hitGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
+			hitGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
+			hitGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+			break;
+		case ShaderHitGroupType::kTriangles:
+			hitGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+			hitGroup.generalShader = VK_SHADER_UNUSED_KHR;
+			hitGroup.closestHitShader = hitGroupDesc.m_ClosestHit;
+			hitGroup.anyHitShader = hitGroupDesc.m_AnyHit;
+			hitGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+			break;
+		case ShaderHitGroupType::kProcedural:
+			hitGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+			hitGroup.generalShader = VK_SHADER_UNUSED_KHR;
+			hitGroup.closestHitShader = hitGroupDesc.m_ClosestHit;
+			hitGroup.anyHitShader = hitGroupDesc.m_AnyHit;
+			hitGroup.intersectionShader = hitGroupDesc.m_Intersection;
+			break;
+		}
+	}
+
+	VkRayTracingPipelineInterfaceCreateInfoKHR pici{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR, nullptr,
+		m_PipelineStateDesc.m_MaxPayloadSize, m_PipelineStateDesc.m_MaxAttributeSize };
+
+	VkRayTracingPipelineCreateInfoKHR ci{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
+	ci.groupCount = u32(hitGroups.Size());
+	ci.pGroups = hitGroups.Data();
+	ci.stageCount = u32(shaderStages.Size());
+	ci.pStages = shaderStages.Data();
+	ci.maxPipelineRayRecursionDepth = m_PipelineStateDesc.m_MaxPipelineRayRecursionDepth;
+	ci.layout = TO_VK(m_PipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
+	if (m_PipelineStateDesc.m_ForcePayloadAndAttributeSizes)
+	{
+		ci.pLibraryInterface = &pici;
+	}
+
+	vkCreateRayTracingPipelinesKHR(m_pDevice->GetHandle(), VK_NULL_HANDLE, m_PipelineCache, 1, &ci, nullptr, &m_Pipeline);
+}
+
+
+void BvRayTracingPipelineStateVk::Destroy()
 {
 	if (m_Pipeline)
 	{

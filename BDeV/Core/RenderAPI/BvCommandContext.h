@@ -140,6 +140,10 @@ public:
 	virtual void EndEvent() = 0;
 	virtual void SetMarker(const char* pName, const BvColor& color = BvColor::Black) = 0;
 
+	virtual void BuildBLAS(const BLASBuildDesc& blasDesc) = 0;
+	virtual void BuildTLAS(const TLASBuildDesc& tlasDesc) = 0;
+	//virtual void DispatchRays(const DispatchRaysDesc& drDesc) = 0;
+
 protected:
 	BvCommandContext() {}
 	virtual ~BvCommandContext() = 0 {}

@@ -18,6 +18,8 @@ public:
 	~BvShaderVk();
 	BvRenderDevice* GetDevice() override;
 
+	BV_INLINE bool IsValid() const { return m_ShaderBlob.Size() > 0; }
+
 	BV_OBJECT_IMPL_INTERFACE(BvShaderVk, BvShader, IBvRenderDeviceObject);
 
 private:

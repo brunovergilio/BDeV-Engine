@@ -16,7 +16,7 @@ public:
 protected:
 	BvTextureView(const TextureViewDesc & textureViewDesc)
 		: m_TextureViewDesc(textureViewDesc) {}
-	virtual ~BvTextureView() = 0 {}
+	~BvTextureView() {}
 
 protected:
 	TextureViewDesc m_TextureViewDesc;

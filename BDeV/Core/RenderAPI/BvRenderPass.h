@@ -181,12 +181,12 @@ struct RenderPassAttachment
 
 struct RenderPassDesc
 {
-	u32 m_AttachmentCount = 0;
-	u32 m_SubpassCount = 0;
-	u32 m_SubpassDependencyCount = 0;
 	const RenderPassAttachment* m_pAttachments = nullptr;
 	const SubpassDesc* m_pSubpasses = nullptr;
 	const SubpassDependency* m_pSubpassDependencies = nullptr;
+	u32 m_AttachmentCount = 0;
+	u32 m_SubpassCount = 0;
+	u32 m_SubpassDependencyCount = 0;
 
 	bool operator==(const RenderPassDesc& rhs) const noexcept
 	{
@@ -277,7 +277,7 @@ public:
 protected:
 	BvRenderPass(const RenderPassDesc& renderPassDesc)
 		: m_RenderPassDesc(renderPassDesc) {}
-	virtual ~BvRenderPass() = 0 {}
+	~BvRenderPass() {}
 
 protected:
 	RenderPassDesc m_RenderPassDesc;

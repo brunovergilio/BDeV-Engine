@@ -25,7 +25,7 @@ public:
 protected:
 	BvBuffer(const BufferDesc & bufferDesc)
 		: m_BufferDesc(bufferDesc) {}
-	virtual ~BvBuffer() = 0 {}
+	~BvBuffer() {}
 
 protected:
 	BufferDesc m_BufferDesc;

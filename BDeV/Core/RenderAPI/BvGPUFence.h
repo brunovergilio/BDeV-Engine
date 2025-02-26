@@ -16,7 +16,7 @@ public:
 	virtual u64 GetCompletedValue() = 0;
 	
 protected:
-	BvGPUFence() = default;
-	~BvGPUFence() = 0 {}
+	BvGPUFence() {};
+	~BvGPUFence() {}
 };
 BV_OBJECT_ENABLE_ID_OPERATOR(BvGPUFence);

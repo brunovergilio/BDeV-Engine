@@ -11,6 +11,7 @@ class BvRenderDeviceVk;
 class BvSwapChainVk;
 class BvGraphicsPipelineStateVk;
 class BvComputePipelineStateVk;
+class BvRayTracingPipelineStateVk;
 class BvShaderResourceLayoutVk;
 class BvFrameDataVk;
 class BvSampler;
@@ -22,6 +23,7 @@ class BvQuery;
 class BvRenderPass;
 class BvGraphicsPipelineState;
 class BvComputePipelineState;
+class BvRayTracingPipelineState;
 class BvShaderResourceParams;
 
 
@@ -57,6 +59,7 @@ public:
 
 	void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline);
 	void SetComputePipeline(const BvComputePipelineState* pPipeline);
+	void SetRayTracingPipeline(const BvComputePipelineState* pPipeline);
 
 	void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex);
 	void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
@@ -115,6 +118,9 @@ public:
 	void EndEvent();
 	void SetMarker(const char* pName, const BvColor& color);
 
+	void BuildBLAS(const BLASBuildDesc& desc);
+	void BuildTLAS(const TLASBuildDesc& desc);
+
 	BV_INLINE const VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
 	BV_INLINE const BvVector<BvSwapChainVk*>& GetSwapChains() const { return m_SwapChains; }
 
@@ -143,7 +149,11 @@ private:
 
 	const BvGraphicsPipelineStateVk* m_pGraphicsPipeline = nullptr;
 	const BvComputePipelineStateVk* m_pComputePipeline = nullptr;
+	const BvRayTracingPipelineStateVk* m_pRayTracingPipeline = nullptr;
 	BvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
+
+	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
+	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;
 
 	State m_CurrentState = State::kRecording;
 	bool m_HasDebugUtils = false;

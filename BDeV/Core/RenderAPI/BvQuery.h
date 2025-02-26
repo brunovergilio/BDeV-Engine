@@ -14,6 +14,6 @@ public:
 
 protected:
 	BvQuery() {}
-	virtual ~BvQuery() {}
+	~BvQuery() {}
 };
 BV_OBJECT_ENABLE_ID_OPERATOR(BvQuery);

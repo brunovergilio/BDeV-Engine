@@ -86,7 +86,7 @@ namespace Internal
 	template<typename Type>
 	void DeleteArray(Type* pObjs, const BvSourceInfo& sourceInfo)
 	{
-		MemType mem{ pObjs };
+		MemType mem{ (void*)pObjs };
 
 		mem.pAsSizeTPtr--;
 

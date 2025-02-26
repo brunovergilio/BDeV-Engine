@@ -21,12 +21,15 @@ BvBufferVk::~BvBufferVk()
 
 void * const BvBufferVk::Map(const u64 size, const u64 offset)
 {
-	auto vma = m_pDevice->GetAllocator();
-	auto result = vmaMapMemory(vma, m_VMAAllocation, &m_pMapped);
-	if (result != VK_SUCCESS)
+	if (!m_pMapped)
 	{
-		BvDebugVkResult(result);
-		return nullptr;
+		auto vma = m_pDevice->GetAllocator();
+		auto result = vmaMapMemory(vma, m_VMAAllocation, &m_pMapped);
+		if (result != VK_SUCCESS)
+		{
+			BvDebugVkResult(result);
+			return nullptr;
+		}
 	}
 
 	return m_pMapped;
@@ -35,10 +38,13 @@ void * const BvBufferVk::Map(const u64 size, const u64 offset)
 
 void BvBufferVk::Unmap()
 {
-	auto vma = m_pDevice->GetAllocator();
-	vmaUnmapMemory(vma, m_VMAAllocation);
+	if (m_pMapped)
+	{
+		auto vma = m_pDevice->GetAllocator();
+		vmaUnmapMemory(vma, m_VMAAllocation);
 
-	m_pMapped = nullptr;
+		m_pMapped = nullptr;
+	}
 }
 
 
@@ -106,6 +112,10 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	//bufferCreateInfo.flags = 0; // No Sparse Binding for now
 	bufferCreateInfo.size = m_BufferDesc.m_Size;
 	bufferCreateInfo.usage = GetVkBufferUsageFlags(m_BufferDesc.m_UsageFlags);
+	if (m_pDevice->GetDeviceInfo()->m_DeviceFeatures1_2.bufferDeviceAddress)
+	{
+		bufferCreateInfo.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+	}
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	//bufferCreateInfo.queueFamilyIndexCount = 0;
 	//bufferCreateInfo.pQueueFamilyIndices = nullptr;
@@ -141,6 +151,12 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 		return;
 	}
 	m_VMAAllocation = vmaA;
+
+	if (bufferCreateInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+	{
+		VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
+		m_DeviceAddress = vkGetBufferDeviceAddress(device, &addressInfo);
+	}
 
 	const auto& memoryType = m_pDevice->GetDeviceInfo()->m_DeviceMemoryProperties.memoryProperties.memoryTypes[vmaAI.memoryType];
 	m_NeedsFlush = ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0);

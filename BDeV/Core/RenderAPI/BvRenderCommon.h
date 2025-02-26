@@ -1,18 +1,13 @@
 #pragma once
 
 
-//BV_IBVOBJECT_DEFINE_ID(, "11ee119e-5ecb-4675-9b95-f13439e1a3aa");
-//BV_IBVOBJECT_DEFINE_ID(, "70617509-5657-4c47-9a4e-dc318b535076");
-//BV_IBVOBJECT_DEFINE_ID(, "e04f4570-bb75-4ff2-b9e2-02ba4affb9de");
-//BV_IBVOBJECT_DEFINE_ID(, "5ab21c28-09a4-4a86-a001-776e28fa3324");
-//BV_IBVOBJECT_DEFINE_ID(, "9f90a079-c378-4b59-9522-958685fdea9c");
-//BV_IBVOBJECT_DEFINE_ID(, "0bb5abad-c53b-47bd-b939-989cb9d2e58d");
 //BV_IBVOBJECT_DEFINE_ID(, "8a9c658d-963e-49a2-9d67-7e5316f1a8fc");
 //BV_IBVOBJECT_DEFINE_ID(, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
 
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/Container/BvStringId.h"
 #include <algorithm>
 
 
@@ -20,6 +15,10 @@ class BvBuffer;
 class BvTexture;
 class BvTextureView;
 class BvCommandContext;
+class BvAccelerationStructure;
+class BvRayTracingPipelineState;
+class BvShader;
+class BvShaderResourceLayout;
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -60,6 +59,7 @@ enum class CommandType : u8
 
 enum class IndexFormat : u8
 {
+	kUnknown,
 	kU16,
 	kU32
 };
@@ -418,7 +418,13 @@ enum class ShaderStage : u16
 	kCompute				= BvBit(5),
 	kMesh					= BvBit(6),
 	kAmplificationOrTask	= BvBit(7),
-	kAllStages				= BvBit(8) - 1,
+	kRayGen					= BvBit(8),
+	kAnyHit					= BvBit(9),
+	kClosestHit				= BvBit(10),
+	kMiss					= BvBit(11),
+	kIntersection			= BvBit(12),
+	kCallable				= BvBit(13),
+	kAllStages				= BvBit(14) - 1,
 };
 BV_USE_ENUM_CLASS_OPERATORS(ShaderStage)
 
@@ -447,31 +453,37 @@ enum class ResourceState : u8
 	kPresent,
 
 	kShadingRate,
+	kASBuildRead,
+	kASBuildWrite
 };
 
 
 enum class ResourceAccess : u32
 {
-	kNone					= 0,
-	kIndirectRead			= BvBit(0),
-	kIndexRead				= BvBit(1),
-	kVertexInputRead		= BvBit(2),
-	kUniformRead			= BvBit(3),
-	kShaderRead				= BvBit(4),
-	kShaderWrite			= BvBit(5),
-	kRenderTargetRead		= BvBit(6),
-	kRenderTargetWrite		= BvBit(7),
-	kDepthStencilRead		= BvBit(8),
-	kDepthStencilWrite		= BvBit(9),
-	kTransferRead			= BvBit(10),
-	kTransferWrite			= BvBit(11),
-	kHostRead				= BvBit(12),
-	kHostWrite				= BvBit(13),
-	kMemoryRead				= BvBit(14),
-	kMemoryWrite			= BvBit(15),
-	kInputAttachmentRead	= BvBit(16),
-	kShadingRateRead		= BvBit(17),
-	kAuto					= BvBit(18)
+	kNone						= 0,
+	kIndirectRead				= BvBit(0),
+	kIndexRead					= BvBit(1),
+	kVertexInputRead			= BvBit(2),
+	kUniformRead				= BvBit(3),
+	kShaderRead					= BvBit(4),
+	kShaderWrite				= BvBit(5),
+	kRenderTargetRead			= BvBit(6),
+	kRenderTargetWrite			= BvBit(7),
+	kDepthStencilRead			= BvBit(8),
+	kDepthStencilWrite			= BvBit(9),
+	kTransferRead				= BvBit(10),
+	kTransferWrite				= BvBit(11),
+	kHostRead					= BvBit(12),
+	kHostWrite					= BvBit(13),
+	kMemoryRead					= BvBit(14),
+	kMemoryWrite				= BvBit(15),
+	kInputAttachmentRead		= BvBit(16),
+	kShadingRateRead			= BvBit(17),
+	kPredicationRead			= BvBit(18),
+	kAccelerationStructureRead	= BvBit(19),
+	kAccelerationStructureWrite	= BvBit(20),
+	kShaderBindingTableRead		= BvBit(21),
+	kAuto						= BvBit(22)
 };
 BV_USE_ENUM_CLASS_OPERATORS(ResourceAccess);
 
@@ -496,7 +508,13 @@ enum class PipelineStage : u32
 	kAllShaderStages			= kVertexShader | kTessHullOrControlShader | kTessDomainOrEvalShader
 		| kGeometryShader | kPixelOrFragmentShader | kComputeShader,
 	kShadingRate				= BvBit(14),
-	kAuto						= BvBit(15)
+	kPredication				= BvBit(15),
+	kMesh						= BvBit(16),
+	kAmplificationOrTask		= BvBit(17),
+	kAccelerationStructureBuild	= BvBit(18),
+	kAccelerationStructureCopy	= BvBit(19),
+	kRayTracing					= BvBit(20),
+	kAuto						= BvBit(21)
 };
 BV_USE_ENUM_CLASS_OPERATORS(PipelineStage);
 
@@ -556,14 +574,15 @@ struct Offset3D
 
 enum class BufferUsage : u16
 {
-	kNone = 0,
-	kUniformBuffer =		BvBit(0),
-	kStorageBuffer =		BvBit(1),
-	kUniformTexelBuffer =	BvBit(2),
-	kStorageTexelBuffer =	BvBit(3),
-	kIndexBuffer =			BvBit(4),
-	kVertexBuffer =			BvBit(5),
-	kIndirectBuffer =		BvBit(6),
+	kNone =						0,
+	kUniformBuffer =			BvBit(0),
+	kStorageBuffer =			BvBit(1),
+	kUniformTexelBuffer =		BvBit(2),
+	kStorageTexelBuffer =		BvBit(3),
+	kIndexBuffer =				BvBit(4),
+	kVertexBuffer =				BvBit(5),
+	kIndirectBuffer =			BvBit(6),
+	kRayTracing =				BvBit(7),
 };
 BV_USE_ENUM_CLASS_OPERATORS(BufferUsage);
 
@@ -606,13 +625,13 @@ enum class TextureType : u8
 
 enum class TextureUsage : u8
 {
-	kDefault = 0,
-	kTransferSrc =			BvBit(0),
-	kTransferDst =			BvBit(1),
+	kNone =					0,
+	kRenderTarget =			BvBit(0),
+	kDepthStencilTarget =	BvBit(1),
 	kShaderResource =		BvBit(2),
 	kUnorderedAccess =		BvBit(3),
-	kColorTarget =			BvBit(4),
-	kDepthStencilTarget =	BvBit(5),
+	kInputAttachment =		BvBit(4),
+	kShadingRate =			BvBit(5)
 };
 BV_USE_ENUM_CLASS_OPERATORS(TextureUsage);
 
@@ -637,7 +656,7 @@ struct TextureDesc
 	TextureType m_ImageType = TextureType::kTexture2D;
 	Format m_Format = Format::kUnknown;
 	TextureCreateFlags m_CreateFlags = TextureCreateFlags::kNone;
-	TextureUsage m_UsageFlags = TextureUsage::kDefault;
+	TextureUsage m_UsageFlags = TextureUsage::kNone;
 	MemoryType m_MemoryType = MemoryType::kDevice;
 	ResourceState m_ResourceState = ResourceState::kShaderResource;
 };
@@ -823,6 +842,7 @@ struct ResourceBarrierDesc
 
 	BvTexture* m_pTexture = nullptr;
 	BvBuffer* m_pBuffer = nullptr;
+	BvAccelerationStructure* m_pAS = nullptr;
 
 	ResourceState m_SrcLayout = ResourceState::kCommon;
 	ResourceState m_DstLayout = ResourceState::kCommon;
@@ -878,6 +898,25 @@ enum class AddressMode : u8
 	kClamp,
 	kBorder,
 	kMirrorOnce,
+};
+
+
+struct SamplerDesc
+{
+	Filter			m_MagFilter = Filter::kLinear;
+	Filter			m_MinFilter = Filter::kLinear;
+	MipMapFilter	m_MipmapMode = MipMapFilter::kLinear;
+	AddressMode		m_AddressModeU = AddressMode::kWrap;
+	AddressMode		m_AddressModeV = AddressMode::kWrap;
+	AddressMode		m_AddressModeW = AddressMode::kWrap;
+	bool			m_CompareEnable = false;
+	CompareOp		m_CompareOp = CompareOp::kNever;
+	bool			m_AnisotropyEnable = false;
+	float			m_MaxAnisotropy = 1.0f;
+	float			m_MipLodBias = 0.0f;
+	float			m_MinLod = 0.0f;
+	float			m_MaxLod = 1.0f;
+	float			m_BorderColor[4]{};
 };
 
 
@@ -1286,4 +1325,239 @@ struct BlendStateDesc
 	LogicOp m_LogicOp = LogicOp::kClear;
 	bool m_LogicEnable = false;
 	bool m_AlphaToCoverageEnable = false;
+};
+
+
+enum class RayTracingAccelerationStructureType : u8
+{
+	kUnknown,
+	kBottomLevel,
+	kTopLevel
+};
+
+
+enum class RayTracingGeometryType : u8
+{
+	kUnknown,
+	kTriangles,
+	kAABB
+};
+
+
+enum class RayTracingGeometryFlags : u8
+{
+	kNone = 0,
+	kOpaque = BvBit(0),
+	kNoDuplicateAnyHitInvocation = BvBit(1)
+};
+BV_USE_ENUM_CLASS_OPERATORS(RayTracingGeometryFlags);
+
+
+enum class RayTracingInstanceFlags : u8
+{
+	kNone = 0,
+	kTriangleCullDisable = BvBit(0),
+	kTriangleFrontCounterclockwise = BvBit(1),
+	kForceOpaque = BvBit(2),
+	kForceNonOpaque = BvBit(3)
+};
+BV_USE_ENUM_CLASS_OPERATORS(RayTracingInstanceFlags);
+
+
+enum class RayTracingAccelerationStructureFlags : u8
+{
+	kNone = 0,
+	kAllowUpdate = BvBit(0),
+	kAllowCompaction = BvBit(1),
+	kPreferFastTrace = BvBit(2),
+	kPreferFastBuild = BvBit(3),
+	kLowMemory = BvBit(4)
+};
+BV_USE_ENUM_CLASS_OPERATORS(RayTracingAccelerationStructureFlags);
+
+
+struct BLASGeometryDesc
+{
+	struct TriangleDesc
+	{
+		u32 m_VertexCount;
+		u32 m_VertexStride;
+		u32 m_IndexCount;
+		Format m_VertexFormat;
+		IndexFormat m_IndexFormat;
+	};
+
+	struct AABBDesc
+	{
+		u32 m_Stride;
+		u32 m_Count;
+	};
+
+	BvStringId m_Id;
+	union
+	{
+		TriangleDesc m_Triangle{};
+		AABBDesc m_AABB;
+	};
+
+	RayTracingGeometryFlags m_Flags = RayTracingGeometryFlags::kNone;
+	RayTracingGeometryType m_Type = RayTracingGeometryType::kUnknown;
+};
+
+
+struct BLASDesc
+{
+	u32 m_GeometryCount = 0;
+	const BLASGeometryDesc* m_pGeometries = 0;
+};
+
+
+struct BLASBuildGeometryDesc
+{
+	struct TriangleDesc
+	{
+		BvBuffer* m_pVertexBuffer;
+		u64 m_VertexOffset;
+		BvBuffer* m_pIndexBuffer;
+		u64 m_IndexOffset;
+	};
+
+	struct AABBDesc
+	{
+		BvBuffer* m_pBuffer;
+		u64 m_Offset;
+	};
+
+	BvStringId m_Id;
+	union
+	{
+		TriangleDesc m_Triangle{};
+		AABBDesc m_AABB;
+	};
+
+	RayTracingGeometryFlags m_Flags = RayTracingGeometryFlags::kNone;
+	RayTracingGeometryType m_Type = RayTracingGeometryType::kUnknown;
+};
+
+
+struct BLASBuildDesc
+{
+	bool m_Update = false;
+	u32 m_GeometryCount = 0;
+	const BLASBuildGeometryDesc* m_pGeometries = nullptr;
+	BvAccelerationStructure* m_pBLAS = nullptr;
+	BvBuffer* m_pScratchBuffer = nullptr;
+	u64 m_ScratchBufferOffset = 0;
+};
+
+
+struct TLASDesc
+{
+	u32 m_InstanceCount = 0;
+	RayTracingInstanceFlags m_Flags = RayTracingInstanceFlags::kNone;
+};
+
+
+struct TLASBuildInstanceDesc
+{
+	f32 m_Transform[3][4]{};
+	u32 m_InstanceId = 0;
+	u32 m_InstanceMask = 0;
+	u32 m_ShaderBindingTableIndex = 0;
+	RayTracingInstanceFlags m_Flags = RayTracingInstanceFlags::kNone;
+	BvAccelerationStructure* m_pBLAS = nullptr;
+};
+
+
+struct TLASBuildDesc
+{
+	bool m_Update = false;
+	u32 m_InstanceCount = 0;
+	BvAccelerationStructure* m_pTLAS = nullptr;
+	BvBuffer* m_pInstanceBuffer = nullptr;
+	u64 m_InstanceBufferOffset = 0;
+	BvBuffer* m_pScratchBuffer = nullptr;
+	u64 m_ScratchBufferOffset = 0;
+};
+
+
+struct RayTracingAccelerationStructureScratchSize
+{
+	u64 m_Build = 0;
+	u64 m_Update = 0;
+};
+
+
+struct RayTracingAccelerationStructureDesc
+{
+	RayTracingAccelerationStructureType m_Type = RayTracingAccelerationStructureType::kUnknown;
+	RayTracingAccelerationStructureFlags m_Flags = RayTracingAccelerationStructureFlags::kNone;
+	union
+	{
+		BLASDesc m_BLAS{};
+		TLASDesc m_TLAS;
+	};
+};
+
+
+enum class ShaderHitGroupType : u8
+{
+	kNone,
+	kGeneral,
+	kTriangles,
+	kProcedural
+};
+
+
+struct ShaderHitGroupDesc
+{
+	static constexpr u32 kUnusedShader = kU32Max;
+
+	BvStringId m_Name;
+	ShaderHitGroupType m_Type = ShaderHitGroupType::kNone;
+	u32 m_General = kUnusedShader;
+	u32 m_ClosestHit = kUnusedShader;
+	u32 m_AnyHit = kUnusedShader;
+	u32 m_Intersection = kUnusedShader;
+};
+
+
+struct RayTracingPipelineStateDesc
+{
+	u32 m_ShaderCount = 0;
+	u32 m_ShaderHitGroupCount = 0;
+	const BvShader* const* m_ppShaders = nullptr;
+	const ShaderHitGroupDesc* m_pShaderHitGroupDescs = nullptr;
+	BvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
+	u32 m_MaxPipelineRayRecursionDepth = 0;
+	u32 m_MaxPayloadSize = 0;
+	u32 m_MaxAttributeSize = 0;
+	bool m_ForcePayloadAndAttributeSizes = false; // Vulkan only
+};
+
+
+struct ShaderBindingTableDesc
+{
+	BvRayTracingPipelineState* m_pPSO = nullptr;
+};
+
+
+struct ShaderBindingTableDataDesc
+{
+	BvBuffer* m_pBuffer = nullptr;
+	u64 m_Offset = 0;
+	u64 m_SizeInBytes = 0;
+	u64 m_StrideInBytes = 0;
+};
+
+
+struct DispatchRaysDesc
+{
+	ShaderBindingTableDataDesc m_RayGen;
+	ShaderBindingTableDataDesc m_Miss;
+	ShaderBindingTableDataDesc m_HitGroup;
+	ShaderBindingTableDataDesc m_Callable;
+	u32 m_Width = 0;
+	u32 m_Height = 0;
+	u32 m_Depth = 0;
 };

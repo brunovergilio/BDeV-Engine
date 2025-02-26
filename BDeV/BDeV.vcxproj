@@ -105,7 +105,9 @@
     <ClInclude Include="Core\Math\BvGeometryGenerator.h" />
     <ClInclude Include="Core\Math\BvIntersections.h" />
     <ClInclude Include="Core\Math\BvPrimitives.h" />
+    <ClInclude Include="Core\RenderAPI\BvAccelerationStructure.h" />
     <ClInclude Include="Core\RenderAPI\BvGPUFence.h" />
+    <ClInclude Include="Core\RenderAPI\BvShaderBindingTable.h" />
     <ClInclude Include="Core\RenderAPI\BvTextureLoader.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderDeviceObject.h" />
     <ClInclude Include="Core\Utils\BvRandom.h" />

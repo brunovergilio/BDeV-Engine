@@ -51,9 +51,9 @@ public:
 	BV_INLINE const GraphicsPipelineStateDesc& GetDesc() const { return m_PipelineStateDesc; }
 
 protected:
-	BvGraphicsPipelineState(const GraphicsPipelineStateDesc & pipelineStateDesc)
+	BvGraphicsPipelineState(const GraphicsPipelineStateDesc& pipelineStateDesc)
 		: m_PipelineStateDesc(pipelineStateDesc) {}
-	virtual ~BvGraphicsPipelineState() = 0 {}
+	~BvGraphicsPipelineState() {}
 
 protected:
 	GraphicsPipelineStateDesc m_PipelineStateDesc;
@@ -70,11 +70,30 @@ public:
 	BV_INLINE const ComputePipelineStateDesc& GetDesc() const { return m_PipelineStateDesc; }
 
 protected:
-	BvComputePipelineState(const ComputePipelineStateDesc & pipelineStateDesc)
+	BvComputePipelineState(const ComputePipelineStateDesc& pipelineStateDesc)
 		: m_PipelineStateDesc(pipelineStateDesc) {}
-	virtual ~BvComputePipelineState() = 0 {}
+	~BvComputePipelineState() {}
 
 protected:
 	ComputePipelineStateDesc m_PipelineStateDesc;
 };
 BV_OBJECT_ENABLE_ID_OPERATOR(BvComputePipelineState);
+
+
+BV_OBJECT_DEFINE_ID(BvRayTracingPipelineState, "e04f4570-bb75-4ff2-b9e2-02ba4affb9de");
+class BvRayTracingPipelineState : public IBvRenderDeviceObject
+{
+	BV_NOCOPYMOVE(BvRayTracingPipelineState);
+
+public:
+	BV_INLINE const RayTracingPipelineStateDesc& GetDesc() const { return m_PipelineStateDesc; }
+
+protected:
+	BvRayTracingPipelineState(const RayTracingPipelineStateDesc& pipelineStateDesc)
+		: m_PipelineStateDesc(pipelineStateDesc) {}
+	~BvRayTracingPipelineState() {}
+
+protected:
+	RayTracingPipelineStateDesc m_PipelineStateDesc;
+};
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRayTracingPipelineState);

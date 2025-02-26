@@ -86,6 +86,8 @@
     <ClInclude Include="Core\RenderAPI\BvGPUFence.h" />
     <ClInclude Include="Core\RenderAPI\BvTextureLoader.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderDeviceObject.h" />
+    <ClInclude Include="Core\RenderAPI\BvAccelerationStructure.h" />
+    <ClInclude Include="Core\RenderAPI\BvShaderBindingTable.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />

@@ -17,7 +17,7 @@ public:
 protected:
 	BvTexture(const TextureDesc & textureDesc)
 		: m_TextureDesc(textureDesc) {}
-	virtual ~BvTexture() = 0 {}
+	~BvTexture() {}
 
 protected:
 	TextureDesc m_TextureDesc;

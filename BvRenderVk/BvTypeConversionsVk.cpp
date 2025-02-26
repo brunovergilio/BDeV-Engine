@@ -268,6 +268,11 @@ VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags)
 	if (EHasFlag(usageFlags, BufferUsage::kVertexBuffer			))	{ bufferUsageFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndexBuffer			))	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndirectBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kRayTracing			))
+	{
+		bufferUsageFlags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
+			| VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+	}
 
 	return bufferUsageFlags | (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 }
@@ -275,15 +280,15 @@ VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags)
 
 VkImageUsageFlags GetVkImageUsageFlags(const TextureUsage usageFlags)
 {
-	VkImageUsageFlags imageUsageFlags = 0;
-	if (EHasFlag(usageFlags, TextureUsage::kTransferSrc			))	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; }
-	if (EHasFlag(usageFlags, TextureUsage::kTransferDst			))	{ imageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; }
+	VkImageUsageFlags imageUsageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	if (EHasFlag(usageFlags, TextureUsage::kRenderTarget		))	{ imageUsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kDepthStencilTarget	))	{ imageUsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; }
 	if (EHasFlag(usageFlags, TextureUsage::kShaderResource		))	{ imageUsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT; }
 	if (EHasFlag(usageFlags, TextureUsage::kUnorderedAccess		))	{ imageUsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT; }
-	if (EHasFlag(usageFlags, TextureUsage::kColorTarget			))	{ imageUsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; }
-	if (EHasFlag(usageFlags, TextureUsage::kDepthStencilTarget	))	{ imageUsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kInputAttachment		))	{ imageUsageFlags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT; }
+	if (EHasFlag(usageFlags, TextureUsage::kShadingRate			))	{ imageUsageFlags |= VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR; }
 
-	return imageUsageFlags != 0 ? imageUsageFlags : (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	return imageUsageFlags;
 }
 
 
@@ -520,7 +525,12 @@ VkShaderStageFlagBits GetVkShaderStageFlagBits(const ShaderStage shaderStage)
 	case ShaderStage::kCompute:				return VK_SHADER_STAGE_COMPUTE_BIT;
 	case ShaderStage::kMesh:				return VK_SHADER_STAGE_MESH_BIT_EXT;
 	case ShaderStage::kAmplificationOrTask:	return VK_SHADER_STAGE_TASK_BIT_EXT;
-		// TODO: Add ray tracing
+	case ShaderStage::kRayGen:				return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+	case ShaderStage::kAnyHit:				return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+	case ShaderStage::kClosestHit:			return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+	case ShaderStage::kMiss:				return VK_SHADER_STAGE_MISS_BIT_KHR;
+	case ShaderStage::kIntersection:		return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+	case ShaderStage::kCallable:			return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
 	}
 
 	return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
@@ -637,6 +647,10 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess)
 	if (EHasFlag(resourceAccess, ResourceAccess::kMemoryWrite			))	{ accessFlags |= VK_ACCESS_2_MEMORY_WRITE_BIT; }
 	if (EHasFlag(resourceAccess, ResourceAccess::kInputAttachmentRead	))	{ accessFlags |= VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT; }
 	if (EHasFlag(resourceAccess, ResourceAccess::kShadingRateRead		))	{ accessFlags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kPredicationRead		))	{ accessFlags |= VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kAccelerationStructureRead)) { accessFlags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kAccelerationStructureWrite)) { accessFlags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kShaderBindingTableRead)) { accessFlags |= VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR; }
 
 	return accessFlags;
 }
@@ -659,15 +673,17 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kDepthStencilWrite:	return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	case ResourceState::kPresent:			return VK_ACCESS_2_MEMORY_READ_BIT;
 	case ResourceState::kShadingRate:		return VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+	case ResourceState::kASBuildRead:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+	case ResourceState::kASBuildWrite:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 	}
 
 	return 0;
 }
 
 
-VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags)
+VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags, bool includeTransfer = true)
 {
-	VkAccessFlags2 flags = VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	VkAccessFlags2 flags = includeTransfer ? (VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT) : 0;
 	if (EHasFlag(usageFlags, BufferUsage::kUniformBuffer		)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kStorageBuffer		)) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kUniformTexelBuffer	)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
@@ -675,6 +691,8 @@ VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags)
 	if (EHasFlag(usageFlags, BufferUsage::kVertexBuffer			)) { flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndexBuffer			)) { flags |= VK_ACCESS_2_INDEX_READ_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndirectBuffer		)) { flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kRayTracing			)) { flags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR
+		| VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR; }
 
 	return flags;
 }
@@ -736,6 +754,10 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 	{
 		stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
 	}
+	if (accessFlags & (VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR))
+	{
+		stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+	}
 
 	return stageFlags;
 }
@@ -758,7 +780,13 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage)
 	if (EHasFlag(pipelineStage, PipelineStage::kComputeShader			)) { stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT; }
 	if (EHasFlag(pipelineStage, PipelineStage::kTransfer				)) { stageFlags |= VK_PIPELINE_STAGE_2_TRANSFER_BIT; }
 	if (EHasFlag(pipelineStage, PipelineStage::kEnd						)) { stageFlags |= VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kPredication				)) { stageFlags |= VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT; }
 	if (EHasFlag(pipelineStage, PipelineStage::kShadingRate				)) { stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR; }
+	if (EHasFlag(pipelineStage, PipelineStage::kMesh					)) { stageFlags |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kAmplificationOrTask		)) { stageFlags |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT; }
+	if (EHasFlag(pipelineStage, PipelineStage::kAccelerationStructureBuild)) { stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR; }
+	if (EHasFlag(pipelineStage, PipelineStage::kAccelerationStructureCopy)) { stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR; }
+	if (EHasFlag(pipelineStage, PipelineStage::kRayTracing				)) { stageFlags |= VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR; }
 
 	return stageFlags;
 }
@@ -799,4 +827,52 @@ VkFragmentShadingRateCombinerOpKHR GetVkShadingRateCombinerOp(ShadingRateCombine
 	case ShadingRateCombinerOp::kMax:		return VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR;
 	default:								return VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
 	}
+}
+
+
+VkBuildAccelerationStructureFlagsKHR GetVkBuildAccelerationStructureFlags(RayTracingAccelerationStructureFlags flags)
+{
+	VkBuildAccelerationStructureFlagsKHR buildFlags = 0;
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kAllowUpdate))		{ buildFlags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kAllowCompaction))	{ buildFlags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kPreferFastTrace))	{ buildFlags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kPreferFastBuild))	{ buildFlags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kLowMemory))			{ buildFlags |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR; }
+
+	return buildFlags;
+}
+
+
+VkRayTracingShaderGroupTypeKHR GetVkRayTracingShaderGroupType(ShaderHitGroupType type)
+{
+	switch (type)
+	{
+	case ShaderHitGroupType::kTriangles: return VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+	case ShaderHitGroupType::kProcedural: return VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+	default: return VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+	}
+}
+
+
+VkGeometryTypeKHR GetVkGeometryType(RayTracingGeometryType type)
+{
+	switch (type)
+	{
+	case RayTracingGeometryType::kTriangles: return VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+	case RayTracingGeometryType::kAABB: return VK_GEOMETRY_TYPE_AABBS_KHR;
+	}
+
+	return VK_GEOMETRY_TYPE_MAX_ENUM_KHR;
+}
+
+
+VkGeometryInstanceFlagsKHR GetVkGeometryInstanceFlags(RayTracingInstanceFlags flags)
+{
+	auto result = 0;
+	if (EHasFlag(flags, RayTracingInstanceFlags::kTriangleCullDisable)) { result |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingInstanceFlags::kTriangleFrontCounterclockwise)) { result |= VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingInstanceFlags::kForceOpaque)) { result |= VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingInstanceFlags::kForceNonOpaque)) { result |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR; }
+
+	return result;
 }

@@ -24,6 +24,7 @@ public:
 	BvRenderDevice* GetDevice() override;
 
 	BV_INLINE VkBuffer GetHandle() const { return m_Buffer; }
+	BV_INLINE VkDeviceAddress GetDeviceAddress() const { return m_DeviceAddress; }
 	BV_INLINE bool IsValid() const { return m_Buffer != VK_NULL_HANDLE; }
 
 	BV_OBJECT_IMPL_INTERFACE(BvBufferVk, BvBuffer, IBvRenderDeviceObject);
@@ -36,6 +37,7 @@ private:
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkBuffer m_Buffer = VK_NULL_HANDLE;
+	VkDeviceAddress m_DeviceAddress = 0;
 	VmaAllocation m_VMAAllocation = nullptr;
 	bool m_NeedsFlush = false;
 };

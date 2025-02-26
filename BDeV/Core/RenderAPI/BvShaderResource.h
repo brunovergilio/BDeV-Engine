@@ -126,9 +126,9 @@ struct ShaderResourceSetDesc
 
 struct ShaderResourceLayoutDesc
 {
-	BvRobinMap<u32, BvRobinMap<u32, ShaderResourceDesc>> m_ShaderResources;
-	ShaderResourceConstantDesc m_ShaderResourceConstant;
-	BvVector<const BvSampler*> m_Samplers;
+	u32 m_ShaderResourceSetCount = 0;
+	const ShaderResourceSetDesc* m_pShaderResourceSets = nullptr;
+	const ShaderResourceConstantDesc* m_pShaderResourceConstant = nullptr;
 };
 
 
@@ -141,7 +141,8 @@ public:
 	BV_INLINE const ShaderResourceLayoutDesc& GetDesc() const { return m_ShaderResourceLayoutDesc; }
 
 protected:
-	BvShaderResourceLayout() {}
+	BvShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc)
+		: m_ShaderResourceLayoutDesc(srlDesc) {}
 	virtual ~BvShaderResourceLayout() = 0 {}
 
 protected:
@@ -177,5 +178,5 @@ public:
 
 protected:
 	BvShaderResourceParams() {}
-	virtual ~BvShaderResourceParams() = 0 {}
+	~BvShaderResourceParams() {}
 };

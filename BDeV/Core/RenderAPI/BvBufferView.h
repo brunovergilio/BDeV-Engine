@@ -17,7 +17,7 @@ public:
 protected:
 	BvBufferView(const BufferViewDesc & bufferViewDesc)
 		: m_BufferViewDesc(bufferViewDesc) {}
-	virtual ~BvBufferView() = 0 {}
+	~BvBufferView() {}
 
 protected:
 	BufferViewDesc m_BufferViewDesc;

@@ -8,7 +8,7 @@
 class BvStringId
 {
 public:
-	constexpr BvStringId() : m_Id(Internal::ConstexprMurmurHash64AHelper("", 1)) {}
+	constexpr BvStringId() : m_Id(Empty()) {}
 	constexpr BvStringId(const BvStringId& rhs) : m_Id(rhs.m_Id) {}
 	constexpr BvStringId(BvStringId&& rhs) noexcept { m_Id = rhs.m_Id; }
 	constexpr BvStringId(u64 id) : m_Id(id) {}

@@ -216,14 +216,14 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const Bv
 	: m_pDevice(pDevice), m_MaxAllocationsPerPool(maxAllocationsPerPool)
 {
 	BvRobinMap<VkDescriptorType, u32> poolSizes;
-	auto it = pLayout->GetDesc().m_ShaderResources.FindKey(set);
-	BV_ASSERT(it != pLayout->GetDesc().m_ShaderResources.cend(), "Set not found in current Shader Resource Layout");
+	auto it = pLayout->GetResources().FindKey(set);
+	BV_ASSERT(it != pLayout->GetResources().cend(), "Set not found in current Shader Resource Layout");
 	auto& resources = it->second;
 	m_Layout = pLayout->GetSetLayoutHandles().At(set);
 	for (auto& resource : resources)
 	{
-		auto& poolSize = poolSizes[GetVkDescriptorType(resource.second.m_ShaderResourceType)];
-		poolSize += resource.second.m_Count;
+		auto& poolSize = poolSizes[GetVkDescriptorType(resource.second->m_ShaderResourceType)];
+		poolSize += resource.second->m_Count;
 	}
 
 	m_PoolSizes.Reserve(poolSizes.Size());

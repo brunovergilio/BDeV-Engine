@@ -19,6 +19,8 @@ class BvQueryVk;
 class BvCommandContextVk;
 class BvQueryHeapManagerVk;
 class BvGPUFenceVk;
+class BvAccelerationStructureVk;
+class BvShaderBindingTableVk;
 
 
 struct BvDeviceInfoVk
@@ -88,13 +90,14 @@ public:
 	bool CreateTextureView(const TextureViewDesc& desc, BvTextureView** ppObj) override;
 	bool CreateSampler(const SamplerDesc& desc, BvSampler** ppObj) override;
 	bool CreateRenderPass(const RenderPassDesc& renderPassDesc, BvRenderPass** ppObj) override;
-	bool CreateShaderResourceLayout(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayout** ppObj) override;
+	bool CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc, BvShaderResourceLayout** ppObj) override;
 	bool CreateShader(const ShaderCreateDesc& shaderDesc, BvShader** ppObj) override;
 	bool CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineState** ppObj) override;
 	bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineState** ppObj) override;
 	bool CreateQuery(QueryType queryType, BvQuery** ppObj) override;
 	bool CreateFence(u64 value, BvGPUFence** ppObj) override;
+	bool CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructure** ppObj) override;
+	bool CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTable** ppObj) override;
 
 	bool CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext, BvSwapChainVk** ppObj);
 	bool CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData, BvBufferVk** ppObj);
@@ -103,13 +106,14 @@ public:
 	bool CreateTextureViewVk(const TextureViewDesc& desc, BvTextureViewVk** ppObj);
 	bool CreateSamplerVk(const SamplerDesc& desc, BvSamplerVk** ppObj);
 	bool CreateRenderPassVk(const RenderPassDesc& renderPassDesc, BvRenderPassVk** ppObj);
-	bool CreateShaderResourceLayoutVk(u32 shaderResourceCount, const ShaderResourceDesc* pShaderResourceDescs,
-		const ShaderResourceConstantDesc* pShaderResourceConstantDesc, BvShaderResourceLayoutVk** ppObj);
+	bool CreateShaderResourceLayoutVk(const ShaderResourceLayoutDesc& srlDesc, BvShaderResourceLayoutVk** ppObj);
 	bool CreateShaderVk(const ShaderCreateDesc& shaderDesc, BvShaderVk** ppObj);
 	bool CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineStateVk** ppObj);
 	bool CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineStateVk** ppObj);
 	bool CreateQueryVk(QueryType queryType, BvQueryVk** ppObj);
 	bool CreateFenceVk(u64 value, BvGPUFenceVk** ppObj);
+	bool CreateAccelerationStructureVk(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructureVk** ppObj);
+	bool CreateShaderBindingTableVk(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTableVk** ppObj);
 
 	void WaitIdle() const override;
 

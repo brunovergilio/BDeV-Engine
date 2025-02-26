@@ -144,9 +144,12 @@ public:
 	void BeginQuery(BvQuery* pQuery) override;
 	void EndQuery(BvQuery* pQuery) override;
 
-	virtual void BeginEvent(const char* pName, const BvColor& color = BvColor::Black) override;
-	virtual void EndEvent() override;
-	virtual void SetMarker(const char* pName, const BvColor& color = BvColor::Black) override;
+	void BeginEvent(const char* pName, const BvColor& color = BvColor::Black) override;
+	void EndEvent() override;
+	void SetMarker(const char* pName, const BvColor& color = BvColor::Black) override;
+
+	void BuildBLAS(const BLASBuildDesc& desc) override;
+	void BuildTLAS(const TLASBuildDesc& desc) override;
 
 	BV_INLINE BvCommandQueueVk* GetCommandQueue() { return &m_Queue; }
 	BV_INLINE BvGPUFenceVk* GetCurrentGPUFence() { return m_Frames[m_ActiveFrameIndex].GetGPUFence(); }
