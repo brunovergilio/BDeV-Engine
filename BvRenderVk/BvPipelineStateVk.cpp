@@ -332,9 +332,21 @@ BvRayTracingPipelineStateVk::BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevi
 	memcpy(ppShaders, m_PipelineStateDesc.m_ppShaders, sizeof(BvShader*) * m_PipelineStateDesc.m_ShaderCount);
 	m_PipelineStateDesc.m_ppShaders = ppShaders;
 
-	auto pHitGroupDescs = BV_NEW_ARRAY(ShaderHitGroupDesc, m_PipelineStateDesc.m_ShaderHitGroupCount);
-	memcpy(pHitGroupDescs, m_PipelineStateDesc.m_pShaderHitGroupDescs, sizeof(ShaderHitGroupDesc) * m_PipelineStateDesc.m_ShaderHitGroupCount);
-	m_PipelineStateDesc.m_pShaderHitGroupDescs = pHitGroupDescs;
+	auto pGroupDescs = BV_NEW_ARRAY(ShaderGroupDesc, m_PipelineStateDesc.m_ShaderGroupCount);
+	memcpy(pGroupDescs, m_PipelineStateDesc.m_pShaderGroupDescs, sizeof(ShaderGroupDesc) * m_PipelineStateDesc.m_ShaderGroupCount);
+	m_PipelineStateDesc.m_pShaderGroupDescs = pGroupDescs;
+
+	for (auto g = 0u; g < m_PipelineStateDesc.m_ShaderGroupCount; ++g)
+	{
+		auto& group = const_cast<ShaderGroupDesc&>(m_PipelineStateDesc.m_pShaderGroupDescs[g]);
+		if (group.m_pName)
+		{
+			auto count = std::char_traits<char>::length(group.m_pName) + 1;
+			auto pName = BV_NEW_ARRAY(char, count);
+			strcpy(pName, group.m_pName);
+			group.m_pName = pName;
+		}
+	}
 
 	Create();
 }
@@ -344,7 +356,16 @@ BvRayTracingPipelineStateVk::~BvRayTracingPipelineStateVk()
 {
 	Destroy();
 
-	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pShaderHitGroupDescs);
+	for (auto g = 0u; g < m_PipelineStateDesc.m_ShaderGroupCount; ++g)
+	{
+		auto& group = m_PipelineStateDesc.m_pShaderGroupDescs[g];
+		if (group.m_pName)
+		{
+			BV_DELETE_ARRAY(group.m_pName);
+		}
+	}
+
+	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pShaderGroupDescs);
 	BV_DELETE_ARRAY(m_PipelineStateDesc.m_ppShaders);
 }
 
@@ -358,7 +379,7 @@ BvRenderDevice* BvRayTracingPipelineStateVk::GetDevice()
 void BvRayTracingPipelineStateVk::Create()
 {
 	BvVector<VkPipelineShaderStageCreateInfo> shaderStages(m_PipelineStateDesc.m_ShaderCount, { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
-	BvVector<VkRayTracingShaderGroupCreateInfoKHR> hitGroups(m_PipelineStateDesc.m_ShaderHitGroupCount, { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR });
+	BvVector<VkRayTracingShaderGroupCreateInfoKHR> groups(m_PipelineStateDesc.m_ShaderGroupCount, { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR });
 
 	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderCount; i++)
 	{
@@ -369,37 +390,37 @@ void BvRayTracingPipelineStateVk::Create()
 		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
 	}
 
-	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderHitGroupCount; ++i)
+	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderGroupCount; ++i)
 	{
-		auto& hitGroupDesc = m_PipelineStateDesc.m_pShaderHitGroupDescs[i];
-		auto& hitGroup = hitGroups[i];
+		auto& groupDesc = m_PipelineStateDesc.m_pShaderGroupDescs[i];
+		auto& group = groups[i];
 
-		switch (hitGroupDesc.m_Type)
+		switch (groupDesc.m_Type)
 		{
-		case ShaderHitGroupType::kNone:
+		case ShaderGroupType::kNone:
 			BV_ASSERT(false, "Shader hit group type can't be kNone");
 			Destroy();
 			return;
-		case ShaderHitGroupType::kGeneral:
-			hitGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-			hitGroup.generalShader = hitGroupDesc.m_General;
-			hitGroup.closestHitShader = VK_SHADER_UNUSED_KHR;
-			hitGroup.anyHitShader = VK_SHADER_UNUSED_KHR;
-			hitGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+		case ShaderGroupType::kGeneral:
+			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+			group.generalShader = groupDesc.m_General;
+			group.closestHitShader = VK_SHADER_UNUSED_KHR;
+			group.anyHitShader = VK_SHADER_UNUSED_KHR;
+			group.intersectionShader = VK_SHADER_UNUSED_KHR;
 			break;
-		case ShaderHitGroupType::kTriangles:
-			hitGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-			hitGroup.generalShader = VK_SHADER_UNUSED_KHR;
-			hitGroup.closestHitShader = hitGroupDesc.m_ClosestHit;
-			hitGroup.anyHitShader = hitGroupDesc.m_AnyHit;
-			hitGroup.intersectionShader = VK_SHADER_UNUSED_KHR;
+		case ShaderGroupType::kTriangles:
+			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+			group.generalShader = VK_SHADER_UNUSED_KHR;
+			group.closestHitShader = groupDesc.m_ClosestHit;
+			group.anyHitShader = groupDesc.m_AnyHit;
+			group.intersectionShader = VK_SHADER_UNUSED_KHR;
 			break;
-		case ShaderHitGroupType::kProcedural:
-			hitGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
-			hitGroup.generalShader = VK_SHADER_UNUSED_KHR;
-			hitGroup.closestHitShader = hitGroupDesc.m_ClosestHit;
-			hitGroup.anyHitShader = hitGroupDesc.m_AnyHit;
-			hitGroup.intersectionShader = hitGroupDesc.m_Intersection;
+		case ShaderGroupType::kProcedural:
+			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+			group.generalShader = VK_SHADER_UNUSED_KHR;
+			group.closestHitShader = groupDesc.m_ClosestHit;
+			group.anyHitShader = groupDesc.m_AnyHit;
+			group.intersectionShader = groupDesc.m_Intersection;
 			break;
 		}
 	}
@@ -408,8 +429,8 @@ void BvRayTracingPipelineStateVk::Create()
 		m_PipelineStateDesc.m_MaxPayloadSize, m_PipelineStateDesc.m_MaxAttributeSize };
 
 	VkRayTracingPipelineCreateInfoKHR ci{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
-	ci.groupCount = u32(hitGroups.Size());
-	ci.pGroups = hitGroups.Data();
+	ci.groupCount = u32(groups.Size());
+	ci.pGroups = groups.Data();
 	ci.stageCount = u32(shaderStages.Size());
 	ci.pStages = shaderStages.Data();
 	ci.maxPipelineRayRecursionDepth = m_PipelineStateDesc.m_MaxPipelineRayRecursionDepth;

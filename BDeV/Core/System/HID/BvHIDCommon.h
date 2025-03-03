@@ -284,4 +284,25 @@ enum class BvMouseButton : u8
 BV_USE_ENUM_CLASS_OPERATORS(BvMouseButton);
 
 
+enum class BvXInputKey : u16
+{
+	kNone = 0,
+	kDPadUP = BvBit(0),
+	kDPadDown = BvBit(1),
+	kDPadLeft = BvBit(2),
+	kDPadRight = BvBit(3),
+	kStart = BvBit(4),
+	kBack = BvBit(5),
+	kLeftThumb = BvBit(6),
+	kRightThumb = BvBit(7),
+	kLeftShoulder = BvBit(8),
+	kRightShoulder = BvBit(9),
+	kA = BvBit(12),
+	kB = BvBit(13),
+	kX = BvBit(14),
+	kY = BvBit(15),
+};
+BV_USE_ENUM_CLASS_OPERATORS(BvXInputKey);
+
+
 const char* const GetKeyName(BvKey key);

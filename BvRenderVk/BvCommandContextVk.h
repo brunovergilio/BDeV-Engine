@@ -35,7 +35,7 @@ public:
 
 	void Reset();
 	BvCommandBufferVk* RequestCommandBuffer();
-	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets);
+	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, bool bindless = false);
 	void UpdateSignalIndex(u64 value);
 	void UpdateSignalValue();
 	void ClearActiveCommandBuffers();
@@ -58,8 +58,8 @@ private:
 	BvResourceBindingStateVk m_ResourceBindingState;
 	BvRobinMap<u64, BvDescriptorPoolVk> m_DescriptorPools;
 	BvRobinMap<u64, BvDescriptorSetVk> m_DescriptorSets;
+	BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
 	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr;
-	//BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
 	BvFramebufferManagerVk* m_pFramebufferManager = nullptr;
 	BvVector<BvQueryVk*> m_Queries;
 	u32 m_UpdatedQueries = 0;
@@ -95,6 +95,7 @@ public:
 
 	void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline) override;
 	void SetComputePipeline(const BvComputePipelineState* pPipeline) override;
+	void SetRayTracingPipeline(const BvRayTracingPipelineState* pPipeline) override;
 
 	void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex) override;
 	void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
@@ -150,6 +151,7 @@ public:
 
 	void BuildBLAS(const BLASBuildDesc& desc) override;
 	void BuildTLAS(const TLASBuildDesc& desc) override;
+	void DispatchRays(const DispatchRaysDesc& drDesc) override;
 
 	BV_INLINE BvCommandQueueVk* GetCommandQueue() { return &m_Queue; }
 	BV_INLINE BvGPUFenceVk* GetCurrentGPUFence() { return m_Frames[m_ActiveFrameIndex].GetGPUFence(); }

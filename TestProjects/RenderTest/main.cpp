@@ -92,6 +92,7 @@ int main()
 	de = df;
 	BvApplication app;
 	app.Initialize();
+	app.RegisterRawInput(false, true);
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
 	typedef bool(*pFNGetShaderCompiler)(IBvShaderCompiler**);
@@ -113,8 +114,8 @@ int main()
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
 	auto pGraphicsContext = pDevice->GetGraphicsContext();
-	BvObjectHandle<BvSwapChainVk> scvk;
-	pDevice->CreateSwapChainVk(pWindow, swapChainDesc, pGraphicsContext, &scvk);
+	//BvObjectHandle<BvSwapChainVk> scvk;
+	//pDevice->CreateSwapChainVk(pWindow, swapChainDesc, pGraphicsContext, &scvk);
 
 	BvSwapChain* pSwapChain;
 	pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext, &pSwapChain);
@@ -228,7 +229,7 @@ int main()
 		u64 ts = 0;
 		if (pQuery->GetResult(&ts, 8))
 		{
-			BvConsole::Print("ts - %llu\n", ts);
+			//BvConsole::Print("ts - %llu\n", ts);
 		}
 
 		//float f = fmodf((float)GetTickCount64(), 360.0f) / 360.0f;

@@ -10,6 +10,7 @@ class BvShaderResourceLayoutVk;
 class BvBufferViewVk;
 class BvTextureViewVk;
 class BvSamplerVk;
+class BvAccelerationStructureVk;
 
 
 struct ResourceIdVk
@@ -31,6 +32,7 @@ struct ResourceDataVk
 		VkDescriptorBufferInfo m_BufferInfo;
 		VkDescriptorImageInfo m_ImageInfo;
 		VkBufferView m_BufferView;
+		VkAccelerationStructureKHR m_AccelerationStructure;
 	};
 
 	Data m_Data;
@@ -39,6 +41,7 @@ struct ResourceDataVk
 	void Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource);
 	void Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource);
 	void Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource);
+	void Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource);
 };
 
 
@@ -54,12 +57,15 @@ public:
 	void SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
 	void SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
 	void SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex);
 
 	void Reset();
 
 	const ResourceDataVk* GetResource(const ResourceIdVk& resId) const;
 
 	BV_INLINE bool IsEmpty() const { return m_Resources.Empty(); }
+	BV_INLINE bool IsDirty(u32 set) const { auto it = m_DirtySets.FindKey(set); return it != m_DirtySets.cend() ? it->second : false; }
+	BV_INLINE void MarkClean(u32 set) { m_DirtySets[set] = false; }
 
 private:
 	ResourceDataVk& AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex);
@@ -67,6 +73,7 @@ private:
 private:
 	BvRobinMap<ResourceIdVk, u32> m_Bindings;
 	BvVector<ResourceDataVk> m_Resources;
+	BvRobinMap<u32, bool> m_DirtySets;
 };
 
 
@@ -114,9 +121,12 @@ private:
 	};
 
 	const BvRenderDeviceVk* m_pDevice = nullptr;
+	const BvShaderResourceLayoutVk* m_pLayout = nullptr;
 	VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
 	BvVector<PoolData> m_DescriptorPools;
 	BvVector<VkDescriptorPoolSize> m_PoolSizes;
+	u32 m_SetIndex = 0;
 	u32 m_MaxAllocationsPerPool = 0;
 	u32 m_CurrPoolIndex = 0;
+	bool m_IsBindless = false;
 };

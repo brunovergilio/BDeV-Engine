@@ -59,7 +59,7 @@ public:
 
 	void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline);
 	void SetComputePipeline(const BvComputePipelineState* pPipeline);
-	void SetRayTracingPipeline(const BvComputePipelineState* pPipeline);
+	void SetRayTracingPipeline(const BvRayTracingPipelineState* pPipeline);
 
 	void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex);
 	void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
@@ -70,6 +70,7 @@ public:
 	void SetTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetSamplers(u32 count, const BvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetAccelerationStructures(u32 count, const BvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetShaderConstants(u32 size, const void* pData, u32 offset);
 
 	void SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding = 0);
@@ -120,6 +121,7 @@ public:
 
 	void BuildBLAS(const BLASBuildDesc& desc);
 	void BuildTLAS(const TLASBuildDesc& desc);
+	void DispatchRays(const DispatchRaysDesc& drDesc);
 
 	BV_INLINE const VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
 	BV_INLINE const BvVector<BvSwapChainVk*>& GetSwapChains() const { return m_SwapChains; }
@@ -135,6 +137,7 @@ private:
 
 	BvVector<BvSwapChainVk*> m_SwapChains;
 	
+	BvVector<VkWriteDescriptorSetAccelerationStructureKHR> m_ASWriteSets;
 	BvVector<VkWriteDescriptorSet> m_WriteSets;
 	BvVector<VkDescriptorSet> m_DescriptorSets;
 

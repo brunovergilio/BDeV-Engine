@@ -5,6 +5,7 @@
 #include "BvBufferViewVk.h"
 #include "BvTextureViewVk.h"
 #include "BvSamplerVk.h"
+#include "BvAccelerationStructureVk.h"
 #include "BvUtilsVk.h"
 
 
@@ -82,6 +83,21 @@ void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pRe
 }
 
 
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource)
+{
+	switch (descriptorType)
+	{
+	case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+		m_Data.m_AccelerationStructure = pResource->GetHandle();
+		m_DescriptorType = descriptorType;
+		break;
+	default:
+		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
+		break;
+	}
+}
+
+
 BvResourceBindingStateVk::BvResourceBindingStateVk()
 {
 }
@@ -133,6 +149,13 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 }
 
 
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+{
+	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
+	data.Set(descriptorType, pResource);
+}
+
+
 void BvResourceBindingStateVk::Reset()
 {
 	m_Bindings.Clear();
@@ -162,6 +185,7 @@ ResourceDataVk& BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32
 		index = static_cast<u32>(m_Resources.Size()) - 1;
 		bindingIt.first->second = index;
 	}
+	m_DirtySets[set] = true;
 
 	return m_Resources[index];
 }
@@ -213,13 +237,13 @@ BvDescriptorPoolVk::BvDescriptorPoolVk()
 
 
 BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool)
-	: m_pDevice(pDevice), m_MaxAllocationsPerPool(maxAllocationsPerPool)
+	: m_pDevice(pDevice), m_MaxAllocationsPerPool(maxAllocationsPerPool), m_pLayout(pLayout), m_SetIndex(set)
 {
 	BvRobinMap<VkDescriptorType, u32> poolSizes;
-	auto it = pLayout->GetResources().FindKey(set);
-	BV_ASSERT(it != pLayout->GetResources().cend(), "Set not found in current Shader Resource Layout");
+	auto it = m_pLayout->GetResources().FindKey(m_SetIndex);
+	BV_ASSERT(it != m_pLayout->GetResources().cend(), "Set not found in current Shader Resource Layout");
 	auto& resources = it->second;
-	m_Layout = pLayout->GetSetLayoutHandles().At(set);
+	m_Layout = m_pLayout->GetSetLayoutHandles().At(m_SetIndex);
 	for (auto& resource : resources)
 	{
 		auto& poolSize = poolSizes[GetVkDescriptorType(resource.second->m_ShaderResourceType)];
@@ -230,6 +254,19 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const Bv
 	for (auto& poolSize : poolSizes)
 	{
 		m_PoolSizes.PushBack({ poolSize.first, poolSize.second * m_MaxAllocationsPerPool });
+	}
+
+	if (it != m_pLayout->GetResources().cend())
+	{
+		auto& map = it->second;
+		for (auto& res : map)
+		{
+			if (res.second->m_Bindless)
+			{
+				m_IsBindless = true;
+				break;
+			}
+		}
 	}
 }
 
@@ -264,10 +301,9 @@ BvDescriptorPoolVk::~BvDescriptorPoolVk()
 
 void BvDescriptorPoolVk::Create()
 {
-	VkDescriptorPoolCreateInfo poolCI{};
+	VkDescriptorPoolCreateInfo poolCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 	//poolCI.pNext = nullptr;
-	//poolCI.flags = 0;
-	poolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolCI.flags = m_IsBindless ? VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT : 0;
 	poolCI.maxSets = m_MaxAllocationsPerPool;
 	poolCI.poolSizeCount = (u32)m_PoolSizes.Size();
 	poolCI.pPoolSizes = m_PoolSizes.Data();

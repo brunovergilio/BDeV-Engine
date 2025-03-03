@@ -55,7 +55,6 @@ BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, co
 		{
 			auto& res = set.m_pResources[j];
 			m_pShaderResources[currResource] = res;
-
 			m_Resources[set.m_Index][res.m_Binding] = &m_pShaderResources[currResource];
 
 			if (res.m_ppStaticSamplers != nullptr)
@@ -112,11 +111,14 @@ void BvShaderResourceLayoutVk::Create()
 	BvVector<VkDescriptorSetLayout> layouts(m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount);
 
 	BvVector<VkDescriptorSetLayoutBinding> bindings;
+	BvVector<VkDescriptorBindingFlags> flags;
 	BvVector<VkSampler> samplers;
 	u32 layoutIndex = 0;
 	for (auto& setPair : m_Resources)
 	{
 		u32 currSamplerIndex = 0;
+		bool isBindful = false;
+		bool isBindless = false;
 		for (auto& resPair : setPair.second)
 		{
 			auto& currResource = *resPair.second;
@@ -135,11 +137,37 @@ void BvShaderResourceLayoutVk::Create()
 					currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), samplers.Data() + currSamplerIndex });
 				currSamplerIndex += currResource.m_Count;
 			}
+			if (currResource.m_Bindless)
+			{
+				isBindless = true;
+				flags.EmplaceBack() = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+			}
+			else
+			{
+				isBindful = true;
+			}
+		}
+
+		if (isBindful && isBindless)
+		{
+			// I decided to keep these separate for the moment, as dealing with both on the same set would be dreadful
+			BV_ASSERT(false, "Can't have bindful and bindless resources on the same set");
+			Destroy();
+			return;
 		}
 
 		VkDescriptorSetLayoutCreateInfo layoutCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 		layoutCI.bindingCount = bindings.Size();
 		layoutCI.pBindings = bindings.Data();
+
+		VkDescriptorSetLayoutBindingFlagsCreateInfo flagsCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+		if (isBindless)
+		{
+			flagsCI.bindingCount = flags.Size();
+			flagsCI.pBindingFlags = flags.Data();
+			layoutCI.pNext = &flagsCI;
+			layoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+		}
 
 		vkCreateDescriptorSetLayout(m_pDevice->GetHandle(), &layoutCI, nullptr, &layouts[layoutIndex]);
 		m_Layouts[setPair.first] = layouts[layoutIndex++];
@@ -174,7 +202,7 @@ void BvShaderResourceLayoutVk::Destroy()
 		m_PipelineLayout = VK_NULL_HANDLE;
 	}
 
-	for (auto && layout : m_Layouts)
+	for (auto& layout : m_Layouts)
 	{
 		vkDestroyDescriptorSetLayout(m_pDevice->GetHandle(), layout.second, nullptr);
 	}

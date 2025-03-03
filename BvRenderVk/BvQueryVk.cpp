@@ -29,7 +29,7 @@ bool BvQueryVk::GetResult(void* pData, u64 size)
 	{
 		return false;
 	}
-	printf("Result for %d - ", m_LatestResultIndex);
+
 	return queryData.m_pQueryHeap ? queryData.m_pQueryHeap->GetResult(queryData, m_LatestResultIndex, pData, size) : false;
 }
 

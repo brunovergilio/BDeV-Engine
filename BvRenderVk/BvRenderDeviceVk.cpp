@@ -187,6 +187,19 @@ bool BvRenderDeviceVk::CreateComputePipeline(const ComputePipelineStateDesc& com
 }
 
 
+bool BvRenderDeviceVk::CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, BvRayTracingPipelineState** ppObj)
+{
+	BvRayTracingPipelineStateVk* pObjVk;
+	if (CreateRayTracingPipelineVk(rayTracingPipelineStateDesc, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
 bool BvRenderDeviceVk::CreateQuery(QueryType queryType, BvQuery** ppObj)
 {
 	BvQueryVk* pObjVk;
@@ -226,10 +239,10 @@ bool BvRenderDeviceVk::CreateAccelerationStructure(const RayTracingAccelerationS
 }
 
 
-bool BvRenderDeviceVk::CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTable** ppObj)
+bool BvRenderDeviceVk::CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvCommandContext* pContext, BvShaderBindingTable** ppObj)
 {
 	BvShaderBindingTableVk* pObjVk;
-	if (CreateShaderBindingTableVk(sbtDesc, &pObjVk))
+	if (CreateShaderBindingTableVk(sbtDesc, pContext, &pObjVk))
 	{
 		*ppObj = pObjVk;
 		return true;
@@ -387,6 +400,20 @@ bool BvRenderDeviceVk::CreateComputePipelineVk(const ComputePipelineStateDesc& c
 }
 
 
+bool BvRenderDeviceVk::CreateRayTracingPipelineVk(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, BvRayTracingPipelineStateVk** ppObj)
+{
+	*ppObj = BV_OBJECT_CREATE(BvRayTracingPipelineStateVk, this, rayTracingPipelineStateDesc, VK_NULL_HANDLE);
+	if (!(*ppObj)->IsValid())
+	{
+		(*ppObj)->Release();
+		return false;
+	}
+
+	m_DeviceObjects.PushBack(*ppObj);
+	return true;
+}
+
+
 bool BvRenderDeviceVk::CreateQueryVk(QueryType queryType, BvQueryVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvQueryVk, this, queryType, 3);
@@ -424,9 +451,9 @@ bool BvRenderDeviceVk::CreateAccelerationStructureVk(const RayTracingAcceleratio
 }
 
 
-bool BvRenderDeviceVk::CreateShaderBindingTableVk(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTableVk** ppObj)
+bool BvRenderDeviceVk::CreateShaderBindingTableVk(const ShaderBindingTableDesc& sbtDesc, BvCommandContext* pContext, BvShaderBindingTableVk** ppObj)
 {
-	*ppObj = BV_OBJECT_CREATE(BvShaderBindingTableVk, this, sbtDesc);
+	*ppObj = BV_OBJECT_CREATE(BvShaderBindingTableVk, this, sbtDesc, m_pDeviceInfo->m_ExtendedProperties.rayTracingPipelineProps, TO_VK(pContext));
 	m_DeviceObjects.PushBack(*ppObj);
 
 	return true;

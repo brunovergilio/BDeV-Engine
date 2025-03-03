@@ -82,35 +82,56 @@ BvCommandBufferVk* BvFrameDataVk::RequestCommandBuffer()
 }
 
 
-VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets)
+VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, bool bindless)
 {
-	u64 descriptorSetHash = 0;
-	for (auto& writeSet : writeSets)
-	{
-		HashCombine(descriptorSetHash, writeSet);
-	}
-	auto it = m_DescriptorSets.FindKey(descriptorSetHash);
-	if (it != m_DescriptorSets.cend())
-	{
-		return it->second.GetHandle();
-	}
-
 	auto srlHash = MurmurHash64A(&pLayout->GetSetLayoutHandles().At(set), sizeof(VkDescriptorSetLayout));
 	auto& pool = m_DescriptorPools[srlHash];
 	if (!pool.IsValid())
 	{
-		pool = BvDescriptorPoolVk(m_pDevice, pLayout, set, 16);
+		pool = BvDescriptorPoolVk(m_pDevice, pLayout, set, bindless ? 1 : 16);
 	}
-	auto descriptorSet = pool.Allocate();
-	auto& descriptorSetVk = m_DescriptorSets[descriptorSetHash];
-	descriptorSetVk = BvDescriptorSetVk(m_pDevice, descriptorSet);
-	for (auto& writeSet : writeSets)
-	{
-		writeSet.dstSet = descriptorSetVk.GetHandle();
-	}
-	descriptorSetVk.Update(writeSets);
 
-	return descriptorSetVk.GetHandle();
+	VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+
+	if (bindless)
+	{
+		auto result = m_BindlessDescriptorSets.Emplace(srlHash, BvDescriptorSetVk());
+		if (result.second)
+		{
+			result.first->second = BvDescriptorSetVk(m_pDevice, pool.Allocate());
+		}
+
+		for (auto& writeSet : writeSets)
+		{
+			writeSet.dstSet = result.first->second.GetHandle();
+		}
+		result.first->second.Update(writeSets);
+
+		descriptorSet = result.first->second.GetHandle();
+	}
+	else
+	{
+		u64 descriptorSetHash = 0;
+		for (auto& writeSet : writeSets)
+		{
+			HashCombine(descriptorSetHash, writeSet);
+		}
+
+		auto result = m_DescriptorSets.Emplace(descriptorSetHash, BvDescriptorSetVk());
+		if (result.second)
+		{
+			result.first->second = BvDescriptorSetVk(m_pDevice, pool.Allocate());
+			for (auto& writeSet : writeSets)
+			{
+				writeSet.dstSet = result.first->second.GetHandle();
+			}
+			result.first->second.Update(writeSets);
+		}
+
+		descriptorSet = result.first->second.GetHandle();
+	}
+
+	return descriptorSet;
 }
 
 
@@ -326,6 +347,12 @@ void BvCommandContextVk::SetGraphicsPipeline(const BvGraphicsPipelineState* pPip
 void BvCommandContextVk::SetComputePipeline(const BvComputePipelineState* pPipeline)
 {
 	m_pCurrCommandBuffer->SetComputePipeline(pPipeline);
+}
+
+
+void BvCommandContextVk::SetRayTracingPipeline(const BvRayTracingPipelineState* pPipeline)
+{
+	m_pCurrCommandBuffer->SetRayTracingPipeline(pPipeline);
 }
 
 
@@ -565,6 +592,12 @@ void BvCommandContextVk::BuildBLAS(const BLASBuildDesc& desc)
 void BvCommandContextVk::BuildTLAS(const TLASBuildDesc& desc)
 {
 	m_pCurrCommandBuffer->BuildTLAS(desc);
+}
+
+
+void BvCommandContextVk::DispatchRays(const DispatchRaysDesc& drDesc)
+{
+	m_pCurrCommandBuffer->DispatchRays(drDesc);
 }
 
 

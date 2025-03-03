@@ -1,7 +1,6 @@
 #pragma once
 
 
-//BV_IBVOBJECT_DEFINE_ID(, "8a9c658d-963e-49a2-9d67-7e5316f1a8fc");
 //BV_IBVOBJECT_DEFINE_ID(, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
 
 
@@ -19,6 +18,7 @@ class BvAccelerationStructure;
 class BvRayTracingPipelineState;
 class BvShader;
 class BvShaderResourceLayout;
+class BvShaderBindingTable;
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -874,6 +874,7 @@ enum class ShaderResourceType : u8
 	kTexture,
 	kRWTexture,
 	kSampler,
+	kAccelerationStructure,
 };
 
 
@@ -1500,7 +1501,7 @@ struct RayTracingAccelerationStructureDesc
 };
 
 
-enum class ShaderHitGroupType : u8
+enum class ShaderGroupType : u8
 {
 	kNone,
 	kGeneral,
@@ -1509,12 +1510,12 @@ enum class ShaderHitGroupType : u8
 };
 
 
-struct ShaderHitGroupDesc
+struct ShaderGroupDesc
 {
 	static constexpr u32 kUnusedShader = kU32Max;
 
-	BvStringId m_Name;
-	ShaderHitGroupType m_Type = ShaderHitGroupType::kNone;
+	const char* m_pName = nullptr;
+	ShaderGroupType m_Type = ShaderGroupType::kNone;
 	u32 m_General = kUnusedShader;
 	u32 m_ClosestHit = kUnusedShader;
 	u32 m_AnyHit = kUnusedShader;
@@ -1525,14 +1526,24 @@ struct ShaderHitGroupDesc
 struct RayTracingPipelineStateDesc
 {
 	u32 m_ShaderCount = 0;
-	u32 m_ShaderHitGroupCount = 0;
+	u32 m_ShaderGroupCount = 0;
 	const BvShader* const* m_ppShaders = nullptr;
-	const ShaderHitGroupDesc* m_pShaderHitGroupDescs = nullptr;
+	const ShaderGroupDesc* m_pShaderGroupDescs = nullptr;
 	BvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
 	u32 m_MaxPipelineRayRecursionDepth = 0;
 	u32 m_MaxPayloadSize = 0;
 	u32 m_MaxAttributeSize = 0;
 	bool m_ForcePayloadAndAttributeSizes = false; // Vulkan only
+};
+
+
+enum ShaderBindingTableGroupType : u8
+{
+	kRayGen,
+	kMiss,
+	kHit,
+	kCallable,
+	kCount
 };
 
 
@@ -1542,21 +1553,13 @@ struct ShaderBindingTableDesc
 };
 
 
-struct ShaderBindingTableDataDesc
-{
-	BvBuffer* m_pBuffer = nullptr;
-	u64 m_Offset = 0;
-	u64 m_SizeInBytes = 0;
-	u64 m_StrideInBytes = 0;
-};
-
-
 struct DispatchRaysDesc
 {
-	ShaderBindingTableDataDesc m_RayGen;
-	ShaderBindingTableDataDesc m_Miss;
-	ShaderBindingTableDataDesc m_HitGroup;
-	ShaderBindingTableDataDesc m_Callable;
+	BvShaderBindingTable* m_pSBT = nullptr;
+	u32 m_RayGenIndex = 0;
+	u32 m_MissIndex = 0;
+	u32 m_HitGroupIndex = 0;
+	u32 m_CallableIndex = 0;
 	u32 m_Width = 0;
 	u32 m_Height = 0;
 	u32 m_Depth = 0;

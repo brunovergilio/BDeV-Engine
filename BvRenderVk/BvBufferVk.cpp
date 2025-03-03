@@ -154,7 +154,7 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 
 	if (bufferCreateInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
 	{
-		VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
+		VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, nullptr, m_Buffer };
 		m_DeviceAddress = vkGetBufferDeviceAddress(device, &addressInfo);
 	}
 

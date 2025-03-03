@@ -13,6 +13,7 @@ class BvSampler;
 class BvRenderPass;
 class BvGraphicsPipelineState;
 class BvComputePipelineState;
+class BvRayTracingPipelineState;
 class BvShaderResourceParams;
 class BvQuery;
 
@@ -72,6 +73,7 @@ public:
 
 	virtual void SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline) = 0;
 	virtual void SetComputePipeline(const BvComputePipelineState* pPipeline) = 0;
+	virtual void SetRayTracingPipeline(const BvRayTracingPipelineState* pPipeline) = 0;
 
 	virtual void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex = 0) = 0;
 	virtual void SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
@@ -142,7 +144,7 @@ public:
 
 	virtual void BuildBLAS(const BLASBuildDesc& blasDesc) = 0;
 	virtual void BuildTLAS(const TLASBuildDesc& tlasDesc) = 0;
-	//virtual void DispatchRays(const DispatchRaysDesc& drDesc) = 0;
+	virtual void DispatchRays(const DispatchRaysDesc& drDesc) = 0;
 
 protected:
 	BvCommandContext() {}

@@ -541,14 +541,15 @@ VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType)
 {
 	switch (resourceType)
 	{
-	case ShaderResourceType::kConstantBuffer:		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	case ShaderResourceType::kStructuredBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	case ShaderResourceType::kRWStructuredBuffer:	return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	case ShaderResourceType::kFormattedBuffer:		return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-	case ShaderResourceType::kRWFormattedBuffer:	return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-	case ShaderResourceType::kTexture:				return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	case ShaderResourceType::kRWTexture:			return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	case ShaderResourceType::kSampler:				return VK_DESCRIPTOR_TYPE_SAMPLER;
+	case ShaderResourceType::kConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	case ShaderResourceType::kStructuredBuffer:			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case ShaderResourceType::kRWStructuredBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case ShaderResourceType::kFormattedBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+	case ShaderResourceType::kRWFormattedBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+	case ShaderResourceType::kTexture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	case ShaderResourceType::kRWTexture:				return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	case ShaderResourceType::kSampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;
+	case ShaderResourceType::kAccelerationStructure:	return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 	}
 
 	return VK_DESCRIPTOR_TYPE_MAX_ENUM;
@@ -681,7 +682,7 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 }
 
 
-VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags, bool includeTransfer = true)
+VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags, bool includeTransfer)
 {
 	VkAccessFlags2 flags = includeTransfer ? (VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT) : 0;
 	if (EHasFlag(usageFlags, BufferUsage::kUniformBuffer		)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
@@ -843,12 +844,12 @@ VkBuildAccelerationStructureFlagsKHR GetVkBuildAccelerationStructureFlags(RayTra
 }
 
 
-VkRayTracingShaderGroupTypeKHR GetVkRayTracingShaderGroupType(ShaderHitGroupType type)
+VkRayTracingShaderGroupTypeKHR GetVkRayTracingShaderGroupType(ShaderGroupType type)
 {
 	switch (type)
 	{
-	case ShaderHitGroupType::kTriangles: return VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-	case ShaderHitGroupType::kProcedural: return VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+	case ShaderGroupType::kTriangles: return VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+	case ShaderGroupType::kProcedural: return VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
 	default: return VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
 	}
 }

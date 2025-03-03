@@ -13,8 +13,6 @@ class BvKeyboard final
 public:
 	static constexpr u32 kMaxKeyCount = 256;
 
-	friend class BvInput;
-
 	struct KeyState
 	{
 		u32 m_ScanCode;
@@ -39,7 +37,7 @@ public:
 	// Checks if the key is up
 	bool KeyIsUp(BvKey key) const;
 
-	// Retrieves a key's full state
+	// Retrieves a key's current state
 	const KeyState& GetKeyState(BvKey key) const;
 
 	// Retrieves all key state changes from the last message loop

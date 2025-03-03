@@ -66,7 +66,7 @@
     <ClInclude Include="Core\RenderAPI\BvQuery.h" />
     <ClInclude Include="Core\System\Application\BvMessageHandler.h" />
     <ClInclude Include="BDeV.h" />
-    <ClInclude Include="Core\System\HID\BvController.h" />
+    <ClInclude Include="Core\System\HID\BvXInput.h" />
     <ClInclude Include="Core\Utils\BvUUID.h" />
     <ClInclude Include="Core\System\Memory\Allocators\BvDefaultAllocator.h" />
     <ClInclude Include="Core\Utils\BvLog.h" />
@@ -88,6 +88,7 @@
     <ClInclude Include="Core\RenderAPI\BvRenderDeviceObject.h" />
     <ClInclude Include="Core\RenderAPI\BvAccelerationStructure.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderBindingTable.h" />
+    <ClInclude Include="Core\RenderAPI\BvRenderUI.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -136,6 +137,7 @@
     <ClCompile Include="Core\Math\BvIntersections.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
     <ClCompile Include="Core\Utils\BvLog.cpp" />
+    <ClCompile Include="Core\System\HID\Windows\BvXInputWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Math\BvMathVector.inl" />

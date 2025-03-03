@@ -279,15 +279,15 @@ template<typename Key, typename Value, typename MemoryArenaType, typename Hash, 
 template<typename... Args>
 inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Emplace(Key && key, Args &&... args)
 {
-	if (m_Size == m_Capacity)
-	{
-		ResizeAndRehash(CalculateNewContainerSize(m_Capacity));
-	}
-
 	auto iter = FindKey(key);
 	if (iter != cend())
 	{
 		return std::make_pair(iter, false);
+	}
+
+	if (m_Size == m_Capacity)
+	{
+		ResizeAndRehash(CalculateNewContainerSize(m_Capacity));
 	}
 
 	auto index = EmplaceInternal(m_pData, m_pHashes, std::forward<Key>(key), std::forward<Args>(args)...);
@@ -301,15 +301,15 @@ template<typename Key, typename Value, typename MemoryArenaType, typename Hash, 
 template<typename... Args>
 inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Emplace(const Key & key, Args &&... args)
 {
-	if (m_Size == m_Capacity)
-	{
-		ResizeAndRehash(CalculateNewContainerSize(m_Capacity));
-	}
-
 	auto iter = FindKey(key);
 	if (iter != cend())
 	{
 		return std::make_pair(iter, false);
+	}
+
+	if (m_Size == m_Capacity)
+	{
+		ResizeAndRehash(CalculateNewContainerSize(m_Capacity));
 	}
 
 	auto index = EmplaceInternal(m_pData, m_pHashes, key, std::forward<Args>(args)...);

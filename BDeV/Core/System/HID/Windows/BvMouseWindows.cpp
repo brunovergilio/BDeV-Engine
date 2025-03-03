@@ -9,6 +9,16 @@ void SetGlobalMouseStateData(BvMouseButton mouseButtons, i32 x, i32 y, i32 wheel
 BvMouse::MouseState g_CurrGlobalMouseState{};
 BvMouse::MouseState g_PrevGlobalMouseState{};
 
+constexpr u32 kMaxMouseStateChangesPerFrame = 128;
+BvMouse::MouseState g_MouseStateChanges[kMaxMouseStateChangesPerFrame]{};
+u32 g_MouseStateChangeCount = 0;
+
+
+void UpdateMouse()
+{
+	g_MouseStateChangeCount = 0;
+}
+
 
 BvMouse::BvMouse()
 {
@@ -50,6 +60,20 @@ const BvMouse::MouseState& BvMouse::GetMouseState() const
 }
 
 
+u32 BvMouse::GetMouseStateChanges(MouseState* pMouseStates) const
+{
+	if (pMouseStates)
+	{
+		for (auto i = 0u; i < g_MouseStateChangeCount; ++i)
+		{
+			pMouseStates[i] = g_MouseStateChanges[i];
+		}
+	}
+
+	return g_MouseStateChangeCount;
+}
+
+
 std::pair<i32, i32> BvMouse::GetGlobalPosition() const
 {
 	POINT p;
@@ -58,9 +82,18 @@ std::pair<i32, i32> BvMouse::GetGlobalPosition() const
 }
 
 
-std::pair<i64, i64> BvMouse::GetRelativePosition() const
+void ProcessLegacyMouseMessage(u32 flags, i32 x, i32 y, i32 wheelDeltaV, i32 wheelDeltaH, const BvMouse::MouseState*& pMouseState)
 {
-	return std::pair<i64, i64>(g_CurrGlobalMouseState.relativeMousePositionX, g_CurrGlobalMouseState.relativeMousePositionY);
+	BvMouseButton mouseButtons = BvMouseButton::kNone;
+
+	if (flags & MK_LBUTTON) { mouseButtons |= BvMouseButton::kLeft; }
+	if (flags & MK_RBUTTON) { mouseButtons |= BvMouseButton::kRight; }
+	if (flags & MK_MBUTTON) { mouseButtons |= BvMouseButton::kMiddle; }
+	if (flags & MK_XBUTTON1) { mouseButtons |= BvMouseButton::kButton4; }
+	if (flags & MK_XBUTTON2) { mouseButtons |= BvMouseButton::kButton5; }
+
+	if (wheelDeltaV) { mouseButtons |= BvMouseButton::kWheel; }
+	if (wheelDeltaH) { mouseButtons |= BvMouseButton::kHWheel; }
 }
 
 
@@ -94,4 +127,11 @@ void SetGlobalMouseStateData(BvMouseButton mouseButtons, i32 x, i32 y, i32 wheel
 	g_CurrGlobalMouseState.relativeMousePositionY += y;
 	g_CurrGlobalMouseState.mouseWheelDeltaX += wheelDeltaX;
 	g_CurrGlobalMouseState.mouseWheelDeltaY += wheelDeltaY;
+
+	if (g_MouseStateChangeCount == kMaxMouseStateChangesPerFrame)
+	{
+		BV_ASSERT(false, "Increase kMaxMouseStateChangesPerFrame");
+		return;
+	}
+	g_MouseStateChanges[g_MouseStateChangeCount++] = g_CurrGlobalMouseState;
 }

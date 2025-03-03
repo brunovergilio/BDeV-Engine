@@ -22,6 +22,7 @@
 #include "BvCommandContextVk.h"
 #include "BvShaderResourceVk.h"
 #include "BvAccelerationStructureVk.h"
+#include "BvShaderBindingTableVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
@@ -394,6 +395,7 @@ void BvCommandBufferVk::SetScissors(u32 scissorCount, const Rect* pScissors)
 void BvCommandBufferVk::SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline)
 {
 	m_pComputePipeline = nullptr;
+	m_pRayTracingPipeline = nullptr;
 	m_pGraphicsPipeline = TO_VK(pPipeline);
 	m_pShaderResourceLayout = TO_VK(m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout);
 	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGraphicsPipeline->GetHandle());
@@ -405,9 +407,22 @@ void BvCommandBufferVk::SetComputePipeline(const BvComputePipelineState* pPipeli
 	ResetRenderTargets();
 
 	m_pGraphicsPipeline = nullptr;
+	m_pRayTracingPipeline = nullptr;
 	m_pComputePipeline = TO_VK(pPipeline);
 	m_pShaderResourceLayout = TO_VK(m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
 	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE, m_pComputePipeline->GetHandle());
+}
+
+
+void BvCommandBufferVk::SetRayTracingPipeline(const BvRayTracingPipelineState* pPipeline)
+{
+	ResetRenderTargets();
+
+	m_pGraphicsPipeline = nullptr;
+	m_pComputePipeline = nullptr;
+	m_pRayTracingPipeline = TO_VK(pPipeline);
+	m_pShaderResourceLayout = TO_VK(m_pRayTracingPipeline->GetDesc().m_pShaderResourceLayout);
+	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_pRayTracingPipeline->GetHandle());
 }
 
 
@@ -423,6 +438,10 @@ void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, BvShade
 	if (m_pComputePipeline)
 	{
 		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
+	}
+	else if (m_pRayTracingPipeline)
+	{
+		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
 	}
 
 	vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), startIndex, resourceParamsCount, m_DescriptorSets.Data(), 0, nullptr);
@@ -505,6 +524,16 @@ void BvCommandBufferVk::SetSamplers(u32 count, const BvSampler* const* ppResourc
 	for (auto i = 0; i < count; ++i)
 	{
 		bindingState.SetResource(VK_DESCRIPTOR_TYPE_SAMPLER, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
+}
+
+
+void BvCommandBufferVk::SetAccelerationStructures(u32 count, const BvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, TO_VK(ppResources[i]), set, binding, startIndex + i);
 	}
 }
 
@@ -1166,8 +1195,22 @@ void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc)
 	VkAccelerationStructureBuildRangeInfoKHR range{};
 	range.primitiveCount = desc.m_InstanceCount;
 
-	VkAccelerationStructureBuildRangeInfoKHR* pRanges[] = {&range};
+	VkAccelerationStructureBuildRangeInfoKHR* pRanges[] = { &range };
 	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, pRanges);
+}
+
+
+void BvCommandBufferVk::DispatchRays(const DispatchRaysDesc& drDesc)
+{
+	auto pSBT = TO_VK(drDesc.m_pSBT);
+	VkStridedDeviceAddressRegionKHR addressRegions[4];
+	pSBT->GetAddressRegion(ShaderBindingTableGroupType::kRayGen, drDesc.m_RayGenIndex, addressRegions[0]);
+	pSBT->GetAddressRegion(ShaderBindingTableGroupType::kMiss, drDesc.m_MissIndex, addressRegions[1]);
+	pSBT->GetAddressRegion(ShaderBindingTableGroupType::kHit, drDesc.m_HitGroupIndex, addressRegions[2]);
+	pSBT->GetAddressRegion(ShaderBindingTableGroupType::kCallable, drDesc.m_CallableIndex, addressRegions[3]);
+
+	vkCmdTraceRaysKHR(m_CommandBuffer, &addressRegions[0], &addressRegions[1], &addressRegions[2], &addressRegions[3],
+		drDesc.m_Width, drDesc.m_Height, drDesc.m_Depth);
 }
 
 
@@ -1179,12 +1222,32 @@ void BvCommandBufferVk::FlushDescriptorSets()
 		return;
 	}
 
+	auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+	if (m_pComputePipeline)
+	{
+		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
+	}
+	else if (m_pRayTracingPipeline)
+	{
+		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+	}
+
 	auto& resources = m_pShaderResourceLayout->GetResources();
 	for (auto& resourceSet : resources)
 	{
 		u32 set = resourceSet.first;
+		if (!rbs.IsDirty(set))
+		{
+			continue;
+		}
+		bool bindless = false;
+
 		for (auto& resource : resourceSet.second)
 		{
+			if (resource.second->m_Bindless)
+			{
+				bindless = true;
+			}
 			for (auto i = 0u; i < resource.second->m_Count; i++)
 			{
 				ResourceIdVk resId{ set, resource.second->m_Binding, i };
@@ -1213,6 +1276,12 @@ void BvCommandBufferVk::FlushDescriptorSets()
 					case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 						writeSet.pTexelBufferView = &pResourceData->m_Data.m_BufferView;
 						break;
+					case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+						auto& asWrite = m_ASWriteSets.EmplaceBack(VkWriteDescriptorSetAccelerationStructureKHR{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR });
+						asWrite.accelerationStructureCount = 1;
+						asWrite.pAccelerationStructures = &pResourceData->m_Data.m_AccelerationStructure;
+						writeSet.pNext = &asWrite;
+						break;
 					}
 				}
 			}
@@ -1220,16 +1289,14 @@ void BvCommandBufferVk::FlushDescriptorSets()
 
 		if (!m_WriteSets.Empty())
 		{
-			auto descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets);
-			auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-			if (m_pComputePipeline)
-			{
-				pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
-			}
+			auto descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets, bindless);
 
 			vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), set, 1, &descriptorSet, 0, nullptr);
 			m_WriteSets.Clear();
+			m_ASWriteSets.Clear();
 		}
+
+		rbs.MarkClean(set);
 	}
 }
 

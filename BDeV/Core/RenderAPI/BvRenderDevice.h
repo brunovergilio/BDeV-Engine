@@ -37,10 +37,11 @@ public:
 	virtual bool CreateShader(const ShaderCreateDesc& shaderDesc, BvShader** ppObj) = 0;
 	virtual bool CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineState** ppObj) = 0;
 	virtual bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineState** ppObj) = 0;
+	virtual bool CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, BvRayTracingPipelineState** ppObj) = 0;
 	virtual bool CreateQuery(QueryType queryType, BvQuery** ppObj) = 0;
 	virtual bool CreateFence(u64 value, BvGPUFence** ppObj) = 0;
 	virtual bool CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructure** ppObj) = 0;
-	virtual bool CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvShaderBindingTable** ppObj) = 0;
+	virtual bool CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvCommandContext* pContext, BvShaderBindingTable** ppObj) = 0;
 	
 	virtual void WaitIdle() const = 0;
 

@@ -7,8 +7,11 @@
 #include "BDeV/Core/System/Application/BvMessageHandler.h"
 
 
-extern void UpdateInputBuffers();
+extern void UpdateKeyboard();
+extern void UpdateMouse();
+extern void UpdateXInput();
 extern void ProcessLegacyKeyboardMessage(WPARAM wParam, LPARAM lParam, const BvKeyboard::KeyState*& pKeyState);
+extern void ProcessLegacyMouseMessage(u32 flags, i32 x, i32 y, i32 wheelDeltaV, i32 wheelDeltaH, const BvMouse::MouseState*& pMouseState);
 extern void ProcessRawInputKeyboardMessage(const RAWKEYBOARD& rawKB, const BvKeyboard::KeyState*& pKeyState);
 extern void ProcessRawInputMouseMessage(const RAWMOUSE& rawMouse);
 extern void ProcessCharInputMessage(u32 codePoint, LPARAM lParam, bool isDeadKey, const BvKeyboard::KeyState*& pKeyState);
@@ -160,7 +163,9 @@ void BvApplication::Shutdown()
 
 void BvApplication::ProcessOSEvents()
 {
-	UpdateInputBuffers();
+	UpdateKeyboard();
+	UpdateMouse();
+	UpdateXInput();
 
 	if (!m_pImpl->m_KeyboardUsesRawInput)
 	{
@@ -290,6 +295,34 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		{
 			BvDispatchEvent(pApp, KeyUp, pKeyState->m_Key, pKeyState->m_ScanCode);
 		}
+		return 0;
+	}
+
+	case WM_MOUSEMOVE:
+	case WM_MOUSEWHEEL:
+	case WM_MOUSEHWHEEL:
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_RBUTTONDOWN:
+	case WM_RBUTTONUP:
+	case WM_MBUTTONDOWN:
+	case WM_MBUTTONUP:
+	case WM_XBUTTONDOWN:
+	case WM_XBUTTONUP:
+	{
+		if (s_pApp->m_pImpl->m_MouseUsesRawInput)
+		{
+			break;
+		}
+
+		i32 wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+		u32 flags = GET_KEYSTATE_WPARAM(wParam);
+		i32 x = ((i32)(i16)LOWORD(lParam));
+		i32 y = ((i32)(i16)HIWORD(lParam));
+
+		const BvMouse::MouseState* pMouseState;
+		ProcessLegacyMouseMessage(flags, x, y, uMsg == WM_MOUSEWHEEL ? wheelDelta : 0, uMsg == WM_MOUSEHWHEEL ? wheelDelta : 0, pMouseState);
+
 		return 0;
 	}
 

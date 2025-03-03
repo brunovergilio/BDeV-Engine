@@ -5,7 +5,10 @@
 
 BvKeyboard::KeyState g_CurrGlobalKeyStates[BvKeyboard::kMaxKeyCount]{};
 BvKeyboard::KeyState g_PrevGlobalKeyStates[BvKeyboard::kMaxKeyCount]{};
-u32 g_KeyStateChangeIndices[BvKeyboard::kMaxKeyCount]{};
+
+constexpr u32 kMaxKeyStateChangesPerFrame = 16;
+u32 g_KeyStateChangeIndices[kMaxKeyStateChangesPerFrame]{};
+BvKeyboard::KeyState g_KeyStateChanges[kMaxKeyStateChangesPerFrame]{};
 u32 g_KeyStateChangeCount = 0;
 
 
@@ -13,7 +16,7 @@ void SetKeyStateFromKeyEvent(u32 vkCode, u32 scanCode, bool isKeyDown);
 void SetKeyStateFromCharEvent(u32 vkCode, u32 codePoint, bool isDeadKey);
 
 
-void UpdateInputBuffers()
+void UpdateKeyboard()
 {
 	if (g_KeyStateChangeCount > 0)
 	{
@@ -73,8 +76,7 @@ u32 BvKeyboard::GetKeyStateChanges(BvKeyboard::KeyState* pKeyStates) const
 	{
 		for (auto i = 0u; i < g_KeyStateChangeCount; ++i)
 		{
-			u32 vkCode = g_KeyStateChangeIndices[i];
-			pKeyStates[i] = g_CurrGlobalKeyStates[vkCode];
+			pKeyStates[i] = g_KeyStateChanges[i];
 		}
 	}
 
@@ -100,15 +102,21 @@ void ProcessLegacyKeyboardMessage(WPARAM wParam, LPARAM lParam, const BvKeyboard
 
 	// HACK: Alt+PrtSc has a different scancode than just PrtSc
 	if (scanCode == 0x54)
+	{
 		scanCode = 0x137;
+	}
 
 	// HACK: Ctrl+Pause has a different scancode than just Pause
 	if (scanCode == 0x146)
+	{
 		scanCode = 0x45;
+	}
 
 	// HACK: CJK IME sets the extended bit for right Shift
 	if (scanCode == 0x136)
+	{
 		scanCode = 0x36;
+	}
 
 	// The Ctrl keys require special handling
 	if (wParam == VK_CONTROL)
@@ -261,7 +269,7 @@ void ProcessRawInputKeyboardMessage(const RAWKEYBOARD& rawKB, const BvKeyboard::
 void ProcessCharInputMessage(u32 codePoint, LPARAM lParam, bool isDeadKey, const BvKeyboard::KeyState*& pKeyState)
 {
 	pKeyState = nullptr;
-
+	
 	u32 scanCode = (u32)((lParam >> 16) & 0xFF);
 	u32 vkCode = MapVirtualKeyEx(scanCode, MAPVK_VSC_TO_VK_EX, nullptr);
 	if (vkCode != 0)
@@ -287,7 +295,15 @@ void SetKeyStateFromKeyEvent(u32 vkCode, u32 scanCode, bool isKeyDown)
 		keyState.m_IsDeadKey = false;
 	}
 
-	g_KeyStateChangeIndices[g_KeyStateChangeCount++] = vkCode;
+	if (g_KeyStateChangeCount == kMaxKeyStateChangesPerFrame)
+	{
+		BV_ASSERT(false, "Increase kMaxKeyStateChangesPerFrame");
+		return;
+	}
+
+	g_KeyStateChangeIndices[g_KeyStateChangeCount] = vkCode;
+	g_KeyStateChanges[g_KeyStateChangeCount] = keyState;
+	g_KeyStateChangeCount++;
 }
 
 
@@ -296,4 +312,9 @@ void SetKeyStateFromCharEvent(u32 vkCode, u32 codePoint, bool isDeadKey)
 	auto& keyState = g_CurrGlobalKeyStates[vkCode];
 	keyState.m_CodePoint = codePoint;
 	keyState.m_IsDeadKey = isDeadKey;
+	
+	if (g_KeyStateChanges[g_KeyStateChangeCount].m_Key == keyState.m_Key)
+	{
+		g_KeyStateChanges[g_KeyStateChangeCount] = keyState;
+	}
 }
