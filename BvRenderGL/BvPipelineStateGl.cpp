@@ -4,7 +4,7 @@
 
 
 BvGraphicsPipelineStateGl::BvGraphicsPipelineStateGl(const BvRenderDeviceGl& device, const GraphicsPipelineStateDesc& pipelineStateDesc)
-	: BvGraphicsPipelineState(pipelineStateDesc), m_Device(device)
+	: IBvGraphicsPipelineState(pipelineStateDesc), m_Device(device)
 {
 }
 
@@ -193,7 +193,7 @@ void BvGraphicsPipelineStateGl::SetStates()
 
 
 BvComputePipelineStateGl::BvComputePipelineStateGl(const BvRenderDeviceGl& device, const ComputePipelineStateDesc& pipelineStateDesc)
-	: BvComputePipelineState(pipelineStateDesc), m_Device(device)
+	: IBvComputePipelineState(pipelineStateDesc), m_Device(device)
 {
 }
 

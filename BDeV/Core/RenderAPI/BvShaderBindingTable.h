@@ -6,20 +6,16 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 
 
-BV_OBJECT_DEFINE_ID(BvShaderBindingTable, "9f90a079-c378-4b59-9522-958685fdea9c");
-class BvShaderBindingTable : public IBvRenderDeviceObject
+BV_OBJECT_DEFINE_ID(IBvShaderBindingTable, "9f90a079-c378-4b59-9522-958685fdea9c");
+class IBvShaderBindingTable : public IBvRenderDeviceObject
 {
-	BV_NOCOPYMOVE(BvShaderBindingTable);
+	BV_NOCOPYMOVE(IBvShaderBindingTable);
 
 public:
-	BV_INLINE const ShaderBindingTableDesc& GetDesc() const { return m_SBTDesc; }
+	virtual const ShaderBindingTableDesc& GetDesc() const = 0;
 
 protected:
-	BvShaderBindingTable(const ShaderBindingTableDesc& sbtDesc)
-		: m_SBTDesc(sbtDesc) {}
-	~BvShaderBindingTable() {}
-
-protected:
-	ShaderBindingTableDesc m_SBTDesc;
+	IBvShaderBindingTable() {}
+	~IBvShaderBindingTable() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderBindingTable);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderBindingTable);

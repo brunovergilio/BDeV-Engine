@@ -4,8 +4,8 @@
 #include "BvUtilsVk.h"
 
 
-BvTextureViewVk::BvTextureViewVk(BvRenderDeviceVk* pDevice, const TextureViewDesc & textureViewDesc)
-	: BvTextureView(textureViewDesc), m_pDevice(pDevice)
+BvTextureViewVk::BvTextureViewVk(IBvRenderDeviceVk* pDevice, const TextureViewDesc & textureViewDesc)
+	: m_TextureViewDesc(textureViewDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -17,7 +17,7 @@ BvTextureViewVk::~BvTextureViewVk()
 }
 
 
-BvRenderDevice* BvTextureViewVk::GetDevice()
+IBvRenderDevice* BvTextureViewVk::GetDevice()
 {
 	return m_pDevice;
 }

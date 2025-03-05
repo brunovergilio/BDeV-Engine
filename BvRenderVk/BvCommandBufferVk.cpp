@@ -26,7 +26,7 @@
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
-BvCommandBufferVk::BvCommandBufferVk(const BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
+BvCommandBufferVk::BvCommandBufferVk(const IBvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
 	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetEngine()->HasDebugUtils())
 {
 }
@@ -67,7 +67,7 @@ void BvCommandBufferVk::End()
 }
 
 
-void BvCommandBufferVk::BeginRenderPass(const BvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets)
+void BvCommandBufferVk::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets)
 {
 	BV_ASSERT(pRenderPass != nullptr, "Invalid render pass");
 	BV_ASSERT(pRenderPassTargets != nullptr, "No render / depth targets");
@@ -169,8 +169,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 
 		const auto& renderTarget = pRenderTargets[i];
 		auto pView = TO_VK(renderTarget.m_pView);
-		auto pTexture = TO_VK(renderTarget.m_pView->GetTexture());
-		auto& desc = renderTarget.m_pView->GetTexture()->GetDesc();
+		auto pTexture = TO_VK(renderTarget.m_pView->GetDesc().m_pTexture);
+		auto& desc = renderTarget.m_pView->GetDesc().m_pTexture->GetDesc();
 		auto& viewDesc = renderTarget.m_pView->GetDesc();
 
 		layerCount = std::min(layerCount, (viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_ArraySize : viewDesc.m_SubresourceDesc.layerCount)
@@ -392,7 +392,7 @@ void BvCommandBufferVk::SetScissors(u32 scissorCount, const Rect* pScissors)
 }
 
 
-void BvCommandBufferVk::SetGraphicsPipeline(const BvGraphicsPipelineState* pPipeline)
+void BvCommandBufferVk::SetGraphicsPipeline(const IBvGraphicsPipelineState* pPipeline)
 {
 	m_pComputePipeline = nullptr;
 	m_pRayTracingPipeline = nullptr;
@@ -402,7 +402,7 @@ void BvCommandBufferVk::SetGraphicsPipeline(const BvGraphicsPipelineState* pPipe
 }
 
 
-void BvCommandBufferVk::SetComputePipeline(const BvComputePipelineState* pPipeline)
+void BvCommandBufferVk::SetComputePipeline(const IBvComputePipelineState* pPipeline)
 {
 	ResetRenderTargets();
 
@@ -414,7 +414,7 @@ void BvCommandBufferVk::SetComputePipeline(const BvComputePipelineState* pPipeli
 }
 
 
-void BvCommandBufferVk::SetRayTracingPipeline(const BvRayTracingPipelineState* pPipeline)
+void BvCommandBufferVk::SetRayTracingPipeline(const IBvRayTracingPipelineState* pPipeline)
 {
 	ResetRenderTargets();
 
@@ -428,10 +428,15 @@ void BvCommandBufferVk::SetRayTracingPipeline(const BvRayTracingPipelineState* p
 
 void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex)
 {
+	if (startIndex + resourceParamsCount > m_DescriptorSets.Size())
+	{
+		m_DescriptorSets.Resize(startIndex + resourceParamsCount, VK_NULL_HANDLE);
+	}
+
 	for (auto i = 0; i < resourceParamsCount; ++i)
 	{
 		auto pSRP = TO_VK(ppResourceParams[i]);
-		auto& set = m_DescriptorSets.EmplaceBack(pSRP ? pSRP->GetHandle() : VK_NULL_HANDLE);
+		m_DescriptorSets[i] = pSRP ? pSRP->GetHandle() : VK_NULL_HANDLE;
 	}
 
 	auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -444,11 +449,11 @@ void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, BvShade
 		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
 	}
 
-	vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), startIndex, resourceParamsCount, m_DescriptorSets.Data(), 0, nullptr);
+	vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), startIndex, resourceParamsCount, m_DescriptorSets.Data() + startIndex, 0, nullptr);
 }
 
 
-void BvCommandBufferVk::SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -458,7 +463,7 @@ void BvCommandBufferVk::SetConstantBuffers(u32 count, const BvBufferView* const*
 }
 
 
-void BvCommandBufferVk::SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -468,7 +473,7 @@ void BvCommandBufferVk::SetStructuredBuffers(u32 count, const BvBufferView* cons
 }
 
 
-void BvCommandBufferVk::SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -478,7 +483,7 @@ void BvCommandBufferVk::SetRWStructuredBuffers(u32 count, const BvBufferView* co
 }
 
 
-void BvCommandBufferVk::SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -488,7 +493,7 @@ void BvCommandBufferVk::SetFormattedBuffers(u32 count, const BvBufferView* const
 }
 
 
-void BvCommandBufferVk::SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -498,7 +503,7 @@ void BvCommandBufferVk::SetRWFormattedBuffers(u32 count, const BvBufferView* con
 }
 
 
-void BvCommandBufferVk::SetTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -508,7 +513,7 @@ void BvCommandBufferVk::SetTextures(u32 count, const BvTextureView* const* ppRes
 }
 
 
-void BvCommandBufferVk::SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -518,7 +523,7 @@ void BvCommandBufferVk::SetRWTextures(u32 count, const BvTextureView* const* ppR
 }
 
 
-void BvCommandBufferVk::SetSamplers(u32 count, const BvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -528,7 +533,7 @@ void BvCommandBufferVk::SetSamplers(u32 count, const BvSampler* const* ppResourc
 }
 
 
-void BvCommandBufferVk::SetAccelerationStructures(u32 count, const BvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < count; ++i)
@@ -552,7 +557,7 @@ void BvCommandBufferVk::SetShaderConstants(u32 size, const void* pData, u32 offs
 }
 
 
-void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const BvBufferView* const* pVertexBufferViews, u32 firstBinding)
+void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding)
 {
 	constexpr u32 kMaxVertexBufferViews = 16;
 	BV_ASSERT(vertexBufferCount <= kMaxVertexBufferViews, "Vertex buffer view count greater than limit");
@@ -561,7 +566,7 @@ void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const BvBuff
 	VkDeviceSize vertexBufferOffsets[kMaxVertexBufferViews];
 	for (auto i = 0u; i < vertexBufferCount; i++)
 	{
-		vertexBuffers[i] = TO_VK(pVertexBufferViews[i]->GetBuffer())->GetHandle();
+		vertexBuffers[i] = TO_VK(pVertexBufferViews[i]->GetDesc().m_pBuffer)->GetHandle();
 		vertexBufferOffsets[i] = pVertexBufferViews[i]->GetDesc().m_Offset;
 	}
 
@@ -569,11 +574,11 @@ void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const BvBuff
 }
 
 
-void BvCommandBufferVk::SetIndexBufferView(const BvBufferView* pIndexBufferView, IndexFormat indexFormat)
+void BvCommandBufferVk::SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat)
 {
 	auto formatVk = GetVkIndexType(indexFormat);
 	
-	vkCmdBindIndexBuffer(m_CommandBuffer, TO_VK(pIndexBufferView->GetBuffer())->GetHandle(), pIndexBufferView->GetDesc().m_Offset, formatVk);
+	vkCmdBindIndexBuffer(m_CommandBuffer, TO_VK(pIndexBufferView->GetDesc().m_pBuffer)->GetHandle(), pIndexBufferView->GetDesc().m_Offset, formatVk);
 }
 
 
@@ -644,7 +649,7 @@ void BvCommandBufferVk::Dispatch(u32 x, u32 y, u32 z)
 }
 
 
-void BvCommandBufferVk::DrawIndirect(const BvBuffer* pBuffer, u32 drawCount, u64 offset)
+void BvCommandBufferVk::DrawIndirect(const IBvBuffer* pBuffer, u32 drawCount, u64 offset)
 {
 	FlushDescriptorSets();
 
@@ -653,7 +658,7 @@ void BvCommandBufferVk::DrawIndirect(const BvBuffer* pBuffer, u32 drawCount, u64
 }
 
 
-void BvCommandBufferVk::DrawIndexedIndirect(const BvBuffer* pBuffer, u32 drawCount, u64 offset)
+void BvCommandBufferVk::DrawIndexedIndirect(const IBvBuffer* pBuffer, u32 drawCount, u64 offset)
 {
 	FlushDescriptorSets();
 
@@ -662,7 +667,7 @@ void BvCommandBufferVk::DrawIndexedIndirect(const BvBuffer* pBuffer, u32 drawCou
 }
 
 
-void BvCommandBufferVk::DispatchIndirect(const BvBuffer* pBuffer, u64 offset)
+void BvCommandBufferVk::DispatchIndirect(const IBvBuffer* pBuffer, u64 offset)
 {
 	FlushDescriptorSets();
 
@@ -677,20 +682,20 @@ void BvCommandBufferVk::DispatchMesh(u32 x, u32 y, u32 z)
 }
 
 
-void BvCommandBufferVk::DispatchMeshIndirect(const BvBuffer* pBuffer, u64 offset)
+void BvCommandBufferVk::DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offset)
 {
 	vkCmdDrawMeshTasksIndirectEXT(m_CommandBuffer, TO_VK(pBuffer)->GetHandle(), offset, 1, sizeof(VkDispatchIndirectCommand));
 }
 
 
-void BvCommandBufferVk::DispatchMeshIndirectCount(const BvBuffer* pBuffer, u64 offset, const BvBuffer* pCountBuffer, u64 countOffset, u32 maxCount)
+void BvCommandBufferVk::DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 offset, const IBvBuffer* pCountBuffer, u64 countOffset, u32 maxCount)
 {
 	vkCmdDrawMeshTasksIndirectCountEXT(m_CommandBuffer, TO_VK(pBuffer)->GetHandle(), offset, TO_VK(pCountBuffer)->GetHandle(), countOffset,
 		maxCount, sizeof(VkDispatchIndirectCommand));
 }
 
 
-void BvCommandBufferVk::CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
+void BvCommandBufferVk::CopyBuffer(const IBvBufferVk* pSrcBuffer, IBvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
 {
 	ResetRenderTargets();
 
@@ -698,7 +703,7 @@ void BvCommandBufferVk::CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDs
 }
 
 
-void BvCommandBufferVk::CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuffer)
+void BvCommandBufferVk::CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer)
 {
 	VkBufferCopy region{};
 	region.size = std::min(pSrcBuffer->GetDesc().m_Size, pDstBuffer->GetDesc().m_Size);
@@ -710,7 +715,7 @@ void BvCommandBufferVk::CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuf
 }
 
 
-void BvCommandBufferVk::CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuffer, const BufferCopyDesc& copyDesc)
+void BvCommandBufferVk::CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer, const BufferCopyDesc& copyDesc)
 {
 	VkBufferCopy region{};
 	region.srcOffset = copyDesc.m_SrcOffset;
@@ -724,7 +729,7 @@ void BvCommandBufferVk::CopyBuffer(const BvBuffer* pSrcBuffer, BvBuffer* pDstBuf
 }
 
 
-void BvCommandBufferVk::CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDstTexture)
+void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture)
 {
 	ResetRenderTargets();
 
@@ -772,7 +777,7 @@ void BvCommandBufferVk::CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDs
 }
 
 
-void BvCommandBufferVk::CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDstTexture, const TextureCopyDesc& copyDesc)
+void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture, const TextureCopyDesc& copyDesc)
 {
 	ResetRenderTargets();
 
@@ -820,7 +825,7 @@ void BvCommandBufferVk::CopyTexture(const BvTexture* pSrcTexture, BvTexture* pDs
 }
 
 
-void BvCommandBufferVk::CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandBufferVk::CopyBufferToTexture(const IBvBufferVk* pSrcBuffer, IBvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	ResetRenderTargets();
 
@@ -829,7 +834,7 @@ void BvCommandBufferVk::CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvText
 }
 
 
-void BvCommandBufferVk::CopyBufferToTexture(const BvBuffer* pSrcBuffer, BvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs)
+void BvCommandBufferVk::CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs)
 {
 	auto pSrc = TO_VK(pSrcBuffer);
 	auto pDst = TO_VK(pDstTexture);
@@ -854,7 +859,7 @@ void BvCommandBufferVk::CopyBufferToTexture(const BvBuffer* pSrcBuffer, BvTextur
 }
 
 
-void BvCommandBufferVk::CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandBufferVk::CopyTextureToBuffer(const IBvTextureVk* pSrcTexture, IBvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	ResetRenderTargets();
 
@@ -863,7 +868,7 @@ void BvCommandBufferVk::CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBu
 }
 
 
-void BvCommandBufferVk::CopyTextureToBuffer(const BvTexture* pSrcTexture, BvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs)
+void BvCommandBufferVk::CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs)
 {
 	auto pSrc = TO_VK(pSrcTexture);
 	auto pDst = TO_VK(pDstBuffer);
@@ -987,7 +992,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 }
 
 
-void BvCommandBufferVk::SetPredication(const BvBuffer* pBuffer, u64 offset, PredicationOp predicationOp)
+void BvCommandBufferVk::SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp)
 {
 	if (pBuffer)
 	{
@@ -1009,7 +1014,7 @@ void BvCommandBufferVk::SetPredication(const BvBuffer* pBuffer, u64 offset, Pred
 }
 
 
-void BvCommandBufferVk::BeginQuery(BvQuery* pQuery)
+void BvCommandBufferVk::BeginQuery(IBvQuery* pQuery)
 {
 	auto pQueryVk = TO_VK(pQuery);
 	auto queryType = pQueryVk->GetQueryType();
@@ -1024,7 +1029,7 @@ void BvCommandBufferVk::BeginQuery(BvQuery* pQuery)
 }
 
 
-void BvCommandBufferVk::EndQuery(BvQuery* pQuery)
+void BvCommandBufferVk::EndQuery(IBvQuery* pQuery)
 {
 	ResetRenderTargets();
 
@@ -1214,6 +1219,13 @@ void BvCommandBufferVk::DispatchRays(const DispatchRaysDesc& drDesc)
 }
 
 
+void BvCommandBufferVk::DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset)
+{
+	auto deviceAddress = TO_VK(pBuffer)->GetDeviceAddress() + offset;
+	vkCmdTraceRaysIndirect2KHR(m_CommandBuffer, deviceAddress);
+}
+
+
 void BvCommandBufferVk::FlushDescriptorSets()
 {
 	auto& rbs = m_pFrameData->GetResourceBindingState();
@@ -1236,7 +1248,7 @@ void BvCommandBufferVk::FlushDescriptorSets()
 	for (auto& resourceSet : resources)
 	{
 		u32 set = resourceSet.first;
-		if (!rbs.IsDirty(set))
+		if ((m_DescriptorSets.Size() > set && m_DescriptorSets[set] != VK_NULL_HANDLE) || !rbs.IsDirty(set))
 		{
 			continue;
 		}

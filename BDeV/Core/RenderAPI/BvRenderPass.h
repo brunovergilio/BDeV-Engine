@@ -266,20 +266,16 @@ struct std::hash<RenderPassDesc>
 };
 
 
-BV_OBJECT_DEFINE_ID(BvRenderPass, "cdaf2dfb-3ab4-458f-846b-f560d415a023");
-class BvRenderPass : public IBvRenderDeviceObject
+BV_OBJECT_DEFINE_ID(IBvRenderPass, "cdaf2dfb-3ab4-458f-846b-f560d415a023");
+class IBvRenderPass : public IBvRenderDeviceObject
 {
-	BV_NOCOPYMOVE(BvRenderPass);
+	BV_NOCOPYMOVE(IBvRenderPass);
 
 public:
-	BV_INLINE const RenderPassDesc& GetDesc() const { return m_RenderPassDesc; }
+	virtual const RenderPassDesc& GetDesc() const = 0;
 
 protected:
-	BvRenderPass(const RenderPassDesc& renderPassDesc)
-		: m_RenderPassDesc(renderPassDesc) {}
-	~BvRenderPass() {}
-
-protected:
-	RenderPassDesc m_RenderPassDesc;
+	IBvRenderPass() {}
+	~IBvRenderPass() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderPass);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderPass);

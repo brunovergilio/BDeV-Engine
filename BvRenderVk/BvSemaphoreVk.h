@@ -6,7 +6,7 @@
 #include "BDeV/Core/Container/BvVector.h"
 
 
-class BvRenderDeviceVk;
+class IBvRenderDeviceVk;
 
 
 class BvSemaphoreVk final
@@ -15,7 +15,7 @@ class BvSemaphoreVk final
 
 public:
 	BvSemaphoreVk();
-	BvSemaphoreVk(BvRenderDeviceVk* pDevice, u64 initialValue = 0, bool isTimelineSemaphore = true);
+	BvSemaphoreVk(IBvRenderDeviceVk* pDevice, u64 initialValue = 0, bool isTimelineSemaphore = true);
 	BvSemaphoreVk(BvSemaphoreVk&& rhs) noexcept;
 	BvSemaphoreVk& operator=(BvSemaphoreVk&& rhs) noexcept;
 	~BvSemaphoreVk();
@@ -25,13 +25,13 @@ public:
 	u64 GetCompletedValue();
 
 	BV_INLINE VkSemaphore GetHandle() const { return m_Semaphore; }
-	BV_INLINE BvRenderDeviceVk* GetDevice() const { return m_pDevice; }
+	BV_INLINE IBvRenderDeviceVk* GetDevice() const { return m_pDevice; }
 
 private:
 	void Create(u64 initialValue, bool isTimelineSemaphore);
 	void Destroy();
 	
 private:
-	BvRenderDeviceVk* m_pDevice = nullptr;
+	IBvRenderDeviceVk* m_pDevice = nullptr;
 	VkSemaphore m_Semaphore = VK_NULL_HANDLE;
 };

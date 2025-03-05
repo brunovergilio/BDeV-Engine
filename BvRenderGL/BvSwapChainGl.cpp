@@ -2,7 +2,7 @@
 #include "BvContextGl.h"
 
 BvSwapChainGl::BvSwapChainGl(const BvRenderDeviceGl& device, BvWindow* pWindow, const SwapChainDesc& swapChainParams)
-	: BvSwapChain(pWindow, swapChainParams), m_Device(device), m_pContext(new BvContextGl(pWindow))
+	: IBvSwapChain(pWindow, swapChainParams), m_Device(device), m_pContext(new BvContextGl(pWindow))
 {
 	m_SwapChainDesc.m_SwapChainImageCount = 2;
 }

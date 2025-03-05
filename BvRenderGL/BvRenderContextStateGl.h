@@ -8,7 +8,7 @@
 
 
 class BvRenderDeviceGl;
-class BvTextureView;
+class IBvTextureView;
 class BvTextureViewGl;
 class BvFramebufferGl;
 class BvGraphicsPipelineStateGl;
@@ -21,8 +21,8 @@ public:
 	BvRenderContextStateGl(const BvRenderDeviceGl& device);
 	~BvRenderContextStateGl();
 
-	void SetRenderTargets(const u32 renderTargetCount, BvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, BvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags);
-	void SetPipeline(BvGraphicsPipelineState* pPipeline);
+	void SetRenderTargets(const u32 renderTargetCount, IBvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, IBvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags);
+	void SetPipeline(IBvGraphicsPipelineState* pPipeline);
 
 private:
 	const BvRenderDeviceGl& m_Device;

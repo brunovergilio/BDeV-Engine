@@ -8,7 +8,7 @@
 class BvRenderDeviceGl;
 
 
-class BvSamplerGl final : public BvSampler
+class BvSamplerGl final : public IBvSampler
 {
 	BV_NOCOPYMOVE(BvSamplerGl);
 

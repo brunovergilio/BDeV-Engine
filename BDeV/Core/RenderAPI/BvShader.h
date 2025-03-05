@@ -6,24 +6,18 @@
 #include "BvRenderDeviceObject.h"
 
 
-BV_OBJECT_DEFINE_ID(BvShader, "21c6bb95-306d-4e87-8c73-1ec34ddc383b");
-class BvShader : public IBvRenderDeviceObject
+BV_OBJECT_DEFINE_ID(IBvShader, "21c6bb95-306d-4e87-8c73-1ec34ddc383b");
+class IBvShader : public IBvRenderDeviceObject
 {
-	BV_NOCOPYMOVE(BvShader);
+	BV_NOCOPYMOVE(IBvShader);
 
 public:
-	BV_INLINE ShaderStage GetShaderStage() const { return m_ShaderStage; }
-	BV_INLINE const BvVector<u8>& GetShaderBlob() const { return m_ShaderBlob; }
-	BV_INLINE const char* GetEntryPoint() const { return m_pEntryPoint; }
+	virtual ShaderStage GetShaderStage() const = 0;
+	virtual const BvVector<u8>& GetShaderBlob() const = 0;
+	virtual const char* GetEntryPoint() const = 0;
 
 protected:
-	BvShader(ShaderStage shaderStage, const char* pEntryPoint)
-		: m_ShaderStage(shaderStage), m_pEntryPoint(pEntryPoint) {}
-	~BvShader() {}
-
-protected:
-	BvVector<u8> m_ShaderBlob{};
-	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
-	const char* m_pEntryPoint = "main";
+	IBvShader() {}
+	~IBvShader() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvShader);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvShader);

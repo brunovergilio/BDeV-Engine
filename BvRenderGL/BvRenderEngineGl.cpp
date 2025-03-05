@@ -21,7 +21,7 @@ void BvRenderEngineGl::GetGPUInfo(const u32 index, BvGPUInfo& info) const
 }
 
 
-BvRenderDevice* const BvRenderEngineGl::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex)
+IBvRenderDevice* const BvRenderEngineGl::CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex)
 {
 	if (!m_pDevice)
 	{

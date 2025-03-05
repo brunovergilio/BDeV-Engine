@@ -17,7 +17,7 @@ public:
 	~BvRenderEngineGl();
 
 	void GetGPUInfo(const u32 index, BvGPUInfo& info) const override final;
-	BvRenderDevice* const CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex) override final;
+	IBvRenderDevice* const CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex) override final;
 
 	BV_INLINE const char* const GetEngineName() const override final { return "BvRenderGl"; }
 
@@ -28,7 +28,7 @@ private:
 	void Destroy();
 
 private:
-	BvRenderDevice* m_pDevice = nullptr;
+	IBvRenderDevice* m_pDevice = nullptr;
 #if defined(BV_DEBUG)
 	BvDebugReportGl* m_pDebugReport = nullptr;
 #endif

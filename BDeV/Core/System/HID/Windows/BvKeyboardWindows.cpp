@@ -7,9 +7,13 @@ BvKeyboard::KeyState g_CurrGlobalKeyStates[BvKeyboard::kMaxKeyCount]{};
 BvKeyboard::KeyState g_PrevGlobalKeyStates[BvKeyboard::kMaxKeyCount]{};
 
 constexpr u32 kMaxKeyStateChangesPerFrame = 16;
+constexpr u32 kMaxCharInputsPerFrame = 8;
+
+u32 g_KeyStateChangeCount = 0;
+u32 g_CharInputCount = 0;
 u32 g_KeyStateChangeIndices[kMaxKeyStateChangesPerFrame]{};
 BvKeyboard::KeyState g_KeyStateChanges[kMaxKeyStateChangesPerFrame]{};
-u32 g_KeyStateChangeCount = 0;
+BvKeyboard::CharInput g_CharInputs[kMaxCharInputsPerFrame]{};
 
 
 void SetKeyStateFromKeyEvent(u32 vkCode, u32 scanCode, bool isKeyDown);
@@ -26,6 +30,11 @@ void UpdateKeyboard()
 			g_PrevGlobalKeyStates[vkCode] = g_CurrGlobalKeyStates[vkCode];
 		}
 		g_KeyStateChangeCount = 0;
+	}
+
+	if (g_CharInputCount > 0)
+	{
+		g_CharInputCount = 0;
 	}
 }
 
@@ -81,6 +90,20 @@ u32 BvKeyboard::GetKeyStateChanges(BvKeyboard::KeyState* pKeyStates) const
 	}
 
 	return g_KeyStateChangeCount;
+}
+
+
+u32 BvKeyboard::GetCharInputs(CharInput* pCharInputs) const
+{
+	if (pCharInputs)
+	{
+		for (auto i = 0u; i < g_CharInputCount; ++i)
+		{
+			pCharInputs[i] = g_CharInputs[i];
+		}
+	}
+
+	return g_CharInputCount;
 }
 
 
@@ -289,11 +312,8 @@ void SetKeyStateFromKeyEvent(u32 vkCode, u32 scanCode, bool isKeyDown)
 	{
 		keyState.m_ScanCode = scanCode;
 	}
-	else
-	{
-		keyState.m_CodePoint = 0;
-		keyState.m_IsDeadKey = false;
-	}
+	keyState.m_CodePoint = 0;
+	keyState.m_IsDeadKey = false;
 
 	if (g_KeyStateChangeCount == kMaxKeyStateChangesPerFrame)
 	{
@@ -317,4 +337,14 @@ void SetKeyStateFromCharEvent(u32 vkCode, u32 codePoint, bool isDeadKey)
 	{
 		g_KeyStateChanges[g_KeyStateChangeCount] = keyState;
 	}
+
+	if (g_CharInputCount == kMaxCharInputsPerFrame)
+	{
+		BV_ASSERT(false, "Increase kMaxCharInputsPerFrame");
+		return;
+	}
+
+	auto& charInput = g_CharInputs[g_CharInputCount++];
+	charInput.m_CodePoint = codePoint;
+	charInput.m_IsDeadChar = isDeadKey;
 }

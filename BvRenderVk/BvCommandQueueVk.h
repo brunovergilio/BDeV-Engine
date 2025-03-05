@@ -16,7 +16,7 @@ class BvCommandQueueVk final
 
 public:
 	BvCommandQueueVk();
-	BvCommandQueueVk(const BvRenderDeviceVk* pDevice, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex);
+	BvCommandQueueVk(VkDevice device, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex);
 	BvCommandQueueVk(BvCommandQueueVk&& rhs) noexcept;
 	BvCommandQueueVk& operator=(BvCommandQueueVk&& rhs) noexcept;
 	~BvCommandQueueVk();
@@ -31,7 +31,7 @@ public:
 	BV_INLINE VkQueue GetHandle() const { return m_Queue; }
 	
 private:
-	const BvRenderDeviceVk* m_pDevice = nullptr;
+	VkDevice m_Device = VK_NULL_HANDLE;
 	VkQueue m_Queue = VK_NULL_HANDLE;
 	u32 m_QueueFamilyIndex = 0;
 	u32 m_QueueIndex = 0;

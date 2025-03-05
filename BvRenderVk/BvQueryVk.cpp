@@ -5,7 +5,7 @@
 #include "BvGPUFenceVk.h"
 
 
-BvQueryVk::BvQueryVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 frameCount)
+BvQueryVk::BvQueryVk(IBvRenderDeviceVk* pDevice, QueryType queryType, u32 frameCount)
 	: m_pDevice(pDevice), m_QueryType(queryType), m_QueryData(frameCount, {})
 {
 }
@@ -16,7 +16,7 @@ BvQueryVk::~BvQueryVk()
 }
 
 
-BvRenderDevice* BvQueryVk::GetDevice()
+IBvRenderDevice* BvQueryVk::GetDevice()
 {
 	return m_pDevice;
 }
@@ -34,7 +34,7 @@ bool BvQueryVk::GetResult(void* pData, u64 size)
 }
 
 
-BvQueryVk::Data* BvQueryVk::Allocate(BvQueryHeapManagerVk* pQueryHeapManager, u32 frameIndex)
+QueryDataVk* BvQueryVk::Allocate(BvQueryHeapManagerVk* pQueryHeapManager, u32 frameIndex)
 {
 	pQueryHeapManager->AllocateQuery(m_QueryType, frameIndex, m_QueryData[frameIndex]);
 
@@ -42,7 +42,7 @@ BvQueryVk::Data* BvQueryVk::Allocate(BvQueryHeapManagerVk* pQueryHeapManager, u3
 }
 
 
-void BvQueryVk::SetFenceData(BvGPUFenceVk* pFence, u64 value)
+void BvQueryVk::SetFenceData(IBvGPUFenceVk* pFence, u64 value)
 {
 	m_QueryData[m_LatestResultIndex].m_pFence = pFence;
 	m_QueryData[m_LatestResultIndex].m_SignalValue = value;
@@ -60,7 +60,7 @@ BvQueryHeapVk::BvQueryHeapVk()
 }
 
 
-BvQueryHeapVk::BvQueryHeapVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 queryCount, u32 frameCount)
+BvQueryHeapVk::BvQueryHeapVk(IBvRenderDeviceVk* pDevice, QueryType queryType, u32 queryCount, u32 frameCount)
 	: m_pDevice(pDevice), m_QueryCount(queryCount), m_FrameCount(frameCount), m_QueryType(queryType)
 {
 }
@@ -90,7 +90,7 @@ BvQueryHeapVk::~BvQueryHeapVk()
 }
 
 
-void BvQueryHeapVk::Allocate(u32 frameIndex, BvQueryVk::Data& queryData)
+void BvQueryHeapVk::Allocate(u32 frameIndex, QueryDataVk& queryData)
 {
 	VkQueryPool pool = VK_NULL_HANDLE;
 	u32 index = kU32Max;
@@ -138,7 +138,7 @@ void BvQueryHeapVk::Reset(u32 frameIndex)
 }
 
 
-bool BvQueryHeapVk::GetResult(const BvQueryVk::Data& queryData, u32 frameIndex, void* pData, u64 size)
+bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void* pData, u64 size)
 {
 	auto& heapData = m_QueryHeapData[queryData.m_HeapIndex];
 	auto querySize = GetQuerySize();
@@ -198,7 +198,7 @@ void BvQueryHeapVk::Create()
 	bufferDesc.m_Size = GetQuerySize() * m_QueryCount * m_FrameCount;
 	bufferDesc.m_MemoryType = MemoryType::kReadBack;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	BvBufferVk* pBuffer;
+	IBvBufferVk* pBuffer;
 	if (!m_pDevice->CreateBufferVk(bufferDesc, nullptr, &pBuffer))
 	{
 		return;
@@ -223,7 +223,7 @@ void BvQueryHeapVk::Destroy()
 }
 
 
-BvQueryHeapManagerVk::BvQueryHeapManagerVk(BvRenderDeviceVk* pDevice, const u32* pQuerySizes, u32 frameCount)
+BvQueryHeapManagerVk::BvQueryHeapManagerVk(IBvRenderDeviceVk* pDevice, const u32* pQuerySizes, u32 frameCount)
 	: m_pDevice(pDevice)
 {
 	for (auto i = 0; i < kQueryTypeCount; ++i)
@@ -241,7 +241,7 @@ BvQueryHeapManagerVk::~BvQueryHeapManagerVk()
 }
 
 
-void BvQueryHeapManagerVk::AllocateQuery(QueryType queryType, u32 frameIndex, BvQueryVk::Data& queryData)
+void BvQueryHeapManagerVk::AllocateQuery(QueryType queryType, u32 frameIndex, QueryDataVk& queryData)
 {
 	auto queryTypeIndex = (u32)queryType;
 	m_QueryHeaps[queryTypeIndex].Allocate(frameIndex, queryData);

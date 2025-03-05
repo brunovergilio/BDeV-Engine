@@ -23,17 +23,11 @@ class BvRenderEngine : public BvObjectBase
 	BV_NOCOPYMOVE(BvRenderEngine);
 
 public:
-	virtual bool CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc, BvRenderDevice** ppObj) = 0;
-	//virtual void SetVirtualMemory(void* pStart, void* pEnd, size_t growSize = 0) = 0;
-	//virtual void SetVirtualMemory(size_t maxSize, size_t growSize = 0) = 0;
-
-	BV_INLINE const auto& GetGPUs() const { return m_GPUs; }
+	virtual bool CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc, IBvRenderDevice** ppObj) = 0;
+	virtual const BvVector<BvGPUInfo>& GetGPUs() const = 0;
 
 protected:
 	BvRenderEngine() {}
 	~BvRenderEngine() {}
-
-protected:
-	BvVector<BvGPUInfo> m_GPUs;
 };
 BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderEngine);

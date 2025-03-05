@@ -151,7 +151,7 @@ GLenum GetGlBufferUsageFlags(BufferUsage usageFlags)
 	{
 		target = GL_ELEMENT_ARRAY_BUFFER;
 	}
-	else if ((usageFlags & BufferUsage::kUniformBuffer) == BufferUsage::kUniformBuffer)
+	else if ((usageFlags & BufferUsage::kConstantBuffer) == BufferUsage::kConstantBuffer)
 	{
 		target = GL_UNIFORM_BUFFER;
 	}

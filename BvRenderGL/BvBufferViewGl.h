@@ -8,7 +8,7 @@
 class BvRenderDeviceGl;
 
 
-class BvBufferViewGl final : public BvBufferView
+class BvBufferViewGl final : public IBvBufferView
 {
 	BV_NOCOPYMOVE(BvBufferViewGl);
 

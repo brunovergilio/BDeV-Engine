@@ -5,12 +5,12 @@
 #include "BDeV/Core/RenderAPI/BvShaderResource.h"
 
 
-class BvRenderDeviceVk;
-class BvShaderResourceLayoutVk;
-class BvBufferViewVk;
-class BvTextureViewVk;
-class BvSamplerVk;
-class BvAccelerationStructureVk;
+class IBvRenderDeviceVk;
+class IBvShaderResourceLayoutVk;
+class IBvBufferViewVk;
+class IBvTextureViewVk;
+class IBvSamplerVk;
+class IBvAccelerationStructureVk;
 
 
 struct ResourceIdVk
@@ -38,10 +38,10 @@ struct ResourceDataVk
 	Data m_Data;
 	VkDescriptorType m_DescriptorType;
 
-	void Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource);
-	void Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource);
-	void Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource);
-	void Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource);
+	void Set(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource);
+	void Set(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource);
+	void Set(VkDescriptorType descriptorType, const IBvSamplerVk* pResource);
+	void Set(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource);
 };
 
 
@@ -54,10 +54,10 @@ public:
 	BvResourceBindingStateVk& operator=(BvResourceBindingStateVk&& rhs) noexcept;
 	~BvResourceBindingStateVk();
 
-	void SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
-	void SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
-	void SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex);
-	void SetResource(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const IBvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex);
 
 	void Reset();
 
@@ -81,7 +81,7 @@ class BvDescriptorSetVk final
 {
 public:
 	BvDescriptorSetVk();
-	BvDescriptorSetVk(const BvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet);
+	BvDescriptorSetVk(const IBvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet);
 	BvDescriptorSetVk(BvDescriptorSetVk&& rhs) noexcept;
 	BvDescriptorSetVk& operator=(BvDescriptorSetVk&& rhs) noexcept;
 	~BvDescriptorSetVk();
@@ -91,7 +91,7 @@ public:
 	BV_INLINE VkDescriptorSet GetHandle() const { return m_DescriptorSet; }
 
 private:
-	const BvRenderDeviceVk* m_pDevice = nullptr;
+	const IBvRenderDeviceVk* m_pDevice = nullptr;
 	VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;
 };
 
@@ -100,7 +100,7 @@ class BvDescriptorPoolVk final
 {
 public:
 	BvDescriptorPoolVk();
-	BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool);
+	BvDescriptorPoolVk(const IBvRenderDeviceVk* pDevice, const IBvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool);
 	BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs) noexcept;
 	BvDescriptorPoolVk& operator=(BvDescriptorPoolVk&& rhs) noexcept;
 	~BvDescriptorPoolVk();
@@ -120,8 +120,8 @@ private:
 		u32 currAllocationCount;
 	};
 
-	const BvRenderDeviceVk* m_pDevice = nullptr;
-	const BvShaderResourceLayoutVk* m_pLayout = nullptr;
+	const IBvRenderDeviceVk* m_pDevice = nullptr;
+	const IBvShaderResourceLayoutVk* m_pLayout = nullptr;
 	VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
 	BvVector<PoolData> m_DescriptorPools;
 	BvVector<VkDescriptorPoolSize> m_PoolSizes;

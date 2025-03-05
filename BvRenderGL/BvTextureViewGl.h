@@ -8,7 +8,7 @@
 class BvRenderDeviceGl;
 
 
-class BvTextureViewGl final : public BvTextureView
+class BvTextureViewGl final : public IBvTextureView
 {
 	BV_NOCOPYMOVE(BvTextureViewGl);
 

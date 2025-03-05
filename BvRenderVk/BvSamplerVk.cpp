@@ -5,7 +5,7 @@
 
 
 BvSamplerVk::BvSamplerVk(BvRenderDeviceVk* pDevice, const SamplerDesc & samplerDesc)
-	: BvSampler(samplerDesc), m_pDevice(pDevice)
+	: m_SamplerDesc(samplerDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -17,7 +17,7 @@ BvSamplerVk::~BvSamplerVk()
 }
 
 
-BvRenderDevice* BvSamplerVk::GetDevice()
+IBvRenderDevice* BvSamplerVk::GetDevice()
 {
 	return m_pDevice;
 }

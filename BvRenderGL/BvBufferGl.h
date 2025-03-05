@@ -8,7 +8,7 @@
 class BvRenderDeviceVk;
 
 
-class BvBufferGl final : public BvBuffer
+class BvBufferGl final : public IBvBuffer
 {
 	BV_NOCOPYMOVE(BvBufferGl);
 

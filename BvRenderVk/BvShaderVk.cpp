@@ -4,7 +4,7 @@
 
 
 BvShaderVk::BvShaderVk(BvRenderDeviceVk* pDevice, const ShaderCreateDesc& shaderCreateDesc)
-	: m_pDevice(pDevice), BvShader(shaderCreateDesc.m_ShaderStage, shaderCreateDesc.m_pEntryPoint)
+	: m_pDevice(pDevice), m_ShaderStage(shaderCreateDesc.m_ShaderStage), m_pEntryPoint(shaderCreateDesc.m_pEntryPoint)
 {
 	if (shaderCreateDesc.m_pByteCode)
 	{
@@ -26,7 +26,7 @@ BvShaderVk::~BvShaderVk()
 }
 
 
-BvRenderDevice* BvShaderVk::GetDevice()
+IBvRenderDevice* BvShaderVk::GetDevice()
 {
 	return m_pDevice;
 }

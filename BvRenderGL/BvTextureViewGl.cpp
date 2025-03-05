@@ -2,7 +2,7 @@
 
 
 BvTextureViewGl::BvTextureViewGl(const BvRenderDeviceGl& device, const TextureViewDesc& textureViewDesc)
-	: BvTextureView(textureViewDesc), m_Device(device)
+	: IBvTextureView(textureViewDesc), m_Device(device)
 {
 }
 

@@ -5,7 +5,7 @@
 
 
 BvBufferViewVk::BvBufferViewVk(BvRenderDeviceVk* pDevice, const BufferViewDesc & bufferViewDesc)
-	: BvBufferView(bufferViewDesc), m_pDevice(pDevice)
+	: m_BufferViewDesc(bufferViewDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -17,7 +17,7 @@ BvBufferViewVk::~BvBufferViewVk()
 }
 
 
-BvRenderDevice* BvBufferViewVk::GetDevice()
+IBvRenderDevice* BvBufferViewVk::GetDevice()
 {
 	return m_pDevice;
 }

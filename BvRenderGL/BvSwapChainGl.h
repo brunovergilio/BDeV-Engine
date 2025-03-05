@@ -8,7 +8,7 @@ class BvRenderDeviceGl;
 class BvContextGl;
 
 
-class BvSwapChainGl final : public BvSwapChain
+class BvSwapChainGl final : public IBvSwapChain
 {
 public:
 	BvSwapChainGl(const BvRenderDeviceGl& device, BvWindow* pWindow, const SwapChainDesc& swapChainParams);
@@ -20,7 +20,7 @@ public:
 	void Present(bool vSync) override final;
 
 	BV_INLINE u32 GetCurrentImageIndex() const override final { return 0; }
-	BV_INLINE BvTextureView* GetTextureView(const u32 index) const override final { return nullptr; }
+	BV_INLINE IBvTextureView* GetTextureView(const u32 index) const override final { return nullptr; }
 
 private:
 	const BvRenderDeviceGl& m_Device;

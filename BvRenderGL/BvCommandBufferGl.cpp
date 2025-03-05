@@ -27,7 +27,7 @@ void BvCommandBufferGl::End()
 }
 
 
-void BvCommandBufferGl::BeginRenderPass(const BvRenderPass* const pRenderPass, BvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, BvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear)
+void BvCommandBufferGl::BeginRenderPass(const IBvRenderPass* const pRenderPass, IBvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, IBvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear)
 {
 }
 
@@ -37,7 +37,7 @@ void BvCommandBufferGl::EndRenderPass()
 }
 
 
-void BvCommandBufferGl::SetRenderTargets(const u32 renderTargetCount, BvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, BvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags)
+void BvCommandBufferGl::SetRenderTargets(const u32 renderTargetCount, IBvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, IBvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags)
 {
 }
 
@@ -57,12 +57,12 @@ void BvCommandBufferGl::SetScissors(const u32 scissorCount, const Rect* const pS
 }
 
 
-void BvCommandBufferGl::SetPipeline(const BvGraphicsPipelineState* const pPipeline)
+void BvCommandBufferGl::SetPipeline(const IBvGraphicsPipelineState* const pPipeline)
 {
 }
 
 
-void BvCommandBufferGl::SetPipeline(const BvComputePipelineState* const pPipeline)
+void BvCommandBufferGl::SetPipeline(const IBvComputePipelineState* const pPipeline)
 {
 }
 
@@ -72,12 +72,12 @@ void BvCommandBufferGl::SetShaderResourceParams(const u32 setCount, BvShaderReso
 }
 
 
-void BvCommandBufferGl::SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView* const* const pVertexBufferViews, const u32 firstBinding /*= 0*/)
+void BvCommandBufferGl::SetVertexBufferViews(const u32 vertexBufferCount, const IBvBufferView* const* const pVertexBufferViews, const u32 firstBinding /*= 0*/)
 {
 }
 
 
-void BvCommandBufferGl::SetIndexBufferView(const BvBufferView* const pIndexBufferView, const IndexFormat indexFormat)
+void BvCommandBufferGl::SetIndexBufferView(const IBvBufferView* const pIndexBufferView, const IndexFormat indexFormat)
 {
 }
 
@@ -97,47 +97,47 @@ void BvCommandBufferGl::Dispatch(const u32 x, const u32 y /*= 1*/, const u32 z /
 }
 
 
-void BvCommandBufferGl::DrawIndirect(const BvBuffer* const pBuffer, const u32 drawCount /*= 1*/, const u64 offset /*= 0*/)
+void BvCommandBufferGl::DrawIndirect(const IBvBuffer* const pBuffer, const u32 drawCount /*= 1*/, const u64 offset /*= 0*/)
 {
 }
 
 
-void BvCommandBufferGl::DrawIndexedIndirect(const BvBuffer* const pBuffer, const u32 drawCount /*= 1*/, const u64 offset /*= 0*/)
+void BvCommandBufferGl::DrawIndexedIndirect(const IBvBuffer* const pBuffer, const u32 drawCount /*= 1*/, const u64 offset /*= 0*/)
 {
 }
 
 
-void BvCommandBufferGl::DispatchIndirect(const BvBuffer* const pBuffer, const u64 offset /*= 0*/)
+void BvCommandBufferGl::DispatchIndirect(const IBvBuffer* const pBuffer, const u64 offset /*= 0*/)
 {
 }
 
 
-void BvCommandBufferGl::CopyBuffer(const BvBuffer* const pSrcBuffer, BvBuffer* const pDstBuffer)
+void BvCommandBufferGl::CopyBuffer(const IBvBuffer* const pSrcBuffer, IBvBuffer* const pDstBuffer)
 {
 }
 
 
-void BvCommandBufferGl::CopyBufferRegion(const BvBuffer* const pSrcBuffer, BvBuffer* const pDstBuffer, const CopyRegion& copyRegion)
+void BvCommandBufferGl::CopyBufferRegion(const IBvBuffer* const pSrcBuffer, IBvBuffer* const pDstBuffer, const CopyRegion& copyRegion)
 {
 }
 
 
-void BvCommandBufferGl::CopyTexture(const BvTexture* const pSrcTexture, BvTexture* const pDstTexture)
+void BvCommandBufferGl::CopyTexture(const IBvTexture* const pSrcTexture, IBvTexture* const pDstTexture)
 {
 }
 
 
-void BvCommandBufferGl::CopyTextureRegion(const BvTexture* const pSrcTexture, BvTexture* const pDstTexture, const CopyRegion& copyRegion)
+void BvCommandBufferGl::CopyTextureRegion(const IBvTexture* const pSrcTexture, IBvTexture* const pDstTexture, const CopyRegion& copyRegion)
 {
 }
 
 
-void BvCommandBufferGl::CopyTextureRegion(const BvBuffer* const pSrcBuffer, BvTexture* const pDstTexture, const CopyRegion& copyRegion)
+void BvCommandBufferGl::CopyTextureRegion(const IBvBuffer* const pSrcBuffer, IBvTexture* const pDstTexture, const CopyRegion& copyRegion)
 {
 }
 
 
-void BvCommandBufferGl::CopyTextureRegion(const BvTexture* const pSrcTexture, BvBuffer* const pDstBuffer, const CopyRegion& copyRegion)
+void BvCommandBufferGl::CopyTextureRegion(const IBvTexture* const pSrcTexture, IBvBuffer* const pDstBuffer, const CopyRegion& copyRegion)
 {
 }
 

@@ -17,6 +17,6 @@ public:
 
 private:
 	const BvRenderDeviceGl& m_Device;
-	BvRobinMap<const BvShaderResourceLayout*, BvVector<BvShaderResourceParamsGl*>> m_UsedSets;
-	BvRobinMap<const BvShaderResourceLayout*, BvVector<BvShaderResourceParamsGl*>> m_FreeSets;
+	BvRobinMap<const IBvShaderResourceLayout*, BvVector<BvShaderResourceParamsGl*>> m_UsedSets;
+	BvRobinMap<const IBvShaderResourceLayout*, BvVector<BvShaderResourceParamsGl*>> m_FreeSets;
 };

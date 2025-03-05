@@ -11,11 +11,23 @@ VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShade
 
 
 BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, const VkPipelineCache pipelineCache)
-	: BvGraphicsPipelineState(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
+	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
 {
 	auto pVertexInputDescs = BV_NEW_ARRAY(VertexInputDesc, m_PipelineStateDesc.m_VertexInputDescCount);
 	memcpy(pVertexInputDescs, m_PipelineStateDesc.m_pVertexInputDescs, sizeof(VertexInputDesc) * m_PipelineStateDesc.m_VertexInputDescCount);
 	m_PipelineStateDesc.m_pVertexInputDescs = pVertexInputDescs;
+
+	for (auto i = 0u; i < m_PipelineStateDesc.m_VertexInputDescCount; ++i)
+	{
+		auto& vertex = m_PipelineStateDesc.m_pVertexInputDescs[i];
+		if (vertex.m_pName)
+		{
+			auto count = std::char_traits<char>::length(vertex.m_pName) + 1;
+			auto pName = BV_NEW_ARRAY(char, count);
+			strcpy(pName, vertex.m_pName);
+			vertex.m_pName = pName;
+		}
+	}
 
 	Create();
 }
@@ -25,11 +37,20 @@ BvGraphicsPipelineStateVk::~BvGraphicsPipelineStateVk()
 {
 	Destroy();
 
+	for (auto i = 0u; i < m_PipelineStateDesc.m_VertexInputDescCount; ++i)
+	{
+		auto& vertex = m_PipelineStateDesc.m_pVertexInputDescs[i];
+		if (vertex.m_pName)
+		{
+			BV_DELETE_ARRAY(vertex.m_pName);
+		}
+	}
+
 	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pVertexInputDescs);
 }
 
 
-BvRenderDevice* BvGraphicsPipelineStateVk::GetDevice()
+IBvRenderDevice* BvGraphicsPipelineStateVk::GetDevice()
 {
 	return m_pDevice;
 }
@@ -161,8 +182,8 @@ void BvGraphicsPipelineStateVk::Create()
 	//depthStencilCI.back.reference = 0; // Set dynamically
 
 	depthStencilCI.depthBoundsTestEnable = m_PipelineStateDesc.m_DepthStencilDesc.m_DepthBoundsTestEnable;
-	depthStencilCI.minDepthBounds = 0.0f;
-	depthStencilCI.maxDepthBounds = 1.0f;
+	//depthStencilCI.minDepthBounds = 0.0f; // Set dynamically
+	//depthStencilCI.maxDepthBounds = 1.0f; // Set dynamically
 
 	u32 sampleMask[] = { m_PipelineStateDesc.m_SampleMask, 0 };
 	VkPipelineMultisampleStateCreateInfo msCI{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
@@ -213,7 +234,7 @@ void BvGraphicsPipelineStateVk::Create()
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
-	if (m_pDevice->GetDeviceInfo()->m_DeviceFeatures.features.depthBounds)
+	if (m_PipelineStateDesc.m_DepthStencilDesc.m_DepthBoundsTestEnable && m_pDevice->GetDeviceInfo()->m_DeviceFeatures.features.depthBounds)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
 	}
@@ -278,7 +299,7 @@ void BvGraphicsPipelineStateVk::Destroy()
 
 BvComputePipelineStateVk::BvComputePipelineStateVk(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc & pipelineStateDesc,
 	const VkPipelineCache pipelineCache)
-	: BvComputePipelineState(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
+	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
 {
 	Create();
 }
@@ -290,7 +311,7 @@ BvComputePipelineStateVk::~BvComputePipelineStateVk()
 }
 
 
-BvRenderDevice* BvComputePipelineStateVk::GetDevice()
+IBvRenderDevice* BvComputePipelineStateVk::GetDevice()
 {
 	return m_pDevice;
 }
@@ -326,10 +347,10 @@ void BvComputePipelineStateVk::Destroy()
 
 BvRayTracingPipelineStateVk::BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc,
 	const VkPipelineCache pipelineCache)
-	: BvRayTracingPipelineState(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
+	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
 {
-	auto ppShaders = BV_NEW_ARRAY(BvShader*, m_PipelineStateDesc.m_ShaderCount);
-	memcpy(ppShaders, m_PipelineStateDesc.m_ppShaders, sizeof(BvShader*) * m_PipelineStateDesc.m_ShaderCount);
+	auto ppShaders = BV_NEW_ARRAY(IBvShader*, m_PipelineStateDesc.m_ShaderCount);
+	memcpy(ppShaders, m_PipelineStateDesc.m_ppShaders, sizeof(IBvShader*) * m_PipelineStateDesc.m_ShaderCount);
 	m_PipelineStateDesc.m_ppShaders = ppShaders;
 
 	auto pGroupDescs = BV_NEW_ARRAY(ShaderGroupDesc, m_PipelineStateDesc.m_ShaderGroupCount);
@@ -370,7 +391,7 @@ BvRayTracingPipelineStateVk::~BvRayTracingPipelineStateVk()
 }
 
 
-BvRenderDevice* BvRayTracingPipelineStateVk::GetDevice()
+IBvRenderDevice* BvRayTracingPipelineStateVk::GetDevice()
 {
 	return m_pDevice;
 }

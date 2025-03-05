@@ -5,6 +5,7 @@
 #include "BDeV/Core/System/Memory/BvMemoryArena.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 #include "BDeV/Core/Utils/BvUUID.h"
+#include "BDeV/Core/Utils/BvTask.h"
 #include <atomic>
 
 
@@ -198,7 +199,7 @@ protected:
 };
 
 
-// Base type for classes implementing the IBvObject interface. Any classes using this COM-like
+// Base type for classes implementing the IBvObject interface. Any classes using these COM-like
 // classes must derive from this class and be created with either BV_NEW or BV_MNEW.
 class BvObjectBase : public BvRefCounted
 {

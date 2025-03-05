@@ -4,14 +4,23 @@
 #include "BvBufferVk.h"
 
 
-BvAccelerationStructureVk::BvAccelerationStructureVk(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& desc)
-	: BvAccelerationStructure(desc), m_pDevice(pDevice)
+BvAccelerationStructureVk::BvAccelerationStructureVk(IBvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& desc)
+	: m_Desc(desc), m_pDevice(pDevice)
 {
 	if (m_Desc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
 	{
 		auto pGeometries = BV_NEW_ARRAY(BLASGeometryDesc, m_Desc.m_BLAS.m_GeometryCount);
 		memcpy(pGeometries, m_Desc.m_BLAS.m_pGeometries, sizeof(BLASGeometryDesc) * m_Desc.m_BLAS.m_GeometryCount);
 		m_Desc.m_BLAS.m_pGeometries = pGeometries;
+
+		for (auto i = 0; i < m_Desc.m_BLAS.m_GeometryCount; ++i)
+		{
+			auto id = m_Desc.m_BLAS.m_pGeometries[i].m_Id;
+			if (id != BvStringId::Empty())
+			{
+				m_GeometryMap.Emplace(id, i);
+			}
+		}
 	}
 
 	Create();
@@ -32,13 +41,25 @@ BvAccelerationStructureVk::~BvAccelerationStructureVk()
 }
 
 
-BvRenderDevice* BvAccelerationStructureVk::GetDevice()
+IBvRenderDevice* BvAccelerationStructureVk::GetDevice()
 {
 	return m_pDevice;
 }
 
 
-void BvAccelerationStructureVk::WriteTopLevelInstances(BvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances)
+u32 BvAccelerationStructureVk::GetGeometryIndex(BvStringId id) const
+{
+	auto it = m_GeometryMap.FindKey(id);
+	if (it != m_GeometryMap.cend())
+	{
+		return it->second;
+	}
+
+	return kU32Max;
+}
+
+
+void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances)
 {
 	BV_ASSERT(m_Desc.m_Type == RayTracingAccelerationStructureType::kTopLevel, "Acceleration structure is not a top level one");
 	if (!pStagingBuffer)
@@ -68,7 +89,7 @@ void BvAccelerationStructureVk::WriteTopLevelInstances(BvBuffer* pStagingBuffer,
 }
 
 
-BvBuffer* BvAccelerationStructureVk::GetTopLevelStagingInstanceBuffer() const
+IBvBuffer* BvAccelerationStructureVk::GetTopLevelStagingInstanceBuffer() const
 {
 	return m_pBuffer;
 }

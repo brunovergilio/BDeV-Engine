@@ -19,7 +19,7 @@ const FormatMapVk& GetVkFormatMap(Format format);
 VkImageAspectFlags GetVkImageAspectFlags(Format format, u32 planeSlice = 0);
 VkFormat GetVkFormat(const Format format);
 VkColorSpaceKHR GetVkColorSpace(ColorSpace colorSpace);
-VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags);
+VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags, bool formatted = false);
 VkImageUsageFlags GetVkImageUsageFlags(const TextureUsage usageFlags);
 VkMemoryPropertyFlags GetVkMemoryPropertyFlags(const MemoryType memoryFlags);
 VkMemoryPropertyFlags GetPreferredVkMemoryPropertyFlags(const MemoryType memoryFlags);

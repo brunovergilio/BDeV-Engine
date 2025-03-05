@@ -3,11 +3,10 @@
 #include "BvUtilsVk.h"
 #include "BvCommandContextVk.h"
 #include "BvTypeConversionsVk.h"
-#include "BvCommandBufferVk.h"
 
 
 BvBufferVk::BvBufferVk(BvRenderDeviceVk* pDevice, const BufferDesc& bufferDesc, const BufferInitData* pInitData)
-	: BvBuffer(bufferDesc), m_pDevice(pDevice)
+	: m_BufferDesc(bufferDesc), m_pDevice(pDevice)
 {
 	Create(pInitData);
 }
@@ -87,7 +86,7 @@ void BvBufferVk::Invalidate(const u64 size, const u64 offset) const
 	VkMappedMemoryRange mappedRange = {};
 	mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 	mappedRange.memory = vmaAI.deviceMemory;
-	mappedRange.offset = offset;
+	mappedRange.offset = vmaAI.offset + offset;
 	mappedRange.size = size;
 	auto result = vkInvalidateMappedMemoryRanges(m_pDevice->GetHandle(), 1, &mappedRange);
 	if (result != VK_SUCCESS)
@@ -98,7 +97,7 @@ void BvBufferVk::Invalidate(const u64 size, const u64 offset) const
 }
 
 
-BvRenderDevice* BvBufferVk::GetDevice()
+IBvRenderDevice* BvBufferVk::GetDevice()
 {
 	return m_pDevice;
 }
@@ -111,7 +110,7 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	//bufferCreateInfo.pNext = nullptr;
 	//bufferCreateInfo.flags = 0; // No Sparse Binding for now
 	bufferCreateInfo.size = m_BufferDesc.m_Size;
-	bufferCreateInfo.usage = GetVkBufferUsageFlags(m_BufferDesc.m_UsageFlags);
+	bufferCreateInfo.usage = GetVkBufferUsageFlags(m_BufferDesc.m_UsageFlags, m_BufferDesc.m_Formatted);
 	if (m_pDevice->GetDeviceInfo()->m_DeviceFeatures1_2.bufferDeviceAddress)
 	{
 		bufferCreateInfo.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -226,7 +225,7 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 
 	auto pContext = static_cast<BvCommandContextVk*>(pInitData->m_pContext);
 	pContext->NewCommandList();
-	pContext->CopyBuffer(&srcBuffer, this, copyRegion);
+	pContext->CopyBufferVk(&srcBuffer, this, copyRegion);
 
 	VkBufferMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
 	//barrier.pNext = nullptr;
@@ -243,7 +242,7 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	
-	pContext->ResourceBarrier(1, &barrier, 0, nullptr, 0, nullptr);
+	pContext->ResourceBarrierVk(1, &barrier, 0, nullptr, 0, nullptr);
 	pContext->Execute();
 	pContext->WaitForGPU();
 }

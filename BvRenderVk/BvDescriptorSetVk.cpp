@@ -9,7 +9,7 @@
 #include "BvUtilsVk.h"
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource)
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource)
 {
 	switch (descriptorType)
 	{
@@ -37,7 +37,7 @@ void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* 
 }
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource)
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource)
 {
 	switch (descriptorType)
 	{
@@ -66,7 +66,7 @@ void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk*
 }
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource)
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvSamplerVk* pResource)
 {
 	switch (descriptorType)
 	{
@@ -83,7 +83,7 @@ void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pRe
 }
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource)
+void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource)
 {
 	switch (descriptorType)
 	{
@@ -126,7 +126,7 @@ BvResourceBindingStateVk::~BvResourceBindingStateVk()
 }
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	data.Set(descriptorType, pResource);
@@ -134,7 +134,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	data.Set(descriptorType, pResource);
@@ -142,14 +142,14 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	data.Set(descriptorType, pResource);
 }
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	data.Set(descriptorType, pResource);
@@ -196,7 +196,7 @@ BvDescriptorSetVk::BvDescriptorSetVk()
 }
 
 
-BvDescriptorSetVk::BvDescriptorSetVk(const BvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet)
+BvDescriptorSetVk::BvDescriptorSetVk(const IBvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet)
 	: m_pDevice(pDevice), m_DescriptorSet(descriptorSet)
 {
 }
@@ -236,7 +236,7 @@ BvDescriptorPoolVk::BvDescriptorPoolVk()
 }
 
 
-BvDescriptorPoolVk::BvDescriptorPoolVk(const BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool)
+BvDescriptorPoolVk::BvDescriptorPoolVk(const IBvRenderDeviceVk* pDevice, const IBvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool)
 	: m_pDevice(pDevice), m_MaxAllocationsPerPool(maxAllocationsPerPool), m_pLayout(pLayout), m_SetIndex(set)
 {
 	BvRobinMap<VkDescriptorType, u32> poolSizes;

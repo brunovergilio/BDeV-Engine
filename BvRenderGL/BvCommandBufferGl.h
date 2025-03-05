@@ -31,26 +31,26 @@ public:
 	void Begin() override;
 	void End() override;
 
-	void BeginRenderPass(const BvRenderPass* const pRenderPass, BvTextureView* const* const pRenderTargets,
-		const ClearColorValue* const pClearColors, BvTextureView* const pDepthStencilTarget,
+	void BeginRenderPass(const IBvRenderPass* const pRenderPass, IBvTextureView* const* const pRenderTargets,
+		const ClearColorValue* const pClearColors, IBvTextureView* const pDepthStencilTarget,
 		const ClearColorValue& depthClear) override;
 	void EndRenderPass() override;
 
-	void SetRenderTargets(const u32 renderTargetCount, BvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors,
-		BvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags) override;
+	void SetRenderTargets(const u32 renderTargetCount, IBvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors,
+		IBvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags) override;
 	void ClearRenderTargets(u32 renderTargetCount, const ClearColorValue* const pClearValues, u32 firstRenderTargetIndex = 0) override;
 
 	void SetViewports(const u32 viewportCount, const Viewport* const pViewports) override;
 	void SetScissors(const u32 scissorCount, const Rect* const pScissors) override;
 
-	void SetPipeline(const BvGraphicsPipelineState* const pPipeline) override;
-	void SetPipeline(const BvComputePipelineState* const pPipeline) override;
+	void SetPipeline(const IBvGraphicsPipelineState* const pPipeline) override;
+	void SetPipeline(const IBvComputePipelineState* const pPipeline) override;
 
 	void SetShaderResourceParams(const u32 setCount, BvShaderResourceParams* const* const ppSets, const u32 firstSet) override;
 
-	void SetVertexBufferViews(const u32 vertexBufferCount, const BvBufferView* const* const pVertexBufferViews,
+	void SetVertexBufferViews(const u32 vertexBufferCount, const IBvBufferView* const* const pVertexBufferViews,
 		const u32 firstBinding = 0) override;
-	void SetIndexBufferView(const BvBufferView* const pIndexBufferView, const IndexFormat indexFormat) override;
+	void SetIndexBufferView(const IBvBufferView* const pIndexBufferView, const IndexFormat indexFormat) override;
 
 	void Draw(const u32 vertexCount, const u32 instanceCount = 1,
 		const u32 firstVertex = 0, const u32 firstInstance = 0) override;
@@ -58,18 +58,18 @@ public:
 		const i32 vertexOffset = 0, const u32 firstInstance = 0) override;
 	void Dispatch(const u32 x, const u32 y = 1, const u32 z = 1) override;
 
-	void DrawIndirect(const BvBuffer* const pBuffer, const u32 drawCount = 1, const u64 offset = 0) override;
-	void DrawIndexedIndirect(const BvBuffer* const pBuffer, const u32 drawCount = 1, const u64 offset = 0) override;
-	void DispatchIndirect(const BvBuffer* const pBuffer, const u64 offset = 0) override;
+	void DrawIndirect(const IBvBuffer* const pBuffer, const u32 drawCount = 1, const u64 offset = 0) override;
+	void DrawIndexedIndirect(const IBvBuffer* const pBuffer, const u32 drawCount = 1, const u64 offset = 0) override;
+	void DispatchIndirect(const IBvBuffer* const pBuffer, const u64 offset = 0) override;
 
-	void CopyBuffer(const BvBuffer* const pSrcBuffer, BvBuffer* const pDstBuffer) override;
-	void CopyBufferRegion(const BvBuffer* const pSrcBuffer, BvBuffer* const pDstBuffer, const CopyRegion& copyRegion) override;
+	void CopyBuffer(const IBvBuffer* const pSrcBuffer, IBvBuffer* const pDstBuffer) override;
+	void CopyBufferRegion(const IBvBuffer* const pSrcBuffer, IBvBuffer* const pDstBuffer, const CopyRegion& copyRegion) override;
 
-	void CopyTexture(const BvTexture* const pSrcTexture, BvTexture* const pDstTexture) override;
-	void CopyTextureRegion(const BvTexture* const pSrcTexture, BvTexture* const pDstTexture, const CopyRegion& copyRegion) override;
+	void CopyTexture(const IBvTexture* const pSrcTexture, IBvTexture* const pDstTexture) override;
+	void CopyTextureRegion(const IBvTexture* const pSrcTexture, IBvTexture* const pDstTexture, const CopyRegion& copyRegion) override;
 
-	void CopyTextureRegion(const BvBuffer* const pSrcBuffer, BvTexture* const pDstTexture, const CopyRegion& copyRegion) override;
-	void CopyTextureRegion(const BvTexture* const pSrcTexture, BvBuffer* const pDstBuffer, const CopyRegion& copyRegion) override;
+	void CopyTextureRegion(const IBvBuffer* const pSrcBuffer, IBvTexture* const pDstTexture, const CopyRegion& copyRegion) override;
+	void CopyTextureRegion(const IBvTexture* const pSrcTexture, IBvBuffer* const pDstBuffer, const CopyRegion& copyRegion) override;
 
 	void ResourceBarrier(const u32 barrierCount, const ResourceBarrierDesc* const pBarriers) override;
 

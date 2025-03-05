@@ -6,20 +6,16 @@
 #include "BvRenderDeviceObject.h"
 
 
-BV_OBJECT_DEFINE_ID(BvTexture, "b3aad9aa-5a42-434c-87c8-cf744c8eeefa");
-class BvTexture : public IBvRenderDeviceObject
+BV_OBJECT_DEFINE_ID(IBvTexture, "b3aad9aa-5a42-434c-87c8-cf744c8eeefa");
+class IBvTexture : public IBvRenderDeviceObject
 {
-	BV_NOCOPYMOVE(BvTexture);
+	BV_NOCOPYMOVE(IBvTexture);
 
 public:
-	BV_INLINE const TextureDesc & GetDesc() const { return m_TextureDesc; }
+	virtual const TextureDesc& GetDesc() const = 0;
 
 protected:
-	BvTexture(const TextureDesc & textureDesc)
-		: m_TextureDesc(textureDesc) {}
-	~BvTexture() {}
-
-protected:
-	TextureDesc m_TextureDesc;
+	IBvTexture() {}
+	~IBvTexture() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvTexture);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvTexture);

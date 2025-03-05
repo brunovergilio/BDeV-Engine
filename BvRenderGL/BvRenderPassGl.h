@@ -8,7 +8,7 @@
 class BvRenderDeviceGl;
 
 
-class BvRenderPassGl final : public BvRenderPass
+class BvRenderPassGl final : public IBvRenderPass
 {
 public:
 	BvRenderPassGl(const BvRenderDeviceGl& device, const RenderPassDesc& renderPassDesc);

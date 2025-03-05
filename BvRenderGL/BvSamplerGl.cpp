@@ -4,7 +4,7 @@
 
 
 BvSamplerGl::BvSamplerGl(const BvRenderDeviceGl& device, const SamplerDesc& samplerDesc)
-	: BvSampler(samplerDesc), m_Device(device)
+	: IBvSampler(samplerDesc), m_Device(device)
 {
 	Create();
 }

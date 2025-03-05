@@ -24,31 +24,31 @@ void BvRenderDeviceGl::Destroy()
 }
 
 
-BvSwapChain* BvRenderDeviceGl::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandQueue& commandQueue)
+IBvSwapChain* BvRenderDeviceGl::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandQueue& commandQueue)
 {
 	return new BvSwapChainGl(*this, pWindow, swapChainDesc);
 }
 
 
-BvBuffer* BvRenderDeviceGl::CreateBuffer(const BufferDesc& desc)
+IBvBuffer* BvRenderDeviceGl::CreateBuffer(const BufferDesc& desc)
 {
 	return nullptr;
 }
 
 
-BvBufferView* BvRenderDeviceGl::CreateBufferView(const BufferViewDesc& desc)
+IBvBufferView* BvRenderDeviceGl::CreateBufferView(const BufferViewDesc& desc)
 {
 	return nullptr;
 }
 
 
-BvTexture* BvRenderDeviceGl::CreateTexture(const TextureDesc& desc)
+IBvTexture* BvRenderDeviceGl::CreateTexture(const TextureDesc& desc)
 {
 	return nullptr;
 }
 
 
-BvTextureView* BvRenderDeviceGl::CreateTextureView(const TextureViewDesc& desc)
+IBvTextureView* BvRenderDeviceGl::CreateTextureView(const TextureViewDesc& desc)
 {
 	return nullptr;
 }
@@ -60,7 +60,7 @@ BvSemaphore* BvRenderDeviceGl::CreateSemaphore(const u64 initialValue)
 }
 
 
-BvRenderPass* BvRenderDeviceGl::CreateRenderPass(const RenderPassDesc& renderPassDesc)
+IBvRenderPass* BvRenderDeviceGl::CreateRenderPass(const RenderPassDesc& renderPassDesc)
 {
 	return nullptr;
 }
@@ -72,7 +72,7 @@ BvCommandPool* BvRenderDeviceGl::CreateCommandPool(const CommandPoolDesc& comman
 }
 
 
-BvShaderResourceLayout* BvRenderDeviceGl::CreateShaderResourceLayout(const ShaderResourceLayoutDesc& shaderResourceLayoutDesc)
+IBvShaderResourceLayout* BvRenderDeviceGl::CreateShaderResourceLayout(const ShaderResourceLayoutDesc& shaderResourceLayoutDesc)
 {
 	return nullptr;
 }
@@ -84,7 +84,7 @@ BvShaderResourceSetPool* BvRenderDeviceGl::CreateShaderResourceSetPool(const Sha
 }
 
 
-BvGraphicsPipelineState* BvRenderDeviceGl::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
+IBvGraphicsPipelineState* BvRenderDeviceGl::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
 {
 	return nullptr;
 }

@@ -9,7 +9,7 @@ class BvRenderDeviceGl;
 class BvSwapChainGl;
 
 
-class BvTextureGl final : public BvTexture
+class BvTextureGl final : public IBvTexture
 {
 	BV_NOCOPYMOVE(BvTextureGl);
 

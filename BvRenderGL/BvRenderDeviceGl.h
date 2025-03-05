@@ -11,7 +11,7 @@ class BvRenderContextStateGl;
 class BvFramebufferManagerGl;
 
 
-class BvRenderDeviceGl final : public BvRenderDevice
+class BvRenderDeviceGl final : public IBvRenderDevice
 {
 public:
 	BvRenderDeviceGl(const DeviceCreateDesc& deviceDesc, const BvGPUInfoGl& gpuInfo);
@@ -20,18 +20,18 @@ public:
 	void Create(const DeviceCreateDesc& deviceCreateDesc);
 	void Destroy();
 
-	BvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandQueue& commandQueue) override final;
-	BvBuffer* CreateBuffer(const BufferDesc& desc) override final;
-	BvBufferView* CreateBufferView(const BufferViewDesc& desc)  override final;
-	BvTexture* CreateTexture(const TextureDesc& desc)  override final;
-	BvTextureView* CreateTextureView(const TextureViewDesc& desc)  override final;
+	IBvSwapChain* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandQueue& commandQueue) override final;
+	IBvBuffer* CreateBuffer(const BufferDesc& desc) override final;
+	IBvBufferView* CreateBufferView(const BufferViewDesc& desc)  override final;
+	IBvTexture* CreateTexture(const TextureDesc& desc)  override final;
+	IBvTextureView* CreateTextureView(const TextureViewDesc& desc)  override final;
 	BvSemaphore* CreateSemaphore(const u64 initialValue) override final;
-	BvRenderPass* CreateRenderPass(const RenderPassDesc& renderPassDesc) override final;
+	IBvRenderPass* CreateRenderPass(const RenderPassDesc& renderPassDesc) override final;
 	BvCommandPool* CreateCommandPool(const CommandPoolDesc& commandPoolDesc) override final;
-	BvShaderResourceLayout* CreateShaderResourceLayout(const ShaderResourceLayoutDesc& shaderResourceLayoutDesc) override final;
+	IBvShaderResourceLayout* CreateShaderResourceLayout(const ShaderResourceLayoutDesc& shaderResourceLayoutDesc) override final;
 	BvShaderResourceSetPool* CreateShaderResourceSetPool(const ShaderResourceSetPoolDesc& shaderResourceSetPoolDesc =
 		ShaderResourceSetPoolDesc()) override final;
-	BvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) override final;
+	IBvGraphicsPipelineState* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) override final;
 
 	void WaitIdle() const override final;
 

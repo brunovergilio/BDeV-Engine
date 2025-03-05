@@ -11,8 +11,8 @@
 #include "BvGPUFenceVk.h"
 
 
-BvSwapChainVk::BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContext* pContext)
-	: BvSwapChain(pWindow, swapChainParams), m_pDevice(pDevice), m_pCommandContext(static_cast<BvCommandContextVk*>(pContext)),
+BvSwapChainVk::BvSwapChainVk(IBvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, IBvCommandContext* pContext)
+	: m_pWindow(pWindow), m_SwapChainDesc(swapChainParams), m_pDevice(pDevice), m_pCommandContext(static_cast<BvCommandContextVk*>(pContext)),
 	m_pCommandQueue(static_cast<BvCommandContextVk*>(pContext)->GetCommandQueue())
 {
 	CreateSurface();
@@ -118,13 +118,13 @@ void BvSwapChainVk::Present(bool vSync)
 }
 
 
-void BvSwapChainVk::SetCurrentFence(BvGPUFenceVk* pFence, u64 value)
+void BvSwapChainVk::SetCurrentFence(IBvGPUFenceVk* pFence, u64 value)
 {
 	m_Fences[m_CurrImageIndex] = FenceData{ pFence, value };
 }
 
 
-BvRenderDevice* BvSwapChainVk::GetDevice()
+IBvRenderDevice* BvSwapChainVk::GetDevice()
 {
 	return m_pDevice;
 }
@@ -401,8 +401,8 @@ bool BvSwapChainVk::Create()
 	{
 		for (auto i = 0u; i < m_SwapChainTextures.Size(); i++)
 		{
-			BV_DELETE(m_SwapChainTextureViews[i]);
-			BV_DELETE(m_SwapChainTextures[i]);
+			m_SwapChainTextureViews[i]->Release();
+			m_SwapChainTextures[i]->Release();
 		}
 		vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
 	}
@@ -423,10 +423,10 @@ bool BvSwapChainVk::Create()
 
 	for (auto i = 0u; i < imageCount; i++)
 	{
-		m_SwapChainTextures[i] = BV_NEW(BvTextureVk)(m_pDevice, this, textureDesc, swapChainImages[i]);
+		m_SwapChainTextures[i] = BV_OBJECT_CREATE(BvTextureVk, m_pDevice, this, textureDesc, swapChainImages[i]);
 
 		textureViewDesc.m_pTexture = m_SwapChainTextures[i];
-		m_SwapChainTextureViews[i] = BV_NEW(BvTextureViewVk)(m_pDevice, textureViewDesc);
+		m_SwapChainTextureViews[i] = BV_OBJECT_CREATE(BvTextureViewVk, m_pDevice, textureViewDesc);
 	}
 
 	CreateSynchronizationResources();
@@ -445,14 +445,13 @@ void BvSwapChainVk::Destroy()
 
 	for (auto& pTextureView : m_SwapChainTextureViews)
 	{
-		auto pResource = static_cast<BvTextureViewVk*>(pTextureView);
-		BV_DELETE(pResource);
+		pTextureView->Release();
 		pTextureView = nullptr;
 	}
 
 	for (auto& pTexture : m_SwapChainTextures)
 	{
-		BV_DELETE(pTexture);
+		pTexture->Release();
 	}
 
 	vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_Swapchain, nullptr);

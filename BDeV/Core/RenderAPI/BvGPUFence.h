@@ -5,10 +5,10 @@
 #include "BvRenderDeviceObject.h"
 
 
-BV_OBJECT_DEFINE_ID(BvGPUFence, "ef829631-ea35-4e5d-a4ec-21f5fe9da455");
-class BvGPUFence : public IBvRenderDeviceObject
+BV_OBJECT_DEFINE_ID(IBvGPUFence, "ef829631-ea35-4e5d-a4ec-21f5fe9da455");
+class IBvGPUFence : public IBvRenderDeviceObject
 {
-	BV_NOCOPYMOVE(BvGPUFence);
+	BV_NOCOPYMOVE(IBvGPUFence);
 
 public:
 	virtual bool IsDone(u64 value) = 0;
@@ -16,7 +16,7 @@ public:
 	virtual u64 GetCompletedValue() = 0;
 	
 protected:
-	BvGPUFence() {};
-	~BvGPUFence() {}
+	IBvGPUFence() {};
+	~IBvGPUFence() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvGPUFence);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvGPUFence);

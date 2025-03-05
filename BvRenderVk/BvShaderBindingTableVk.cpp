@@ -5,9 +5,9 @@
 #include "BvCommandContextVk.h"
 
 
-BvShaderBindingTableVk::BvShaderBindingTableVk(BvRenderDeviceVk* pDevice, const ShaderBindingTableDesc& sbtDesc,
-	const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& props, BvCommandContextVk* pContext)
-	: BvShaderBindingTable(sbtDesc), m_pDevice(pDevice), m_HandleSize(props.shaderGroupHandleSize),
+BvShaderBindingTableVk::BvShaderBindingTableVk(IBvRenderDeviceVk* pDevice, const ShaderBindingTableDesc& sbtDesc,
+	const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& props, IBvCommandContextVk* pContext)
+	: m_SBTDesc(sbtDesc), m_pDevice(pDevice), m_HandleSize(props.shaderGroupHandleSize),
 	m_GroupHandleAlignment(props.shaderGroupHandleAlignment), m_BaseGroupAlignment(props.shaderGroupBaseAlignment)
 {
 	Create(pContext);
@@ -20,20 +20,20 @@ BvShaderBindingTableVk::~BvShaderBindingTableVk()
 }
 
 
-BvRenderDevice* BvShaderBindingTableVk::GetDevice()
+IBvRenderDevice* BvShaderBindingTableVk::GetDevice()
 {
 	return m_pDevice;
 }
 
 
-void BvShaderBindingTableVk::GetAddressRegion(ShaderBindingTableGroupType groupType, u32 index, VkStridedDeviceAddressRegionKHR& addressRegion)
+void BvShaderBindingTableVk::GetAddressRegion(ShaderBindingTableGroupType groupType, u32 index, VkStridedDeviceAddressRegionKHR& addressRegion) const
 {
 	addressRegion = m_Regions[u32(groupType)];
 	addressRegion.deviceAddress += addressRegion.stride * index;
 }
 
 
-void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
+void BvShaderBindingTableVk::Create(IBvCommandContextVk* pContext)
 {
 	BvVector<u32> groupIndices[4];
 	auto& psoDesc = m_SBTDesc.m_pPSO->GetDesc();
@@ -75,19 +75,19 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 		return;
 	}
 
-	u32 handleSizeAligned = RoundToNearestPowerOf2(m_HandleSize, m_GroupHandleAlignment);
-	m_Regions[0].stride = RoundToNearestPowerOf2(handleSizeAligned * u32(groupIndices[0].Size()), m_BaseGroupAlignment);
+	u64 handleSizeAligned = RoundToNearestPowerOf2(m_HandleSize, m_GroupHandleAlignment);
+	m_Regions[0].stride = RoundToNearestPowerOf2(handleSizeAligned, m_BaseGroupAlignment);
 	m_Regions[0].size = m_Regions[0].stride;
 	m_Regions[1].stride = handleSizeAligned;
-	m_Regions[2].size = RoundToNearestPowerOf2(handleSizeAligned * u32(groupIndices[1].Size()), m_BaseGroupAlignment);
+	m_Regions[1].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[1].Size(), m_BaseGroupAlignment);
 	m_Regions[2].stride = handleSizeAligned;
-	m_Regions[2].size = RoundToNearestPowerOf2(handleSizeAligned * u32(groupIndices[2].Size()), m_BaseGroupAlignment);
+	m_Regions[2].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[2].Size(), m_BaseGroupAlignment);
 	m_Regions[3].stride = handleSizeAligned;
-	m_Regions[3].size = RoundToNearestPowerOf2(handleSizeAligned * u32(groupIndices[3].Size()), m_BaseGroupAlignment);
+	m_Regions[3].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[3].Size(), m_BaseGroupAlignment);
 
 	BufferDesc bufferDesc;
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
-	bufferDesc.m_Size = m_Regions[0].size + m_Regions[1].size + m_Regions[2].size + m_Regions[3].size;
+	bufferDesc.m_Size = m_Regions[0].size * groupIndices[0].Size() + m_Regions[1].size + m_Regions[2].size + m_Regions[3].size;
 	
 	BvVector<u8> bufferData(bufferDesc.m_Size);
 	auto pBuffer = bufferData.Data();
@@ -111,7 +111,7 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 	m_pDevice->CreateBufferVk(bufferDesc, &initData, &m_pBuffer);
 	auto deviceAddress = m_pBuffer->GetDeviceAddress();
 	m_Regions[0].deviceAddress = deviceAddress;
-	m_Regions[1].deviceAddress = deviceAddress + m_Regions[0].size;
+	m_Regions[1].deviceAddress = deviceAddress + m_Regions[0].size * groupIndices[0].Size();
 	m_Regions[2].deviceAddress = deviceAddress + m_Regions[0].size + m_Regions[1].size;
 	m_Regions[3].deviceAddress = deviceAddress + m_Regions[0].size + m_Regions[1].size + m_Regions[2].size;
 }
@@ -119,4 +119,9 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 
 void BvShaderBindingTableVk::Destroy()
 {
+	if (m_pBuffer)
+	{
+		m_pBuffer->Release();
+		m_pBuffer = nullptr;
+	}
 }

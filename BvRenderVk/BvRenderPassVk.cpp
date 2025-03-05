@@ -4,8 +4,8 @@
 #include "BvTypeConversionsVk.h"
 
 
-BvRenderPassVk::BvRenderPassVk(BvRenderDeviceVk* pDevice, const RenderPassDesc & renderPassDesc)
-	: BvRenderPass(renderPassDesc), m_pDevice(pDevice)
+BvRenderPassVk::BvRenderPassVk(BvRenderDeviceVk* pDevice, const RenderPassDesc& renderPassDesc)
+	: m_RenderPassDesc(renderPassDesc), m_pDevice(pDevice)
 {
 	Create();
 }
@@ -17,7 +17,7 @@ BvRenderPassVk::~BvRenderPassVk()
 }
 
 
-BvRenderDevice* BvRenderPassVk::GetDevice()
+IBvRenderDevice* BvRenderPassVk::GetDevice()
 {
 	return m_pDevice;
 }

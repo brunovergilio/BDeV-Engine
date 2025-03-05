@@ -8,7 +8,7 @@
 class BvRenderDeviceGl;
 
 
-class BvGraphicsPipelineStateGl final : public BvGraphicsPipelineState
+class BvGraphicsPipelineStateGl final : public IBvGraphicsPipelineState
 {
 public:
 	BvGraphicsPipelineStateGl(const BvRenderDeviceGl& device, const GraphicsPipelineStateDesc& pipelineStateDesc);
@@ -21,7 +21,7 @@ private:
 };
 
 
-class BvComputePipelineStateGl final : public BvComputePipelineState
+class BvComputePipelineStateGl final : public IBvComputePipelineState
 {
 public:
 	BvComputePipelineStateGl(const BvRenderDeviceGl& device, const ComputePipelineStateDesc& pipelineStateDesc);

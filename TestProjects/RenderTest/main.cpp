@@ -80,10 +80,10 @@ struct PosColorVertex
 
 IBvShaderCompiler* g_pCompiler = nullptr;
 
-BvShader* GetVS(BvRenderDevice* pDevice);
-BvShader* GetPS(BvRenderDevice* pDevice);
-BvBuffer* CreateVB(BvRenderDevice* pDevice);
-BvBuffer* CreateUB(BvRenderDevice* pDevice);
+IBvShader* GetVS(IBvRenderDevice* pDevice);
+IBvShader* GetPS(IBvRenderDevice* pDevice);
+IBvBuffer* CreateVB(IBvRenderDevice* pDevice);
+IBvBuffer* CreateUB(IBvRenderDevice* pDevice);
 
 
 int main()
@@ -99,9 +99,10 @@ int main()
 	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
 	compilerFn(&g_pCompiler);
 
-	auto pEngine = BvRenderEngineVk::GetInstance();
+	IBvRenderEngineVk* pEngine;
+	BvRenderVk::CreateRenderEngineVk(&pEngine);
 	BvRenderDeviceVk* pDevice;
-	pEngine->CreateRenderDeviceVk(BvRenderDeviceCreateDescVk(), &pDevice);
+	pEngine->CreateRenderDevice(BvRenderDeviceCreateDescVk(), &pDevice);
 
 	BvKeyboard keyboard;
 	auto pKeyboard = &keyboard;
@@ -117,7 +118,7 @@ int main()
 	//BvObjectHandle<BvSwapChainVk> scvk;
 	//pDevice->CreateSwapChainVk(pWindow, swapChainDesc, pGraphicsContext, &scvk);
 
-	BvSwapChain* pSwapChain;
+	IBvSwapChain* pSwapChain;
 	pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext, &pSwapChain);
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
@@ -128,7 +129,7 @@ int main()
 	ShaderResourceLayoutDesc layoutDesc;
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
-	BvShaderResourceLayout* pShaderResourceLayout;
+	IBvShaderResourceLayout* pShaderResourceLayout;
 	pDevice->CreateShaderResourceLayout(layoutDesc, &pShaderResourceLayout);
 
 	auto pVB = CreateVB(pDevice);
@@ -136,7 +137,7 @@ int main()
 	vbViewDesc.m_pBuffer = pVB;
 	vbViewDesc.m_Stride = sizeof(PosColorVertex);
 	vbViewDesc.m_ElementCount = 3;
-	BvBufferView* pVBView;
+	IBvBufferView* pVBView;
 	pDevice->CreateBufferView(vbViewDesc, &pVBView);
 
 	auto pUB = CreateUB(pDevice);
@@ -144,7 +145,7 @@ int main()
 	ubViewDesc.m_pBuffer = pUB;
 	ubViewDesc.m_Stride = sizeof(Float44);
 	ubViewDesc.m_ElementCount = 1;
-	BvBufferView* pUBView;
+	IBvBufferView* pUBView;
 	pDevice->CreateBufferView(ubViewDesc, &pUBView);
 
 	GraphicsPipelineStateDesc pipelineDesc;
@@ -165,10 +166,10 @@ int main()
 	pipelineDesc.m_VertexInputDescCount = 2;
 	pipelineDesc.m_pVertexInputDescs = inputDescs;
 
-	BvGraphicsPipelineState* pPSO;
+	IBvGraphicsPipelineState* pPSO;
 	pDevice->CreateGraphicsPipeline(pipelineDesc, &pPSO);
 
-	BvQuery* pQuery;
+	IBvQuery* pQuery;
 	pDevice->CreateQuery(QueryType::kTimestamp, &pQuery);
 
 	auto currIndex = 0;
@@ -233,7 +234,7 @@ int main()
 		}
 
 		//float f = fmodf((float)GetTickCount64(), 360.0f) / 360.0f;
-		BvTextureView *pRenderTargets[] = { pSwapChain->GetCurrentTextureView() };
+		IBvTextureView *pRenderTargets[] = { pSwapChain->GetCurrentTextureView() };
 		ClearColorValue cl[] = { ClearColorValue(
 			0.1f,
 			0.1f,
@@ -262,7 +263,7 @@ int main()
 }
 
 
-BvShader* GetVS(BvRenderDevice* pDevice)
+IBvShader* GetVS(IBvRenderDevice* pDevice)
 {
 	ShaderCreateDesc shaderDesc;
 	shaderDesc.m_ShaderStage = ShaderStage::kVertex;
@@ -276,7 +277,7 @@ BvShader* GetVS(BvRenderDevice* pDevice)
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	BvShader* pShader;
+	IBvShader* pShader;
 	pDevice->CreateShader(shaderDesc, &pShader);
 	shader->Release();
 
@@ -284,7 +285,7 @@ BvShader* GetVS(BvRenderDevice* pDevice)
 }
 
 
-BvShader* GetPS(BvRenderDevice* pDevice)
+IBvShader* GetPS(IBvRenderDevice* pDevice)
 {
 	ShaderCreateDesc shaderDesc;
 	shaderDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
@@ -298,14 +299,14 @@ BvShader* GetPS(BvRenderDevice* pDevice)
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	BvShader* pShader;
+	IBvShader* pShader;
 	pDevice->CreateShader(shaderDesc, &pShader);
 	shader->Release();
 
 	return pShader;
 }
 
-BvBuffer* CreateVB(BvRenderDevice* pDevice)
+IBvBuffer* CreateVB(IBvRenderDevice* pDevice)
 {
 	PosColorVertex verts[] =
 	{
@@ -321,20 +322,20 @@ BvBuffer* CreateVB(BvRenderDevice* pDevice)
 	bufferData.m_pContext = pDevice->GetGraphicsContext();
 	bufferData.m_pData = verts;
 	bufferData.m_Size = sizeof(verts);
-	BvBuffer* pVB;
+	IBvBuffer* pVB;
 	pDevice->CreateBuffer(vbBufferDesc, &bufferData, &pVB);
 
 	return pVB;
 }
 
-BvBuffer* CreateUB(BvRenderDevice* pDevice)
+IBvBuffer* CreateUB(IBvRenderDevice* pDevice)
 {
 	BufferDesc uniformBufferDesc;
 	uniformBufferDesc.m_Size = sizeof(Float44);
 	uniformBufferDesc.m_MemoryType = MemoryType::kUpload;
-	uniformBufferDesc.m_UsageFlags = BufferUsage::kUniformBuffer;
+	uniformBufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	uniformBufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	BvBuffer* pUniform;
+	IBvBuffer* pUniform;
 	pDevice->CreateBuffer(uniformBufferDesc, nullptr, &pUniform);
 	
 	return pUniform;

@@ -21,7 +21,7 @@ BvRenderContextStateGl::~BvRenderContextStateGl()
 }
 
 
-void BvRenderContextStateGl::SetRenderTargets(const u32 renderTargetCount, BvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, BvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags)
+void BvRenderContextStateGl::SetRenderTargets(const u32 renderTargetCount, IBvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, IBvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags)
 {
 	//DecommitRenderTargets();
 
@@ -66,7 +66,7 @@ void BvRenderContextStateGl::SetRenderTargets(const u32 renderTargetCount, BvTex
 }
 
 
-void BvRenderContextStateGl::SetPipeline(BvGraphicsPipelineState* pPipeline)
+void BvRenderContextStateGl::SetPipeline(IBvGraphicsPipelineState* pPipeline)
 {
 	if (m_pGraphicsPipeline)
 	{

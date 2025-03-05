@@ -258,13 +258,12 @@ VkColorSpaceKHR GetVkColorSpace(ColorSpace colorSpace)
 }
 
 
-VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags)
+VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags, bool formatted)
 {
 	VkBufferUsageFlags bufferUsageFlags = 0;
-	if (EHasFlag(usageFlags, BufferUsage::kUniformBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT; }
-	if (EHasFlag(usageFlags, BufferUsage::kStorageBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; }
-	if (EHasFlag(usageFlags, BufferUsage::kUniformTexelBuffer	))	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT; }
-	if (EHasFlag(usageFlags, BufferUsage::kStorageTexelBuffer	))	{ bufferUsageFlags |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kConstantBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kStructuredBuffer		))	{ bufferUsageFlags |= (!formatted ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT); }
+	if (EHasFlag(usageFlags, BufferUsage::kRWStructuredBuffer	))	{ bufferUsageFlags |= (!formatted ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT); }
 	if (EHasFlag(usageFlags, BufferUsage::kVertexBuffer			))	{ bufferUsageFlags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndexBuffer			))	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndirectBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT; }
@@ -664,7 +663,7 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kVertexBuffer:		return VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
 	case ResourceState::kIndexBuffer:		return VK_ACCESS_2_INDEX_READ_BIT;
 	case ResourceState::kIndirectBuffer:	return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
-	case ResourceState::kUniformBuffer:		return VK_ACCESS_2_UNIFORM_READ_BIT;
+	case ResourceState::kConstantBuffer:	return VK_ACCESS_2_UNIFORM_READ_BIT;
 	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
 	case ResourceState::kRWResource:		return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
 	case ResourceState::kTransferSrc:		return VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -685,10 +684,9 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags, bool includeTransfer)
 {
 	VkAccessFlags2 flags = includeTransfer ? (VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT) : 0;
-	if (EHasFlag(usageFlags, BufferUsage::kUniformBuffer		)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
-	if (EHasFlag(usageFlags, BufferUsage::kStorageBuffer		)) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
-	if (EHasFlag(usageFlags, BufferUsage::kUniformTexelBuffer	)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
-	if (EHasFlag(usageFlags, BufferUsage::kStorageTexelBuffer	)) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kConstantBuffer		)) { flags |= VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kStructuredBuffer		)) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT; }
+	if (EHasFlag(usageFlags, BufferUsage::kRWStructuredBuffer	)) { flags |= VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kVertexBuffer			)) { flags |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndexBuffer			)) { flags |= VK_ACCESS_2_INDEX_READ_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kIndirectBuffer		)) { flags |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; }

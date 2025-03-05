@@ -5,12 +5,13 @@
 #include "BvDescriptorSetVk.h"
 #include "BvBufferViewVk.h"
 #include "BvTextureViewVk.h"
+#include "BvAccelerationStructureVk.h"
 #include "BvUtilsVk.h"
 #include <utility>
 
 
 BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutDesc& srlDesc)
-	: BvShaderResourceLayout(srlDesc), m_pDevice(pDevice)
+	: m_ShaderResourceLayoutDesc(srlDesc), m_pDevice(pDevice)
 {
 	u32 totalResourceCount = 0;
 	u32 totalSamplerCount = 0;
@@ -33,7 +34,7 @@ BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, co
 	m_pShaderResourceSets = m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount ?
 		BV_NEW_ARRAY(ShaderResourceSetDesc, m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount) : nullptr;
 	m_pShaderResources = totalResourceCount ? BV_NEW_ARRAY(ShaderResourceDesc, totalResourceCount) : nullptr;
-	m_ppStaticSamplers = totalSamplerCount ? BV_NEW_ARRAY(BvSampler*, totalSamplerCount) : nullptr;
+	m_ppStaticSamplers = totalSamplerCount ? BV_NEW_ARRAY(IBvSampler*, totalSamplerCount) : nullptr;
 
 	// Start moving data
 	u32 currResource = 0;
@@ -59,7 +60,7 @@ BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, co
 
 			if (res.m_ppStaticSamplers != nullptr)
 			{
-				memcpy(&m_ppStaticSamplers[currSampler], res.m_ppStaticSamplers, sizeof(BvSampler*) * res.m_Count);
+				memcpy(&m_ppStaticSamplers[currSampler], res.m_ppStaticSamplers, sizeof(IBvSampler*) * res.m_Count);
 				m_pShaderResources[currResource].m_ppStaticSamplers = &m_ppStaticSamplers[currSampler];
 				currSampler += res.m_Count;
 			}
@@ -100,7 +101,7 @@ BvShaderResourceLayoutVk::~BvShaderResourceLayoutVk()
 }
 
 
-BvRenderDevice* BvShaderResourceLayoutVk::GetDevice()
+IBvRenderDevice* BvShaderResourceLayoutVk::GetDevice()
 {
 	return m_pDevice;
 }
@@ -260,7 +261,7 @@ BvShaderResourceParamsVk::~BvShaderResourceParamsVk()
 }
 
 
-void BvShaderResourceParamsVk::SetConstantBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
@@ -277,7 +278,7 @@ void BvShaderResourceParamsVk::SetConstantBuffers(u32 count, const BvBufferView*
 }
 
 
-void BvShaderResourceParamsVk::SetStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
@@ -294,7 +295,7 @@ void BvShaderResourceParamsVk::SetStructuredBuffers(u32 count, const BvBufferVie
 }
 
 
-void BvShaderResourceParamsVk::SetRWStructuredBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
@@ -311,31 +312,29 @@ void BvShaderResourceParamsVk::SetRWStructuredBuffers(u32 count, const BvBufferV
 }
 
 
-void BvShaderResourceParamsVk::SetFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
 	{
 		auto pResource = TO_VK(ppResources[i]);
-		auto& bufferView = m_pSetData->m_BufferViews.EmplaceBack();
-		bufferView = pResource->GetHandle();
+		m_pSetData->m_BufferViews.EmplaceBack(pResource->GetHandle());
 	}
 }
 
 
-void BvShaderResourceParamsVk::SetRWFormattedBuffers(u32 count, const BvBufferView* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
 	{
 		auto pResource = TO_VK(ppResources[i]);
-		auto& bufferView = m_pSetData->m_BufferViews.EmplaceBack();
-		bufferView = pResource->GetHandle();
+		m_pSetData->m_BufferViews.EmplaceBack(pResource->GetHandle());
 	}
 }
 
 
-void BvShaderResourceParamsVk::SetTextures(u32 count, const BvTextureView* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
@@ -350,7 +349,7 @@ void BvShaderResourceParamsVk::SetTextures(u32 count, const BvTextureView* const
 }
 
 
-void BvShaderResourceParamsVk::SetRWTextures(u32 count, const BvTextureView* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
@@ -364,7 +363,7 @@ void BvShaderResourceParamsVk::SetRWTextures(u32 count, const BvTextureView* con
 }
 
 
-void BvShaderResourceParamsVk::SetSamplers(u32 count, const BvSampler* const* ppResources, u32 binding, u32 startIndex)
+void BvShaderResourceParamsVk::SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 binding, u32 startIndex)
 {
 	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_SAMPLER, count, binding, startIndex);
 	for (auto i = 0; i < count; ++i)
@@ -374,6 +373,17 @@ void BvShaderResourceParamsVk::SetSamplers(u32 count, const BvSampler* const* pp
 		imageInfo.imageView = VK_NULL_HANDLE;
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.sampler = pResource->GetHandle();
+	}
+}
+
+
+void BvShaderResourceParamsVk::SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 binding, u32 startIndex)
+{
+	auto& writeSet = PrepareWriteSet(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, count, binding, startIndex);
+	for (auto i = 0; i < count; ++i)
+	{
+		auto pResource = TO_VK(ppResources[i]);
+		m_pSetData->m_AccelerationStructures.EmplaceBack(pResource->GetHandle());
 	}
 }
 
@@ -398,6 +408,13 @@ void BvShaderResourceParamsVk::Bind()
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			writeSet.pTexelBufferView = &m_pSetData->m_BufferViews[index];
+			break;
+		case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+			auto& asWriteSet = m_pSetData->m_ASWriteSets.EmplaceBack();
+			asWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+			asWriteSet.pNext = nullptr;
+			asWriteSet.accelerationStructureCount = writeSet.descriptorCount;
+			asWriteSet.pAccelerationStructures = &m_pSetData->m_AccelerationStructures[index];
 			break;
 		}
 	}
@@ -437,6 +454,9 @@ VkWriteDescriptorSet& BvShaderResourceParamsVk::PrepareWriteSet(VkDescriptorType
 	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 		m_pSetData->m_WriteSetDataIndices.EmplaceBack(m_pSetData->m_BufferViews.Size());
+		break;
+	case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+		m_pSetData->m_WriteSetDataIndices.EmplaceBack(m_pSetData->m_AccelerationStructures.Size());
 		break;
 	}
 

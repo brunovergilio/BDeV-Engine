@@ -1,24 +1,21 @@
 #pragma once
 
 
-//BV_IBVOBJECT_DEFINE_ID(, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
-
-
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Container/BvStringId.h"
 #include <algorithm>
 
 
-class BvBuffer;
-class BvTexture;
-class BvTextureView;
-class BvCommandContext;
-class BvAccelerationStructure;
-class BvRayTracingPipelineState;
-class BvShader;
-class BvShaderResourceLayout;
-class BvShaderBindingTable;
+class IBvBuffer;
+class IBvTexture;
+class IBvTextureView;
+class IBvCommandContext;
+class IBvAccelerationStructure;
+class IBvRayTracingPipelineState;
+class IBvShader;
+class IBvShaderResourceLayout;
+class IBvShaderBindingTable;
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -438,7 +435,7 @@ enum class ResourceState : u8
 	kVertexBuffer,
 	kIndexBuffer,
 	kIndirectBuffer,
-	kUniformBuffer,
+	kConstantBuffer,
 
 	// States used by buffers and textures
 	kShaderResource,
@@ -483,7 +480,7 @@ enum class ResourceAccess : u32
 	kAccelerationStructureRead	= BvBit(19),
 	kAccelerationStructureWrite	= BvBit(20),
 	kShaderBindingTableRead		= BvBit(21),
-	kAuto						= BvBit(22)
+	kAuto						= kU32Max
 };
 BV_USE_ENUM_CLASS_OPERATORS(ResourceAccess);
 
@@ -514,7 +511,7 @@ enum class PipelineStage : u32
 	kAccelerationStructureBuild	= BvBit(18),
 	kAccelerationStructureCopy	= BvBit(19),
 	kRayTracing					= BvBit(20),
-	kAuto						= BvBit(21)
+	kAuto						= kU32Max
 };
 BV_USE_ENUM_CLASS_OPERATORS(PipelineStage);
 
@@ -575,14 +572,13 @@ struct Offset3D
 enum class BufferUsage : u16
 {
 	kNone =						0,
-	kUniformBuffer =			BvBit(0),
-	kStorageBuffer =			BvBit(1),
-	kUniformTexelBuffer =		BvBit(2),
-	kStorageTexelBuffer =		BvBit(3),
+	kConstantBuffer =			BvBit(0),
+	kStructuredBuffer =			BvBit(1),
+	kRWStructuredBuffer =		BvBit(2),
+	kVertexBuffer =				BvBit(3),
 	kIndexBuffer =				BvBit(4),
-	kVertexBuffer =				BvBit(5),
-	kIndirectBuffer =			BvBit(6),
-	kRayTracing =				BvBit(7),
+	kIndirectBuffer =			BvBit(5),
+	kRayTracing =				BvBit(6),
 };
 BV_USE_ENUM_CLASS_OPERATORS(BufferUsage);
 
@@ -602,12 +598,13 @@ struct BufferDesc
 	BufferUsage m_UsageFlags = BufferUsage::kNone;
 	MemoryType m_MemoryType = MemoryType::kDevice;
 	ResourceState m_ResourceState = ResourceState::kCommon;
+	bool m_Formatted = false;
 };
 
 
 struct BufferViewDesc
 {
-	BvBuffer* m_pBuffer = nullptr;
+	IBvBuffer* m_pBuffer = nullptr;
 	u64 m_Offset = 0;
 	u64 m_ElementCount = 0;
 	u64 m_Stride = 0;
@@ -712,7 +709,7 @@ struct SubresourceData
 
 struct BufferInitData
 {
-	BvCommandContext* m_pContext = nullptr;
+	IBvCommandContext* m_pContext = nullptr;
 	const void* m_pData;
 	u64 m_Size;
 };
@@ -720,7 +717,7 @@ struct BufferInitData
 
 struct TextureInitData
 {
-	BvCommandContext* m_pContext = nullptr;
+	IBvCommandContext* m_pContext = nullptr;
 	u32 m_SubresourceCount = 0;
 	SubresourceData* m_pSubresources = nullptr;
 };
@@ -728,7 +725,7 @@ struct TextureInitData
 
 struct TextureViewDesc
 {
-	BvTexture* m_pTexture = nullptr;
+	IBvTexture* m_pTexture = nullptr;
 	SubresourceDesc m_SubresourceDesc;
 	TextureViewType m_ViewType = TextureViewType::kTexture2D;
 	Format m_Format = Format::kUnknown;
@@ -840,9 +837,9 @@ struct ResourceBarrierDesc
 		kStateTransitionRelease,
 	};
 
-	BvTexture* m_pTexture = nullptr;
-	BvBuffer* m_pBuffer = nullptr;
-	BvAccelerationStructure* m_pAS = nullptr;
+	IBvTexture* m_pTexture = nullptr;
+	IBvBuffer* m_pBuffer = nullptr;
+	IBvAccelerationStructure* m_pAS = nullptr;
 
 	ResourceState m_SrcLayout = ResourceState::kCommon;
 	ResourceState m_DstLayout = ResourceState::kCommon;
@@ -955,37 +952,37 @@ enum class ShadingRateCombinerOp : u8
 
 struct RenderTargetDesc
 {
-	constexpr RenderTargetDesc(BvTextureView* pView, const ClearColorValue& clearValues, LoadOp loadOp, StoreOp storeOp,
+	constexpr RenderTargetDesc(IBvTextureView* pView, const ClearColorValue& clearValues, LoadOp loadOp, StoreOp storeOp,
 		ResourceState stateBefore, ResourceState state, ResourceState stateAfter)
 		: m_pView(pView), m_ClearValues(clearValues), m_LoadOp(loadOp), m_StoreOp(storeOp),
 		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter), m_ShadingRateTexelSizes{}
 	{
 	}
 
-	static constexpr RenderTargetDesc AsRenderTarget(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
+	static constexpr RenderTargetDesc AsRenderTarget(IBvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
 		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
 	{
 		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
 	}
 
-	static constexpr RenderTargetDesc AsSwapChain(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
+	static constexpr RenderTargetDesc AsSwapChain(IBvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
 		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kPresent)
 	{
 		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
 	}
 
-	static constexpr RenderTargetDesc AsDepthStencil(BvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(1.0f, 0), LoadOp loadOp = LoadOp::kClear,
+	static constexpr RenderTargetDesc AsDepthStencil(IBvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(1.0f, 0), LoadOp loadOp = LoadOp::kClear,
 		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
 	{
 		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kDepthStencilWrite, stateAfter);
 	}
 
-	static constexpr RenderTargetDesc AsResolve(BvTextureView* pView, ResourceState stateBefore = ResourceState::kShaderResource, ResourceState stateAfter = ResourceState::kShaderResource)
+	static constexpr RenderTargetDesc AsResolve(IBvTextureView* pView, ResourceState stateBefore = ResourceState::kShaderResource, ResourceState stateAfter = ResourceState::kShaderResource)
 	{
 		return RenderTargetDesc(pView, ClearColorValue(), LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kTransferDst, stateAfter);
 	}
 
-	BvTextureView* m_pView = nullptr;
+	IBvTextureView* m_pView = nullptr;
 	ClearColorValue m_ClearValues = ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 	LoadOp m_LoadOp = LoadOp::kClear;
 	StoreOp m_StoreOp = StoreOp::kStore;
@@ -999,19 +996,19 @@ struct RenderTargetDesc
 
 struct RenderPassTargetDesc
 {
-	constexpr RenderPassTargetDesc(BvTextureView* pView)
+	constexpr RenderPassTargetDesc(IBvTextureView* pView)
 		: m_pView(pView) {}
 
-	constexpr RenderPassTargetDesc(BvTextureView* pView, float r, float g, float b, float a = 1.0f)
+	constexpr RenderPassTargetDesc(IBvTextureView* pView, float r, float g, float b, float a = 1.0f)
 		: m_pView(pView), m_ClearValues(r, g, b, a) {}
 
-	constexpr RenderPassTargetDesc(BvTextureView* pView, const float* pColors)
+	constexpr RenderPassTargetDesc(IBvTextureView* pView, const float* pColors)
 		: m_pView(pView), m_ClearValues(pColors) {}
 
-	constexpr RenderPassTargetDesc(BvTextureView* pView, float depth, u8 stencil)
+	constexpr RenderPassTargetDesc(IBvTextureView* pView, float depth, u8 stencil)
 		: m_pView(pView), m_ClearValues(depth, stencil) {}
 
-	BvTextureView* m_pView = nullptr;
+	IBvTextureView* m_pView = nullptr;
 	ClearColorValue m_ClearValues = ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 };
 
@@ -1228,9 +1225,11 @@ struct VertexInputDesc
 
 	// Element name
 	const char* m_pName = nullptr;
+	// The buffer slot this attribute belongs to
+	u32			m_Binding = 0;
 	// Index of the input attribute (In Vulkan and OpenGL, this maps to the location index that an input variable is.
 	// In D3D this is only used if there are multiple elements with the same semantic.
-	u32			m_Binding = 0;
+	u32			m_Index = 0;
 	// The offset of this variable in the struct
 	u32			m_Offset = 0;
 	// Variable format
@@ -1417,15 +1416,15 @@ struct BLASBuildGeometryDesc
 {
 	struct TriangleDesc
 	{
-		BvBuffer* m_pVertexBuffer;
+		IBvBuffer* m_pVertexBuffer;
 		u64 m_VertexOffset;
-		BvBuffer* m_pIndexBuffer;
+		IBvBuffer* m_pIndexBuffer;
 		u64 m_IndexOffset;
 	};
 
 	struct AABBDesc
 	{
-		BvBuffer* m_pBuffer;
+		IBvBuffer* m_pBuffer;
 		u64 m_Offset;
 	};
 
@@ -1446,8 +1445,8 @@ struct BLASBuildDesc
 	bool m_Update = false;
 	u32 m_GeometryCount = 0;
 	const BLASBuildGeometryDesc* m_pGeometries = nullptr;
-	BvAccelerationStructure* m_pBLAS = nullptr;
-	BvBuffer* m_pScratchBuffer = nullptr;
+	IBvAccelerationStructure* m_pBLAS = nullptr;
+	IBvBuffer* m_pScratchBuffer = nullptr;
 	u64 m_ScratchBufferOffset = 0;
 };
 
@@ -1466,7 +1465,7 @@ struct TLASBuildInstanceDesc
 	u32 m_InstanceMask = 0;
 	u32 m_ShaderBindingTableIndex = 0;
 	RayTracingInstanceFlags m_Flags = RayTracingInstanceFlags::kNone;
-	BvAccelerationStructure* m_pBLAS = nullptr;
+	IBvAccelerationStructure* m_pBLAS = nullptr;
 };
 
 
@@ -1474,10 +1473,10 @@ struct TLASBuildDesc
 {
 	bool m_Update = false;
 	u32 m_InstanceCount = 0;
-	BvAccelerationStructure* m_pTLAS = nullptr;
-	BvBuffer* m_pInstanceBuffer = nullptr;
+	IBvAccelerationStructure* m_pTLAS = nullptr;
+	IBvBuffer* m_pInstanceBuffer = nullptr;
 	u64 m_InstanceBufferOffset = 0;
-	BvBuffer* m_pScratchBuffer = nullptr;
+	IBvBuffer* m_pScratchBuffer = nullptr;
 	u64 m_ScratchBufferOffset = 0;
 };
 
@@ -1527,9 +1526,9 @@ struct RayTracingPipelineStateDesc
 {
 	u32 m_ShaderCount = 0;
 	u32 m_ShaderGroupCount = 0;
-	const BvShader* const* m_ppShaders = nullptr;
+	const IBvShader* const* m_ppShaders = nullptr;
 	const ShaderGroupDesc* m_pShaderGroupDescs = nullptr;
-	BvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
+	IBvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
 	u32 m_MaxPipelineRayRecursionDepth = 0;
 	u32 m_MaxPayloadSize = 0;
 	u32 m_MaxAttributeSize = 0;
@@ -1549,13 +1548,13 @@ enum ShaderBindingTableGroupType : u8
 
 struct ShaderBindingTableDesc
 {
-	BvRayTracingPipelineState* m_pPSO = nullptr;
+	IBvRayTracingPipelineState* m_pPSO = nullptr;
 };
 
 
 struct DispatchRaysDesc
 {
-	BvShaderBindingTable* m_pSBT = nullptr;
+	IBvShaderBindingTable* m_pSBT = nullptr;
 	u32 m_RayGenIndex = 0;
 	u32 m_MissIndex = 0;
 	u32 m_HitGroupIndex = 0;

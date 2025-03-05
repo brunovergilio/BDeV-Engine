@@ -31,7 +31,7 @@ u64 BvGPUFenceVk::GetCompletedValue()
 }
 
 
-BvRenderDevice* BvGPUFenceVk::GetDevice()
+IBvRenderDevice* BvGPUFenceVk::GetDevice()
 {
 	return m_Semaphore.GetDevice();
 }

@@ -22,6 +22,12 @@ public:
 		bool m_IsPressed;
 	};
 
+	struct CharInput
+	{
+		u32 m_CodePoint;
+		bool m_IsDeadChar;
+	};
+
 	BvKeyboard();
 	~BvKeyboard();
 
@@ -42,4 +48,7 @@ public:
 
 	// Retrieves all key state changes from the last message loop
 	u32 GetKeyStateChanges(KeyState* pKeyStates = nullptr) const;
+
+	// Retrieves all char inputs from the last message loop
+	u32 GetCharInputs(CharInput* pCharInputs = nullptr) const;
 };

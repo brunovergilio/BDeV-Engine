@@ -6,7 +6,7 @@
 #include "BvRenderDeviceObject.h"
 
 
-class BvTextureView;
+class IBvTextureView;
 class BvSemaphore;
 class BvWindow;
 
@@ -20,27 +20,20 @@ struct SwapChainDesc
 };
 
 
-BV_OBJECT_DEFINE_ID(BvSwapChain, "239e8b95-158a-4313-8f79-f68369441372");
-class BvSwapChain : public IBvRenderDeviceObject
+BV_OBJECT_DEFINE_ID(IBvSwapChain, "239e8b95-158a-4313-8f79-f68369441372");
+class IBvSwapChain : public IBvRenderDeviceObject
 {
 public:
 	virtual void Present(bool vSync = false) = 0;
 	virtual u32 GetCurrentImageIndex() const = 0;
-	virtual BvTextureView* GetTextureView(u32 index) const = 0;
+	virtual IBvTextureView* GetTextureView(u32 index) const = 0;
 
-	BV_INLINE BvTextureView* GetCurrentTextureView() const { return GetTextureView(GetCurrentImageIndex()); }
-	BV_INLINE BvWindow* GetWindow() { return m_pWindow; }
-	BV_INLINE const SwapChainDesc& GetDesc() const { return m_SwapChainDesc; }
-
-protected:
-	BvSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc)
-		: m_pWindow(pWindow), m_SwapChainDesc(swapChainDesc)
-	{
-	}
-	~BvSwapChain() {}
+	virtual IBvTextureView* GetCurrentTextureView() const = 0;
+	virtual BvWindow* GetWindow() const = 0;
+	virtual const SwapChainDesc& GetDesc() const = 0;
 
 protected:
-	BvWindow* m_pWindow;
-	SwapChainDesc m_SwapChainDesc;
+	IBvSwapChain() {}
+	~IBvSwapChain() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvSwapChain);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvSwapChain);

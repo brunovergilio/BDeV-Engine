@@ -5,21 +5,16 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 
 
-BV_OBJECT_DEFINE_ID(BvBufferView, "22f4c138-f83b-4f9b-aef3-61dbb1724ae9");
-class BvBufferView : public IBvRenderDeviceObject
+BV_OBJECT_DEFINE_ID(IBvBufferView, "22f4c138-f83b-4f9b-aef3-61dbb1724ae9");
+class IBvBufferView : public IBvRenderDeviceObject
 {
-	BV_NOCOPYMOVE(BvBufferView);
+	BV_NOCOPYMOVE(IBvBufferView);
 
 public:
-	BV_INLINE const BufferViewDesc & GetDesc() const { return m_BufferViewDesc; }
-	BV_INLINE BvBuffer * GetBuffer() const { return m_BufferViewDesc.m_pBuffer; }
+	virtual const BufferViewDesc& GetDesc() const = 0;
 
 protected:
-	BvBufferView(const BufferViewDesc & bufferViewDesc)
-		: m_BufferViewDesc(bufferViewDesc) {}
-	~BvBufferView() {}
-
-protected:
-	BufferViewDesc m_BufferViewDesc;
+	IBvBufferView() {}
+	~IBvBufferView() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvBufferView);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvBufferView);

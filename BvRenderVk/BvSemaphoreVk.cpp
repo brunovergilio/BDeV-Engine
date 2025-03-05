@@ -7,7 +7,7 @@ BvSemaphoreVk::BvSemaphoreVk()
 }
 
 
-BvSemaphoreVk::BvSemaphoreVk(BvRenderDeviceVk* pDevice, u64 initialValue, bool isTimelineSemaphore)
+BvSemaphoreVk::BvSemaphoreVk(IBvRenderDeviceVk* pDevice, u64 initialValue, bool isTimelineSemaphore)
 	: m_pDevice(pDevice)
 {
 	Create(initialValue, isTimelineSemaphore);

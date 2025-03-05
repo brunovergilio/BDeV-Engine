@@ -3,7 +3,7 @@
 
 
 BvBufferGl::BvBufferGl(const BvRenderDeviceVk& device, const BufferDesc& bufferDesc)
-	: BvBuffer(bufferDesc)
+	: IBvBuffer(bufferDesc)
 {
 	Create();
 }
@@ -88,7 +88,7 @@ std::pair<GLenum, GLenum> BvBufferGl::GetBufferUsageFlags()
 		target = GL_ELEMENT_ARRAY_BUFFER;
 		usage = GL_STATIC_DRAW;
 	}
-	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kUniformBuffer) == BufferUsage::kUniformBuffer)
+	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kConstantBuffer) == BufferUsage::kConstantBuffer)
 	{
 		target = GL_UNIFORM_BUFFER;
 		usage = GL_DYNAMIC_DRAW;
@@ -98,17 +98,17 @@ std::pair<GLenum, GLenum> BvBufferGl::GetBufferUsageFlags()
 		target = GL_DRAW_INDIRECT_BUFFER;
 		usage = GL_STATIC_DRAW;
 	}
-	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kStorageBuffer) == BufferUsage::kStorageBuffer)
+	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kStructuredBuffer) == BufferUsage::kStructuredBuffer)
 	{
 		target = GL_SHADER_STORAGE_BUFFER;
 		usage = GL_STATIC_DRAW;
 	}
-	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kUniformTexelBuffer) == BufferUsage::kUniformTexelBuffer)
+	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kConstantTexelBuffer) == BufferUsage::kConstantTexelBuffer)
 	{
 		target = GL_UNIFORM_BUFFER;
 		usage = GL_STATIC_DRAW;
 	}
-	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kStorageTexelBuffer) == BufferUsage::kStorageTexelBuffer)
+	else if ((m_BufferDesc.m_UsageFlags & BufferUsage::kStructuredTexelBuffer) == BufferUsage::kStructuredTexelBuffer)
 	{
 		target = GL_SHADER_STORAGE_BUFFER;
 		usage = GL_DYNAMIC_DRAW;

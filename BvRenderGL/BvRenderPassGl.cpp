@@ -2,7 +2,7 @@
 
 
 BvRenderPassGl::BvRenderPassGl(const BvRenderDeviceGl& device, const RenderPassDesc& renderPassDesc)
-	: BvRenderPass(renderPassDesc), m_Device(device)
+	: IBvRenderPass(renderPassDesc), m_Device(device)
 {
 }
 

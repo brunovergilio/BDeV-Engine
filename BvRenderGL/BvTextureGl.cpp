@@ -3,7 +3,7 @@
 
 
 BvTextureGl::BvTextureGl(const BvRenderDeviceGl& device, const TextureDesc& textureDesc)
-	: BvTexture(textureDesc), m_Device(device), m_InternalFormat(GetGlFormat(m_TextureDesc.m_Format)), m_Target(GetGlTextureTarget(m_TextureDesc))
+	: IBvTexture(textureDesc), m_Device(device), m_InternalFormat(GetGlFormat(m_TextureDesc.m_Format)), m_Target(GetGlTextureTarget(m_TextureDesc))
 {
 	BV_ASSERT(m_InternalFormat != 0, "Format not supported for OpenGL");
 	Create();

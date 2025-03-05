@@ -44,9 +44,9 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 }
 
 
-bool BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext, BvSwapChain** ppObj)
+bool BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext, IBvSwapChain** ppObj)
 {
-	BvSwapChainVk* pObjVk;
+	IBvSwapChainVk* pObjVk;
 	if (CreateSwapChainVk(pWindow, swapChainDesc, pContext, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -57,9 +57,9 @@ bool BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& s
 }
 
 
-bool BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData, BvBuffer** ppObj)
+bool BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData, IBvBuffer** ppObj)
 {
-	BvBufferVk* pObjVk;
+	IBvBufferVk* pObjVk;
 	if (CreateBufferVk(desc, pInitData, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -70,9 +70,9 @@ bool BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData
 }
 
 
-bool BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc, BvBufferView** ppObj)
+bool BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc, IBvBufferView** ppObj)
 {
-	BvBufferViewVk* pObjVk;
+	IBvBufferViewVk* pObjVk;
 	if (CreateBufferViewVk(desc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -83,9 +83,9 @@ bool BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc, BvBufferView
 }
 
 
-bool BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData, BvTexture** ppObj)
+bool BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData, IBvTexture** ppObj)
 {
-	BvTextureVk* pObjVk;
+	IBvTextureVk* pObjVk;
 	if (CreateTextureVk(desc, pInitData, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -96,9 +96,9 @@ bool BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitD
 }
 
 
-bool BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc, BvTextureView** ppObj)
+bool BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc, IBvTextureView** ppObj)
 {
-	BvTextureViewVk* pObjVk;
+	IBvTextureViewVk* pObjVk;
 	if (CreateTextureViewVk(desc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -109,9 +109,9 @@ bool BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc, BvTextureV
 }
 
 
-bool BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc, BvSampler** ppObj)
+bool BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc, IBvSampler** ppObj)
 {
-	BvSamplerVk* pObjVk;
+	IBvSamplerVk* pObjVk;
 	if (CreateSamplerVk(desc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -122,9 +122,9 @@ bool BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc, BvSampler** ppObj)
 }
 
 
-bool BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc, BvRenderPass** ppObj)
+bool BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc, IBvRenderPass** ppObj)
 {
-	BvRenderPassVk* pObjVk;
+	IBvRenderPassVk* pObjVk;
 	if (CreateRenderPassVk(renderPassDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -135,9 +135,9 @@ bool BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc, Bv
 }
 
 
-bool BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc, BvShaderResourceLayout** ppObj)
+bool BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc, IBvShaderResourceLayout** ppObj)
 {
-	BvShaderResourceLayoutVk* pObjVk;
+	IBvShaderResourceLayoutVk* pObjVk;
 	if (CreateShaderResourceLayoutVk(srlDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -148,9 +148,9 @@ bool BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc
 }
 
 
-bool BvRenderDeviceVk::CreateShader(const ShaderCreateDesc& shaderDesc, BvShader** ppObj)
+bool BvRenderDeviceVk::CreateShader(const ShaderCreateDesc& shaderDesc, IBvShader** ppObj)
 {
-	BvShaderVk* pObjVk;
+	IBvShaderVk* pObjVk;
 	if (CreateShaderVk(shaderDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -161,9 +161,9 @@ bool BvRenderDeviceVk::CreateShader(const ShaderCreateDesc& shaderDesc, BvShader
 }
 
 
-bool BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineState** ppObj)
+bool BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvGraphicsPipelineState** ppObj)
 {
-	BvGraphicsPipelineStateVk* pObjVk;
+	IBvGraphicsPipelineStateVk* pObjVk;
 	if (CreateGraphicsPipelineVk(graphicsPipelineStateDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -174,9 +174,9 @@ bool BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& g
 }
 
 
-bool BvRenderDeviceVk::CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineState** ppObj)
+bool BvRenderDeviceVk::CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, IBvComputePipelineState** ppObj)
 {
-	BvComputePipelineStateVk* pObjVk;
+	IBvComputePipelineStateVk* pObjVk;
 	if (CreateComputePipelineVk(computePipelineStateDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -187,9 +187,9 @@ bool BvRenderDeviceVk::CreateComputePipeline(const ComputePipelineStateDesc& com
 }
 
 
-bool BvRenderDeviceVk::CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, BvRayTracingPipelineState** ppObj)
+bool BvRenderDeviceVk::CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvRayTracingPipelineState** ppObj)
 {
-	BvRayTracingPipelineStateVk* pObjVk;
+	IBvRayTracingPipelineStateVk* pObjVk;
 	if (CreateRayTracingPipelineVk(rayTracingPipelineStateDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -200,9 +200,9 @@ bool BvRenderDeviceVk::CreateRayTracingPipeline(const RayTracingPipelineStateDes
 }
 
 
-bool BvRenderDeviceVk::CreateQuery(QueryType queryType, BvQuery** ppObj)
+bool BvRenderDeviceVk::CreateQuery(QueryType queryType, IBvQuery** ppObj)
 {
-	BvQueryVk* pObjVk;
+	IBvQueryVk* pObjVk;
 	if (CreateQueryVk(queryType, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -213,9 +213,9 @@ bool BvRenderDeviceVk::CreateQuery(QueryType queryType, BvQuery** ppObj)
 }
 
 
-bool BvRenderDeviceVk::CreateFence(u64 value, BvGPUFence** ppObj)
+bool BvRenderDeviceVk::CreateFence(u64 value, IBvGPUFence** ppObj)
 {
-	BvGPUFenceVk* pObjVk;
+	IBvGPUFenceVk* pObjVk;
 	if (CreateFenceVk(value, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -226,9 +226,9 @@ bool BvRenderDeviceVk::CreateFence(u64 value, BvGPUFence** ppObj)
 }
 
 
-bool BvRenderDeviceVk::CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructure** ppObj)
+bool BvRenderDeviceVk::CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, IBvAccelerationStructure** ppObj)
 {
-	BvAccelerationStructureVk* pObjVk;
+	IBvAccelerationStructureVk* pObjVk;
 	if (CreateAccelerationStructureVk(asDesc, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -239,9 +239,9 @@ bool BvRenderDeviceVk::CreateAccelerationStructure(const RayTracingAccelerationS
 }
 
 
-bool BvRenderDeviceVk::CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, BvCommandContext* pContext, BvShaderBindingTable** ppObj)
+bool BvRenderDeviceVk::CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, IBvShaderBindingTable** ppObj)
 {
-	BvShaderBindingTableVk* pObjVk;
+	IBvShaderBindingTableVk* pObjVk;
 	if (CreateShaderBindingTableVk(sbtDesc, pContext, &pObjVk))
 	{
 		*ppObj = pObjVk;
@@ -252,7 +252,7 @@ bool BvRenderDeviceVk::CreateShaderBindingTable(const ShaderBindingTableDesc& sb
 }
 
 
-bool BvRenderDeviceVk::CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, BvCommandContext* pContext, BvSwapChainVk** ppObj)
+bool BvRenderDeviceVk::CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext, IBvSwapChainVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvSwapChainVk, this, pWindow, swapChainDesc, pContext);
 	if (!(*ppObj)->IsValid())
@@ -266,7 +266,7 @@ bool BvRenderDeviceVk::CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc&
 }
 
 
-bool BvRenderDeviceVk::CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData, BvBufferVk** ppObj)
+bool BvRenderDeviceVk::CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData, IBvBufferVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvBufferVk, this, desc, pInitData);
 	if (!(*ppObj)->IsValid())
@@ -280,7 +280,7 @@ bool BvRenderDeviceVk::CreateBufferVk(const BufferDesc& desc, const BufferInitDa
 }
 
 
-bool BvRenderDeviceVk::CreateBufferViewVk(const BufferViewDesc& desc, BvBufferViewVk** ppObj)
+bool BvRenderDeviceVk::CreateBufferViewVk(const BufferViewDesc& desc, IBvBufferViewVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvBufferViewVk, this, desc);
 	if (!(*ppObj)->IsValid())
@@ -294,7 +294,7 @@ bool BvRenderDeviceVk::CreateBufferViewVk(const BufferViewDesc& desc, BvBufferVi
 }
 
 
-bool BvRenderDeviceVk::CreateTextureVk(const TextureDesc& desc, const TextureInitData* pInitData, BvTextureVk** ppObj)
+bool BvRenderDeviceVk::CreateTextureVk(const TextureDesc& desc, const TextureInitData* pInitData, IBvTextureVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvTextureVk, this, desc, pInitData);
 	if (!(*ppObj)->IsValid())
@@ -308,7 +308,7 @@ bool BvRenderDeviceVk::CreateTextureVk(const TextureDesc& desc, const TextureIni
 }
 
 
-bool BvRenderDeviceVk::CreateTextureViewVk(const TextureViewDesc& desc, BvTextureViewVk** ppObj)
+bool BvRenderDeviceVk::CreateTextureViewVk(const TextureViewDesc& desc, IBvTextureViewVk** ppObj)
 {
 	if (!(*ppObj)->IsValid())
 	{
@@ -321,7 +321,7 @@ bool BvRenderDeviceVk::CreateTextureViewVk(const TextureViewDesc& desc, BvTextur
 }
 
 
-bool BvRenderDeviceVk::CreateSamplerVk(const SamplerDesc& desc, BvSamplerVk** ppObj)
+bool BvRenderDeviceVk::CreateSamplerVk(const SamplerDesc& desc, IBvSamplerVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvSamplerVk, this, desc);
 	if (!(*ppObj)->IsValid())
@@ -335,7 +335,7 @@ bool BvRenderDeviceVk::CreateSamplerVk(const SamplerDesc& desc, BvSamplerVk** pp
 }
 
 
-bool BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& renderPassDesc, BvRenderPassVk** ppObj)
+bool BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& renderPassDesc, IBvRenderPassVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvRenderPassVk, this, renderPassDesc);
 	if (!(*ppObj)->IsValid())
@@ -349,7 +349,7 @@ bool BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& renderPassDesc, 
 }
 
 
-bool BvRenderDeviceVk::CreateShaderResourceLayoutVk(const ShaderResourceLayoutDesc& srlDesc, BvShaderResourceLayoutVk** ppObj)
+bool BvRenderDeviceVk::CreateShaderResourceLayoutVk(const ShaderResourceLayoutDesc& srlDesc, IBvShaderResourceLayoutVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvShaderResourceLayoutVk, this, srlDesc);
 	if (!(*ppObj)->IsValid())
@@ -363,7 +363,7 @@ bool BvRenderDeviceVk::CreateShaderResourceLayoutVk(const ShaderResourceLayoutDe
 }
 
 
-bool BvRenderDeviceVk::CreateShaderVk(const ShaderCreateDesc& shaderDesc, BvShaderVk** ppObj)
+bool BvRenderDeviceVk::CreateShaderVk(const ShaderCreateDesc& shaderDesc, IBvShaderVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvShaderVk, this, shaderDesc);
 	m_DeviceObjects.PushBack(*ppObj);
@@ -372,7 +372,7 @@ bool BvRenderDeviceVk::CreateShaderVk(const ShaderCreateDesc& shaderDesc, BvShad
 }
 
 
-bool BvRenderDeviceVk::CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, BvGraphicsPipelineStateVk** ppObj)
+bool BvRenderDeviceVk::CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvGraphicsPipelineStateVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvGraphicsPipelineStateVk, this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
 	if (!(*ppObj)->IsValid())
@@ -386,7 +386,7 @@ bool BvRenderDeviceVk::CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc&
 }
 
 
-bool BvRenderDeviceVk::CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc, BvComputePipelineStateVk** ppObj)
+bool BvRenderDeviceVk::CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc, IBvComputePipelineStateVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvComputePipelineStateVk, this, computePipelineStateDesc, VK_NULL_HANDLE);
 	if (!(*ppObj)->IsValid())
@@ -400,7 +400,7 @@ bool BvRenderDeviceVk::CreateComputePipelineVk(const ComputePipelineStateDesc& c
 }
 
 
-bool BvRenderDeviceVk::CreateRayTracingPipelineVk(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, BvRayTracingPipelineStateVk** ppObj)
+bool BvRenderDeviceVk::CreateRayTracingPipelineVk(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvRayTracingPipelineStateVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvRayTracingPipelineStateVk, this, rayTracingPipelineStateDesc, VK_NULL_HANDLE);
 	if (!(*ppObj)->IsValid())
@@ -414,7 +414,7 @@ bool BvRenderDeviceVk::CreateRayTracingPipelineVk(const RayTracingPipelineStateD
 }
 
 
-bool BvRenderDeviceVk::CreateQueryVk(QueryType queryType, BvQueryVk** ppObj)
+bool BvRenderDeviceVk::CreateQueryVk(QueryType queryType, IBvQueryVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvQueryVk, this, queryType, 3);
 	m_DeviceObjects.PushBack(*ppObj);
@@ -423,7 +423,7 @@ bool BvRenderDeviceVk::CreateQueryVk(QueryType queryType, BvQueryVk** ppObj)
 }
 
 
-bool BvRenderDeviceVk::CreateFenceVk(u64 value, BvGPUFenceVk** ppObj)
+bool BvRenderDeviceVk::CreateFenceVk(u64 value, IBvGPUFenceVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvGPUFenceVk, this, value);
 	if (!(*ppObj)->IsValid())
@@ -437,7 +437,7 @@ bool BvRenderDeviceVk::CreateFenceVk(u64 value, BvGPUFenceVk** ppObj)
 }
 
 
-bool BvRenderDeviceVk::CreateAccelerationStructureVk(const RayTracingAccelerationStructureDesc& asDesc, BvAccelerationStructureVk** ppObj)
+bool BvRenderDeviceVk::CreateAccelerationStructureVk(const RayTracingAccelerationStructureDesc& asDesc, IBvAccelerationStructureVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvAccelerationStructureVk, this, asDesc);
 	if (!(*ppObj)->IsValid())
@@ -451,7 +451,7 @@ bool BvRenderDeviceVk::CreateAccelerationStructureVk(const RayTracingAcceleratio
 }
 
 
-bool BvRenderDeviceVk::CreateShaderBindingTableVk(const ShaderBindingTableDesc& sbtDesc, BvCommandContext* pContext, BvShaderBindingTableVk** ppObj)
+bool BvRenderDeviceVk::CreateShaderBindingTableVk(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, IBvShaderBindingTableVk** ppObj)
 {
 	*ppObj = BV_OBJECT_CREATE(BvShaderBindingTableVk, this, sbtDesc, m_pDeviceInfo->m_ExtendedProperties.rayTracingPipelineProps, TO_VK(pContext));
 	m_DeviceObjects.PushBack(*ppObj);
@@ -466,19 +466,136 @@ void BvRenderDeviceVk::WaitIdle() const
 }
 
 
-BvCommandContext* BvRenderDeviceVk::GetGraphicsContext(u32 index) const
+bool BvRenderDeviceVk::CreateGraphicsContext(u32 index, IBvCommandContext** ppObj)
+{
+	IBvCommandContextVk* pObjVk;
+	if (CreateGraphicsContextVk(index, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateComputeContext(u32 index, IBvCommandContext** ppObj)
+{
+	IBvCommandContextVk* pObjVk;
+	if (CreateComputeContextVk(index, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateTransferContext(u32 index, IBvCommandContext** ppObj)
+{
+	IBvCommandContextVk* pObjVk;
+	if (CreateTransferContextVk(index, &pObjVk))
+	{
+		*ppObj = pObjVk;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool BvRenderDeviceVk::CreateGraphicsContextVk(u32 index, IBvCommandContextVk** ppObj)
+{
+	if (index >= m_GraphicsContexts.Size())
+	{
+		return false;
+	}
+
+	BV_ASSERT_ONCE(m_GraphicsContexts[index] == nullptr, "Context already created");
+
+	auto& pContext = m_GraphicsContexts[index];
+	if (!pContext)
+	{
+		pContext = BV_OBJECT_CREATE(BvCommandContextVk, this, 3, CommandType::kGraphics, m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueFamilyIndex, index);
+	}
+	*ppObj = pContext;
+
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateComputeContextVk(u32 index, IBvCommandContextVk** ppObj)
+{
+	if (index >= m_ComputeContexts.Size())
+	{
+		return false;
+	}
+
+	BV_ASSERT_ONCE(m_ComputeContexts[index] == nullptr, "Context already created");
+
+	auto& pContext = m_ComputeContexts[index];
+	if (!pContext)
+	{
+		pContext = BV_OBJECT_CREATE(BvCommandContextVk, this, 3, CommandType::kCompute, m_pDeviceInfo->m_ComputeQueueInfo.m_QueueFamilyIndex, index);
+	}
+	*ppObj = pContext;
+
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreateTransferContextVk(u32 index, IBvCommandContextVk** ppObj)
+{
+	if (index >= m_TransferContexts.Size())
+	{
+		return false;
+	}
+
+	BV_ASSERT_ONCE(m_TransferContexts[index] == nullptr, "Context already created");
+
+	auto& pContext = m_TransferContexts[index];
+	if (!pContext)
+	{
+		pContext = BV_OBJECT_CREATE(BvCommandContextVk, this, 3, CommandType::kTransfer, m_pDeviceInfo->m_TransferQueueInfo.m_QueueFamilyIndex, index);
+	}
+	*ppObj = pContext;
+
+	return true;
+}
+
+
+IBvCommandContext* BvRenderDeviceVk::GetGraphicsContext(u32 index) const
+{
+	return GetGraphicsContextVk(index);
+}
+
+
+IBvCommandContext* BvRenderDeviceVk::GetComputeContext(u32 index) const
+{
+	return GetComputeContextVk(index);
+}
+
+
+IBvCommandContext* BvRenderDeviceVk::GetTransferContext(u32 index) const
+{
+	return GetTransferContextVk(index);
+}
+
+
+IBvCommandContextVk* BvRenderDeviceVk::GetGraphicsContextVk(u32 index) const
 {
 	return index < m_GraphicsContexts.Size() ? m_GraphicsContexts[index] : nullptr;
 }
 
 
-BvCommandContext* BvRenderDeviceVk::GetComputeContext(u32 index) const
+IBvCommandContextVk* BvRenderDeviceVk::GetComputeContextVk(u32 index) const
 {
 	return index < m_ComputeContexts.Size() ? m_ComputeContexts[index] : nullptr;
 }
 
 
-BvCommandContext* BvRenderDeviceVk::GetTransferContext(u32 index) const
+IBvCommandContextVk* BvRenderDeviceVk::GetTransferContextVk(u32 index) const
 {
 	return index < m_TransferContexts.Size() ? m_TransferContexts[index] : nullptr;
 }
@@ -691,7 +808,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_GraphicsQueueCount, m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueCount);
 		queueInfos.PushBack(queueCreateInfo);
 
-		m_GraphicsContexts.Resize(deviceCreateDesc.m_GraphicsQueueCount);
+		m_GraphicsContexts.Resize(queueCreateInfo.queueCount);
 	}
 	if (deviceCreateDesc.m_ComputeQueueCount > 0 && m_pDeviceInfo->m_ComputeQueueInfo.m_QueueCount > 0)
 	{
@@ -699,7 +816,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_ComputeQueueCount, m_pDeviceInfo->m_ComputeQueueInfo.m_QueueCount);
 		queueInfos.PushBack(queueCreateInfo);
 
-		m_ComputeContexts.Resize(deviceCreateDesc.m_ComputeQueueCount);
+		m_ComputeContexts.Resize(queueCreateInfo.queueCount);
 	}
 	if (deviceCreateDesc.m_TransferQueueCount > 0 && m_pDeviceInfo->m_TransferQueueInfo.m_QueueCount > 0)
 	{
@@ -707,7 +824,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_TransferQueueCount, m_pDeviceInfo->m_TransferQueueInfo.m_QueueCount);
 		queueInfos.PushBack(queueCreateInfo);
 
-		m_TransferContexts.Resize(deviceCreateDesc.m_TransferQueueCount);
+		m_TransferContexts.Resize(queueCreateInfo.queueCount);
 	}
 
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
@@ -727,19 +844,6 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	}
 
 	volkLoadDevice(m_Device);
-
-	for (auto i = 0; i < m_GraphicsContexts.Size(); i++)
-	{
-		m_GraphicsContexts[i] = new BvCommandContextVk(this, 3, CommandType::kGraphics, m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueFamilyIndex, i);
-	}
-	for (auto i = 0; i < m_ComputeContexts.Size(); i++)
-	{
-		m_ComputeContexts[i] = new BvCommandContextVk(this, 3, CommandType::kCompute, m_pDeviceInfo->m_ComputeQueueInfo.m_QueueFamilyIndex, i);
-	}
-	for (auto i = 0; i < m_TransferContexts.Size(); i++)
-	{
-		m_TransferContexts[i] = new BvCommandContextVk(this, 3, CommandType::kTransfer, m_pDeviceInfo->m_TransferQueueInfo.m_QueueFamilyIndex, i);
-	}
 
 	CreateVMA();
 

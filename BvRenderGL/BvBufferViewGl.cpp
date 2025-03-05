@@ -2,7 +2,7 @@
 
 
 BvBufferViewGl::BvBufferViewGl(const BvRenderDeviceGl& device, const BufferViewDesc& bufferViewDesc)
-	: BvBufferView(bufferViewDesc), m_Device(device)
+	: IBvBufferView(bufferViewDesc), m_Device(device)
 {
 }
 
