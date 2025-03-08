@@ -36,6 +36,11 @@ public:
 		i32 m_Bottom = 0;
 	};
 
+	static const BvVector<BvMonitor*>& GetMonitors();
+	static BvMonitor* FromPoint(i32 x, i32 y);
+	static BvMonitor* FromWindow(const BvWindow* pWindow);
+	static BvMonitor* Primary();
+
 	BV_INLINE const BvVector<VideoMode>& GetVideoModes() const { return m_VideoModes; }
 	BV_INLINE const VideoMode& GetDesktopVideoMode() const { return m_DesktopVideoMode; }
 	BV_INLINE const Rect& GetFullscreenArea() const { return m_FullscreenArea; }
@@ -56,9 +61,3 @@ protected:
 	VideoMode m_DesktopVideoMode;
 	BvString m_Name;
 };
-
-
-const BvVector<BvMonitor*>& GetMonitors();
-BvMonitor* GetMonitorFromPoint(i32 x, i32 y);
-BvMonitor* GetMonitorFromWindow(const BvWindow* pWindow);
-BvMonitor* GetPrimaryMonitor();

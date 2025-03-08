@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="SampleBase.h" />
+    <ClInclude Include="UIOverlay.h" />
+    <ClInclude Include="Third Party\imconfig.h" />
+    <ClInclude Include="Third Party\imgui.h" />
+    <ClInclude Include="Third Party\imgui_internal.h" />
+    <ClInclude Include="Third Party\imstb_rectpack.h" />
+    <ClInclude Include="Third Party\imstb_textedit.h" />
+    <ClInclude Include="Third Party\imstb_truetype.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="SampleBase.cpp" />
+    <ClCompile Include="UIOverlay.cpp" />
+    <ClCompile Include="Third Party\imgui.cpp" />
+    <ClCompile Include="Third Party\imgui_demo.cpp" />
+    <ClCompile Include="Third Party\imgui_draw.cpp" />
+    <ClCompile Include="Third Party\imgui_tables.cpp" />
+    <ClCompile Include="Third Party\imgui_widgets.cpp" />
+  </ItemGroup>
+</Project>

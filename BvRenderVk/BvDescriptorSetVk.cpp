@@ -9,53 +9,75 @@
 #include "BvUtilsVk.h"
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 dynamicOffset)
 {
+	bool isDirty = false;
 	switch (descriptorType)
 	{
 	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+	case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+	case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 	{
 		auto& desc = pResource->GetDesc();
-		auto pBuffer = static_cast<const BvBufferVk*>(desc.m_pBuffer);
+		auto pBuffer = TO_VK(desc.m_pBuffer);
 		
-		m_Data.m_BufferInfo.buffer = pBuffer->GetHandle();
-		m_Data.m_BufferInfo.offset = desc.m_Offset;
-		m_Data.m_BufferInfo.range = desc.m_ElementCount * desc.m_Stride;
+		VkDescriptorBufferInfo info{ pBuffer->GetHandle(), desc.m_Offset, desc.m_ElementCount * desc.m_Stride };
+		if (memcmp(&info, &m_Data.m_BufferInfo, sizeof(VkDescriptorBufferInfo)))
+		{
+			isDirty = true;
+			m_Data.m_BufferInfo = info;
+		}
+
+		m_DynamicOffset = dynamicOffset;
 		m_DescriptorType = descriptorType;
 		break;
 	}
 	case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 	case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-		m_Data.m_BufferView = pResource->GetHandle();
+		if (m_Data.m_BufferView != pResource->GetHandle())
+		{
+			m_Data.m_BufferView = pResource->GetHandle();
+			isDirty = true;
+		}
+
 		m_DescriptorType = descriptorType;
 		break;
 	default:
 		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
 	}
+
+	return isDirty;
 }
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource)
 {
+	bool isDirty = false;
 	switch (descriptorType)
 	{
 	case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 	{
 		auto layout = !IsDepthStencilFormat(pResource->GetDesc().m_Format) ?
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-		m_Data.m_ImageInfo.imageLayout = layout;
-		m_Data.m_ImageInfo.imageView = pResource->GetHandle();
-		m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
+		VkDescriptorImageInfo info{ VK_NULL_HANDLE, pResource->GetHandle(), layout };
+		if (memcmp(&info, &m_Data.m_ImageInfo, sizeof(VkDescriptorImageInfo)))
+		{
+			m_Data.m_ImageInfo = info;
+			isDirty = true;
+		}
 		m_DescriptorType = descriptorType;
 		break;
 	}
 	case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 	{
-		m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-		m_Data.m_ImageInfo.imageView = pResource->GetHandle();
-		m_Data.m_ImageInfo.sampler = VK_NULL_HANDLE;
+		VkDescriptorImageInfo info{ VK_NULL_HANDLE, pResource->GetHandle(), VK_IMAGE_LAYOUT_GENERAL };
+		if (memcmp(&info, &m_Data.m_ImageInfo, sizeof(VkDescriptorImageInfo)))
+		{
+			m_Data.m_ImageInfo = info;
+			isDirty = true;
+		}
 		m_DescriptorType = descriptorType;
 		break;
 	}
@@ -63,38 +85,55 @@ void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvTextureViewVk
 		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
 	}
+
+	return isDirty;
 }
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvSamplerVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvSamplerVk* pResource)
 {
+	bool isDirty = false;
 	switch (descriptorType)
 	{
 	case VK_DESCRIPTOR_TYPE_SAMPLER:
-		m_Data.m_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		m_Data.m_ImageInfo.imageView = VK_NULL_HANDLE;
-		m_Data.m_ImageInfo.sampler = pResource->GetHandle();
+	{
+		VkDescriptorImageInfo info{ pResource->GetHandle(), VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED };
+		if (memcmp(&info, &m_Data.m_ImageInfo, sizeof(VkDescriptorImageInfo)))
+		{
+			m_Data.m_ImageInfo = info;
+			isDirty = true;
+		}
 		m_DescriptorType = descriptorType;
 		break;
+	}
 	default:
 		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
 	}
+
+	return isDirty;
 }
 
 
-void ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource)
 {
+	bool isDirty = false;
 	switch (descriptorType)
 	{
 	case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-		m_Data.m_AccelerationStructure = pResource->GetHandle();
+		if (m_Data.m_AccelerationStructure != pResource->GetHandle())
+		{
+			m_Data.m_AccelerationStructure = pResource->GetHandle();
+			isDirty = true;
+		}
 		m_DescriptorType = descriptorType;
 		break;
 	default:
 		BV_ASSERT(nullptr, "Resource doesn't match binding's type");
 		break;
 	}
+
+	return isDirty;
 }
 
 
@@ -115,6 +154,7 @@ BvResourceBindingStateVk& BvResourceBindingStateVk::operator=(BvResourceBindingS
 	{
 		std::swap(m_Bindings, rhs.m_Bindings);
 		std::swap(m_Resources, rhs.m_Resources);
+		std::swap(m_DirtySets, rhs.m_DirtySets);
 	}
 
 	return *this;
@@ -126,33 +166,45 @@ BvResourceBindingStateVk::~BvResourceBindingStateVk()
 }
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex, u32 offset)
 {
-	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	data.Set(descriptorType, pResource);
+	auto[pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
+	if (pData->Set(descriptorType, pResource, offset) || newElem)
+	{
+		m_DirtySets[set] = true;
+	}
 }
 
 
 
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
-	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	data.Set(descriptorType, pResource);
+	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
+	if (pData->Set(descriptorType, pResource) || newElem)
+	{
+		m_DirtySets[set] = true;
+	}
 }
 
 
 
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
-	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	data.Set(descriptorType, pResource);
+	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
+	if (pData->Set(descriptorType, pResource) || newElem)
+	{
+		m_DirtySets[set] = true;
+	}
 }
 
 
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
-	auto& data = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	data.Set(descriptorType, pResource);
+	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
+	if (pData->Set(descriptorType, pResource) || newElem)
+	{
+		m_DirtySets[set] = true;
+	}
 }
 
 
@@ -170,11 +222,12 @@ const ResourceDataVk* BvResourceBindingStateVk::GetResource(const ResourceIdVk& 
 }
 
 
-ResourceDataVk& BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex)
+std::pair<ResourceDataVk*, bool> BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex)
 {
 	ResourceIdVk resId{ set, binding, arrayIndex };
 	auto bindingIt = m_Bindings.Emplace(resId, 0);
 	u32 index = 0;
+	bool newElem = false;
 	if (!bindingIt.second)
 	{
 		index = bindingIt.first->second;
@@ -184,10 +237,10 @@ ResourceDataVk& BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32
 		m_Resources.EmplaceBack();
 		index = static_cast<u32>(m_Resources.Size()) - 1;
 		bindingIt.first->second = index;
+		newElem = true;
 	}
-	m_DirtySets[set] = true;
 
-	return m_Resources[index];
+	return std::make_pair(&m_Resources[index], newElem);
 }
 
 
@@ -240,33 +293,22 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(const IBvRenderDeviceVk* pDevice, const I
 	: m_pDevice(pDevice), m_MaxAllocationsPerPool(maxAllocationsPerPool), m_pLayout(pLayout), m_SetIndex(set)
 {
 	BvRobinMap<VkDescriptorType, u32> poolSizes;
-	auto it = m_pLayout->GetResources().FindKey(m_SetIndex);
-	BV_ASSERT(it != m_pLayout->GetResources().cend(), "Set not found in current Shader Resource Layout");
-	auto& resources = it->second;
+	auto pSet = pLayout->GetResourceSet(set);
+	BV_ASSERT(pSet != nullptr, "Set not found in current Shader Resource Layout");
+
+	m_IsBindless = pSet->m_Bindless;
 	m_Layout = m_pLayout->GetSetLayoutHandles().At(m_SetIndex);
-	for (auto& resource : resources)
+	for (auto i = 0u; i < pSet->m_ResourceCount; ++i)
 	{
-		auto& poolSize = poolSizes[GetVkDescriptorType(resource.second->m_ShaderResourceType)];
-		poolSize += resource.second->m_Count;
+		auto& resource = pSet->m_pResources[i];
+		auto& poolSize = poolSizes[GetVkDescriptorType(resource.m_ShaderResourceType)];
+		poolSize += resource.m_Count;
 	}
 
 	m_PoolSizes.Reserve(poolSizes.Size());
 	for (auto& poolSize : poolSizes)
 	{
 		m_PoolSizes.PushBack({ poolSize.first, poolSize.second * m_MaxAllocationsPerPool });
-	}
-
-	if (it != m_pLayout->GetResources().cend())
-	{
-		auto& map = it->second;
-		for (auto& res : map)
-		{
-			if (res.second->m_Bindless)
-			{
-				m_IsBindless = true;
-				break;
-			}
-		}
 	}
 }
 

@@ -44,7 +44,7 @@ private:
 
 	void SetupAttachments(BvVector<VkAttachmentDescription2>& attachments);
 	void SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses, BvVector<VkAttachmentReference2>& attachmentRefs,
-		VkFragmentShadingRateAttachmentInfoKHR& shadingRateRef);
+		BvVector<VkFragmentShadingRateAttachmentInfoKHR>& shadingRateRefs);
 	void SetupDependencies(BvVector<VkSubpassDependency2>& dependencies, BvVector<VkMemoryBarrier2>& barriers);
 
 	void GetVkFlags(u32 subpassIndex, VkAccessFlags2& accessFlags, VkPipelineStageFlags2& stageFlags);
@@ -53,6 +53,11 @@ private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkRenderPass m_RenderPass = VK_NULL_HANDLE;
 	RenderPassDesc m_RenderPassDesc;
+	RenderPassAttachment* m_pAttachments = nullptr;
+	SubpassDependency* m_pDependencies = nullptr;
+	SubpassDesc* m_pSubpasses = nullptr;
+	AttachmentRef* m_pRefs = nullptr;
+	ShadingRateAttachmentRef* m_pSRRefs = nullptr;
 };
 
 

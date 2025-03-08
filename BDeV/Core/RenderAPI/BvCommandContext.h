@@ -16,6 +16,7 @@ class IBvComputePipelineState;
 class IBvRayTracingPipelineState;
 class BvShaderResourceParams;
 class IBvQuery;
+class IBvShaderBindingTable;
 
 
 class BvGPUOp
@@ -82,37 +83,64 @@ public:
 	virtual void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
-	virtual void SetShaderConstants(u32 size, const void* pData, u32 offset = 0) = 0;
+	virtual void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex) = 0;
+	virtual void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set) = 0;
 
 	BV_INLINE void SetShaderResourceParams(BvShaderResourceParams* pResourceParams, u32 startIndex = 0) { SetShaderResourceParams(1, &pResourceParams, startIndex); }
 	BV_INLINE void SetConstantBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetConstantBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetStructuredBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetStructuredBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetRWStructuredBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWStructuredBuffers(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetDynamicConstantBuffer(const IBvBufferView* pResource, u32 offset, u32 set, u32 binding, u32 startIndex = 0) { SetDynamicConstantBuffers(1, &pResource, &offset, set, binding, startIndex); }
+	BV_INLINE void SetDynamicStructuredBuffer(const IBvBufferView* pResource, u32 offset, u32 set, u32 binding, u32 startIndex = 0) { SetDynamicStructuredBuffers(1, &pResource, &offset, set, binding, startIndex); }
+	BV_INLINE void SetDynamicRWStructuredBuffer(const IBvBufferView* pResource, u32 offset, u32 set, u32 binding, u32 startIndex = 0) { SetDynamicRWStructuredBuffers(1, &pResource, &offset, set, binding, startIndex); }
 	BV_INLINE void SetFormattedBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetFormattedBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetRWFormattedBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWFormattedBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetTexture(const IBvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetTextures(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetRWTexture(const IBvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWTextures(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetSampler(const IBvSampler* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetSamplers(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetAccelerationStructures(const IBvAccelerationStructure* pResource, u32 set, u32 binding, u32 startIndex) { SetAccelerationStructures(1, &pResource, set, binding, startIndex); }
 	template<typename T> BV_INLINE void SetShaderConstantsT(const T& value, u32 offset = 0) { SetShaderConstants(sizeof(T), &value, offset); }
 
 	virtual void SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) = 0;
 	BV_INLINE void SetVertexBufferView(const IBvBufferView* pVertexBufferView, const u32 firstBinding = 0) { SetVertexBufferViews(1, &pVertexBufferView, firstBinding); }
 	virtual void SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat) = 0;
 
-	virtual void Draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0) = 0;
-	virtual void DrawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, i32 vertexOffset = 0, u32 firstInstance = 0) = 0;
-	virtual void Dispatch(u32 x, u32 y = 1, u32 z = 1) = 0;
+	virtual void Draw(const DrawCommandArgs& args) = 0;
+	virtual void DrawIndexed(const DrawIndexedCommandArgs& args) = 0;
+	virtual void Dispatch(const DispatchCommandArgs& args) = 0;
+	virtual void DispatchMesh(const DispatchMeshCommandArgs& args) = 0;
+
+	BV_INLINE void Draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0)
+	{
+		Draw({ vertexCount, instanceCount, firstVertex, firstInstance });
+	}
+
+	BV_INLINE void DrawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, i32 vertexOffset = 0, u32 firstInstance = 0)
+	{
+		DrawIndexed({ indexCount, instanceCount, firstIndex, vertexOffset, firstInstance });
+	}
+
+	BV_INLINE void Dispatch(u32 x, u32 y = 1, u32 z = 1)
+	{
+		Dispatch({ x, y, z });
+	}
+
+	BV_INLINE void DispatchMesh(u32 x, u32 y = 1, u32 z = 1)
+	{
+		DispatchMesh({ x, y, z });
+	}
 
 	virtual void DrawIndirect(const IBvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0) = 0;
 	virtual void DrawIndexedIndirect(const IBvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0) = 0;
 	virtual void DispatchIndirect(const IBvBuffer* pBuffer, u64 offset = 0) = 0;
-
-	virtual void DispatchMesh(u32 x, u32 y = 1, u32 z = 1) = 0;
 	virtual void DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offset = 0) = 0;
 	virtual void DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 offset, const IBvBuffer* pCountBuffer, u64 countOffset, u32 maxCount) = 0;
 
@@ -147,7 +175,9 @@ public:
 
 	virtual void BuildBLAS(const BLASBuildDesc& blasDesc) = 0;
 	virtual void BuildTLAS(const TLASBuildDesc& tlasDesc) = 0;
-	virtual void DispatchRays(const DispatchRaysDesc& drDesc) = 0;
+	virtual void DispatchRays(const DispatchRaysCommandArgs& args) = 0;
+	virtual void DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
+		u32 width, u32 height, u32 depth) = 0;
 	virtual void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0) = 0;
 
 protected:

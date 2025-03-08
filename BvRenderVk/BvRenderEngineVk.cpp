@@ -14,8 +14,8 @@ bool BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDesc& device
 {
 	BvRenderDeviceCreateDescVk descVk;
 	memcpy(&descVk, &deviceCreateDesc, sizeof(BvRenderDeviceCreateDesc));
-	BvRenderDeviceVk* pObjVk;
-	if (CreateRenderDevice(descVk, &pObjVk))
+	IBvRenderDeviceVk* pObjVk;
+	if (CreateRenderDeviceVk(descVk, &pObjVk))
 	{
 		*ppObj = pObjVk;
 		return true;
@@ -25,7 +25,7 @@ bool BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDesc& device
 }
 
 
-bool BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, BvRenderDeviceVk** ppObj)
+bool BvRenderEngineVk::CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc, IBvRenderDeviceVk** ppObj)
 {
 	u32 gpuIndex = deviceDesc.m_GPUIndex;
 	if (gpuIndex >= m_GPUs.Size())
@@ -399,7 +399,7 @@ namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API bool CreateRenderEngine(BvRenderEngine** ppObj)
+		BV_API bool CreateRenderEngine(IBvRenderEngine** ppObj)
 		{
 			IBvRenderEngineVk* pObjVk;
 			if (CreateRenderEngineVk(&pObjVk))

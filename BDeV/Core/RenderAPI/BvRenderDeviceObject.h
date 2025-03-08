@@ -12,9 +12,9 @@ class IBvRenderDeviceObject : public BvObjectBase
 {
 public:
 	virtual IBvRenderDevice* GetDevice() = 0;
-	~IBvRenderDeviceObject() {}
 
 protected:
 	IBvRenderDeviceObject() {}
+	~IBvRenderDeviceObject() {}
 };
 BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderDeviceObject);

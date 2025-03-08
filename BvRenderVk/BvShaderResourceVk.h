@@ -11,11 +11,44 @@ class BvRenderDeviceVk;
 BV_OBJECT_DEFINE_ID(IBvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
 class IBvShaderResourceLayoutVk : public IBvShaderResourceLayout
 {
+protected:
+	struct ResourceId
+	{
+		u32 m_Binding;
+		u32 m_Set;
+
+		friend bool operator==(const ResourceId& lhs, const ResourceId& rhs)
+		{
+			return lhs.m_Binding == rhs.m_Binding && lhs.m_Set == rhs.m_Set;
+		}
+	};
+
+	struct PushConstantId
+	{
+		u32 m_Size;
+		u32 m_Binding;
+		u32 m_Set;
+
+		friend bool operator==(const PushConstantId& lhs, const PushConstantId& rhs)
+		{
+			return lhs.m_Size == rhs.m_Size && lhs.m_Binding == rhs.m_Binding
+				&& lhs.m_Set == rhs.m_Set;
+		}
+	};
+
+	struct PushConstantData
+	{
+		VkShaderStageFlags m_ShaderStages;
+		u32 m_Offset;
+	};
+
 public:
 	virtual const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const = 0;
 	virtual VkPipelineLayout GetPipelineLayoutHandle() const = 0;
 	virtual bool IsValid() const = 0;
-	virtual const BvRobinMap<u32, BvRobinMap<u32, ShaderResourceDesc*>>& GetResources() const = 0;
+	virtual const ShaderResourceSetDesc* GetResourceSet(u32 set) const = 0;
+	virtual const ShaderResourceDesc* GetResource(u32 binding, u32 set) const = 0;
+	virtual PushConstantData* GetPushConstantData(u32 size, u32 binding, u32 set) const = 0;
 
 protected:
 	IBvShaderResourceLayoutVk() {}
@@ -35,7 +68,9 @@ public:
 	BV_INLINE const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const override { return m_Layouts; }
 	BV_INLINE VkPipelineLayout GetPipelineLayoutHandle() const override { return m_PipelineLayout; }
 	BV_INLINE bool IsValid() const override { return m_PipelineLayout != VK_NULL_HANDLE; }
-	BV_INLINE const BvRobinMap<u32, BvRobinMap<u32, ShaderResourceDesc*>>& GetResources() const override { return m_Resources; }
+	const ShaderResourceSetDesc* GetResourceSet(u32 set) const override;
+	const ShaderResourceDesc* GetResource(u32 binding, u32 set) const override;
+	PushConstantData* GetPushConstantData(u32 size, u32 binding, u32 set) const override;
 
 	BV_OBJECT_IMPL_INTERFACE(IBvShaderResourceLayoutVk, IBvShaderResourceLayout, IBvRenderDeviceObject);
 
@@ -49,10 +84,11 @@ private:
 	BvRobinMap<u32, VkDescriptorSetLayout> m_Layouts{};
 	VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
 	ShaderResourceDesc* m_pShaderResources = nullptr;
-	ShaderResourceConstantDesc* m_pShaderConstant = nullptr;
+	ShaderResourceConstantDesc* m_pShaderConstants = nullptr;
 	ShaderResourceSetDesc* m_pShaderResourceSets = nullptr;
 	IBvSampler** m_ppStaticSamplers = nullptr;
-	BvRobinMap<u32, BvRobinMap<u32, ShaderResourceDesc*>> m_Resources;
+	BvRobinMap<ResourceId, const ShaderResourceDesc*> m_Resources;
+	BvRobinMap<PushConstantId, PushConstantData> m_PushConstantOffsets;
 };
 
 

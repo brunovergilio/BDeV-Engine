@@ -613,6 +613,23 @@ void BvRenderDeviceVk::GetCopyableFootprints(const TextureDesc& textureDesc, u32
 }
 
 
+u64 BvRenderDeviceVk::GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const
+{
+	u64 alignment = elementStride;
+	auto& limits = m_pDeviceInfo->m_DeviceProperties.properties.limits;
+	if (EHasFlag(usageFlags, BufferUsage::kConstantBuffer))
+	{
+		alignment = std::max(limits.minUniformBufferOffsetAlignment, alignment);
+	}
+	if (EHasFlag(usageFlags, BufferUsage::kStructuredBuffer) || EHasFlag(usageFlags, BufferUsage::kRWStructuredBuffer))
+	{
+		alignment = std::max(limits.minStorageBufferOffsetAlignment, alignment);
+	}
+	
+	return RoundToNearestPowerOf2(elementStride, alignment);
+}
+
+
 bool BvRenderDeviceVk::SupportsQueryType(QueryType queryType, CommandType commandType) const
 {
 	if (queryType == QueryType::kTimestamp)
@@ -859,7 +876,7 @@ void BvRenderDeviceVk::Destroy()
 
 	for (i32 i = i32(m_DeviceObjects.Size()) - 1; i >= 0; --i)
 	{
-		BV_DELETE(m_DeviceObjects[i]);
+		m_DeviceObjects[i]->Release();
 	}
 
 	DestroyVMA();

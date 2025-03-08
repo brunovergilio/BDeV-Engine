@@ -7,7 +7,7 @@
 
 
 class BvDebugReportVk;
-class BvRenderDeviceVk;
+class IBvRenderDeviceVk;
 
 
 struct BvRenderDeviceCreateDescVk : BvRenderDeviceCreateDesc
@@ -16,12 +16,12 @@ struct BvRenderDeviceCreateDescVk : BvRenderDeviceCreateDesc
 
 
 BV_OBJECT_DEFINE_ID(IBvRenderEngineVk, "eb31d72c-fe50-4284-ab0c-a5dbccf3c72d");
-class IBvRenderEngineVk : public BvRenderEngine
+class IBvRenderEngineVk : public IBvRenderEngine
 {
 	BV_NOCOPYMOVE(IBvRenderEngineVk);
 
 public:
-	virtual bool CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, BvRenderDeviceVk** ppObj) = 0;
+	virtual bool CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc, IBvRenderDeviceVk** ppObj) = 0;
 	virtual VkInstance GetHandle() const = 0;
 	virtual bool HasDebugUtils() const = 0;
 
@@ -38,12 +38,12 @@ class BvRenderEngineVk final : public IBvRenderEngineVk
 
 public:
 	bool CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc, IBvRenderDevice** ppObj) override;
-	bool CreateRenderDevice(const BvRenderDeviceCreateDescVk& deviceDesc, BvRenderDeviceVk** ppObj) override;
+	bool CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc, IBvRenderDeviceVk** ppObj) override;
 	BV_INLINE const BvVector<BvGPUInfo>& GetGPUs() const override { return m_GPUs; }
 	BV_INLINE VkInstance GetHandle() const override { return m_Instance; }
 	BV_INLINE bool HasDebugUtils() const override { return m_HasDebugUtils; }
 
-	BV_OBJECT_IMPL_INTERFACE(IBvRenderEngineVk, BvRenderEngine);
+	BV_OBJECT_IMPL_INTERFACE(IBvRenderEngineVk, IBvRenderEngine);
 
 	BvRenderEngineVk();
 	~BvRenderEngineVk();
@@ -56,7 +56,7 @@ private:
 	BvSharedLib m_VulkanLib;
 	VkInstance m_Instance = VK_NULL_HANDLE;
 	BvVector<BvGPUInfo> m_GPUs;
-	BvVector<BvRenderDeviceVk*> m_Devices;
+	BvVector<IBvRenderDeviceVk*> m_Devices;
 	BvDebugReportVk* m_pDebugReport = nullptr;
 	bool m_HasDebugUtils = false;
 };
@@ -66,7 +66,7 @@ namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API bool CreateRenderEngine(BvRenderEngine** ppObj);
+		BV_API bool CreateRenderEngine(IBvRenderEngine** ppObj);
 		BV_API bool CreateRenderEngineVk(IBvRenderEngineVk** ppObj);
 	}
 }

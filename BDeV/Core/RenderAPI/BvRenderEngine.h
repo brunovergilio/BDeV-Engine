@@ -17,17 +17,17 @@ struct BvRenderDeviceCreateDesc
 };
 
 
-BV_OBJECT_DEFINE_ID(BvRenderEngine, "1f046059-8e51-4fca-aac6-fd11aa3e1684");
-class BvRenderEngine : public BvObjectBase
+BV_OBJECT_DEFINE_ID(IBvRenderEngine, "1f046059-8e51-4fca-aac6-fd11aa3e1684");
+class IBvRenderEngine : public BvObjectBase
 {
-	BV_NOCOPYMOVE(BvRenderEngine);
+	BV_NOCOPYMOVE(IBvRenderEngine);
 
 public:
 	virtual bool CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc, IBvRenderDevice** ppObj) = 0;
 	virtual const BvVector<BvGPUInfo>& GetGPUs() const = 0;
 
 protected:
-	BvRenderEngine() {}
-	~BvRenderEngine() {}
+	IBvRenderEngine() {}
+	~IBvRenderEngine() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderEngine);
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderEngine);

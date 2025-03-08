@@ -16,7 +16,6 @@ public:
 
 	IBvTextureLoader::Result LoadTextureFromFile(const char* pFilename, IBvTextureBlob** ppTextureBlob) override;
 	IBvTextureLoader::Result LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureBlob** ppTextureBlob) override;
-	void DestroyTexture(IBvTextureBlob** ppTextureBlob) override;
 
 	BV_OBJECT_IMPL_INTERFACE(BvDDSTextureLoader, IBvTextureLoader);
 

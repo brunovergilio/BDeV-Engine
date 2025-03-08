@@ -16,7 +16,6 @@ class IBvShaderBindingTableVk : public IBvShaderBindingTable
 	BV_NOCOPYMOVE(IBvShaderBindingTableVk);
 
 public:
-	virtual void GetAddressRegion(ShaderBindingTableGroupType groupType, u32 index, VkStridedDeviceAddressRegionKHR& addressRegion) const = 0;
 	virtual bool IsValid() const = 0;
 
 protected:
@@ -37,7 +36,8 @@ public:
 
 	IBvRenderDevice* GetDevice() override;
 	BV_INLINE const ShaderBindingTableDesc& GetDesc() const override { return m_SBTDesc; }
-	void GetAddressRegion(ShaderBindingTableGroupType groupType, u32 index, VkStridedDeviceAddressRegionKHR& addressRegion) const override;
+	void GetDeviceAddressRange(ShaderBindingTableGroupType type, u32 index, DeviceAddressRange& addressRange) const override;
+	void GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType type, u32 index, DeviceAddressRangeAndStride& addressRangeAndStride) const override;
 	BV_INLINE bool IsValid() const override { return m_pBuffer != nullptr; }
 
 	BV_OBJECT_IMPL_INTERFACE(IBvShaderBindingTableVk, IBvShaderBindingTable, IBvRenderDeviceObject);

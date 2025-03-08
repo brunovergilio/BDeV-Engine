@@ -67,7 +67,7 @@ void BvRenderEngineGl::Destroy()
 namespace BvRenderGl
 {
 #if defined (BV_STATIC_LIB)
-	BvRenderEngine* GetRenderEngine()
+	IBvRenderEngine* GetRenderEngine()
 	{
 		static BvRenderEngineGl s_Engine;
 		return &s_Engine;
@@ -75,7 +75,7 @@ namespace BvRenderGl
 #else
 	static BvRenderEngineGl* s_pRenderEngineGl = nullptr;
 
-	BvRenderEngine* CreateRenderEngine()
+	IBvRenderEngine* CreateRenderEngine()
 	{
 		if (!s_pRenderEngineGl)
 		{

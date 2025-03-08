@@ -167,7 +167,7 @@ void BvWindow::SetWindowMode(WindowMode windowMode)
 			ShowWindow(m_hWnd, SW_RESTORE);
 		}
 
-		const BvMonitor* pMonitor = trueFullscreen ? GetPrimaryMonitor() : GetMonitorFromWindow(this);
+		const BvMonitor* pMonitor = trueFullscreen ? BvMonitor::Primary() : BvMonitor::FromWindow(this);
 		const auto area = pMonitor->GetFullscreenArea();
 
 		Reshape(area.m_Left, area.m_Top, area.m_Right - area.m_Left, area.m_Bottom - area.m_Top);
@@ -413,7 +413,7 @@ void BvWindow::Create(bool createNew)
 		style = fullscreenStyle;
 		exStyle = fullscreenExStyle;
 
-		const BvMonitor* pMonitor = trueFullscreen ? GetPrimaryMonitor() : GetMonitorFromPoint(x, y);
+		const BvMonitor* pMonitor = trueFullscreen ? BvMonitor::Primary() : BvMonitor::FromPoint(x, y);
 		const auto area = pMonitor->GetFullscreenArea();
 		x = area.m_Left;
 		y = area.m_Top;

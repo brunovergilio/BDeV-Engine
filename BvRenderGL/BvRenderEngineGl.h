@@ -8,7 +8,7 @@
 class BvDebugReportGl;
 
 
-class BvRenderEngineGl final : public BvRenderEngine
+class BvRenderEngineGl final : public IBvRenderEngine
 {
 	BV_NOCOPYMOVE(BvRenderEngineGl);
 
@@ -39,12 +39,12 @@ private:
 namespace BvRenderGl
 {
 #if defined (BV_STATIC_LIB)
-	BV_PLUGIN_API BvRenderEngine* GetRenderEngine();
+	BV_PLUGIN_API IBvRenderEngine* GetRenderEngine();
 #else
 #if defined(BV_PLUGIN_DLL_EXPORT)
 	BV_EXTERN_C
 #endif
-	BV_PLUGIN_API BvRenderEngine* CreateRenderEngine();
+	BV_PLUGIN_API IBvRenderEngine* CreateRenderEngine();
 
 #if defined(BV_PLUGIN_DLL_EXPORT)
 	BV_EXTERN_C

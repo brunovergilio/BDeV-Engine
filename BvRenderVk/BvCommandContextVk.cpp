@@ -6,6 +6,7 @@
 #include "BvSwapChainVk.h"
 #include "BvGPUFenceVk.h"
 #include "BvFramebufferVk.h"
+#include "BvShaderBindingTableVk.h"
 
 
 BvFrameDataVk::BvFrameDataVk()
@@ -13,9 +14,9 @@ BvFrameDataVk::BvFrameDataVk()
 }
 
 
-BvFrameDataVk::BvFrameDataVk(IBvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, BvQueryHeapManagerVk* pQueryHeapManager)
+BvFrameDataVk::BvFrameDataVk(IBvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData)
 	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_FrameIndex(frameIndex),
-	m_pQueryHeapManager(pQueryHeapManager)
+	m_pContextData(pContextData)
 {
 	pDevice->CreateFenceVk(0, &m_pFence);
 	BV_ASSERT(m_pFence->IsValid(), "Fence has to be valid");
@@ -33,12 +34,8 @@ BvFrameDataVk& BvFrameDataVk::operator=(BvFrameDataVk&& rhs) noexcept
 	m_pDevice = rhs.m_pDevice;
 	std::swap(m_CommandPool, rhs.m_CommandPool);
 	std::swap(m_CommandBuffers, rhs.m_CommandBuffers);
-	std::swap(m_ResourceBindingState, rhs.m_ResourceBindingState);
-	std::swap(m_DescriptorPools, rhs.m_DescriptorPools);
-	std::swap(m_DescriptorSets, rhs.m_DescriptorSets);
+	std::swap(m_pContextData, rhs.m_pContextData);
 	m_pFence = rhs.m_pFence;
-	m_pQueryHeapManager = rhs.m_pQueryHeapManager;
-	m_pFramebufferManager = rhs.m_pFramebufferManager;
 	std::swap(m_Queries, rhs.m_Queries);
 	m_SignaValueIndex = rhs.m_SignaValueIndex;
 	m_FrameIndex = rhs.m_FrameIndex;
@@ -59,14 +56,14 @@ void BvFrameDataVk::Reset()
 
 	if (m_Queries.Size() > 0)
 	{
-		m_pQueryHeapManager->Reset(m_FrameIndex);
+		m_pContextData->m_pQueryHeapManager->Reset(m_FrameIndex);
 		m_Queries.Clear();
 		m_UpdatedQueries = 0;
 	}
 
 	m_CommandPool.Reset();
 	m_CommandBuffers.Clear();
-	m_ResourceBindingState.Reset();
+	m_pContextData->m_ResourceBindingState.Reset();
 }
 
 
@@ -85,7 +82,7 @@ BvCommandBufferVk* BvFrameDataVk::RequestCommandBuffer()
 VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const IBvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, bool bindless)
 {
 	auto srlHash = MurmurHash64A(&pLayout->GetSetLayoutHandles().At(set), sizeof(VkDescriptorSetLayout));
-	auto& pool = m_DescriptorPools[srlHash];
+	auto& pool = m_pContextData->m_DescriptorPools[srlHash];
 	if (!pool.IsValid())
 	{
 		pool = BvDescriptorPoolVk(m_pDevice, pLayout, set, bindless ? 1 : 16);
@@ -95,7 +92,7 @@ VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const IBvShaderReso
 
 	if (bindless)
 	{
-		auto result = m_BindlessDescriptorSets.Emplace(srlHash, BvDescriptorSetVk());
+		auto result = m_pContextData->m_BindlessDescriptorSets.Emplace(srlHash, BvDescriptorSetVk());
 		if (result.second)
 		{
 			result.first->second = BvDescriptorSetVk(m_pDevice, pool.Allocate());
@@ -117,7 +114,7 @@ VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const IBvShaderReso
 			HashCombine(descriptorSetHash, writeSet);
 		}
 
-		auto result = m_DescriptorSets.Emplace(descriptorSetHash, BvDescriptorSetVk());
+		auto result = m_pContextData->m_DescriptorSets.Emplace(descriptorSetHash, BvDescriptorSetVk());
 		if (result.second)
 		{
 			result.first->second = BvDescriptorSetVk(m_pDevice, pool.Allocate());
@@ -163,23 +160,13 @@ void BvFrameDataVk::AddQuery(IBvQueryVk* pQuery)
 
 VkFramebuffer BvFrameDataVk::GetFramebuffer(const FramebufferDesc& fbDesc)
 {
-	if (!m_pFramebufferManager)
-	{
-		m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)();
-	}
-
-	return m_pFramebufferManager->GetFramebuffer(m_pDevice->GetHandle(), fbDesc);
+	return m_pContextData->m_pFramebufferManager->GetFramebuffer(m_pDevice->GetHandle(), fbDesc);
 }
 
 
 void BvFrameDataVk::RemoveFramebuffers(VkImageView view)
 {
-	if (!m_pFramebufferManager)
-	{
-		m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)();
-	}
-
-	m_pFramebufferManager->RemoveFramebuffersWithView(view);
+	m_pContextData->m_pFramebufferManager->RemoveFramebuffersWithView(view);
 }
 
 
@@ -198,17 +185,22 @@ BvCommandContextVk::BvCommandContextVk(IBvRenderDeviceVk* pDevice, u32 frameCoun
 	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyType, queueFamilyIndex, queueIndex)
 {
 	u32 querySizes[kQueryTypeCount] = { 2, 2, 2 };
-	m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, querySizes, frameCount);
+	m_pContextData = BV_NEW(ContextDataVk)();
+	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, querySizes, frameCount);
+	m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)();
 	m_Frames.Reserve(frameCount);
 	for (auto i = 0; i < frameCount; ++i)
 	{
-		m_Frames.EmplaceBack(pDevice, queueFamilyIndex, i, m_pQueryHeapManager);
+		m_Frames.EmplaceBack(pDevice, queueFamilyIndex, i, m_pContextData);
 	}
 }
 
 
 BvCommandContextVk::~BvCommandContextVk()
 {
+	BV_DELETE(m_pContextData->m_pFramebufferManager);
+	BV_DELETE(m_pContextData->m_pQueryHeapManager);
+	BV_DELETE(m_pContextData);
 }
 
 
@@ -379,6 +371,24 @@ void BvCommandContextVk::SetRWStructuredBuffers(u32 count, const IBvBufferView* 
 }
 
 
+void BvCommandContextVk::SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+{
+	m_pCurrCommandBuffer->SetDynamicConstantBuffers(count, ppResources, pOffsets, set, binding, startIndex);
+}
+
+
+void BvCommandContextVk::SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+{
+	m_pCurrCommandBuffer->SetDynamicStructuredBuffers(count, ppResources, pOffsets, set, binding, startIndex);
+}
+
+
+void BvCommandContextVk::SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+{
+	m_pCurrCommandBuffer->SetDynamicRWStructuredBuffers(count, ppResources, pOffsets, set, binding, startIndex);
+}
+
+
 void BvCommandContextVk::SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	m_pCurrCommandBuffer->SetFormattedBuffers(count, ppResources, set, binding, startIndex);
@@ -409,9 +419,15 @@ void BvCommandContextVk::SetSamplers(u32 count, const IBvSampler* const* ppResou
 }
 
 
-void BvCommandContextVk::SetShaderConstants(u32 size, const void* pData, u32 offset)
+void BvCommandContextVk::SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
-	m_pCurrCommandBuffer->SetShaderConstants(size, pData, offset);
+	m_pCurrCommandBuffer->SetAccelerationStructures(count, ppResources, set, binding, startIndex);
+}
+
+
+void BvCommandContextVk::SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set)
+{
+	m_pCurrCommandBuffer->SetShaderConstants(size, pData, binding, set);
 }
 
 
@@ -427,21 +443,27 @@ void BvCommandContextVk::SetIndexBufferView(const IBvBufferView* pIndexBufferVie
 }
 
 
-void BvCommandContextVk::Draw(u32 vertexCount, u32 instanceCount /*= 1*/, u32 firstVertex /*= 0*/, u32 firstInstance /*= 0*/)
+void BvCommandContextVk::Draw(const DrawCommandArgs& args)
 {
-	m_pCurrCommandBuffer->Draw(vertexCount, instanceCount, firstVertex, firstInstance);
+	m_pCurrCommandBuffer->Draw(args);
 }
 
 
-void BvCommandContextVk::DrawIndexed(u32 indexCount, u32 instanceCount /*= 1*/, u32 firstIndex /*= 0*/, i32 vertexOffset /*= 0*/, u32 firstInstance /*= 0*/)
+void BvCommandContextVk::DrawIndexed(const DrawIndexedCommandArgs& args)
 {
-	m_pCurrCommandBuffer->DrawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+	m_pCurrCommandBuffer->DrawIndexed(args);
 }
 
 
-void BvCommandContextVk::Dispatch(u32 x, u32 y /*= 1*/, u32 z /*= 1*/)
+void BvCommandContextVk::Dispatch(const DispatchCommandArgs& args)
 {
-	m_pCurrCommandBuffer->Dispatch(x, y, z);
+	m_pCurrCommandBuffer->Dispatch(args);
+}
+
+
+void BvCommandContextVk::DispatchMesh(const DispatchMeshCommandArgs& args)
+{
+	m_pCurrCommandBuffer->DispatchMesh(args);
 }
 
 
@@ -460,12 +482,6 @@ void BvCommandContextVk::DrawIndexedIndirect(const IBvBuffer* pBuffer, u32 drawC
 void BvCommandContextVk::DispatchIndirect(const IBvBuffer* pBuffer, u64 offset /*= 0*/)
 {
 	m_pCurrCommandBuffer->DispatchIndirect(pBuffer, offset);
-}
-
-
-void BvCommandContextVk::DispatchMesh(u32 x, u32 y, u32 z)
-{
-	m_pCurrCommandBuffer->DispatchMesh(x, y, z);
 }
 
 
@@ -595,9 +611,25 @@ void BvCommandContextVk::BuildTLAS(const TLASBuildDesc& desc)
 }
 
 
-void BvCommandContextVk::DispatchRays(const DispatchRaysDesc& drDesc)
+void BvCommandContextVk::DispatchRays(const DispatchRaysCommandArgs& args)
 {
-	m_pCurrCommandBuffer->DispatchRays(drDesc);
+	m_pCurrCommandBuffer->DispatchRays(args);
+}
+
+
+void BvCommandContextVk::DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
+	u32 width, u32 height, u32 depth)
+{
+	DispatchRaysCommandArgs args;
+	pSBT->GetDeviceAddressRange(ShaderBindingTableGroupType::kRayGen, rayGenIndex, args.m_RayGenShader);
+	pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kMiss, missIndex, args.m_MissShader);
+	pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kHit, hitIndex, args.m_HitShader);
+	pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kCallable, callableIndex, args.m_CallableShader);
+	args.m_Width = width;
+	args.m_Height = height;
+	args.m_Depth = depth;
+
+	DispatchRays(args);
 }
 
 

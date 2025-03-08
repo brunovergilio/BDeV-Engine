@@ -105,8 +105,7 @@ IBvRenderDevice* BvBufferVk::GetDevice()
 
 void BvBufferVk::Create(const BufferInitData* pInitData)
 {
-	VkBufferCreateInfo bufferCreateInfo{};
-	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	VkBufferCreateInfo bufferCreateInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 	//bufferCreateInfo.pNext = nullptr;
 	//bufferCreateInfo.flags = 0; // No Sparse Binding for now
 	bufferCreateInfo.size = m_BufferDesc.m_Size;
@@ -196,17 +195,14 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 void BvBufferVk::Destroy()
 {
 	auto device = m_pDevice->GetHandle();
-	auto vma = m_pDevice->GetAllocator();
-	if (m_pMapped)
-	{
-		vmaUnmapMemory(vma, m_VMAAllocation);
-		m_pMapped = nullptr;
-	}
+	Unmap();
 	if (m_Buffer)
 	{
 		vkDestroyBuffer(device, m_Buffer, nullptr);
+		m_Buffer = VK_NULL_HANDLE;
+		
+		vmaFreeMemory(m_pDevice->GetAllocator(), m_VMAAllocation);
 	}
-	vmaFreeMemory(m_pDevice->GetAllocator(), m_VMAAllocation);
 }
 
 

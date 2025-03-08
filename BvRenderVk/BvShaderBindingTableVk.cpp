@@ -26,10 +26,20 @@ IBvRenderDevice* BvShaderBindingTableVk::GetDevice()
 }
 
 
-void BvShaderBindingTableVk::GetAddressRegion(ShaderBindingTableGroupType groupType, u32 index, VkStridedDeviceAddressRegionKHR& addressRegion) const
+void BvShaderBindingTableVk::GetDeviceAddressRange(ShaderBindingTableGroupType type, u32 index, DeviceAddressRange& addressRange) const
 {
-	addressRegion = m_Regions[u32(groupType)];
-	addressRegion.deviceAddress += addressRegion.stride * index;
+	auto& region = m_Regions[u32(type)];
+	addressRange.m_Address = region.deviceAddress + index * region.stride;
+	addressRange.m_Size = region.size;
+}
+
+
+void BvShaderBindingTableVk::GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType type, u32 index, DeviceAddressRangeAndStride& addressRangeAndStride) const
+{
+	auto& region = m_Regions[u32(type)];
+	addressRangeAndStride.m_Address = region.deviceAddress + index * region.stride;
+	addressRangeAndStride.m_Size = region.size;
+	addressRangeAndStride.m_Stride = region.stride;
 }
 
 
@@ -111,9 +121,9 @@ void BvShaderBindingTableVk::Create(IBvCommandContextVk* pContext)
 	m_pDevice->CreateBufferVk(bufferDesc, &initData, &m_pBuffer);
 	auto deviceAddress = m_pBuffer->GetDeviceAddress();
 	m_Regions[0].deviceAddress = deviceAddress;
-	m_Regions[1].deviceAddress = deviceAddress + m_Regions[0].size * groupIndices[0].Size();
-	m_Regions[2].deviceAddress = deviceAddress + m_Regions[0].size + m_Regions[1].size;
-	m_Regions[3].deviceAddress = deviceAddress + m_Regions[0].size + m_Regions[1].size + m_Regions[2].size;
+	m_Regions[1].deviceAddress = m_Regions[0].deviceAddress + m_Regions[0].size * groupIndices[0].Size();
+	m_Regions[2].deviceAddress = m_Regions[1].deviceAddress + m_Regions[1].size;
+	m_Regions[3].deviceAddress = m_Regions[2].deviceAddress + m_Regions[2].size;
 }
 
 

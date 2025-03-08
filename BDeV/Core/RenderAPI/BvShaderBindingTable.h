@@ -13,6 +13,8 @@ class IBvShaderBindingTable : public IBvRenderDeviceObject
 
 public:
 	virtual const ShaderBindingTableDesc& GetDesc() const = 0;
+	virtual void GetDeviceAddressRange(ShaderBindingTableGroupType type, u32 index, DeviceAddressRange& addressRange) const = 0;
+	virtual void GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType type, u32 index, DeviceAddressRangeAndStride& addressRangeAndStride) const = 0;
 
 protected:
 	IBvShaderBindingTable() {}

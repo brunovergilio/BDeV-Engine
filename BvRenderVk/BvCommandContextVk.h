@@ -39,7 +39,7 @@ class BvFrameDataVk final
 
 public:
 	BvFrameDataVk();
-	BvFrameDataVk(IBvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex, BvQueryHeapManagerVk* pQueryHeapManager);
+	BvFrameDataVk(IBvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData);
 	BvFrameDataVk(BvFrameDataVk&& rhs) noexcept;
 	BvFrameDataVk& operator=(BvFrameDataVk&& rhs) noexcept;
 	~BvFrameDataVk();
@@ -56,22 +56,17 @@ public:
 	void UpdateQueryData();
 	
 	BV_INLINE const auto& GetCommandBuffers() const { return m_CommandBuffers; }
-	BV_INLINE auto& GetResourceBindingState() { return m_ResourceBindingState; }
+	BV_INLINE auto& GetResourceBindingState() { return m_pContextData->m_ResourceBindingState; }
 	BV_INLINE IBvGPUFenceVk* GetGPUFence() { return m_pFence; }
 	BV_INLINE std::pair<u64, u64> GetSemaphoreValueIndex() const { return m_SignaValueIndex; }
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
-	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pQueryHeapManager; }
+	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pContextData->m_pQueryHeapManager; }
 
 private:
 	IBvRenderDeviceVk* m_pDevice = nullptr;
 	BvCommandPoolVk m_CommandPool;
 	BvVector<BvCommandBufferVk*> m_CommandBuffers;
-	BvResourceBindingStateVk m_ResourceBindingState;
-	BvRobinMap<u64, BvDescriptorPoolVk> m_DescriptorPools;
-	BvRobinMap<u64, BvDescriptorSetVk> m_DescriptorSets;
-	BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
-	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr;
-	BvFramebufferManagerVk* m_pFramebufferManager = nullptr;
+	ContextDataVk* m_pContextData;
 	BvVector<IBvQueryVk*> m_Queries;
 	u32 m_UpdatedQueries = 0;
 	IBvGPUFenceVk* m_pFence = nullptr;
@@ -139,25 +134,28 @@ public:
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
-	void SetShaderConstants(u32 size, const void* pData, u32 offset) override;
+	void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex) override;
+	void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set) override;
 
 	void SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) override;
 	void SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat) override;
 
-	void Draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0) override;
-	void DrawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, i32 vertexOffset = 0, u32 firstInstance = 0) override;
-	void Dispatch(u32 x, u32 y = 1, u32 z = 1) override;
+	void Draw(const DrawCommandArgs& args) override;
+	void DrawIndexed(const DrawIndexedCommandArgs& args) override;
+	void Dispatch(const DispatchCommandArgs& args) override;
+	void DispatchMesh(const DispatchMeshCommandArgs& args) override;
 
 	void DrawIndirect(const IBvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0) override;
 	void DrawIndexedIndirect(const IBvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0) override;
 	void DispatchIndirect(const IBvBuffer* pBuffer, u64 offset = 0) override;
-
-	void DispatchMesh(u32 x, u32 y = 1, u32 z = 1) override;
 	void DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offset = 0) override;
 	void DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 offset, const IBvBuffer* pCountBuffer, u64 countOffset, u32 maxCount) override;
 
@@ -189,7 +187,10 @@ public:
 
 	void BuildBLAS(const BLASBuildDesc& desc) override;
 	void BuildTLAS(const TLASBuildDesc& desc) override;
-	void DispatchRays(const DispatchRaysDesc& drDesc) override;
+	void DispatchRays(const DispatchRaysCommandArgs& args) override;
+	void DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
+		u32 width, u32 height, u32 depth) override;
+
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0) override;
 
 	BV_INLINE BvCommandQueueVk* GetCommandQueue() override { return &m_Queue; }
@@ -211,7 +212,7 @@ private:
 	BvVector<IBvSwapChainVk*> m_SwapChains;
 	BvCommandBufferVk* m_pCurrCommandBuffer = nullptr;
 	BvFrameDataVk* m_pCurrFrame = nullptr;
-	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr; // Query Manager can be placed here as it's used for all frames
+	ContextDataVk* m_pContextData;
 	u32 m_ActiveFrameIndex = 0;
 };
 

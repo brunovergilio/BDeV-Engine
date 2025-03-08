@@ -89,14 +89,14 @@ public:
 };
 
 
-const BvVector<BvMonitor*>& GetMonitors()
+const BvVector<BvMonitor*>& BvMonitor::GetMonitors()
 {
 	static BvMonitorHelper monitorData;
 	return monitorData.m_MonitorInfos;
 }
 
 
-BvMonitor* GetMonitorFromPoint(i32 x, i32 y)
+BvMonitor* BvMonitor::FromPoint(i32 x, i32 y)
 {
 	HMONITOR hMonitor = MonitorFromPoint(POINT{ x,y }, MONITOR_DEFAULTTONEAREST);
 	if (hMonitor)
@@ -114,7 +114,7 @@ BvMonitor* GetMonitorFromPoint(i32 x, i32 y)
 }
 
 
-BvMonitor* GetMonitorFromWindow(const BvWindow* pWindow)
+BvMonitor* BvMonitor::FromWindow(const BvWindow* pWindow)
 {
 	HMONITOR hMonitor = MonitorFromWindow((HWND)pWindow->GetHandle(), MONITOR_DEFAULTTONEAREST);
 	if (hMonitor)
@@ -132,7 +132,7 @@ BvMonitor* GetMonitorFromWindow(const BvWindow* pWindow)
 }
 
 
-BvMonitor* GetPrimaryMonitor()
+BvMonitor* BvMonitor::Primary()
 {
 	for (auto pMonitor : GetMonitors())
 	{

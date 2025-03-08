@@ -18,6 +18,7 @@ public:
 	virtual void Invalidate(u64 size = 0, u64 offset = 0) const = 0;
 	virtual const BufferDesc& GetDesc() const = 0;
 	virtual void* GetMappedData() const = 0;
+	virtual u64 GetDeviceAddress() const = 0;
 
 	template<typename Type>
 	BV_INLINE Type* GetMappedDataAsT() const { return reinterpret_cast<Type*>(GetMappedData()); }

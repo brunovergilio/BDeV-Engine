@@ -17,7 +17,6 @@ public:
 	virtual const BufferDesc& GetDesc() const = 0;
 	virtual void* GetMappedData() const = 0;
 	virtual VkBuffer GetHandle() const = 0;
-	virtual VkDeviceAddress GetDeviceAddress() const = 0;
 	virtual bool IsValid() const = 0;
 
 protected:
@@ -43,7 +42,8 @@ public:
 	BV_INLINE const BufferDesc& GetDesc() const override { return m_BufferDesc; }
 	BV_INLINE void* GetMappedData() const override { return m_pMapped; }
 	BV_INLINE VkBuffer GetHandle() const override { return m_Buffer; }
-	BV_INLINE VkDeviceAddress GetDeviceAddress() const override { return m_DeviceAddress; }
+	BV_INLINE u64 GetDeviceAddress() const override { return m_DeviceAddress; }
+
 	BV_INLINE bool IsValid() const override { return m_Buffer != VK_NULL_HANDLE; }
 
 	BV_OBJECT_IMPL_INTERFACE(IBvBufferVk, IBvBuffer, IBvRenderDeviceObject);

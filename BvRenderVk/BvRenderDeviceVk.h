@@ -180,6 +180,7 @@ public:
 	IBvCommandContextVk* GetTransferContextVk(u32 index = 0) const override;
 
 	void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize) const override;
+	u64 GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const override;
 	bool SupportsQueryType(QueryType queryType, CommandType commandType) const override;
 	FormatFeatures GetFormatFeatures(Format format) const override;
 	BV_INLINE RenderDeviceCapabilities GetDeviceCaps() const override { return m_DeviceCaps; }

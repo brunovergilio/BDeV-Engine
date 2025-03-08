@@ -88,8 +88,6 @@ IBvBuffer* CreateUB(IBvRenderDevice* pDevice);
 
 int main()
 {
-	RayTracingAccelerationStructureDesc de, df;
-	de = df;
 	BvApplication app;
 	app.Initialize();
 	app.RegisterRawInput(false, true);
@@ -99,10 +97,14 @@ int main()
 	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
 	compilerFn(&g_pCompiler);
 
+	BvSharedLib renderVkLib("BvRenderVk.dll");
+	typedef bool(*pFNCreateRenderEngine)(IBvRenderEngineVk**);
+	pFNCreateRenderEngine engineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngineVk");
+
 	IBvRenderEngineVk* pEngine;
-	BvRenderVk::CreateRenderEngineVk(&pEngine);
-	BvRenderDeviceVk* pDevice;
-	pEngine->CreateRenderDevice(BvRenderDeviceCreateDescVk(), &pDevice);
+	engineFn(&pEngine);
+	IBvRenderDeviceVk* pDevice;
+	pEngine->CreateRenderDeviceVk(BvRenderDeviceCreateDescVk(), &pDevice);
 
 	BvKeyboard keyboard;
 	auto pKeyboard = &keyboard;
@@ -114,7 +116,8 @@ int main()
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
-	auto pGraphicsContext = pDevice->GetGraphicsContext();
+	IBvCommandContext* pGraphicsContext;
+	pDevice->CreateGraphicsContext(0, &pGraphicsContext);
 	//BvObjectHandle<BvSwapChainVk> scvk;
 	//pDevice->CreateSwapChainVk(pWindow, swapChainDesc, pGraphicsContext, &scvk);
 
@@ -122,7 +125,7 @@ int main()
 	pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext, &pSwapChain);
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
-	ShaderResourceSetDesc setDesc;
+	ShaderResourceSetDesc setDesc{};
 	setDesc.m_Index = 0;
 	setDesc.m_ResourceCount = 1;
 	setDesc.m_pResources = &resourceDesc;

@@ -120,8 +120,9 @@ void BvTextureVk::Destroy()
 		if (m_Image)
 		{
 			vkDestroyImage(device, m_Image, nullptr);
+			m_Image = VK_NULL_HANDLE;
+			vmaFreeMemory(m_pDevice->GetAllocator(), m_VMAAllocation);
 		}
-		vmaFreeMemory(m_pDevice->GetAllocator(), m_VMAAllocation);
 	}
 }
 

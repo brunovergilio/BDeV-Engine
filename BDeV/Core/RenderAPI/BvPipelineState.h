@@ -25,7 +25,7 @@ struct GraphicsPipelineStateDesc
 	DepthStencilDesc											m_DepthStencilDesc;
 	BlendStateDesc												m_BlendStateDesc;
 	u32															m_SampleCount = 1;
-	IBvShaderResourceLayout*										m_pShaderResourceLayout = nullptr;
+	IBvShaderResourceLayout*									m_pShaderResourceLayout = nullptr;
 	IBvRenderPass*												m_pRenderPass = nullptr;
 	Format														m_RenderTargetFormats[kMaxRenderTargets]{};
 	Format														m_DepthStencilFormat = Format::kUnknown;

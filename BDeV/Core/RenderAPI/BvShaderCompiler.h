@@ -28,6 +28,7 @@ class IBvShaderCompiler : public BvObjectBase
 
 public:
 	virtual bool Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob = nullptr) = 0;
+	virtual bool CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob = nullptr) = 0;
 
 protected:
 	IBvShaderCompiler() {}

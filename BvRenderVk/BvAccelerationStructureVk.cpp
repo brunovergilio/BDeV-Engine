@@ -214,6 +214,12 @@ void BvAccelerationStructureVk::Destroy()
 		m_pBuffer->Release();
 		m_pBuffer = nullptr;
 	}
+
+	if (m_pStagingBuffer)
+	{
+		m_pStagingBuffer->Release();
+		m_pStagingBuffer = nullptr;
+	}
 }
 
 

@@ -543,6 +543,9 @@ VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType)
 	case ShaderResourceType::kConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	case ShaderResourceType::kStructuredBuffer:			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	case ShaderResourceType::kRWStructuredBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case ShaderResourceType::kDynamicConstantBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	case ShaderResourceType::kDynamicStructuredBuffer:	return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+	case ShaderResourceType::kDynamicRWStructuredBuffer:return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 	case ShaderResourceType::kFormattedBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 	case ShaderResourceType::kRWFormattedBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 	case ShaderResourceType::kTexture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
@@ -619,6 +622,8 @@ VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthSt
 	case ResourceState::kDepthStencilWrite:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	case ResourceState::kPresent:			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	case ResourceState::kShadingRate:		return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+	case ResourceState::kResolveSrc:		return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	case ResourceState::kResolveDst:		return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	}
 
 	return VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
@@ -662,8 +667,8 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	{
 	case ResourceState::kVertexBuffer:		return VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
 	case ResourceState::kIndexBuffer:		return VK_ACCESS_2_INDEX_READ_BIT;
-	case ResourceState::kIndirectBuffer:	return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
 	case ResourceState::kConstantBuffer:	return VK_ACCESS_2_UNIFORM_READ_BIT;
+	case ResourceState::kIndirectBuffer:	return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
 	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
 	case ResourceState::kRWResource:		return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
 	case ResourceState::kTransferSrc:		return VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -675,6 +680,7 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kShadingRate:		return VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
 	case ResourceState::kASBuildRead:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
 	case ResourceState::kASBuildWrite:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+	case ResourceState::kPredication:		return VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT;
 	}
 
 	return 0;
@@ -749,13 +755,17 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 	{
 		stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 	}
+	if (accessFlags & (VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT))
+	{
+		stageFlags |= VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT;
+	}
 	if (accessFlags & (VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR))
 	{
 		stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
 	}
 	if (accessFlags & (VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR))
 	{
-		stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+		stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
 	}
 
 	return stageFlags;

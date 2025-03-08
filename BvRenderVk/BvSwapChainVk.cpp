@@ -28,8 +28,6 @@ BvSwapChainVk::~BvSwapChainVk()
 	m_pCommandContext->RemoveSwapChain(this);
 
 	Destroy();
-
-	DestroySurface();
 }
 
 
@@ -448,21 +446,32 @@ void BvSwapChainVk::Destroy()
 		pTextureView->Release();
 		pTextureView = nullptr;
 	}
+	m_SwapChainTextureViews.Clear();
 
 	for (auto& pTexture : m_SwapChainTextures)
 	{
 		pTexture->Release();
+		pTexture = nullptr;
+	}
+	m_SwapChainTextures.Clear();
+
+	if (m_Swapchain)
+	{
+		vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_Swapchain, nullptr);
+		m_Swapchain = VK_NULL_HANDLE;
 	}
 
-	vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_Swapchain, nullptr);
-	m_Swapchain = VK_NULL_HANDLE;
+	DestroySurface();
 }
 
 
 void BvSwapChainVk::DestroySurface()
 {
-	vkDestroySurfaceKHR(m_pDevice->GetInstanceHandle(), m_Surface, nullptr);
-	m_Surface = VK_NULL_HANDLE;
+	if (m_Surface)
+	{
+		vkDestroySurfaceKHR(m_pDevice->GetInstanceHandle(), m_Surface, nullptr);
+		m_Surface = VK_NULL_HANDLE;
+	}
 }
 
 

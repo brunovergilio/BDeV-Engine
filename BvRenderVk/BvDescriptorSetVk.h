@@ -35,13 +35,14 @@ struct ResourceDataVk
 		VkAccelerationStructureKHR m_AccelerationStructure;
 	};
 
+	u32 m_DynamicOffset;
 	Data m_Data;
 	VkDescriptorType m_DescriptorType;
 
-	void Set(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource);
-	void Set(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource);
-	void Set(VkDescriptorType descriptorType, const IBvSamplerVk* pResource);
-	void Set(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource);
+	bool Set(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 dynamicOffset = 0);
+	bool Set(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource);
+	bool Set(VkDescriptorType descriptorType, const IBvSamplerVk* pResource);
+	bool Set(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource);
 };
 
 
@@ -54,7 +55,7 @@ public:
 	BvResourceBindingStateVk& operator=(BvResourceBindingStateVk&& rhs) noexcept;
 	~BvResourceBindingStateVk();
 
-	void SetResource(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
+	void SetResource(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex, u32 offset = 0);
 	void SetResource(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex);
 	void SetResource(VkDescriptorType descriptorType, const IBvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex);
 	void SetResource(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex);
@@ -68,7 +69,7 @@ public:
 	BV_INLINE void MarkClean(u32 set) { m_DirtySets[set] = false; }
 
 private:
-	ResourceDataVk& AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex);
+	std::pair<ResourceDataVk*, bool> AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex);
 
 private:
 	BvRobinMap<ResourceIdVk, u32> m_Bindings;

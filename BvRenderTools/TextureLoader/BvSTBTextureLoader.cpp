@@ -47,15 +47,6 @@ IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureFromMemory(const void* p
 }
 
 
-void BvSTBTextureLoader::DestroyTexture(IBvTextureBlob** ppTextureBlob)
-{
-	auto pPtr = static_cast<BvTextureBlob*>(*ppTextureBlob);
-	delete pPtr;
-
-	*ppTextureBlob = nullptr;
-}
-
-
 IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBvTextureBlob** ppTextureBlob)
 {
 	ppTextureBlob = nullptr;

@@ -54,6 +54,7 @@ public:
 	virtual void WaitIdle() const = 0;
 
 	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr) const = 0;
+	virtual u64 GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const = 0;
 
 	virtual bool SupportsQueryType(QueryType queryType, CommandType commandType) const = 0;
 	virtual FormatFeatures GetFormatFeatures(Format format) const = 0;

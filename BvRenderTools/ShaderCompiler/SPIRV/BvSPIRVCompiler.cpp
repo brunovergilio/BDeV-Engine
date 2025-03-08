@@ -294,6 +294,27 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	return true;
 }
 
+
+bool BvSPIRVCompiler::CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob)
+{
+	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
+	if (!file.IsValid())
+	{
+		*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, "Error opening the file.");
+		return false;
+	}
+	auto size = file.GetSize();
+	BvVector<char> sourceCode(size);
+	file.Read(sourceCode.Data(), size);
+
+	auto& desc = const_cast<ShaderCreateDesc&>(shaderDesc);
+	desc.m_pSourceCode = sourceCode.Data();
+	desc.m_SourceCodeSize = size;
+
+	return Compile(shaderDesc, ppShaderBlob, ppErrorBlob);
+}
+
+
 const char* SkipDelimitersAndComments(const char* pCurr, const char* pLast)
 {
 	while (pCurr != pLast && (std::isspace(*pCurr) || *pCurr == '/'))

@@ -439,6 +439,7 @@ enum class ResourceState : u8
 
 	// States used by buffers and textures
 	kShaderResource,
+	kPixelShaderResource,
 	kRWResource,
 	kTransferSrc,
 	kTransferDst,
@@ -448,7 +449,11 @@ enum class ResourceState : u8
 	kDepthStencilRead,
 	kDepthStencilWrite,
 	kPresent,
+	kResolveSrc,
+	kResolveDst,
 
+	// Extensions
+	kPredication,
 	kShadingRate,
 	kASBuildRead,
 	kASBuildWrite
@@ -586,7 +591,7 @@ BV_USE_ENUM_CLASS_OPERATORS(BufferUsage);
 enum class BufferCreateFlags : u8
 {
 	kNone = 0,
-	kCreateMapped = BvBit(0)
+	kCreateMapped = BvBit(0),
 };
 BV_USE_ENUM_CLASS_OPERATORS(BufferCreateFlags);
 
@@ -655,7 +660,7 @@ struct TextureDesc
 	TextureCreateFlags m_CreateFlags = TextureCreateFlags::kNone;
 	TextureUsage m_UsageFlags = TextureUsage::kNone;
 	MemoryType m_MemoryType = MemoryType::kDevice;
-	ResourceState m_ResourceState = ResourceState::kShaderResource;
+	ResourceState m_ResourceState = ResourceState::kCommon;
 };
 
 
@@ -866,6 +871,9 @@ enum class ShaderResourceType : u8
 	kConstantBuffer,
 	kStructuredBuffer,
 	kRWStructuredBuffer,
+	kDynamicConstantBuffer,
+	kDynamicStructuredBuffer,
+	kDynamicRWStructuredBuffer,
 	kFormattedBuffer,
 	kRWFormattedBuffer,
 	kTexture,
@@ -1336,6 +1344,41 @@ enum class RayTracingAccelerationStructureType : u8
 };
 
 
+struct DrawCommandArgs
+{
+	u32 m_VertexCount = 0;
+	u32 m_InstanceCount = 0;
+	u32 m_FirstVertex = 0;
+	u32 m_FirstInstance = 0;
+};
+
+
+struct DrawIndexedCommandArgs
+{
+	u32 m_IndexCount = 0;
+	u32 m_InstanceCount = 0;
+	u32 m_FirstIndex = 0;
+	i32 m_VertexOffset = 0;
+	u32 m_FirstInstance = 0;
+};
+
+
+struct DispatchCommandArgs
+{
+	u32 m_ThreadGroupCountX = 0;
+	u32 m_ThreadGroupCountY = 0;
+	u32 m_ThreadGroupCountZ = 0;
+};
+
+
+struct DispatchMeshCommandArgs
+{
+	u32 m_ThreadGroupCountX = 0;
+	u32 m_ThreadGroupCountY = 0;
+	u32 m_ThreadGroupCountZ = 0;
+};
+
+
 enum class RayTracingGeometryType : u8
 {
 	kUnknown,
@@ -1552,13 +1595,27 @@ struct ShaderBindingTableDesc
 };
 
 
-struct DispatchRaysDesc
+struct DeviceAddressRange
 {
-	IBvShaderBindingTable* m_pSBT = nullptr;
-	u32 m_RayGenIndex = 0;
-	u32 m_MissIndex = 0;
-	u32 m_HitGroupIndex = 0;
-	u32 m_CallableIndex = 0;
+	u64 m_Address = 0;
+	u64 m_Size = 0;
+};
+
+
+struct DeviceAddressRangeAndStride
+{
+	u64 m_Address = 0;
+	u64 m_Size = 0;
+	u64 m_Stride = 0;
+};
+
+
+struct DispatchRaysCommandArgs
+{
+	DeviceAddressRange m_RayGenShader;
+	DeviceAddressRangeAndStride m_MissShader;
+	DeviceAddressRangeAndStride m_HitShader;
+	DeviceAddressRangeAndStride m_CallableShader;
 	u32 m_Width = 0;
 	u32 m_Height = 0;
 	u32 m_Depth = 0;

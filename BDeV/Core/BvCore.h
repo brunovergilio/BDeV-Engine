@@ -31,7 +31,7 @@
 #define BV_MATH_INSTRUCTION_FPU 2
 
 
-#if defined(__AVX__)
+#if defined(__AVX__) || defined(__AVX2__)
 #define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_AVX
 #else
 #define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_FPU

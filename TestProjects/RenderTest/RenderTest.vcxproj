@@ -106,9 +106,6 @@
     <ProjectReference Include="..\..\BDeV\BDeV.vcxproj">
       <Project>{5abfc153-e6bd-4f67-bfa0-f123ca883b95}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\BvRenderVk\BvRenderVk.vcxproj">
-      <Project>{f9c85bb6-dc1e-4f09-917a-df6a3a671503}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

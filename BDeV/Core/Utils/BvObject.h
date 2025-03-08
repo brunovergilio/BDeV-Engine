@@ -261,28 +261,6 @@ public:
 #define BV_OBJECT_MCREATE(pArena, Type, ...) BvObjectCreator::CreateManaged<Type>(BV_SOURCE_INFO, pArena __VA_OPT__(,) __VA_ARGS__)
 
 
-namespace Internal
-{
-	template<typename Type>
-	class RemoveIBvObject : public Type
-	{
-	private:
-		~RemoveIBvObject();
-		u32 AddRef();
-		u32 Release();
-	};
-
-	template<typename Type>
-	struct IBvObjectReturnType
-	{
-		using ReturnType = RemoveIBvObject<Type>;
-	};
-
-	template<typename Type>
-	using IBvObjectReturnTypeT = typename IBvObjectReturnType<Type>::ReturnType;
-}
-
-
 template<typename T>
 class BvObjectHandle
 {
@@ -377,17 +355,10 @@ public:
 		InternalRelease();
 	}
 
-#if BV_DEBUG
-	BV_INLINE Internal::IBvObjectReturnTypeT<T>* operator->() const
-	{
-		return static_cast<Internal::IBvObjectReturnTypeT<T>*>(m_pObj);
-	}
-#else
 	BV_INLINE T* operator->() const
 	{
 		return m_pObj;
 	}
-#endif
 
 	BV_INLINE operator T*() const
 	{

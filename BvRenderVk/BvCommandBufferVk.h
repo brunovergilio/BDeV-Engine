@@ -65,13 +65,16 @@ public:
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
+	void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
+	void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
 	void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
-	void SetShaderConstants(u32 size, const void* pData, u32 offset);
+	void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set);
 
 	void SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding = 0);
 	void SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat);
@@ -81,15 +84,14 @@ public:
 	void SetBlendConstants(const float (pColors[4]));
 	void SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp (pCombinerOps[2]));
 
-	void Draw(u32 vertexCount, u32 instanceCount = 1, u32 firstVertex = 0, u32 firstInstance = 0);
-	void DrawIndexed(u32 indexCount, u32 instanceCount = 1, u32 firstIndex = 0, i32 vertexOffset = 0, u32 firstInstance = 0);
-	void Dispatch(u32 x, u32 y = 1, u32 z = 1);
+	void Draw(const DrawCommandArgs& args);
+	void DrawIndexed(const DrawIndexedCommandArgs& args);
+	void Dispatch(const DispatchCommandArgs& args);
+	void DispatchMesh(const DispatchMeshCommandArgs& args);
 
 	void DrawIndirect(const IBvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0);
 	void DrawIndexedIndirect(const IBvBuffer* pBuffer, u32 drawCount = 1, u64 offset = 0);
 	void DispatchIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
-
-	void DispatchMesh(u32 x, u32 y = 1, u32 z = 1);
 	void DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 	void DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 offset, const IBvBuffer* pCountBuffer, u64 countOffset, u32 maxCount);
 
@@ -121,7 +123,7 @@ public:
 
 	void BuildBLAS(const BLASBuildDesc& desc);
 	void BuildTLAS(const TLASBuildDesc& desc);
-	void DispatchRays(const DispatchRaysDesc& drDesc);
+	void DispatchRays(const DispatchRaysCommandArgs& args);
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 
 	BV_INLINE const VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
@@ -141,6 +143,7 @@ private:
 	BvVector<VkWriteDescriptorSetAccelerationStructureKHR> m_ASWriteSets;
 	BvVector<VkWriteDescriptorSet> m_WriteSets;
 	BvVector<VkDescriptorSet> m_DescriptorSets;
+	BvVector<u32> m_DynamicOffsets;
 
 	BvVector<VkBufferImageCopy> m_BufferImageCopyRegions;
 	BvVector<VkImageCopy> m_ImageCopyRegions;
