@@ -3,6 +3,9 @@
 #include "BDeV/Core/RenderAPI/BvShaderCompiler.h"
 
 
+BV_VK_DEVICE_RES_DEF(BvShaderVk)
+
+
 BvShaderVk::BvShaderVk(BvRenderDeviceVk* pDevice, const ShaderCreateDesc& shaderCreateDesc)
 	: m_pDevice(pDevice), m_ShaderStage(shaderCreateDesc.m_ShaderStage), m_pEntryPoint(shaderCreateDesc.m_pEntryPoint)
 {
@@ -26,12 +29,6 @@ BvShaderVk::~BvShaderVk()
 }
 
 
-IBvRenderDevice* BvShaderVk::GetDevice()
-{
-	return m_pDevice;
-}
-
-
 void BvShaderVk::Compile(const ShaderCreateDesc& shaderCreateDesc)
 {
 	IBvShaderBlob* pBlob = nullptr;
@@ -40,4 +37,10 @@ void BvShaderVk::Compile(const ShaderCreateDesc& shaderCreateDesc)
 		m_ShaderBlob.Resize(pBlob->GetBufferSize());
 		memcpy(&m_ShaderBlob[0], pBlob->GetBufferPointer(), m_ShaderBlob.Size());
 	}
+	pBlob->Release();
+}
+
+
+void BvShaderVk::Destroy()
+{
 }

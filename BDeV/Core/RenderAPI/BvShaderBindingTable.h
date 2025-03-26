@@ -2,12 +2,13 @@
 
 
 #include "BvRenderCommon.h"
-#include "BvRenderDeviceObject.h"
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/Utils/BvObject.h"
 
 
-BV_OBJECT_DEFINE_ID(IBvShaderBindingTable, "9f90a079-c378-4b59-9522-958685fdea9c");
-class IBvShaderBindingTable : public IBvRenderDeviceObject
+//BV_OBJECT_DEFINE_ID(IBvShaderBindingTable, "9f90a079-c378-4b59-9522-958685fdea9c");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderBindingTable);
+class IBvShaderBindingTable : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvShaderBindingTable);
 
@@ -20,4 +21,3 @@ protected:
 	IBvShaderBindingTable() {}
 	~IBvShaderBindingTable() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderBindingTable);

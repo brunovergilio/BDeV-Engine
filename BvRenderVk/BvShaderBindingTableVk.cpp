@@ -5,8 +5,11 @@
 #include "BvCommandContextVk.h"
 
 
-BvShaderBindingTableVk::BvShaderBindingTableVk(IBvRenderDeviceVk* pDevice, const ShaderBindingTableDesc& sbtDesc,
-	const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& props, IBvCommandContextVk* pContext)
+BV_VK_DEVICE_RES_DEF(BvShaderBindingTableVk)
+
+
+BvShaderBindingTableVk::BvShaderBindingTableVk(BvRenderDeviceVk* pDevice, const ShaderBindingTableDesc& sbtDesc,
+	const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& props, BvCommandContextVk* pContext)
 	: m_SBTDesc(sbtDesc), m_pDevice(pDevice), m_HandleSize(props.shaderGroupHandleSize),
 	m_GroupHandleAlignment(props.shaderGroupHandleAlignment), m_BaseGroupAlignment(props.shaderGroupBaseAlignment)
 {
@@ -17,12 +20,6 @@ BvShaderBindingTableVk::BvShaderBindingTableVk(IBvRenderDeviceVk* pDevice, const
 BvShaderBindingTableVk::~BvShaderBindingTableVk()
 {
 	Destroy();
-}
-
-
-IBvRenderDevice* BvShaderBindingTableVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 
@@ -43,7 +40,7 @@ void BvShaderBindingTableVk::GetDeviceAddressRangeAndStride(ShaderBindingTableGr
 }
 
 
-void BvShaderBindingTableVk::Create(IBvCommandContextVk* pContext)
+void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 {
 	BvVector<u32> groupIndices[4];
 	auto& psoDesc = m_SBTDesc.m_pPSO->GetDesc();
@@ -118,7 +115,7 @@ void BvShaderBindingTableVk::Create(IBvCommandContextVk* pContext)
 	initData.m_pData = bufferData.Data();
 	initData.m_Size = bufferData.Size();
 
-	m_pDevice->CreateBufferVk(bufferDesc, &initData, &m_pBuffer);
+	m_pBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, &initData);
 	auto deviceAddress = m_pBuffer->GetDeviceAddress();
 	m_Regions[0].deviceAddress = deviceAddress;
 	m_Regions[1].deviceAddress = m_Regions[0].deviceAddress + m_Regions[0].size * groupIndices[0].Size();

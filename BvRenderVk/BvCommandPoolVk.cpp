@@ -9,7 +9,7 @@ BvCommandPoolVk::BvCommandPoolVk()
 }
 
 
-BvCommandPoolVk::BvCommandPoolVk(IBvRenderDeviceVk* pDevice, u32 queueFamilyIndex)
+BvCommandPoolVk::BvCommandPoolVk(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex)
 	: m_pDevice(pDevice), m_QueueFamilyIndex(queueFamilyIndex)
 {
 	Create();

@@ -19,7 +19,7 @@ extern void ProcessCharInputMessage(u32 codePoint, LPARAM lParam, bool isDeadKey
 
 #define BvDispatchEvent(app, e, ...) do										\
 {																			\
-	for (auto pMessageHandler : s_pApp->m_pImpl->m_MessageHandlers)	\
+	for (auto pMessageHandler : s_pApp->m_pImpl->m_MessageHandlers)			\
 	{																		\
 		pMessageHandler->On##e(__VA_ARGS__);								\
 	}																		\
@@ -30,6 +30,7 @@ struct Pimpl
 {
 	BvRobinMap<HWND, BvWindow*> m_Windows;
 	BvVector<BvWindow*> m_WindowsToDelete;
+	BvVector<BvWindow*> m_RecycledWindows;
 	BvRobinSet<BvApplicationMessageHandler*> m_MessageHandlers;
 	bool m_KeyboardUsesRawInput = false;
 	bool m_MouseUsesRawInput = false;
@@ -386,8 +387,6 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		auto width = (i32)LOWORD(lParam);
 		auto height = (i32)HIWORD(lParam);
 
-		pWindow->OnSizeChanged(width, height);
-
 		WindowState currState = WindowState::kDefault;
 		if (wParam == SIZE_MINIMIZED)
 		{
@@ -396,10 +395,12 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		else if (wParam == SIZE_MAXIMIZED)
 		{
 			currState = WindowState::kMaximized;
+			pWindow->OnSizeChanged(width, height);
 		}
 		else if (wParam == SIZE_RESTORED)
 		{
 			currState = WindowState::kRestored;
+			pWindow->OnSizeChanged(width, height);
 		}
 
 		BvDispatchEvent(pApp, SizeChange, pWindow, width, height, currState);
@@ -440,8 +441,9 @@ LRESULT BvApplication::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 
 	case WM_CLOSE:
+		pWindow->OnClose();
 		pWindow->Hide();
-		
+
 		BvDispatchEvent(pApp, Close, pWindow);
 
 		return 0;

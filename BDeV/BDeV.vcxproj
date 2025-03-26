@@ -107,10 +107,9 @@
     <ClInclude Include="Core\Math\BvPrimitives.h" />
     <ClInclude Include="Core\RenderAPI\BvAccelerationStructure.h" />
     <ClInclude Include="Core\RenderAPI\BvGPUFence.h" />
-    <ClInclude Include="Core\RenderAPI\BvRenderUI.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderBindingTable.h" />
     <ClInclude Include="Core\RenderAPI\BvTextureLoader.h" />
-    <ClInclude Include="Core\RenderAPI\BvRenderDeviceObject.h" />
+    <ClInclude Include="Core\System\Window\Windows\BvWindowWindows.h" />
     <ClInclude Include="Core\Utils\BvRandom.h" />
     <ClInclude Include="Core\Math\BvTrigo.h" />
     <ClInclude Include="Core\RenderAPI\BvShader.h" />
@@ -196,7 +195,6 @@
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\Math\BvIntersections.cpp" />
     <ClCompile Include="Core\System\HID\Windows\BvXInputWindows.cpp" />
-    <ClCompile Include="Core\Utils\BvRandom.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
     <ClCompile Include="Core\System\Memory\BvMemoryArea.cpp" />
     <ClCompile Include="Core\Utils\BvLog.cpp" />

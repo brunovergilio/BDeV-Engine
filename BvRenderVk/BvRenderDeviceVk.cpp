@@ -7,7 +7,6 @@
 #include "BvShaderResourceVk.h"
 #include "BvShaderVk.h"
 #include "BvPipelineStateVk.h"
-#include "BvSemaphoreVk.h"
 #include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
 #include "BvTextureVk.h"
@@ -31,8 +30,8 @@ u32 GetQueueFamilyIndex(const BvVector<VkQueueFamilyProperties2>& queueFamilyPro
 bool QueueSupportsPresent(VkPhysicalDevice physicalDevice, u32 index);
 
 
-BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, VkPhysicalDevice physicalDevice, const BvRenderDeviceCreateDescVk& deviceDesc)
-	: m_pEngine(pEngine), m_PhysicalDevice(physicalDevice), m_pDeviceInfo(BV_NEW(BvDeviceInfoVk)())
+BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
+	: m_pEngine(pEngine), m_PhysicalDevice((VkPhysicalDevice)gpuInfo.m_pPhysicalDevice), m_pDeviceInfo(BV_NEW(BvDeviceInfoVk)()), m_GPUInfo(gpuInfo)
 {
 	Create(deviceDesc);
 }
@@ -44,560 +43,185 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 }
 
 
-bool BvRenderDeviceVk::CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext, IBvSwapChain** ppObj)
+IBvSwapChain* BvRenderDeviceVk::CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext)
 {
-	IBvSwapChainVk* pObjVk;
-	if (CreateSwapChainVk(pWindow, swapChainDesc, pContext, &pObjVk))
+	auto pObj = CreateResource<BvSwapChainVk>(this, pWindow, swapChainDesc, TO_VK(pContext));
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvBuffer* BvRenderDeviceVk::CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData)
+{
+	auto pObj = CreateResource<BvBufferVk>(this, desc, pInitData);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvBufferView* BvRenderDeviceVk::CreateBufferViewImpl(const BufferViewDesc& desc)
+{
+	auto pObj = CreateResource<BvBufferViewVk>(this, desc);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvTexture* BvRenderDeviceVk::CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData)
+{
+	auto pObj = CreateResource<BvTextureVk>(this, desc, pInitData);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvTextureView* BvRenderDeviceVk::CreateTextureViewImpl(const TextureViewDesc& desc)
+{
+	auto pObj = CreateResource<BvTextureViewVk>(this, desc);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvSampler* BvRenderDeviceVk::CreateSamplerImpl(const SamplerDesc& desc)
+{
+	auto pObj = CreateResource<BvSamplerVk>(this, desc);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvRenderPass* BvRenderDeviceVk::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc)
+{
+	auto pObj = CreateResource<BvRenderPassVk>(this, renderPassDesc);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvShaderResourceLayout* BvRenderDeviceVk::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc)
+{
+	auto pObj = CreateResource<BvShaderResourceLayoutVk>(this, srlDesc);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvShader* BvRenderDeviceVk::CreateShaderImpl(const ShaderCreateDesc& shaderDesc)
+{
+	auto pObj = CreateResource<BvShaderVk>(this, shaderDesc);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvGraphicsPipelineState* BvRenderDeviceVk::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
+{
+	auto pObj = CreateResource<BvGraphicsPipelineStateVk>(this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvComputePipelineState* BvRenderDeviceVk::CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc)
+{
+	auto pObj = CreateResource<BvComputePipelineStateVk>(this, computePipelineStateDesc, VK_NULL_HANDLE);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvRayTracingPipelineState* BvRenderDeviceVk::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc)
+{
+	auto pObj = CreateResource<BvRayTracingPipelineStateVk>(this, rayTracingPipelineStateDesc, VK_NULL_HANDLE);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvQuery* BvRenderDeviceVk::CreateQueryImpl(QueryType queryType)
+{
+	auto pObj = CreateResource<BvQueryVk>(this, queryType, 3);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvGPUFence* BvRenderDeviceVk::CreateFenceImpl(u64 value)
+{
+	auto pObj = CreateResource<BvGPUFenceVk>(this, value);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvAccelerationStructure* BvRenderDeviceVk::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc)
+{
+	auto pObj = CreateResource<BvAccelerationStructureVk>(this, asDesc);
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvShaderBindingTable* BvRenderDeviceVk::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext)
+{
+	auto pObj = CreateResource<BvShaderBindingTableVk>(this, sbtDesc, m_pDeviceInfo->m_ExtendedProperties.rayTracingPipelineProps, TO_VK(pContext));
+	m_DeviceObjects.Emplace(pObj);
+	return pObj;
+}
+
+
+IBvCommandContext* BvRenderDeviceVk::GetGraphicsContextImpl(u32 index)
+{
+	if (index >= m_GraphicsContexts.Size())
 	{
-		*ppObj = pObjVk;
-		return true;
+		return nullptr;
 	}
 
-	return false;
+	auto& pContext = m_GraphicsContexts[index];
+	if (!pContext)
+	{
+		pContext = CreateResource<BvCommandContextVk>(this, 3, CommandType::kGraphics, m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueFamilyIndex, index);
+	}
+	return pContext;
 }
 
 
-bool BvRenderDeviceVk::CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData, IBvBuffer** ppObj)
+IBvCommandContext* BvRenderDeviceVk::GetComputeContextImpl(u32 index)
 {
-	IBvBufferVk* pObjVk;
-	if (CreateBufferVk(desc, pInitData, &pObjVk))
+	if (index >= m_ComputeContexts.Size())
 	{
-		*ppObj = pObjVk;
-		return true;
+		return nullptr;
 	}
 
-	return false;
+	auto& pContext = m_ComputeContexts[index];
+	if (!pContext)
+	{
+		pContext = CreateResource<BvCommandContextVk>(this, 3, CommandType::kCompute, m_pDeviceInfo->m_ComputeQueueInfo.m_QueueFamilyIndex, index);
+	}
+	return pContext;
 }
 
 
-bool BvRenderDeviceVk::CreateBufferView(const BufferViewDesc& desc, IBvBufferView** ppObj)
+IBvCommandContext* BvRenderDeviceVk::GetTransferContextImpl(u32 index)
 {
-	IBvBufferViewVk* pObjVk;
-	if (CreateBufferViewVk(desc, &pObjVk))
+	if (index >= m_TransferContexts.Size())
 	{
-		*ppObj = pObjVk;
-		return true;
+		return nullptr;
 	}
 
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData, IBvTexture** ppObj)
-{
-	IBvTextureVk* pObjVk;
-	if (CreateTextureVk(desc, pInitData, &pObjVk))
+	auto& pContext = m_TransferContexts[index];
+	if (!pContext)
 	{
-		*ppObj = pObjVk;
-		return true;
+		pContext = CreateResource<BvCommandContextVk>(this, 3, CommandType::kTransfer, m_pDeviceInfo->m_TransferQueueInfo.m_QueueFamilyIndex, index);
 	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateTextureView(const TextureViewDesc& desc, IBvTextureView** ppObj)
-{
-	IBvTextureViewVk* pObjVk;
-	if (CreateTextureViewVk(desc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateSampler(const SamplerDesc& desc, IBvSampler** ppObj)
-{
-	IBvSamplerVk* pObjVk;
-	if (CreateSamplerVk(desc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateRenderPass(const RenderPassDesc& renderPassDesc, IBvRenderPass** ppObj)
-{
-	IBvRenderPassVk* pObjVk;
-	if (CreateRenderPassVk(renderPassDesc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc, IBvShaderResourceLayout** ppObj)
-{
-	IBvShaderResourceLayoutVk* pObjVk;
-	if (CreateShaderResourceLayoutVk(srlDesc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateShader(const ShaderCreateDesc& shaderDesc, IBvShader** ppObj)
-{
-	IBvShaderVk* pObjVk;
-	if (CreateShaderVk(shaderDesc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvGraphicsPipelineState** ppObj)
-{
-	IBvGraphicsPipelineStateVk* pObjVk;
-	if (CreateGraphicsPipelineVk(graphicsPipelineStateDesc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, IBvComputePipelineState** ppObj)
-{
-	IBvComputePipelineStateVk* pObjVk;
-	if (CreateComputePipelineVk(computePipelineStateDesc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvRayTracingPipelineState** ppObj)
-{
-	IBvRayTracingPipelineStateVk* pObjVk;
-	if (CreateRayTracingPipelineVk(rayTracingPipelineStateDesc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateQuery(QueryType queryType, IBvQuery** ppObj)
-{
-	IBvQueryVk* pObjVk;
-	if (CreateQueryVk(queryType, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateFence(u64 value, IBvGPUFence** ppObj)
-{
-	IBvGPUFenceVk* pObjVk;
-	if (CreateFenceVk(value, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, IBvAccelerationStructure** ppObj)
-{
-	IBvAccelerationStructureVk* pObjVk;
-	if (CreateAccelerationStructureVk(asDesc, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, IBvShaderBindingTable** ppObj)
-{
-	IBvShaderBindingTableVk* pObjVk;
-	if (CreateShaderBindingTableVk(sbtDesc, pContext, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateSwapChainVk(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext, IBvSwapChainVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvSwapChainVk, this, pWindow, swapChainDesc, pContext);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateBufferVk(const BufferDesc& desc, const BufferInitData* pInitData, IBvBufferVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvBufferVk, this, desc, pInitData);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateBufferViewVk(const BufferViewDesc& desc, IBvBufferViewVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvBufferViewVk, this, desc);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateTextureVk(const TextureDesc& desc, const TextureInitData* pInitData, IBvTextureVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvTextureVk, this, desc, pInitData);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateTextureViewVk(const TextureViewDesc& desc, IBvTextureViewVk** ppObj)
-{
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateSamplerVk(const SamplerDesc& desc, IBvSamplerVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvSamplerVk, this, desc);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateRenderPassVk(const RenderPassDesc& renderPassDesc, IBvRenderPassVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvRenderPassVk, this, renderPassDesc);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateShaderResourceLayoutVk(const ShaderResourceLayoutDesc& srlDesc, IBvShaderResourceLayoutVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvShaderResourceLayoutVk, this, srlDesc);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateShaderVk(const ShaderCreateDesc& shaderDesc, IBvShaderVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvShaderVk, this, shaderDesc);
-	m_DeviceObjects.PushBack(*ppObj);
-
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateGraphicsPipelineVk(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvGraphicsPipelineStateVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvGraphicsPipelineStateVk, this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateComputePipelineVk(const ComputePipelineStateDesc& computePipelineStateDesc, IBvComputePipelineStateVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvComputePipelineStateVk, this, computePipelineStateDesc, VK_NULL_HANDLE);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateRayTracingPipelineVk(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvRayTracingPipelineStateVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvRayTracingPipelineStateVk, this, rayTracingPipelineStateDesc, VK_NULL_HANDLE);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateQueryVk(QueryType queryType, IBvQueryVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvQueryVk, this, queryType, 3);
-	m_DeviceObjects.PushBack(*ppObj);
-
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateFenceVk(u64 value, IBvGPUFenceVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvGPUFenceVk, this, value);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateAccelerationStructureVk(const RayTracingAccelerationStructureDesc& asDesc, IBvAccelerationStructureVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvAccelerationStructureVk, this, asDesc);
-	if (!(*ppObj)->IsValid())
-	{
-		(*ppObj)->Release();
-		return false;
-	}
-
-	m_DeviceObjects.PushBack(*ppObj);
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateShaderBindingTableVk(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, IBvShaderBindingTableVk** ppObj)
-{
-	*ppObj = BV_OBJECT_CREATE(BvShaderBindingTableVk, this, sbtDesc, m_pDeviceInfo->m_ExtendedProperties.rayTracingPipelineProps, TO_VK(pContext));
-	m_DeviceObjects.PushBack(*ppObj);
-
-	return true;
+	return pContext;
 }
 
 
 void BvRenderDeviceVk::WaitIdle() const
 {
 	auto result = vkDeviceWaitIdle(m_Device);
-}
-
-
-bool BvRenderDeviceVk::CreateGraphicsContext(u32 index, IBvCommandContext** ppObj)
-{
-	IBvCommandContextVk* pObjVk;
-	if (CreateGraphicsContextVk(index, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateComputeContext(u32 index, IBvCommandContext** ppObj)
-{
-	IBvCommandContextVk* pObjVk;
-	if (CreateComputeContextVk(index, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateTransferContext(u32 index, IBvCommandContext** ppObj)
-{
-	IBvCommandContextVk* pObjVk;
-	if (CreateTransferContextVk(index, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderDeviceVk::CreateGraphicsContextVk(u32 index, IBvCommandContextVk** ppObj)
-{
-	if (index >= m_GraphicsContexts.Size())
-	{
-		return false;
-	}
-
-	BV_ASSERT_ONCE(m_GraphicsContexts[index] == nullptr, "Context already created");
-
-	auto& pContext = m_GraphicsContexts[index];
-	if (!pContext)
-	{
-		pContext = BV_OBJECT_CREATE(BvCommandContextVk, this, 3, CommandType::kGraphics, m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueFamilyIndex, index);
-	}
-	*ppObj = pContext;
-
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateComputeContextVk(u32 index, IBvCommandContextVk** ppObj)
-{
-	if (index >= m_ComputeContexts.Size())
-	{
-		return false;
-	}
-
-	BV_ASSERT_ONCE(m_ComputeContexts[index] == nullptr, "Context already created");
-
-	auto& pContext = m_ComputeContexts[index];
-	if (!pContext)
-	{
-		pContext = BV_OBJECT_CREATE(BvCommandContextVk, this, 3, CommandType::kCompute, m_pDeviceInfo->m_ComputeQueueInfo.m_QueueFamilyIndex, index);
-	}
-	*ppObj = pContext;
-
-	return true;
-}
-
-
-bool BvRenderDeviceVk::CreateTransferContextVk(u32 index, IBvCommandContextVk** ppObj)
-{
-	if (index >= m_TransferContexts.Size())
-	{
-		return false;
-	}
-
-	BV_ASSERT_ONCE(m_TransferContexts[index] == nullptr, "Context already created");
-
-	auto& pContext = m_TransferContexts[index];
-	if (!pContext)
-	{
-		pContext = BV_OBJECT_CREATE(BvCommandContextVk, this, 3, CommandType::kTransfer, m_pDeviceInfo->m_TransferQueueInfo.m_QueueFamilyIndex, index);
-	}
-	*ppObj = pContext;
-
-	return true;
-}
-
-
-IBvCommandContext* BvRenderDeviceVk::GetGraphicsContext(u32 index) const
-{
-	return GetGraphicsContextVk(index);
-}
-
-
-IBvCommandContext* BvRenderDeviceVk::GetComputeContext(u32 index) const
-{
-	return GetComputeContextVk(index);
-}
-
-
-IBvCommandContext* BvRenderDeviceVk::GetTransferContext(u32 index) const
-{
-	return GetTransferContextVk(index);
-}
-
-
-IBvCommandContextVk* BvRenderDeviceVk::GetGraphicsContextVk(u32 index) const
-{
-	return index < m_GraphicsContexts.Size() ? m_GraphicsContexts[index] : nullptr;
-}
-
-
-IBvCommandContextVk* BvRenderDeviceVk::GetComputeContextVk(u32 index) const
-{
-	return index < m_ComputeContexts.Size() ? m_ComputeContexts[index] : nullptr;
-}
-
-
-IBvCommandContextVk* BvRenderDeviceVk::GetTransferContextVk(u32 index) const
-{
-	return index < m_TransferContexts.Size() ? m_TransferContexts[index] : nullptr;
 }
 
 
@@ -872,22 +496,30 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 void BvRenderDeviceVk::Destroy()
 {
-	vkDeviceWaitIdle(m_Device);
-
-	for (i32 i = i32(m_DeviceObjects.Size()) - 1; i >= 0; --i)
-	{
-		m_DeviceObjects[i]->Release();
-	}
-
-	DestroyVMA();
-
 	if (m_Device)
 	{
+		vkDeviceWaitIdle(m_Device);
+
+		for (auto& pObj : m_DeviceObjects)
+		{
+			pObj->Destroy();
+		}
+		m_DeviceObjects.Clear();
+
+		DestroyVMA();
+		
+		BV_DELETE(m_pDeviceInfo);
+		m_pDeviceInfo = nullptr;
+
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
 	}
+}
 
-	BV_DELETE(m_pDeviceInfo);
+
+void BvRenderDeviceVk::SelfDestroy()
+{
+	BV_DELETE(this);
 }
 
 

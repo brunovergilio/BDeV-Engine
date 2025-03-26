@@ -13,7 +13,6 @@
 #include "BvDescriptorSetVk.h"
 #include "BvTextureVk.h"
 #include "BvSwapChainVk.h"
-#include "BvSemaphoreVk.h"
 #include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
 #include "BvSamplerVk.h"
@@ -26,7 +25,7 @@
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
-BvCommandBufferVk::BvCommandBufferVk(const IBvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
+BvCommandBufferVk::BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
 	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetEngine()->HasDebugUtils())
 {
 }
@@ -427,7 +426,7 @@ void BvCommandBufferVk::SetRayTracingPipeline(const IBvRayTracingPipelineState* 
 }
 
 
-void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex)
+void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, IBvShaderResourceParams* const* ppResourceParams, u32 startIndex)
 {
 	if (startIndex + resourceParamsCount > m_DescriptorSets.Size())
 	{
@@ -723,7 +722,7 @@ void BvCommandBufferVk::DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 
 }
 
 
-void BvCommandBufferVk::CopyBuffer(const IBvBufferVk* pSrcBuffer, IBvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
+void BvCommandBufferVk::CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
 {
 	ResetRenderTargets();
 
@@ -853,7 +852,7 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 }
 
 
-void BvCommandBufferVk::CopyBufferToTexture(const IBvBufferVk* pSrcBuffer, IBvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandBufferVk::CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	ResetRenderTargets();
 
@@ -887,7 +886,7 @@ void BvCommandBufferVk::CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvText
 }
 
 
-void BvCommandBufferVk::CopyTextureToBuffer(const IBvTextureVk* pSrcTexture, IBvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandBufferVk::CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	ResetRenderTargets();
 

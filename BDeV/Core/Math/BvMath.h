@@ -678,6 +678,8 @@ public:
 
 	BV_INLINE operator vf32() const { return m_Vec; }
 
+	BV_INLINE Float2 ToFloat() const { Float2 result; Store(m_Vec, result); return result; }
+
 private:
 	vf32 m_Vec;
 };
@@ -766,6 +768,8 @@ public:
 
 	BV_INLINE operator vf32() const { return m_Vec; }
 
+	BV_INLINE Float3 ToFloat() const { Float3 result; Store(m_Vec, result); return result; }
+
 private:
 	vf32 m_Vec;
 };
@@ -845,6 +849,8 @@ public:
 	BV_INLINE BvBoolVec operator<=(BvVec4 v) const { return BvBoolVec(VectorLessEqual(m_Vec, v.m_Vec)); }
 
 	BV_INLINE operator vf32() const { return m_Vec; }
+
+	BV_INLINE Float4 ToFloat() const { Float4 result; Store(m_Vec, result); return result; }
 
 private:
 	vf32 m_Vec;

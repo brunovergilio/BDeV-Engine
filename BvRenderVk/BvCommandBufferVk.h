@@ -7,23 +7,23 @@
 #include "BDeV/Core/Container/BvFixedVector.h"
 
 
-class IBvRenderDeviceVk;
-class IBvSwapChainVk;
-class IBvGraphicsPipelineStateVk;
-class IBvComputePipelineStateVk;
-class IBvRayTracingPipelineStateVk;
-class IBvShaderResourceLayoutVk;
+class BvRenderDeviceVk;
+class BvSwapChainVk;
+class BvGraphicsPipelineStateVk;
+class BvComputePipelineStateVk;
+class BvRayTracingPipelineStateVk;
+class BvShaderResourceLayoutVk;
 class IBvSampler;
 class IBvBufferView;
 class IBvTextureView;
-class IBvBufferVk;
-class IBvTextureVk;
+class BvBufferVk;
+class BvTextureVk;
 class IBvQuery;
 class IBvRenderPass;
 class IBvGraphicsPipelineState;
 class IBvComputePipelineState;
 class IBvRayTracingPipelineState;
-class BvShaderResourceParams;
+class IBvShaderResourceParams;
 class BvFrameDataVk;
 
 
@@ -39,7 +39,7 @@ public:
 		kRenderTarget,
 	};
 
-	BvCommandBufferVk(const IBvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData);
+	BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData);
 	BvCommandBufferVk(BvCommandBufferVk&& rhs) noexcept = default;
 	BvCommandBufferVk& operator=(BvCommandBufferVk&& rhs) noexcept = default;
 	~BvCommandBufferVk();
@@ -61,7 +61,7 @@ public:
 	void SetComputePipeline(const IBvComputePipelineState* pPipeline);
 	void SetRayTracingPipeline(const IBvRayTracingPipelineState* pPipeline);
 
-	void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex);
+	void SetShaderResourceParams(u32 resourceParamsCount, IBvShaderResourceParams* const* ppResourceParams, u32 startIndex);
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
@@ -95,17 +95,17 @@ public:
 	void DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 	void DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 offset, const IBvBuffer* pCountBuffer, u64 countOffset, u32 maxCount);
 
-	void CopyBuffer(const IBvBufferVk* pSrcBuffer, IBvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion);
+	void CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion);
 	void CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer);
 	void CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer, const BufferCopyDesc& copyDesc);
 	
 	void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture);
 	void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture, const TextureCopyDesc& copyDesc);
 
-	void CopyBufferToTexture(const IBvBufferVk* pSrcBuffer, IBvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
+	void CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
 	void CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
 
-	void CopyTextureToBuffer(const IBvTextureVk* pSrcTexture, IBvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
+	void CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
 	void CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
 
 	void ResourceBarrier(u32 bufferBarrierCount, const VkBufferMemoryBarrier2* pBufferBarriers,
@@ -127,18 +127,18 @@ public:
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 
 	BV_INLINE const VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
-	BV_INLINE const BvVector<IBvSwapChainVk*>& GetSwapChains() const { return m_SwapChains; }
+	BV_INLINE const BvVector<BvSwapChainVk*>& GetSwapChains() const { return m_SwapChains; }
 
 private:
 	void FlushDescriptorSets();
 	void ResetRenderTargets();
 
 private:
-	const IBvRenderDeviceVk* m_pDevice = nullptr;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
 	BvFrameDataVk* m_pFrameData = nullptr;
 
-	BvVector<IBvSwapChainVk*> m_SwapChains;
+	BvVector<BvSwapChainVk*> m_SwapChains;
 	
 	BvVector<VkWriteDescriptorSetAccelerationStructureKHR> m_ASWriteSets;
 	BvVector<VkWriteDescriptorSet> m_WriteSets;
@@ -154,10 +154,10 @@ private:
 	BvVector<VkBufferMemoryBarrier2> m_BufferBarriers;
 	BvVector<VkImageMemoryBarrier2> m_ImageBarriers;
 
-	const IBvGraphicsPipelineStateVk* m_pGraphicsPipeline = nullptr;
-	const IBvComputePipelineStateVk* m_pComputePipeline = nullptr;
-	const IBvRayTracingPipelineStateVk* m_pRayTracingPipeline = nullptr;
-	IBvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
+	const BvGraphicsPipelineStateVk* m_pGraphicsPipeline = nullptr;
+	const BvComputePipelineStateVk* m_pComputePipeline = nullptr;
+	const BvRayTracingPipelineStateVk* m_pRayTracingPipeline = nullptr;
+	const BvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
 
 	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;

@@ -4,6 +4,9 @@
 #include "BvTypeConversionsVk.h"
 
 
+BV_VK_DEVICE_RES_DEF(BvBufferViewVk)
+
+
 BvBufferViewVk::BvBufferViewVk(BvRenderDeviceVk* pDevice, const BufferViewDesc & bufferViewDesc)
 	: m_BufferViewDesc(bufferViewDesc), m_pDevice(pDevice)
 {
@@ -14,12 +17,6 @@ BvBufferViewVk::BvBufferViewVk(BvRenderDeviceVk* pDevice, const BufferViewDesc &
 BvBufferViewVk::~BvBufferViewVk()
 {
 	Destroy();
-}
-
-
-IBvRenderDevice* BvBufferViewVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 

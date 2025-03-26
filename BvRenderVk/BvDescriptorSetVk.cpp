@@ -9,7 +9,7 @@
 #include "BvUtilsVk.h"
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 dynamicOffset)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 dynamicOffset)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -52,7 +52,7 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvBufferViewVk*
 }
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -90,7 +90,7 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvTextureViewVk
 }
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvSamplerVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -115,7 +115,7 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvSamplerVk* pR
 }
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -166,7 +166,7 @@ BvResourceBindingStateVk::~BvResourceBindingStateVk()
 }
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex, u32 offset)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex, u32 offset)
 {
 	auto[pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	if (pData->Set(descriptorType, pResource, offset) || newElem)
@@ -177,7 +177,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	if (pData->Set(descriptorType, pResource) || newElem)
@@ -188,7 +188,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	if (pData->Set(descriptorType, pResource) || newElem)
@@ -198,7 +198,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 }
 
 
-void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const IBvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
 	if (pData->Set(descriptorType, pResource) || newElem)
@@ -249,7 +249,7 @@ BvDescriptorSetVk::BvDescriptorSetVk()
 }
 
 
-BvDescriptorSetVk::BvDescriptorSetVk(const IBvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet)
+BvDescriptorSetVk::BvDescriptorSetVk(BvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet)
 	: m_pDevice(pDevice), m_DescriptorSet(descriptorSet)
 {
 }
@@ -289,7 +289,7 @@ BvDescriptorPoolVk::BvDescriptorPoolVk()
 }
 
 
-BvDescriptorPoolVk::BvDescriptorPoolVk(const IBvRenderDeviceVk* pDevice, const IBvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool)
+BvDescriptorPoolVk::BvDescriptorPoolVk(BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool)
 	: m_pDevice(pDevice), m_MaxAllocationsPerPool(maxAllocationsPerPool), m_pLayout(pLayout), m_SetIndex(set)
 {
 	BvRobinMap<VkDescriptorType, u32> poolSizes;

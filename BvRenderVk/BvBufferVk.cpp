@@ -5,6 +5,9 @@
 #include "BvTypeConversionsVk.h"
 
 
+BV_VK_DEVICE_RES_DEF(BvBufferVk)
+
+
 BvBufferVk::BvBufferVk(BvRenderDeviceVk* pDevice, const BufferDesc& bufferDesc, const BufferInitData* pInitData)
 	: m_BufferDesc(bufferDesc), m_pDevice(pDevice)
 {
@@ -94,12 +97,6 @@ void BvBufferVk::Invalidate(const u64 size, const u64 offset) const
 		BvDebugVkResult(result);
 		return;
 	}
-}
-
-
-IBvRenderDevice* BvBufferVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 
@@ -195,9 +192,9 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 void BvBufferVk::Destroy()
 {
 	auto device = m_pDevice->GetHandle();
-	Unmap();
 	if (m_Buffer)
 	{
+		Unmap();
 		vkDestroyBuffer(device, m_Buffer, nullptr);
 		m_Buffer = VK_NULL_HANDLE;
 		
@@ -215,13 +212,15 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	bufferDesc.m_Size = pInitData->m_Size;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 	
-	BvBufferVk srcBuffer(m_pDevice, bufferDesc, pInitData);
+	BvBufferVk* pSrcBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, nullptr);
+	auto* pData = pSrcBuffer->GetMappedData();
+	memcpy(pData, pInitData->m_pData, pInitData->m_Size);
 	VkBufferCopy copyRegion{};
 	copyRegion.size = std::min(m_BufferDesc.m_Size, pInitData->m_Size);
 
 	auto pContext = static_cast<BvCommandContextVk*>(pInitData->m_pContext);
 	pContext->NewCommandList();
-	pContext->CopyBufferVk(&srcBuffer, this, copyRegion);
+	pContext->CopyBufferVk(pSrcBuffer, this, copyRegion);
 
 	VkBufferMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
 	//barrier.pNext = nullptr;
@@ -241,4 +240,6 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	pContext->ResourceBarrierVk(1, &barrier, 0, nullptr, 0, nullptr);
 	pContext->Execute();
 	pContext->WaitForGPU();
+
+	pSrcBuffer->Release();
 }

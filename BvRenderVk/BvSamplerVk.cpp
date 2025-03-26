@@ -4,6 +4,9 @@
 #include "BvUtilsVk.h"
 
 
+BV_VK_DEVICE_RES_DEF(BvSamplerVk)
+
+
 BvSamplerVk::BvSamplerVk(BvRenderDeviceVk* pDevice, const SamplerDesc & samplerDesc)
 	: m_SamplerDesc(samplerDesc), m_pDevice(pDevice)
 {
@@ -14,12 +17,6 @@ BvSamplerVk::BvSamplerVk(BvRenderDeviceVk* pDevice, const SamplerDesc & samplerD
 BvSamplerVk::~BvSamplerVk()
 {
 	Destroy();
-}
-
-
-IBvRenderDevice* BvSamplerVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 

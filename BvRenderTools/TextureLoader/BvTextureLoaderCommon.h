@@ -6,7 +6,8 @@
 #include "BDeV/Core/RenderAPI/BvTextureLoader.h"
 
 
-BV_OBJECT_DEFINE_ID(BvTextureBlob, "325881a9-ae9c-4b09-8173-2a2f3d911d9b");
+//BV_OBJECT_DEFINE_ID(BvTextureBlob, "325881a9-ae9c-4b09-8173-2a2f3d911d9b");
+//BV_OBJECT_ENABLE_ID_OPERATOR(BvTextureBlob);
 class BvTextureBlob final : public IBvTextureBlob
 {
 	BV_NOCOPYMOVE(BvTextureBlob);
@@ -21,11 +22,13 @@ public:
 	BV_INLINE const IBvTextureBlob::Info& GetInfo() override { return m_Info; }
 	BV_INLINE const BvVector<SubresourceData>& GetSubresources() const override { return m_Subresources; }
 
-	BV_OBJECT_IMPL_INTERFACE(BvTextureBlob, IBvTextureBlob);
+	//BV_OBJECT_IMPL_INTERFACE(BvTextureBlob, IBvTextureBlob);
+
+private:
+	void SelfDestroy() override;
 
 private:
 	BvVector<u8> m_Buffer;
 	IBvTextureBlob::Info m_Info;
 	BvVector<SubresourceData> m_Subresources;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvTextureBlob);

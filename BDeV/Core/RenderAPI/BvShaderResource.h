@@ -7,7 +7,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BvRenderCommon.h"
 #include "BDeV/Core/Container/BvStringId.h"
-#include "BvRenderDeviceObject.h"
+#include "BDeV/Core/Utils/BvObject.h"
 
 
 class IBvSampler;
@@ -120,8 +120,9 @@ struct ShaderResourceLayoutDesc
 };
 
 
-BV_OBJECT_DEFINE_ID(IBvShaderResourceLayout, "79547e0c-dc23-4354-9a51-c1af70d20b83");
-class IBvShaderResourceLayout : public IBvRenderDeviceObject
+//BV_OBJECT_DEFINE_ID(IBvShaderResourceLayout, "79547e0c-dc23-4354-9a51-c1af70d20b83");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderResourceLayout);
+class IBvShaderResourceLayout : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvShaderResourceLayout);
 
@@ -132,12 +133,11 @@ protected:
 	IBvShaderResourceLayout() {}
 	~IBvShaderResourceLayout() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderResourceLayout);
 
 
-class BvShaderResourceParams
+class IBvShaderResourceParams
 {
-	BV_NOCOPYMOVE(BvShaderResourceParams);
+	BV_NOCOPYMOVE(IBvShaderResourceParams);
 
 public:
 	virtual void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 binding, u32 startIndex = 0) = 0;
@@ -163,6 +163,6 @@ public:
 	virtual void Bind() = 0;
 
 protected:
-	BvShaderResourceParams() {}
-	~BvShaderResourceParams() {}
+	IBvShaderResourceParams() {}
+	~IBvShaderResourceParams() {}
 };

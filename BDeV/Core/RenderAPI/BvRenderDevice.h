@@ -2,6 +2,7 @@
 
 
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/RenderAPI/BvGPUInfo.h"
 #include "BvSwapChain.h"
 #include "BvRenderPass.h"
 #include "BvShaderResource.h"
@@ -14,42 +15,37 @@
 #include "BvSampler.h"
 #include "BvQuery.h"
 #include "BvCommandContext.h"
-#include "BvRenderDeviceObject.h"
 #include "BvGPUFence.h"
 #include "BvAccelerationStructure.h"
 #include "BvShaderBindingTable.h"
 
 
-BV_OBJECT_DEFINE_ID(IBvRenderDevice, "31126d8a-8b56-489b-8b0c-0008de31a1d2");
-class IBvRenderDevice : public BvObjectBase
+//BV_OBJECT_DEFINE_ID(IBvRenderDevice, "31126d8a-8b56-489b-8b0c-0008de31a1d2");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderDevice);
+class IBvRenderDevice : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvRenderDevice);
 
 public:
-	virtual bool CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext, IBvSwapChain** ppObj) = 0;
-	virtual bool CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData, IBvBuffer** ppObj) = 0;
-	virtual bool CreateBufferView(const BufferViewDesc& desc, IBvBufferView** ppObj) = 0;
-	virtual bool CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData, IBvTexture** ppObj) = 0;
-	virtual bool CreateTextureView(const TextureViewDesc& desc, IBvTextureView** ppObj) = 0;
-	virtual bool CreateSampler(const SamplerDesc& desc, IBvSampler** ppObj) = 0;
-	virtual bool CreateRenderPass(const RenderPassDesc& renderPassDesc, IBvRenderPass** ppObj) = 0;
-	virtual bool CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc, IBvShaderResourceLayout** ppObj) = 0;
-	virtual bool CreateShader(const ShaderCreateDesc& shaderDesc, IBvShader** ppObj) = 0;
-	virtual bool CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvGraphicsPipelineState** ppObj) = 0;
-	virtual bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, IBvComputePipelineState** ppObj) = 0;
-	virtual bool CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvRayTracingPipelineState** ppObj) = 0;
-	virtual bool CreateQuery(QueryType queryType, IBvQuery** ppObj) = 0;
-	virtual bool CreateFence(u64 value, IBvGPUFence** ppObj) = 0;
-	virtual bool CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, IBvAccelerationStructure** ppObj) = 0;
-	virtual bool CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, IBvShaderBindingTable** ppObj) = 0;
-
-	virtual bool CreateGraphicsContext(u32 index, IBvCommandContext** ppObj) = 0;
-	virtual bool CreateComputeContext(u32 index, IBvCommandContext** ppObj) = 0;
-	virtual bool CreateTransferContext(u32 index, IBvCommandContext** ppObj) = 0;
-
-	virtual IBvCommandContext* GetGraphicsContext(u32 index = 0) const = 0;
-	virtual IBvCommandContext* GetComputeContext(u32 index = 0) const = 0;
-	virtual IBvCommandContext* GetTransferContext(u32 index = 0) const = 0;
+	template<typename T = IBvSwapChain> BV_INLINE T* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext) { return static_cast<T*>(CreateSwapChainImpl(pWindow, desc, pContext)); }
+	template<typename T = IBvBuffer> BV_INLINE T* CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData) { return static_cast<T*>(CreateBufferImpl(desc, pInitData)); }
+	template<typename T = IBvBufferView> BV_INLINE T* CreateBufferView(const BufferViewDesc& desc) { return static_cast<T*>(CreateBufferViewImpl(desc)); }
+	template<typename T = IBvTexture> BV_INLINE T* CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData) { return static_cast<T*>(CreateTextureImpl(desc, pInitData)); }
+	template<typename T = IBvTextureView> BV_INLINE T* CreateTextureView(const TextureViewDesc& desc) { return static_cast<T*>(CreateTextureViewImpl(desc)); }
+	template<typename T = IBvSampler> BV_INLINE T* CreateSampler(const SamplerDesc& desc) { return static_cast<T*>(CreateSamplerImpl(desc)); }
+	template<typename T = IBvRenderPass> BV_INLINE T* CreateRenderPass(const RenderPassDesc& renderPassDesc) { return static_cast<T*>(CreateRenderPassImpl(renderPassDesc)); }
+	template<typename T = IBvShaderResourceLayout> BV_INLINE T* CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc) { return static_cast<T*>(CreateShaderResourceLayoutImpl(srlDesc)); }
+	template<typename T = IBvShader> BV_INLINE T* CreateShader(const ShaderCreateDesc& shaderDesc) { return static_cast<T*>(CreateShaderImpl(shaderDesc)); }
+	template<typename T = IBvGraphicsPipelineState> BV_INLINE T* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) { return static_cast<T*>(CreateGraphicsPipelineImpl(graphicsPipelineStateDesc)); }
+	template<typename T = IBvComputePipelineState> BV_INLINE T* CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) { return static_cast<T*>(CreateComputePipelineImpl(computePipelineStateDesc)); }
+	template<typename T = IBvRayTracingPipelineState> BV_INLINE T* CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc) { return static_cast<T*>(CreateRayTracingPipelineImpl(rayTracingPipelineStateDesc)); }
+	template<typename T = IBvQuery> BV_INLINE T* CreateQuery(QueryType queryType) { return static_cast<T*>(CreateQueryImpl(queryType)); }
+	template<typename T = IBvGPUFence> BV_INLINE T* CreateFence(u64 value) { return static_cast<T*>(CreateFenceImpl(value)); }
+	template<typename T = IBvAccelerationStructure> BV_INLINE T* CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc) { return static_cast<T*>(CreateAccelerationStructureImpl(asDesc)); }
+	template<typename T = IBvShaderBindingTable> BV_INLINE T* CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) { return static_cast<T*>(CreateShaderBindingTableImpl(sbtDesc)); }
+	template<typename T = IBvCommandContext> BV_INLINE T* GetGraphicsContext(u32 index = 0) { return static_cast<T*>(GetGraphicsContextImpl(index)); }
+	template<typename T = IBvCommandContext> BV_INLINE T* GetComputeContext(u32 index = 0) { return static_cast<T*>(GetComputeContextImpl(index)); }
+	template<typename T = IBvCommandContext> BV_INLINE T* GetTransferContext(u32 index = 0) { return static_cast<T*>(GetTransferContextImpl(index)); }
 	
 	virtual void WaitIdle() const = 0;
 
@@ -60,9 +56,29 @@ public:
 	virtual FormatFeatures GetFormatFeatures(Format format) const = 0;
 
 	virtual RenderDeviceCapabilities GetDeviceCaps() const = 0;
+	virtual const BvGPUInfo& GetGPUInfo() const = 0;
 
 protected:
 	IBvRenderDevice() {}
-	~IBvRenderDevice() {};
+	~IBvRenderDevice() {}
+
+	virtual IBvSwapChain* CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext) = 0;
+	virtual IBvBuffer* CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData) = 0;
+	virtual IBvBufferView* CreateBufferViewImpl(const BufferViewDesc& desc) = 0;
+	virtual IBvTexture* CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData) = 0;
+	virtual IBvTextureView* CreateTextureViewImpl(const TextureViewDesc& desc) = 0;
+	virtual IBvSampler* CreateSamplerImpl(const SamplerDesc& desc) = 0;
+	virtual IBvRenderPass* CreateRenderPassImpl(const RenderPassDesc& renderPassDesc) = 0;
+	virtual IBvShaderResourceLayout* CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc) = 0;
+	virtual IBvShader* CreateShaderImpl(const ShaderCreateDesc& shaderDesc) = 0;
+	virtual IBvGraphicsPipelineState* CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) = 0;
+	virtual IBvComputePipelineState* CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc) = 0;
+	virtual IBvRayTracingPipelineState* CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc) = 0;
+	virtual IBvQuery* CreateQueryImpl(QueryType queryType) = 0;
+	virtual IBvGPUFence* CreateFenceImpl(u64 value) = 0;
+	virtual IBvAccelerationStructure* CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc) = 0;
+	virtual IBvShaderBindingTable* CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) = 0;
+	virtual IBvCommandContext* GetGraphicsContextImpl(u32 index = 0) = 0;
+	virtual IBvCommandContext* GetComputeContextImpl(u32 index = 0) = 0;
+	virtual IBvCommandContext* GetTransferContextImpl(u32 index = 0) = 0;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderDevice);

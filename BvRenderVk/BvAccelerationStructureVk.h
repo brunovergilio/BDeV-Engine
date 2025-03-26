@@ -7,39 +7,22 @@
 #include "BDeV/Core/Container/BvRobinMap.h"
 
 
-class IBvRenderDeviceVk;
-class IBvBufferVk;
+class BvRenderDeviceVk;
+class BvBufferVk;
 
 
-BV_OBJECT_DEFINE_ID(IBvAccelerationStructureVk, "70617509-5657-4c47-9a4e-dc318b535076");
-class IBvAccelerationStructureVk : public IBvAccelerationStructure
-{
-	BV_NOCOPYMOVE(IBvAccelerationStructureVk);
-
-public:
-	virtual BvVector<VkAccelerationStructureGeometryKHR>& GetGeometries() = 0;
-	virtual BvVector<u32>& GetPrimitiveCounts() = 0;
-	virtual VkAccelerationStructureKHR GetHandle() const = 0;
-	virtual IBvBufferVk* GetBuffer() const = 0;
-	virtual VkDeviceAddress GetDeviceAddress() const = 0;
-	virtual bool IsValid() const = 0;
-
-protected:
-	IBvAccelerationStructureVk() {}
-	~IBvAccelerationStructureVk() {}
-};
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvAccelerationStructureVk);
+//BV_OBJECT_DEFINE_ID(IBvAccelerationStructureVk, "70617509-5657-4c47-9a4e-dc318b535076");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvAccelerationStructureVk);
 
 
-class BvAccelerationStructureVk final : public IBvAccelerationStructureVk
+class BvAccelerationStructureVk final : public IBvAccelerationStructure, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvAccelerationStructureVk);
+	BV_VK_DEVICE_RES_DECL;
 
 public:
-	BvAccelerationStructureVk(IBvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& desc);
+	BvAccelerationStructureVk(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& desc);
 	~BvAccelerationStructureVk();
-
-	IBvRenderDevice* GetDevice() override;
 
 	BV_INLINE const RayTracingAccelerationStructureDesc& GetDesc() const override { return m_Desc; }
 	u32 GetGeometryIndex(BvStringId id) const override;
@@ -48,14 +31,14 @@ public:
 	IBvBuffer* GetTopLevelStagingInstanceBuffer() const override;
 	BV_INLINE RayTracingAccelerationStructureScratchSize GetBuildSizes() const override { return m_ScratchSizes; }
 
-	BV_INLINE BvVector<VkAccelerationStructureGeometryKHR>& GetGeometries() override { return m_Geometries; }
-	BV_INLINE BvVector<u32>& GetPrimitiveCounts() override { return m_PrimitiveCounts; }
-	BV_INLINE VkAccelerationStructureKHR GetHandle() const override { return m_Handle; }
-	BV_INLINE IBvBufferVk* GetBuffer() const override { return m_pBuffer; }
-	BV_INLINE VkDeviceAddress GetDeviceAddress() const override { return m_DeviceAddress; }
-	BV_INLINE bool IsValid() const override { return m_Handle != VK_NULL_HANDLE; }
+	BV_INLINE BvVector<VkAccelerationStructureGeometryKHR>& GetGeometries() { return m_Geometries; }
+	BV_INLINE BvVector<u32>& GetPrimitiveCounts() { return m_PrimitiveCounts; }
+	BV_INLINE VkAccelerationStructureKHR GetHandle() const { return m_Handle; }
+	BV_INLINE BvBufferVk* GetBuffer() const { return m_pBuffer; }
+	BV_INLINE VkDeviceAddress GetDeviceAddress() const { return m_DeviceAddress; }
+	BV_INLINE bool IsValid() const { return m_Handle != VK_NULL_HANDLE; }
 
-	BV_OBJECT_IMPL_INTERFACE(IBvAccelerationStructureVk, IBvAccelerationStructure, IBvRenderDeviceObject);
+	//BV_OBJECT_IMPL_INTERFACE(IBvAccelerationStructureVk, IBvAccelerationStructure, IBvRenderDeviceObject);
 
 private:
 	void Create();
@@ -64,11 +47,11 @@ private:
 	void GetBuildSizes(const VkAccelerationStructureBuildGeometryInfoKHR& buildInfo, const u32* pPrimitiveCounts, VkAccelerationStructureBuildSizesInfoKHR& sizeInfo);
 
 private:
-	IBvRenderDeviceVk* m_pDevice = nullptr;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkAccelerationStructureKHR m_Handle = VK_NULL_HANDLE;
 	VkDeviceAddress m_DeviceAddress = 0;
-	IBvBufferVk* m_pBuffer = nullptr;
-	IBvBufferVk* m_pStagingBuffer = nullptr;
+	BvBufferVk* m_pBuffer = nullptr;
+	BvBufferVk* m_pStagingBuffer = nullptr;
 	RayTracingAccelerationStructureScratchSize m_ScratchSizes;
 	BvVector<VkAccelerationStructureGeometryKHR> m_Geometries;
 	BvVector<u32> m_PrimitiveCounts;
@@ -77,4 +60,4 @@ private:
 };
 
 
-BV_CREATE_CAST_TO_VK(IBvAccelerationStructure)
+BV_CREATE_CAST_TO_VK(BvAccelerationStructure)

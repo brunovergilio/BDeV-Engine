@@ -8,14 +8,17 @@
 #include "BvCommandBufferVk.h"
 
 
-BvTextureVk::BvTextureVk(IBvRenderDeviceVk* pDevice, const TextureDesc& textureDesc, const TextureInitData* pInitData)
+BV_VK_DEVICE_RES_DEF(BvTextureVk)
+
+
+BvTextureVk::BvTextureVk(BvRenderDeviceVk* pDevice, const TextureDesc& textureDesc, const TextureInitData* pInitData)
 	: m_TextureDesc(textureDesc), m_pDevice(pDevice)
 {
 	Create(pInitData);
 }
 
 
-BvTextureVk::BvTextureVk(IBvRenderDeviceVk* pDevice, IBvSwapChainVk* pSwapChain, const TextureDesc& textureDesc, VkImage image)
+BvTextureVk::BvTextureVk(BvRenderDeviceVk* pDevice, BvSwapChainVk* pSwapChain, const TextureDesc& textureDesc, VkImage image)
 	: m_TextureDesc(textureDesc), m_pDevice(pDevice), m_pSwapChain(pSwapChain), m_Image(image)
 {
 }
@@ -24,12 +27,6 @@ BvTextureVk::BvTextureVk(IBvRenderDeviceVk* pDevice, IBvSwapChainVk* pSwapChain,
 BvTextureVk::~BvTextureVk()
 {
 	Destroy();
-}
-
-
-IBvRenderDevice* BvTextureVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 
@@ -136,7 +133,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 	u32 alignment = m_pDevice->GetDeviceInfo()->m_DeviceProperties.properties.limits.optimalBufferCopyOffsetAlignment;
 	ResourceState currState = ResourceState::kCommon;
 	bool isValidTextureData = pInitData->m_SubresourceCount == (planeCount * m_TextureDesc.m_ArraySize * mipCount) && pInitData->m_pSubresources != nullptr;
-	IBvBufferVk* pBuffer = nullptr;
+	BvBufferVk* pBuffer = nullptr;
 	if (isValidTextureData)
 	{
 		BvVector<VkBufferImageCopy> copyRegions(pInitData->m_SubresourceCount);
@@ -153,7 +150,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		bufferDesc.m_Size = bufferSize;
 		bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 
-		m_pDevice->CreateBufferVk(bufferDesc, nullptr, &pBuffer);
+		pBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, nullptr);
 		auto pDstData = static_cast<u8*>(pBuffer->GetMappedData());
 
 		// Calculate copy regions
@@ -235,7 +232,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 }
 
 
-void BvTextureVk::GenerateMips(IBvCommandContextVk* pContext)
+void BvTextureVk::GenerateMips(BvCommandContextVk* pContext)
 {
 	for (auto d = 0; d < GetFormatInfo(m_TextureDesc.m_Format).m_PlaneCount; ++d)
 	{

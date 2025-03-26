@@ -4,7 +4,10 @@
 #include "BvBufferVk.h"
 
 
-BvAccelerationStructureVk::BvAccelerationStructureVk(IBvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& desc)
+BV_VK_DEVICE_RES_DEF(BvAccelerationStructureVk)
+
+
+BvAccelerationStructureVk::BvAccelerationStructureVk(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& desc)
 	: m_Desc(desc), m_pDevice(pDevice)
 {
 	if (m_Desc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
@@ -38,12 +41,6 @@ BvAccelerationStructureVk::~BvAccelerationStructureVk()
 			BV_DELETE_ARRAY(m_Desc.m_BLAS.m_pGeometries);
 		}
 	}
-}
-
-
-IBvRenderDevice* BvAccelerationStructureVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 
@@ -175,7 +172,7 @@ void BvAccelerationStructureVk::Create()
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	bufferDesc.m_MemoryType = MemoryType::kDevice;
 	bufferDesc.m_Size = sizeInfo.accelerationStructureSize;
-	if (!m_pDevice->CreateBufferVk(bufferDesc, nullptr, &m_pBuffer))
+	if (!(m_pBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, nullptr)))
 	{
 		return;
 	}

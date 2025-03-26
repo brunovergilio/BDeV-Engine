@@ -38,6 +38,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderAPISampleBase", "Samp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "01 - Triangle", "Samples\Render API\01 - Triangle\01 - Triangle.vcxproj", "{66BF6FE7-60C0-469D-8C13-B2D0FFC90625}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "02 - Buffers", "Samples\Render API\02 - Buffers\02 - Buffers.vcxproj", "{B20C94A3-4EA8-4BCD-864E-016C5F01206B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -118,6 +120,14 @@ Global
 		{66BF6FE7-60C0-469D-8C13-B2D0FFC90625}.Release|x64.Build.0 = Release|x64
 		{66BF6FE7-60C0-469D-8C13-B2D0FFC90625}.Release|x86.ActiveCfg = Release|Win32
 		{66BF6FE7-60C0-469D-8C13-B2D0FFC90625}.Release|x86.Build.0 = Release|Win32
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Debug|x64.ActiveCfg = Debug|x64
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Debug|x64.Build.0 = Debug|x64
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Debug|x86.ActiveCfg = Debug|Win32
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Debug|x86.Build.0 = Debug|Win32
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Release|x64.ActiveCfg = Release|x64
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Release|x64.Build.0 = Release|x64
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Release|x86.ActiveCfg = Release|Win32
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -133,6 +143,7 @@ Global
 		{D95F5DFF-E6F2-4CAA-A2B8-67207015B116} = {451FA851-20FF-4EE9-8C5D-F90C299E3208}
 		{1635B7F2-E8F2-434D-AE96-F65538EF9D7C} = {D95F5DFF-E6F2-4CAA-A2B8-67207015B116}
 		{66BF6FE7-60C0-469D-8C13-B2D0FFC90625} = {D95F5DFF-E6F2-4CAA-A2B8-67207015B116}
+		{B20C94A3-4EA8-4BCD-864E-016C5F01206B} = {D95F5DFF-E6F2-4CAA-A2B8-67207015B116}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {69D55C40-A5FD-4B8A-BEFC-CA9AFEEB1440}

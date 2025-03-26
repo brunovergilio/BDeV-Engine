@@ -46,7 +46,7 @@ public:
 	void SetPipeline(const IBvGraphicsPipelineState* const pPipeline) override;
 	void SetPipeline(const IBvComputePipelineState* const pPipeline) override;
 
-	void SetShaderResourceParams(const u32 setCount, BvShaderResourceParams* const* const ppSets, const u32 firstSet) override;
+	void SetShaderResourceParams(const u32 setCount, IBvShaderResourceParams* const* const ppSets, const u32 firstSet) override;
 
 	void SetVertexBufferViews(const u32 vertexBufferCount, const IBvBufferView* const* const pVertexBufferViews,
 		const u32 firstBinding = 0) override;

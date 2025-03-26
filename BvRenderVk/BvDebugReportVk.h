@@ -10,7 +10,7 @@ class BvDebugReportVk
 	BV_NOCOPYMOVE(BvDebugReportVk);
 
 public:
-	BvDebugReportVk(const VkInstance instance);
+	BvDebugReportVk(VkInstance instance);
 	~BvDebugReportVk();
 
 private:

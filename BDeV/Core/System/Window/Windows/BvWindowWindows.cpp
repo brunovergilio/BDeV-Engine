@@ -1,4 +1,4 @@
-#include "BDeV/Core/System/Window/BvWindow.h"
+#include "BDeV/Core/System/Window/Windows/BvWindowWindows.h"
 #include "BDeV/Core/System/Application/BvApplication.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Container/BvText.h"
@@ -295,15 +295,6 @@ void BvWindow::SetText(const char* pText)
 }
 
 
-void BvWindow::GetDimensions(i32& x, i32& y, u32& width, u32& height)
-{
-	x = m_X;
-	y = m_Y;
-	width = m_Width;
-	height = m_Height;
-}
-
-
 bool BvWindow::IsMinimized() const
 {
 	return IsIconic(m_hWnd);
@@ -328,18 +319,6 @@ bool BvWindow::HasFocus() const
 }
 
 
-bool BvWindow::IsValid() const
-{
-	return m_hWnd != nullptr;
-}
-
-
-void* BvWindow::GetHandle() const
-{
-	return m_hWnd;
-}
-
-
 void BvWindow::OnSizeChanged(u32 width, u32 height)
 {
 	m_Width = width;
@@ -354,12 +333,18 @@ void BvWindow::OnPosChanged(i32 x, i32 y)
 }
 
 
-void BvWindow::Create(bool createNew)
+void BvWindow::OnClose()
 {
-	i32 x = m_X;
-	i32 y = m_Y;
-	i32 width = (i32)m_Width;
-	i32 height = (i32)m_Height;
+	m_IsClosed = true;
+}
+
+
+void BvWindow::Create()
+{
+	i32 x = m_WindowDesc.m_X;
+	i32 y = m_WindowDesc.m_Y;
+	i32 width = (i32)m_WindowDesc.m_Width;
+	i32 height = (i32)m_WindowDesc.m_Height;
 
 	DWORD style = 0;
 	DWORD exStyle = 0;
@@ -433,7 +418,7 @@ void BvWindow::Create(bool createNew)
 			pChosenWindowName = wideName;
 		}
 	}
-	if (createNew)
+	if (!m_hWnd)
 	{
 		m_hWnd = CreateWindowExW(exStyle, L"BDeVWindowClass", pChosenWindowName, style,
 			x, y, width, height, nullptr, nullptr, GetModuleHandleW(nullptr), this);
@@ -447,7 +432,10 @@ void BvWindow::Create(bool createNew)
 		SetWindowLongW(m_hWnd, GWL_STYLE, style);
 		SetWindowLongW(m_hWnd, GWL_EXSTYLE, exStyle);
 		SetWindowPos(m_hWnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+		SetWindowTextW(m_hWnd, pChosenWindowName);
 	}
+
+	m_IsClosed = false;
 
 	m_X = x;
 	m_Y = y;

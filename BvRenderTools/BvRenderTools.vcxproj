@@ -139,6 +139,7 @@
     <ClCompile Include="TextureLoader\BvDDSTextureLoader.cpp" />
     <ClCompile Include="TextureLoader\BvSTBTextureLoader.cpp" />
     <ClCompile Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.cpp" />
+    <ClCompile Include="TextureLoader\BvTextureLoaderCommon.cpp" />
     <ClCompile Include="TextureLoader\DDS\BvDDS.cpp" />
   </ItemGroup>
   <ItemGroup>

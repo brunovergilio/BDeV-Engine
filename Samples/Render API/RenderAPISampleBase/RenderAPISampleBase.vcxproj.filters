@@ -9,6 +9,7 @@
     <ClInclude Include="Third Party\imstb_rectpack.h" />
     <ClInclude Include="Third Party\imstb_textedit.h" />
     <ClInclude Include="Third Party\imstb_truetype.h" />
+    <ClInclude Include="FPSCounter.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SampleBase.cpp" />

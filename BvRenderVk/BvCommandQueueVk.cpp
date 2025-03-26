@@ -1,7 +1,6 @@
 #include "BvCommandQueueVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvCommandBufferVk.h"
-#include "BvSemaphoreVk.h"
 #include "BvSwapChainVk.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 
@@ -80,14 +79,18 @@ void BvCommandQueueVk::Submit(const BvVector<BvCommandBufferVk*>& commandBuffers
 		const auto& swapChains = pCommandBuffer->GetSwapChains();
 		for (auto pSwapChain : swapChains)
 		{
+			if (!pSwapChain->IsReady())
+			{
+				continue;
+			}
 			auto& scSignalInfo = m_SignalSemaphores.EmplaceBack();
 			scSignalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-			scSignalInfo.semaphore = pSwapChain->GetCurrentRenderCompleteSemaphore()->GetHandle();
+			scSignalInfo.semaphore = pSwapChain->GetCurrentRenderCompleteSemaphore();
 			scSignalInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
 			auto& scWaitInfo = m_WaitSemaphores.EmplaceBack();
 			scWaitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-			scWaitInfo.semaphore = pSwapChain->GetCurrentImageAcquiredSemaphore()->GetHandle();
+			scWaitInfo.semaphore = pSwapChain->GetCurrentImageAcquiredSemaphore();
 			scWaitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		}
 	}

@@ -15,6 +15,7 @@
     <ClCompile Include="TextureLoader\DDS\BvDDS.cpp" />
     <ClCompile Include="ShaderCompiler\BvShaderBlob.cpp" />
     <ClCompile Include="TextureLoader\BvDDSTextureLoader.cpp" />
+    <ClCompile Include="TextureLoader\BvTextureLoaderCommon.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BvRenderTools.def" />

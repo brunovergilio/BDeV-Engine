@@ -11,9 +11,10 @@ public:
 	UIOverlay();
 	~UIOverlay();
 
-	void Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext, Format swapChainFormat, IBvRenderPass* pRenderPass);
-	void Update(u32 w, u32 h);
-	void Render(IBvCommandContext* pContext);
+	void Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext);
+	void SetupPipeline(Format swapChainFormat, Format depthFormat = Format::kUnknown, IBvRenderPass* pRenderPass = nullptr);
+	bool Update(f32 dt, BvWindow* pWindow);
+	void Render();
 	void Shutdown();
 
 private:
@@ -21,29 +22,25 @@ private:
 	void CreateIB(u64 size, u32 count);
 
 private:
-	BvObjectHandle<IBvRenderDevice> m_Device;
-	BvObjectHandle<IBvBuffer> m_VB;
-	BvObjectHandle<IBvBuffer> m_IB;
-	BvObjectHandle<IBvBufferView> m_VBView;
-	BvObjectHandle<IBvBufferView> m_IBView;
-	BvObjectHandle<IBvGraphicsPipelineState> m_Pipeline;
-	BvObjectHandle<IBvShaderResourceLayout> m_SRL;
-	BvObjectHandle<IBvTexture> m_Texture;
-	BvObjectHandle<IBvTextureView> m_TextureView;
-	BvObjectHandle<IBvSampler> m_Sampler;
+	BvRCRef<IBvRenderDevice> m_Device;
+	BvRCRef<IBvBuffer> m_VB;
+	BvRCRef<IBvBuffer> m_IB;
+	BvRCRef<IBvBufferView> m_VBView;
+	BvRCRef<IBvBufferView> m_IBView;
+	BvRCRef<IBvGraphicsPipelineState> m_Pipeline;
+	BvRCRef<IBvShaderResourceLayout> m_SRL;
+	BvRCRef<IBvTexture> m_Texture;
+	BvRCRef<IBvTextureView> m_TextureView;
+	BvRCRef<IBvSampler> m_Sampler;
+	BvRCRef<IBvCommandContext> m_Context;
 
 	u32 m_VertexCount = 0;
 	u32 m_IndexCount = 0;
 
-	u32 m_Width = 0;
-	u32 m_Height = 0;
-
 	struct PushConstBlock
 	{
-		Float2 scale;
-		Float2 translate;
+		Float44 wvp;
 	} m_PC;
 
-	BvKeyboard m_Keyboard;
-	BvMouse m_Mouse;
+	f32 m_OverlayTimer = 0.0f;
 };

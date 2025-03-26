@@ -10,6 +10,9 @@
 #include <utility>
 
 
+BV_VK_DEVICE_RES_DEF(BvShaderResourceLayoutVk)
+
+
 BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutDesc& srlDesc)
 	: m_ShaderResourceLayoutDesc(srlDesc), m_pDevice(pDevice)
 {
@@ -110,12 +113,6 @@ BvShaderResourceLayoutVk::~BvShaderResourceLayoutVk()
 }
 
 
-IBvRenderDevice* BvShaderResourceLayoutVk::GetDevice()
-{
-	return m_pDevice;
-}
-
-
 const ShaderResourceSetDesc* BvShaderResourceLayoutVk::GetResourceSet(u32 set) const
 {
 	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
@@ -138,7 +135,7 @@ const ShaderResourceDesc* BvShaderResourceLayoutVk::GetResource(u32 binding, u32
 }
 
 
-IBvShaderResourceLayoutVk::PushConstantData* BvShaderResourceLayoutVk::GetPushConstantData(u32 size, u32 binding, u32 set) const
+BvShaderResourceLayoutVk::PushConstantData* BvShaderResourceLayoutVk::GetPushConstantData(u32 size, u32 binding, u32 set) const
 {
 	auto it = m_PushConstantOffsets.FindKey({ size, binding, set });
 	return it != m_PushConstantOffsets.cend() ? &it->second : nullptr;
@@ -261,10 +258,10 @@ void BvShaderResourceLayoutVk::Destroy()
 }
 
 
-BvShaderResourceParamsVk::BvShaderResourceParamsVk(const BvRenderDeviceVk& device, const BvShaderResourceLayoutVk& layout, u32 setIndex)
-	: m_Device(device), m_Layout(layout), m_Set(setIndex), m_DescriptorPool(&device, &layout, setIndex, 1), m_DescriptorSet(&device, m_DescriptorPool.Allocate())
+BvShaderResourceParamsVk::BvShaderResourceParamsVk(BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set)
+	: m_pDevice(pDevice), m_pLayout(pLayout), m_Set(set), m_DescriptorPool(pDevice, pLayout, set, 1), m_DescriptorSet(pDevice, m_DescriptorPool.Allocate())
 {
-	auto pSet = m_Layout.GetResourceSet(setIndex);
+	auto pSet = m_pLayout->GetResourceSet(set);
 	BV_ASSERT(pSet != nullptr, "Set not found in current Shader Resource Layout");
 	u32 bufferInfoCount = 0;
 	u32 imageInfoCount = 0;
@@ -513,7 +510,7 @@ VkWriteDescriptorSet& BvShaderResourceParamsVk::PrepareWriteSet(VkDescriptorType
 
 VkDescriptorType BvShaderResourceParamsVk::GetDescriptorType(u32 binding) const
 {
-	if (auto pResource = m_Layout.GetResource(binding, m_Set))
+	if (auto pResource = m_pLayout->GetResource(binding, m_Set))
 	{
 		return GetVkDescriptorType(pResource->m_ShaderResourceType);
 	}

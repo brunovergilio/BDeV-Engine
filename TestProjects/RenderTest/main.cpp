@@ -93,18 +93,16 @@ int main()
 	app.RegisterRawInput(false, true);
 
 	BvSharedLib renderToolsLib("BvRenderTools.dll");
-	typedef bool(*pFNGetShaderCompiler)(IBvShaderCompiler**);
+	typedef IBvShaderCompiler*(*pFNGetShaderCompiler)();
 	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
-	compilerFn(&g_pCompiler);
+	g_pCompiler = compilerFn();
 
 	BvSharedLib renderVkLib("BvRenderVk.dll");
-	typedef bool(*pFNCreateRenderEngine)(IBvRenderEngineVk**);
-	pFNCreateRenderEngine engineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngineVk");
+	typedef IBvRenderEngine*(*pFNCreateRenderEngine)();
+	pFNCreateRenderEngine engineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
 
-	IBvRenderEngineVk* pEngine;
-	engineFn(&pEngine);
-	IBvRenderDeviceVk* pDevice;
-	pEngine->CreateRenderDeviceVk(BvRenderDeviceCreateDescVk(), &pDevice);
+	IBvRenderEngine* pEngine = engineFn();
+	IBvRenderDevice* pDevice = pEngine->CreateRenderDevice(BvRenderDeviceCreateDesc());
 
 	BvKeyboard keyboard;
 	auto pKeyboard = &keyboard;
@@ -116,13 +114,11 @@ int main()
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
-	IBvCommandContext* pGraphicsContext;
-	pDevice->CreateGraphicsContext(0, &pGraphicsContext);
+	IBvCommandContext* pGraphicsContext = pDevice->GetGraphicsContext(0);
 	//BvObjectHandle<BvSwapChainVk> scvk;
 	//pDevice->CreateSwapChainVk(pWindow, swapChainDesc, pGraphicsContext, &scvk);
 
-	IBvSwapChain* pSwapChain;
-	pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext, &pSwapChain);
+	IBvSwapChain* pSwapChain = pDevice->CreateSwapChain(pWindow, swapChainDesc, pGraphicsContext);
 
 	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
 	ShaderResourceSetDesc setDesc{};
@@ -132,24 +128,21 @@ int main()
 	ShaderResourceLayoutDesc layoutDesc;
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
-	IBvShaderResourceLayout* pShaderResourceLayout;
-	pDevice->CreateShaderResourceLayout(layoutDesc, &pShaderResourceLayout);
+	IBvShaderResourceLayout* pShaderResourceLayout = pDevice->CreateShaderResourceLayout(layoutDesc);
 
 	auto pVB = CreateVB(pDevice);
 	BufferViewDesc vbViewDesc;
 	vbViewDesc.m_pBuffer = pVB;
 	vbViewDesc.m_Stride = sizeof(PosColorVertex);
 	vbViewDesc.m_ElementCount = 3;
-	IBvBufferView* pVBView;
-	pDevice->CreateBufferView(vbViewDesc, &pVBView);
+	IBvBufferView* pVBView = pDevice->CreateBufferView(vbViewDesc);
 
 	auto pUB = CreateUB(pDevice);
 	BufferViewDesc ubViewDesc;
 	ubViewDesc.m_pBuffer = pUB;
 	ubViewDesc.m_Stride = sizeof(Float44);
 	ubViewDesc.m_ElementCount = 1;
-	IBvBufferView* pUBView;
-	pDevice->CreateBufferView(ubViewDesc, &pUBView);
+	IBvBufferView* pUBView = pDevice->CreateBufferView(ubViewDesc);
 
 	GraphicsPipelineStateDesc pipelineDesc;
 	pipelineDesc.m_Shaders[0] = GetVS(pDevice);
@@ -169,11 +162,9 @@ int main()
 	pipelineDesc.m_VertexInputDescCount = 2;
 	pipelineDesc.m_pVertexInputDescs = inputDescs;
 
-	IBvGraphicsPipelineState* pPSO;
-	pDevice->CreateGraphicsPipeline(pipelineDesc, &pPSO);
+	IBvGraphicsPipelineState* pPSO = pDevice->CreateGraphicsPipeline(pipelineDesc);
 
-	IBvQuery* pQuery;
-	pDevice->CreateQuery(QueryType::kTimestamp, &pQuery);
+	IBvQuery* pQuery = pDevice->CreateQuery(QueryType::kTimestamp);
 
 	auto currIndex = 0;
 	u64 frame = 0;
@@ -280,8 +271,7 @@ IBvShader* GetVS(IBvRenderDevice* pDevice)
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	IBvShader* pShader;
-	pDevice->CreateShader(shaderDesc, &pShader);
+	IBvShader* pShader = pDevice->CreateShader(shaderDesc);
 	shader->Release();
 
 	return pShader;
@@ -302,8 +292,7 @@ IBvShader* GetPS(IBvRenderDevice* pDevice)
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
 
-	IBvShader* pShader;
-	pDevice->CreateShader(shaderDesc, &pShader);
+	IBvShader* pShader = pDevice->CreateShader(shaderDesc);
 	shader->Release();
 
 	return pShader;
@@ -325,8 +314,7 @@ IBvBuffer* CreateVB(IBvRenderDevice* pDevice)
 	bufferData.m_pContext = pDevice->GetGraphicsContext();
 	bufferData.m_pData = verts;
 	bufferData.m_Size = sizeof(verts);
-	IBvBuffer* pVB;
-	pDevice->CreateBuffer(vbBufferDesc, &bufferData, &pVB);
+	IBvBuffer* pVB = pDevice->CreateBuffer(vbBufferDesc, &bufferData);
 
 	return pVB;
 }
@@ -338,8 +326,7 @@ IBvBuffer* CreateUB(IBvRenderDevice* pDevice)
 	uniformBufferDesc.m_MemoryType = MemoryType::kUpload;
 	uniformBufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	uniformBufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	IBvBuffer* pUniform;
-	pDevice->CreateBuffer(uniformBufferDesc, nullptr, &pUniform);
+	IBvBuffer* pUniform = pDevice->CreateBuffer(uniformBufferDesc, nullptr);
 	
 	return pUniform;
 }

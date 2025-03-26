@@ -4,6 +4,9 @@
 #include "BvTypeConversionsVk.h"
 
 
+BV_VK_DEVICE_RES_DEF(BvRenderPassVk)
+
+
 BvRenderPassVk::BvRenderPassVk(BvRenderDeviceVk* pDevice, const RenderPassDesc& renderPassDesc)
 	: m_RenderPassDesc(renderPassDesc), m_pDevice(pDevice)
 {
@@ -112,12 +115,6 @@ BvRenderPassVk::~BvRenderPassVk()
 	}
 
 	Destroy();
-}
-
-
-IBvRenderDevice* BvRenderPassVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 

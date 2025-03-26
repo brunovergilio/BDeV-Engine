@@ -8,10 +8,12 @@
 class BvRenderDeviceVk;
 
 
-BV_OBJECT_DEFINE_ID(IBvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
-class IBvShaderResourceLayoutVk : public IBvShaderResourceLayout
+//BV_OBJECT_DEFINE_ID(IBvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderResourceLayoutVk);
+
+
+class BvShaderResourceLayoutVk final : public IBvShaderResourceLayout, public IBvResourceVk
 {
-protected:
 	struct ResourceId
 	{
 		u32 m_Binding;
@@ -42,37 +44,21 @@ protected:
 		u32 m_Offset;
 	};
 
-public:
-	virtual const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const = 0;
-	virtual VkPipelineLayout GetPipelineLayoutHandle() const = 0;
-	virtual bool IsValid() const = 0;
-	virtual const ShaderResourceSetDesc* GetResourceSet(u32 set) const = 0;
-	virtual const ShaderResourceDesc* GetResource(u32 binding, u32 set) const = 0;
-	virtual PushConstantData* GetPushConstantData(u32 size, u32 binding, u32 set) const = 0;
+	BV_VK_DEVICE_RES_DECL;
 
-protected:
-	IBvShaderResourceLayoutVk() {}
-	~IBvShaderResourceLayoutVk() {}
-};
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderResourceLayoutVk);
-
-
-class BvShaderResourceLayoutVk final : public IBvShaderResourceLayoutVk
-{
 public:
 	BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutDesc& srlDesc);
 	~BvShaderResourceLayoutVk();
 
-	IBvRenderDevice* GetDevice() override;
 	BV_INLINE const ShaderResourceLayoutDesc& GetDesc() const override { return m_ShaderResourceLayoutDesc; }
-	BV_INLINE const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const override { return m_Layouts; }
-	BV_INLINE VkPipelineLayout GetPipelineLayoutHandle() const override { return m_PipelineLayout; }
-	BV_INLINE bool IsValid() const override { return m_PipelineLayout != VK_NULL_HANDLE; }
-	const ShaderResourceSetDesc* GetResourceSet(u32 set) const override;
-	const ShaderResourceDesc* GetResource(u32 binding, u32 set) const override;
-	PushConstantData* GetPushConstantData(u32 size, u32 binding, u32 set) const override;
+	BV_INLINE const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const { return m_Layouts; }
+	BV_INLINE VkPipelineLayout GetPipelineLayoutHandle() const { return m_PipelineLayout; }
+	BV_INLINE bool IsValid() const { return m_PipelineLayout != VK_NULL_HANDLE; }
+	const ShaderResourceSetDesc* GetResourceSet(u32 set) const;
+	const ShaderResourceDesc* GetResource(u32 binding, u32 set) const;
+	PushConstantData* GetPushConstantData(u32 size, u32 binding, u32 set) const;
 
-	BV_OBJECT_IMPL_INTERFACE(IBvShaderResourceLayoutVk, IBvShaderResourceLayout, IBvRenderDeviceObject);
+	//BV_OBJECT_IMPL_INTERFACE(IBvShaderResourceLayoutVk, IBvShaderResourceLayout, IBvRenderDeviceObject);
 
 private:
 	void Create();
@@ -92,10 +78,10 @@ private:
 };
 
 
-class BvShaderResourceParamsVk final : public BvShaderResourceParams
+class BvShaderResourceParamsVk final : public IBvShaderResourceParams
 {
 public:
-	BvShaderResourceParamsVk(const BvRenderDeviceVk& device, const BvShaderResourceLayoutVk& layout, u32 set);
+	BvShaderResourceParamsVk(BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set);
 	~BvShaderResourceParamsVk();
 
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 binding, u32 startIndex = 0) override;
@@ -110,7 +96,7 @@ public:
 
 	void Bind() override;
 
-	BV_INLINE const BvShaderResourceLayoutVk* GetLayout() const { return &m_Layout; }
+	BV_INLINE const BvShaderResourceLayoutVk* GetLayout() const { return m_pLayout; }
 	BV_INLINE VkDescriptorSet GetHandle() const { return m_DescriptorSet.GetHandle(); }
 	BV_INLINE u32 GetSetIndex() const { return m_Set; }
 
@@ -119,8 +105,8 @@ private:
 	VkDescriptorType GetDescriptorType(u32 binding) const;
 
 private:
-	const BvRenderDeviceVk& m_Device;
-	const BvShaderResourceLayoutVk& m_Layout;
+	BvRenderDeviceVk* m_pDevice;
+	const BvShaderResourceLayoutVk* m_pLayout;
 	BvDescriptorPoolVk m_DescriptorPool;
 	BvDescriptorSetVk m_DescriptorSet;
 	struct SetData
@@ -137,5 +123,5 @@ private:
 };
 
 
-BV_CREATE_CAST_TO_VK(IBvShaderResourceLayout)
+BV_CREATE_CAST_TO_VK(BvShaderResourceLayout)
 BV_CREATE_CAST_TO_VK(BvShaderResourceParams)

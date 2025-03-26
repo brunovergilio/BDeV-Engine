@@ -109,6 +109,10 @@ constexpr BvUUID fa2 = MakeUUIDv4("7b134b6e-b092-465f-9c00-a127a562ba2b");
 constexpr BvUUID fa3 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a5cdba2b");
 
 
+#include <iostream>
+#include <utility>
+
+
 void abc(int f)
 {
 	printf("abc %d\n", f);
@@ -147,39 +151,53 @@ thread_local int a = 0;
 BvFiber* pFb = nullptr;
 BvFiber* pFb2 = nullptr;
 
+
+struct GG
+{
+	template<typename T = int>
+	void PrintMe()
+	{
+		printf("%s\n", BV_FUNCTION);
+	}
+};
+
+
 int main()
 {
-	BvFiber& mfb = BvThread::ConvertToFiber();
+	GG ff;
+	ff.PrintMe();
+	ff.PrintMe<f32>();
+	//BvFiber& mfb = BvThread::ConvertToFiber();
 
-	BvSignal s;
-	BvFiber fb;
-	fb = BvFiber([&fb, &mfb]()
-		{
-			printf("%d\n", a);
-			fb.Switch(mfb);
+	//BvSignal s;
+	//BvFiber fb;
+	//fb = BvFiber([&fb, &mfb]()
+	//	{
+	//		printf("%d\n", a);
+	//		fb.Switch(mfb);
 
-			printf("%d\n", a);
-			fb.Switch(*pFb2);
+	//		printf("%d\n", a);
+	//		fb.Switch(*pFb2);
 
-			printf("%d\n", a);
-			fb.Switch(mfb);
-		});
-	pFb = &fb;
-	mfb.Switch(fb);
+	//		printf("%d\n", a);
+	//		fb.Switch(mfb);
+	//	});
+	//pFb = &fb;
+	//mfb.Switch(fb);
 
-	MessageBoxW(nullptr, L"afaf", L"fa", MB_OK);
+	//MessageBoxW(nullptr, L"afaf", L"fa", MB_OK);
 
-	BvThread t([]()
-		{
-			BvFiber& mfb = BvThread::ConvertToFiber();
-			a = 1;
+	//BvThread t([]()
+	//	{
+	//		BvFiber& mfb = BvThread::ConvertToFiber();
+	//		a = 1;
 
-			pFb2 = &mfb;
-			mfb.Switch(*pFb);
-		});
-	t.Wait();
+	//		pFb2 = &mfb;
+	//		mfb.Switch(*pFb);
+	//	});
+	//t.Wait();
 
-	mfb.Switch(fb);
+	//mfb.Switch(fb);
 
 	return 0;
 }

@@ -2,15 +2,16 @@
 
 
 #include "BvRenderCommon.h"
-#include "BvRenderDeviceObject.h"
 #include "BDeV/Core/Container/BvRobinMap.h"
+#include "BDeV/Core/Utils/BvObject.h"
 
 
 class IBvBuffer;
 
 
-BV_OBJECT_DEFINE_ID(IBvAccelerationStructure, "11ee119e-5ecb-4675-9b95-f13439e1a3aa");
-class IBvAccelerationStructure : public IBvRenderDeviceObject
+//BV_OBJECT_DEFINE_ID(IBvAccelerationStructure, "11ee119e-5ecb-4675-9b95-f13439e1a3aa");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvAccelerationStructure);
+class IBvAccelerationStructure : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvAccelerationStructure);
 
@@ -31,4 +32,3 @@ protected:
 	IBvAccelerationStructure() {}
 	~IBvAccelerationStructure() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvAccelerationStructure);

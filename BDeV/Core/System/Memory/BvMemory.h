@@ -221,8 +221,8 @@ namespace Internal
 // Free array of type
 #define BV_MDELETE_ARRAY(allocator, pObjs) Internal::DeleteArray(pObjs, allocator, BV_SOURCE_INFO)
 // Allocate block of bytes with custom alignment
-#define BV_MALLOC(allocator, size, alignment) Internal::Alloc(size, alignment, allocator, BV_SOURCE_INFO))
-#define BV_MALLOC_SI(allocator, sourceInfo, size, alignment) Internal::Alloc(size, alignment, allocator, sourceInfo))
+#define BV_MALLOC(allocator, size, alignment) Internal::Alloc(size, alignment, allocator, BV_SOURCE_INFO)
+#define BV_MALLOC_SI(allocator, sourceInfo, size, alignment) Internal::Alloc(size, alignment, allocator, sourceInfo)
 // Free block of bytes
 #define BV_MFREE(allocator, pObj) Internal::Free(pObj, allocator, BV_SOURCE_INFO)
 

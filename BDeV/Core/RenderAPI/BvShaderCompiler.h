@@ -5,8 +5,9 @@
 #include "BDeV/Core/Utils/BvObject.h"
 
 
-BV_OBJECT_DEFINE_ID(IBvShaderBlob, "36ffa34a-8f22-4cbc-b6c1-e6ec38c1d6dc");
-class IBvShaderBlob : public BvObjectBase
+//BV_OBJECT_DEFINE_ID(IBvShaderBlob, "36ffa34a-8f22-4cbc-b6c1-e6ec38c1d6dc");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderBlob);
+class IBvShaderBlob : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvShaderBlob);
 
@@ -18,11 +19,11 @@ protected:
 	IBvShaderBlob() {}
 	~IBvShaderBlob() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderBlob);
 
 
-BV_OBJECT_DEFINE_ID(IBvShaderCompiler, "c6abe1b0-0c08-4da9-9faa-d6585d39ea8f");
-class IBvShaderCompiler : public BvObjectBase
+//BV_OBJECT_DEFINE_ID(IBvShaderCompiler, "c6abe1b0-0c08-4da9-9faa-d6585d39ea8f");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderCompiler);
+class IBvShaderCompiler : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvShaderCompiler);
 
@@ -34,4 +35,3 @@ protected:
 	IBvShaderCompiler() {}
 	~IBvShaderCompiler() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderCompiler);

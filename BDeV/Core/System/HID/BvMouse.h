@@ -6,6 +6,9 @@
 #include <utility>
 
 
+class BvWindow;
+
+
 class BvMouse final
 {
 	BV_NOCOPYMOVE(BvMouse);
@@ -16,8 +19,8 @@ public:
 		BvMouseButton mouseButtonStates{};
 		i64 relativeMousePositionX{};
 		i64 relativeMousePositionY{};
-		i64 mouseWheelDeltaX{};
-		i64 mouseWheelDeltaY{};
+		f32 mouseWheelDeltaX{};
+		f32 mouseWheelDeltaY{};
 	};
 
 	BvMouse();
@@ -43,4 +46,7 @@ public:
 
 	// Retrieves the mouse's current global position
 	std::pair<i32, i32> GetGlobalPosition() const;
+
+	// Retrieves the mouse's current position in the client window
+	std::pair<i32, i32> GetPosition(BvWindow* pWindow) const;
 };

@@ -56,17 +56,6 @@ constexpr Type CalculateNewContainerSize(Type value)
 }
 
 
-constexpr size_t ConstexprStringLength(const char* pBytes)
-{
-	if (*pBytes)
-	{
-		return 1 + ConstexprStringLength(pBytes + 1);
-	}
-
-	return 0;
-}
-
-
 template<class Type>
 struct UseEnumClassOperators
 {

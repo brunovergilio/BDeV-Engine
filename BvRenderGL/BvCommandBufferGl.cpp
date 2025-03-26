@@ -67,7 +67,7 @@ void BvCommandBufferGl::SetPipeline(const IBvComputePipelineState* const pPipeli
 }
 
 
-void BvCommandBufferGl::SetShaderResourceParams(const u32 setCount, BvShaderResourceParams* const* const ppSets, const u32 firstSet)
+void BvCommandBufferGl::SetShaderResourceParams(const u32 setCount, IBvShaderResourceParams* const* const ppSets, const u32 firstSet)
 {
 }
 

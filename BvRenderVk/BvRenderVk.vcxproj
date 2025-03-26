@@ -110,7 +110,6 @@
     <ClInclude Include="BvRenderEngineVk.h" />
     <ClInclude Include="BvRenderPassVk.h" />
     <ClInclude Include="BvSamplerVk.h" />
-    <ClInclude Include="BvSemaphoreVk.h" />
     <ClInclude Include="BvShaderBindingTableVk.h" />
     <ClInclude Include="BvShaderResourceVk.h" />
     <ClInclude Include="BvShaderVk.h" />
@@ -139,7 +138,6 @@
     <ClCompile Include="BvRenderEngineVk.cpp" />
     <ClCompile Include="BvRenderPassVk.cpp" />
     <ClCompile Include="BvSamplerVk.cpp" />
-    <ClCompile Include="BvSemaphoreVk.cpp" />
     <ClCompile Include="BvShaderBindingTableVk.cpp" />
     <ClCompile Include="BvShaderResourceVk.cpp" />
     <ClCompile Include="BvShaderVk.cpp" />

@@ -4,7 +4,10 @@
 #include "BvUtilsVk.h"
 
 
-BvTextureViewVk::BvTextureViewVk(IBvRenderDeviceVk* pDevice, const TextureViewDesc & textureViewDesc)
+BV_VK_DEVICE_RES_DEF(BvTextureViewVk)
+
+
+BvTextureViewVk::BvTextureViewVk(BvRenderDeviceVk* pDevice, const TextureViewDesc & textureViewDesc)
 	: m_TextureViewDesc(textureViewDesc), m_pDevice(pDevice)
 {
 	Create();
@@ -14,12 +17,6 @@ BvTextureViewVk::BvTextureViewVk(IBvRenderDeviceVk* pDevice, const TextureViewDe
 BvTextureViewVk::~BvTextureViewVk()
 {
 	Destroy();
-}
-
-
-IBvRenderDevice* BvTextureViewVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 

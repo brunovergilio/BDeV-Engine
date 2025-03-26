@@ -4,8 +4,8 @@
 
 void BvUUID::New()
 {
-	BvPCG<u64> pcg(0);
-	u64 blocks[] = { pcg.Next(), pcg.Next() };
+	BvSplitMix64 gen;
+	u64 blocks[] = { gen.Next(), gen.Next() };
 	// Set version (4 bits for version, which is 4)
 	blocks[0] = (blocks[0] & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
 	// Set variant (2 bits for variant, most significant bits are 10)

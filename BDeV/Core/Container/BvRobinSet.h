@@ -499,8 +499,10 @@ void BvRobinSet<Key, MemoryArenaType, Hash, Comparer>::Destroy()
 
 	if (m_pData)
 	{
-		m_pAllocator->Free(m_pData, BV_SOURCE_INFO);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
+		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pHashes) : BV_DELETE_ARRAY(m_pHashes);
 		m_pData = nullptr;
+		m_pHashes = nullptr;
 	}
 }
 

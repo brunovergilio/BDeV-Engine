@@ -1,7 +1,7 @@
 #include "BvDebugReportVk.h"
 
 
-BvDebugReportVk::BvDebugReportVk(const VkInstance instance)
+BvDebugReportVk::BvDebugReportVk(VkInstance instance)
 	: m_Instance(instance)
 {
 	Create();

@@ -8,36 +8,24 @@
 class BvRenderDeviceVk;
 
 
-BV_OBJECT_DEFINE_ID(IBvBufferViewVk, "d354dda0-8c2f-49b9-9de6-ddc37d7179f5");
-class IBvBufferViewVk : public IBvBufferView
-{
-	BV_NOCOPYMOVE(IBvBufferViewVk);
-
-public:
-	virtual VkBufferView GetHandle() const = 0;
-	virtual bool IsValid() const = 0;
-
-protected:
-	IBvBufferViewVk() {}
-	~IBvBufferViewVk() {}
-};
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvBufferViewVk);
+//BV_OBJECT_DEFINE_ID(IBvBufferViewVk, "d354dda0-8c2f-49b9-9de6-ddc37d7179f5");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvBufferViewVk);
 
 
-class BvBufferViewVk final : public IBvBufferViewVk
+class BvBufferViewVk final : public IBvBufferView, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvBufferViewVk);
+	BV_VK_DEVICE_RES_DECL;
 
 public:
 	BvBufferViewVk(BvRenderDeviceVk* pDevice, const BufferViewDesc& bufferViewDesc);
 	~BvBufferViewVk();
 
-	IBvRenderDevice* GetDevice() override;
-	BV_INLINE const BufferViewDesc& GetDesc() const override { return m_BufferViewDesc; }
-	BV_INLINE VkBufferView GetHandle() const override { return m_View; }
-	BV_INLINE bool IsValid() const override { return m_BufferViewDesc.m_pBuffer != nullptr; }
+	BV_INLINE const BufferViewDesc& GetDesc() const { return m_BufferViewDesc; }
+	BV_INLINE VkBufferView GetHandle() const { return m_View; }
+	BV_INLINE bool IsValid() const { return m_BufferViewDesc.m_pBuffer != nullptr; }
 
-	BV_OBJECT_IMPL_INTERFACE(IBvBufferViewVk, IBvBufferView, IBvRenderDeviceObject);
+	//BV_OBJECT_IMPL_INTERFACE(IBvBufferViewVk, IBvBufferView, IBvRenderDeviceObject);
 
 private:
 	void Create();
@@ -50,4 +38,4 @@ private:
 };
 
 
-BV_CREATE_CAST_TO_VK(IBvBufferView)
+BV_CREATE_CAST_TO_VK(BvBufferView)

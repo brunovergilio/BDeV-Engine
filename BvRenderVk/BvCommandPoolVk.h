@@ -5,7 +5,7 @@
 #include "BDeV/Core/Container/BvVector.h"
 
 
-class IBvRenderDeviceVk;
+class BvRenderDeviceVk;
 class BvCommandBufferVk;
 class BvFrameDataVk;
 
@@ -16,7 +16,7 @@ class BvCommandPoolVk final
 
 public:
 	BvCommandPoolVk();
-	BvCommandPoolVk(IBvRenderDeviceVk* pDevice, u32 queueFamilyIndex);
+	BvCommandPoolVk(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex);
 	BvCommandPoolVk(BvCommandPoolVk&& rhs) noexcept;
 	BvCommandPoolVk& operator=(BvCommandPoolVk&& rhs) noexcept;
 	~BvCommandPoolVk();
@@ -29,7 +29,7 @@ public:
 	void Reset();
 
 private:
-	IBvRenderDeviceVk* m_pDevice = nullptr;
+	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkCommandPool m_CommandPool = VK_NULL_HANDLE;
 	BvVector<BvCommandBufferVk*> m_CommandBuffers;
 	u32 m_ActiveCommandBufferCount = 0;

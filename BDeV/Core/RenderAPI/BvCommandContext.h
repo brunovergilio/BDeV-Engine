@@ -3,6 +3,7 @@
 
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Core/RenderAPI/BvGPUFence.h"
+#include "BDeV/Core/Utils/BvObject.h"
 
 
 class IBvBuffer;
@@ -14,7 +15,7 @@ class IBvRenderPass;
 class IBvGraphicsPipelineState;
 class IBvComputePipelineState;
 class IBvRayTracingPipelineState;
-class BvShaderResourceParams;
+class IBvShaderResourceParams;
 class IBvQuery;
 class IBvShaderBindingTable;
 
@@ -36,8 +37,9 @@ private:
 };
 
 
-BV_OBJECT_DEFINE_ID(IBvCommandContext, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
-class IBvCommandContext : public IBvRenderDeviceObject
+//BV_OBJECT_DEFINE_ID(IBvCommandContext, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvCommandContext);
+class IBvCommandContext : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvCommandContext);
 
@@ -79,7 +81,7 @@ public:
 	virtual void SetComputePipeline(const IBvComputePipelineState* pPipeline) = 0;
 	virtual void SetRayTracingPipeline(const IBvRayTracingPipelineState* pPipeline) = 0;
 
-	virtual void SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex = 0) = 0;
+	virtual void SetShaderResourceParams(u32 resourceParamsCount, IBvShaderResourceParams* const* ppResourceParams, u32 startIndex = 0) = 0;
 	virtual void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
@@ -94,7 +96,7 @@ public:
 	virtual void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex) = 0;
 	virtual void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set) = 0;
 
-	BV_INLINE void SetShaderResourceParams(BvShaderResourceParams* pResourceParams, u32 startIndex = 0) { SetShaderResourceParams(1, &pResourceParams, startIndex); }
+	BV_INLINE void SetShaderResourceParams(IBvShaderResourceParams* pResourceParams, u32 startIndex = 0) { SetShaderResourceParams(1, &pResourceParams, startIndex); }
 	BV_INLINE void SetConstantBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetConstantBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetStructuredBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetStructuredBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetRWStructuredBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWStructuredBuffers(1, &pResource, set, binding, startIndex); }
@@ -107,7 +109,7 @@ public:
 	BV_INLINE void SetRWTexture(const IBvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWTextures(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetSampler(const IBvSampler* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetSamplers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetAccelerationStructures(const IBvAccelerationStructure* pResource, u32 set, u32 binding, u32 startIndex) { SetAccelerationStructures(1, &pResource, set, binding, startIndex); }
-	template<typename T> BV_INLINE void SetShaderConstantsT(const T& value, u32 offset = 0) { SetShaderConstants(sizeof(T), &value, offset); }
+	template<typename T> BV_INLINE void SetShaderConstantsT(const T& value, u32 binding, u32 set) { SetShaderConstants(sizeof(T), &value, binding, set); }
 
 	virtual void SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) = 0;
 	BV_INLINE void SetVertexBufferView(const IBvBufferView* pVertexBufferView, const u32 firstBinding = 0) { SetVertexBufferViews(1, &pVertexBufferView, firstBinding); }
@@ -184,4 +186,3 @@ protected:
 	IBvCommandContext() {}
 	~IBvCommandContext() = 0 {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvCommandContext);

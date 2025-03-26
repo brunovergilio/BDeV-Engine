@@ -7,8 +7,9 @@
 #include "BDeV/Core/Utils/BvObject.h"
 
 
-BV_OBJECT_DEFINE_ID(IBvTextureBlob, "8fd865cd-3b81-4a99-9497-0d0d0a07df59");
-class IBvTextureBlob : public BvObjectBase
+//BV_OBJECT_DEFINE_ID(IBvTextureBlob, "8fd865cd-3b81-4a99-9497-0d0d0a07df59");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureBlob);
+class IBvTextureBlob : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvTextureBlob);
 
@@ -33,11 +34,11 @@ protected:
 	IBvTextureBlob() {}
 	~IBvTextureBlob() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureBlob);
 
 
-BV_OBJECT_DEFINE_ID(IBvTextureLoader, "8dcfd9b9-56cf-447d-ba1c-0c545b29d706");
-class IBvTextureLoader : public BvObjectBase
+//BV_OBJECT_DEFINE_ID(IBvTextureLoader, "8dcfd9b9-56cf-447d-ba1c-0c545b29d706");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureLoader);
+class IBvTextureLoader : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvTextureLoader);
 
@@ -62,4 +63,3 @@ protected:
 	IBvTextureLoader() {}
 	~IBvTextureLoader() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureLoader);

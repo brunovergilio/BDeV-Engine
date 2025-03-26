@@ -3,7 +3,6 @@
 #include "BvUtilsVk.h"
 #include "BvTextureVk.h"
 #include "BvTypeConversionsVk.h"
-#include "BvSemaphoreVk.h"
 #include "BDeV/Core/System/Window/BvWindow.h"
 #include "BvFramebufferVk.h"
 #include "BvCommandContextVk.h"
@@ -11,8 +10,11 @@
 #include "BvGPUFenceVk.h"
 
 
-BvSwapChainVk::BvSwapChainVk(IBvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, IBvCommandContext* pContext)
-	: m_pWindow(pWindow), m_SwapChainDesc(swapChainParams), m_pDevice(pDevice), m_pCommandContext(static_cast<BvCommandContextVk*>(pContext)),
+BV_VK_DEVICE_RES_DEF(BvSwapChainVk)
+
+
+BvSwapChainVk::BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContextVk* pContext)
+	: m_pWindow(pWindow), m_SwapChainDesc(swapChainParams), m_pDevice(pDevice), m_pCommandContext(pContext),
 	m_pCommandQueue(static_cast<BvCommandContextVk*>(pContext)->GetCommandQueue())
 {
 	CreateSurface();
@@ -33,7 +35,7 @@ BvSwapChainVk::~BvSwapChainVk()
 
 void BvSwapChainVk::AcquireImage()
 {
-	if (m_IsReady)
+	if (!m_pWindow->IsVisible() || m_IsReady)
 	{
 		return;
 	}
@@ -45,7 +47,7 @@ void BvSwapChainVk::AcquireImage()
 	}
 
 	auto result = vkAcquireNextImageKHR(m_pDevice->GetHandle(), m_Swapchain, UINT64_MAX,
-		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex].GetHandle(), VK_NULL_HANDLE, &m_CurrImageIndex);
+		m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex], VK_NULL_HANDLE, &m_CurrImageIndex);
 	if (result != VkResult::VK_SUCCESS)
 	{
 		if (result == VkResult::VK_SUBOPTIMAL_KHR || result == VkResult::VK_ERROR_OUT_OF_DATE_KHR)
@@ -84,7 +86,7 @@ void BvSwapChainVk::Present(bool vSync)
 	presentInfo.pSwapchains = &m_Swapchain;
 	presentInfo.pImageIndices = &m_CurrImageIndex;
 
-	VkSemaphore semaphores[] = { GetCurrentRenderCompleteSemaphore()->GetHandle() };
+	VkSemaphore semaphores[] = { GetCurrentRenderCompleteSemaphore() };
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = semaphores;
 
@@ -116,15 +118,9 @@ void BvSwapChainVk::Present(bool vSync)
 }
 
 
-void BvSwapChainVk::SetCurrentFence(IBvGPUFenceVk* pFence, u64 value)
+void BvSwapChainVk::SetCurrentFence(BvGPUFenceVk* pFence, u64 value)
 {
 	m_Fences[m_CurrImageIndex] = FenceData{ pFence, value };
-}
-
-
-IBvRenderDevice* BvSwapChainVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 
@@ -421,10 +417,10 @@ bool BvSwapChainVk::Create()
 
 	for (auto i = 0u; i < imageCount; i++)
 	{
-		m_SwapChainTextures[i] = BV_OBJECT_CREATE(BvTextureVk, m_pDevice, this, textureDesc, swapChainImages[i]);
+		m_SwapChainTextures[i] = m_pDevice->CreateResource<BvTextureVk>(m_pDevice, this, textureDesc, swapChainImages[i]);
 
 		textureViewDesc.m_pTexture = m_SwapChainTextures[i];
-		m_SwapChainTextureViews[i] = BV_OBJECT_CREATE(BvTextureViewVk, m_pDevice, textureViewDesc);
+		m_SwapChainTextureViews[i] = m_pDevice->CreateTextureView<BvTextureViewVk>(textureViewDesc);
 	}
 
 	CreateSynchronizationResources();
@@ -437,31 +433,31 @@ bool BvSwapChainVk::Create()
 
 void BvSwapChainVk::Destroy()
 {
-	m_pCommandQueue->WaitIdle();
-
-	DestroySynchronizationResources();
-
-	for (auto& pTextureView : m_SwapChainTextureViews)
-	{
-		pTextureView->Release();
-		pTextureView = nullptr;
-	}
-	m_SwapChainTextureViews.Clear();
-
-	for (auto& pTexture : m_SwapChainTextures)
-	{
-		pTexture->Release();
-		pTexture = nullptr;
-	}
-	m_SwapChainTextures.Clear();
-
 	if (m_Swapchain)
 	{
+		m_pCommandQueue->WaitIdle();
+
+		DestroySynchronizationResources();
+
+		for (auto& pTextureView : m_SwapChainTextureViews)
+		{
+			pTextureView->Release();
+			pTextureView = nullptr;
+		}
+		m_SwapChainTextureViews.Clear();
+
+		for (auto& pTexture : m_SwapChainTextures)
+		{
+			pTexture->Release();
+			pTexture = nullptr;
+		}
+		m_SwapChainTextures.Clear();
+
 		vkDestroySwapchainKHR(m_pDevice->GetHandle(), m_Swapchain, nullptr);
 		m_Swapchain = VK_NULL_HANDLE;
+		
+		DestroySurface();
 	}
-
-	DestroySurface();
 }
 
 
@@ -477,11 +473,11 @@ void BvSwapChainVk::DestroySurface()
 
 void BvSwapChainVk::Resize()
 {
-	if (!m_pWindow->IsValid())
+	m_pCommandQueue->WaitIdle();
+	if (m_pWindow->IsClosed() || m_pWindow->IsMinimized())
 	{
 		return;
 	}
-	m_pCommandQueue->WaitIdle();
 
 	Create();
 }
@@ -492,15 +488,13 @@ void BvSwapChainVk::CreateSynchronizationResources()
 	DestroySynchronizationResources();
 
 	m_ImageAcquiredSemaphores.Reserve(m_SwapChainTextures.Size());
-	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
-	{
-		m_ImageAcquiredSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice, 0, false));
-	}
-
 	m_RenderCompleteSemaphores.Reserve(m_SwapChainTextures.Size());
+	VkSemaphoreCreateInfo semaphoreCI{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+	auto device = m_pDevice->GetHandle();
 	for (auto i = 0u; i < m_SwapChainTextures.Size(); ++i)
 	{
-		m_RenderCompleteSemaphores.EmplaceBack(BvSemaphoreVk(m_pDevice, 0, false));
+		vkCreateSemaphore(device, &semaphoreCI, nullptr, &m_ImageAcquiredSemaphores.EmplaceBack());
+		vkCreateSemaphore(device, &semaphoreCI, nullptr, &m_RenderCompleteSemaphores.EmplaceBack());
 	}
 
 	m_Fences.Resize(m_SwapChainTextures.Size());
@@ -509,6 +503,13 @@ void BvSwapChainVk::CreateSynchronizationResources()
 
 void BvSwapChainVk::DestroySynchronizationResources()
 {
+	auto device = m_pDevice->GetHandle();
+	for (auto i = 0u; i < m_ImageAcquiredSemaphores.Size(); ++i)
+	{
+		vkDestroySemaphore(device, m_ImageAcquiredSemaphores[i], nullptr);
+		vkDestroySemaphore(device, m_RenderCompleteSemaphores[i], nullptr);
+	}
+
 	m_ImageAcquiredSemaphores.Clear();
 	m_RenderCompleteSemaphores.Clear();
 	m_Fences.Clear();

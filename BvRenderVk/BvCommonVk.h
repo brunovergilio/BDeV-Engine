@@ -31,8 +31,23 @@
 
 #define BV_CREATE_CAST_TO_VK(Type) namespace Internal \
 { \
-BV_INLINE Type##Vk* ToVk(Type* pObj) { return static_cast<Type##Vk*>(pObj); } \
-BV_INLINE const Type##Vk* ToVk(const Type* pObj) { return static_cast<const Type##Vk*>(pObj); } \
+BV_INLINE Type##Vk* ToVk(I##Type* pObj) { return static_cast<Type##Vk*>(pObj); } \
+BV_INLINE const Type##Vk* ToVk(const I##Type* pObj) { return static_cast<const Type##Vk*>(pObj); } \
 }
 
 #define TO_VK(pObj) Internal::ToVk(pObj)
+
+
+class IBvResourceVk
+{
+public:
+	virtual void Destroy() = 0;
+
+protected:
+	IBvResourceVk() {}
+	virtual ~IBvResourceVk() {}
+};
+
+
+#define BV_VK_DEVICE_RES_DECL void SelfDestroy() override;
+#define BV_VK_DEVICE_RES_DEF(Type) void Type::SelfDestroy() { m_pDevice->DestroyResource(this); }

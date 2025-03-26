@@ -255,7 +255,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, shader.getInfoLog());
+			*ppErrorBlob = BV_NEW(BvShaderBlob)(shader.getInfoLog());
 		}
 		return false;
 	}
@@ -266,7 +266,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, program.getInfoLog());
+			*ppErrorBlob = BV_NEW(BvShaderBlob)(program.getInfoLog());
 		}
 		return false;
 	}
@@ -281,7 +281,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, "Error optimizing spirv binary.");
+			*ppErrorBlob = BV_NEW(BvShaderBlob)("Error optimizing spirv binary.");
 		}
 		return false;
 	}
@@ -289,7 +289,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob*
 	BvVector<u8> compiledShaderBlob(spvOpt.size() * sizeof(u32));
 	memcpy(compiledShaderBlob.Data(), spvOpt.data(), compiledShaderBlob.Size());
 
-	*ppShaderBlob = BV_OBJECT_CREATE(BvShaderBlob, compiledShaderBlob);
+	*ppShaderBlob = BV_NEW(BvShaderBlob)(compiledShaderBlob);
 
 	return true;
 }
@@ -300,7 +300,7 @@ bool BvSPIRVCompiler::CompileFromFile(const char* pFilename, const ShaderCreateD
 	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
-		*ppErrorBlob = BV_OBJECT_CREATE(BvShaderBlob, "Error opening the file.");
+		*ppErrorBlob = BV_NEW(BvShaderBlob)("Error opening the file.");
 		return false;
 	}
 	auto size = file.GetSize();
@@ -455,14 +455,19 @@ void BvSPIRVCompiler::ProcessIncludes(const char* pFirst, u32 size, BvString& re
 }
 
 
+void BvSPIRVCompiler::SelfDestroy()
+{
+	BV_DELETE(this);
+}
+
+
 namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API bool CreateSPIRVCompiler(IBvShaderCompiler** ppObj)
+		BV_API IBvShaderCompiler* CreateSPIRVCompiler()
 		{
-			*ppObj = BV_OBJECT_CREATE(BvSPIRVCompiler);
-			return true;
+			return BV_NEW(BvSPIRVCompiler)();
 		}
 	}
 }

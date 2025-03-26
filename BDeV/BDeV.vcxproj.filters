@@ -85,10 +85,9 @@
     <ClInclude Include="Core\System\BvPlatformHeaders.h" />
     <ClInclude Include="Core\RenderAPI\BvGPUFence.h" />
     <ClInclude Include="Core\RenderAPI\BvTextureLoader.h" />
-    <ClInclude Include="Core\RenderAPI\BvRenderDeviceObject.h" />
     <ClInclude Include="Core\RenderAPI\BvAccelerationStructure.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderBindingTable.h" />
-    <ClInclude Include="Core\RenderAPI\BvRenderUI.h" />
+    <ClInclude Include="Core\System\Window\Windows\BvWindowWindows.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -132,7 +131,6 @@
     <ClCompile Include="Core\System\Memory\Allocators\BvDefaultAllocator.cpp" />
     <ClCompile Include="Core\System\Memory\BvMemoryArea.cpp" />
     <ClCompile Include="Core\Container\BvText.cpp" />
-    <ClCompile Include="Core\Utils\BvRandom.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\Math\BvIntersections.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />

@@ -16,6 +16,7 @@ class IBvRayTracingPipelineState;
 class IBvShader;
 class IBvShaderResourceLayout;
 class IBvShaderBindingTable;
+class IBvShaderCompiler;
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -202,9 +203,9 @@ enum class Format : u8
 enum class ColorSpace
 {
 	kAuto,
-	kSRGBNonLinear,
-	kExtendedLinear,
-	kHDR10
+	kSRGB,
+	kExtendedSRGB,
+	kHDR10_ST2084
 };
 
 
@@ -1207,10 +1208,13 @@ enum class ShaderTarget : u8
 struct ShaderCreateDesc
 {
 	const u8* m_pByteCode = nullptr;
-	size_t m_ByteCodeSize = 0;
 	const char* m_pSourceCode = nullptr;
-	size_t m_SourceCodeSize = 0;
-	class IBvShaderCompiler* pShaderCompiler = nullptr;
+	union
+	{
+		size_t m_ByteCodeSize = 0;
+		size_t m_SourceCodeSize;
+	};
+	IBvShaderCompiler* pShaderCompiler = nullptr;
 	const char* m_pEntryPoint = "main";
 	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
 	ShaderLanguage m_ShaderLanguage = ShaderLanguage::kUnknown;
@@ -1235,11 +1239,11 @@ struct VertexInputDesc
 	const char* m_pName = nullptr;
 	// The buffer slot this attribute belongs to
 	u32			m_Binding = 0;
-	// Index of the input attribute (In Vulkan and OpenGL, this maps to the location index that an input variable is.
-	// In D3D this is only used if there are multiple elements with the same semantic.
+	// Index of the input attribute when using the same semantic. Note: In Vulkan and OpenGL, this maps to the location index
+	// that an input variable is. In D3D this is only used if there are multiple elements with the same semantic.
 	u32			m_Index = 0;
-	// The offset of this variable in the struct
-	u32			m_Offset = 0;
+	// The offset of this variable in the struct; specify kAutoOffset to let the pipeline figure out the offset.
+	u32			m_Offset = kAutoOffset;
 	// Variable format
 	Format		m_Format = Format::kUnknown;
 	// The input rate, can be per vertex or per instance

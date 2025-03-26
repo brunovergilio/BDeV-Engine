@@ -14,11 +14,10 @@ BvFrameDataVk::BvFrameDataVk()
 }
 
 
-BvFrameDataVk::BvFrameDataVk(IBvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData)
+BvFrameDataVk::BvFrameDataVk(BvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData)
 	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_FrameIndex(frameIndex),
-	m_pContextData(pContextData)
+	m_pContextData(pContextData), m_pFence(pDevice->CreateFence<BvGPUFenceVk>(0))
 {
-	pDevice->CreateFenceVk(0, &m_pFence);
 	BV_ASSERT(m_pFence->IsValid(), "Fence has to be valid");
 }
 
@@ -46,7 +45,11 @@ BvFrameDataVk& BvFrameDataVk::operator=(BvFrameDataVk&& rhs) noexcept
 
 BvFrameDataVk::~BvFrameDataVk()
 {
-	m_pFence->Release();
+	if (m_pFence)
+	{
+		m_pFence->Release();
+		m_pFence = nullptr;
+	}
 }
 
 
@@ -79,7 +82,7 @@ BvCommandBufferVk* BvFrameDataVk::RequestCommandBuffer()
 }
 
 
-VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const IBvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, bool bindless)
+VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, bool bindless)
 {
 	auto srlHash = MurmurHash64A(&pLayout->GetSetLayoutHandles().At(set), sizeof(VkDescriptorSetLayout));
 	auto& pool = m_pContextData->m_DescriptorPools[srlHash];
@@ -152,7 +155,7 @@ void BvFrameDataVk::ClearActiveCommandBuffers()
 }
 
 
-void BvFrameDataVk::AddQuery(IBvQueryVk* pQuery)
+void BvFrameDataVk::AddQuery(BvQueryVk* pQuery)
 {
 	m_Queries.EmplaceBack(pQuery);
 }
@@ -181,7 +184,10 @@ void BvFrameDataVk::UpdateQueryData()
 }
 
 
-BvCommandContextVk::BvCommandContextVk(IBvRenderDeviceVk* pDevice, u32 frameCount, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex)
+BV_VK_DEVICE_RES_DEF(BvCommandContextVk)
+
+
+BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex)
 	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyType, queueFamilyIndex, queueIndex)
 {
 	u32 querySizes[kQueryTypeCount] = { 2, 2, 2 };
@@ -224,7 +230,7 @@ BvGPUOp BvCommandContextVk::Execute(u64 value)
 	auto& commandBuffers = m_Frames[m_ActiveFrameIndex].GetCommandBuffers();
 	auto pFence = m_Frames[m_ActiveFrameIndex].GetGPUFence();
 	auto semaphoreValue = signalValue + index;
-	m_Queue.Submit(commandBuffers, pFence->GetSemaphore()->GetHandle(), semaphoreValue);
+	m_Queue.Submit(commandBuffers, pFence->GetHandle(), semaphoreValue);
 
 	m_Frames[m_ActiveFrameIndex].ClearActiveCommandBuffers();
 	m_Frames[m_ActiveFrameIndex].UpdateQueryData();
@@ -238,7 +244,7 @@ BvGPUOp BvCommandContextVk::Execute(u64 value)
 void BvCommandContextVk::Execute(IBvGPUFence* pFence, u64 value)
 {
 	auto pFenceVk = TO_VK(pFence);
-	m_Queue.AddSignalSemaphore(pFenceVk->GetSemaphore()->GetHandle(), value);
+	m_Queue.AddSignalSemaphore(pFenceVk->GetHandle(), value);
 
 	Execute(value);
 }
@@ -248,7 +254,7 @@ void BvCommandContextVk::Wait(IBvCommandContext* pCommandContext, u64 value)
 {
 	// Add a wait semaphore and its value
 	auto pContextVk = reinterpret_cast<BvCommandContextVk*>(pCommandContext);
-	m_Queue.AddWaitSemaphore(pContextVk->GetCurrentGPUFence()->GetSemaphore()->GetHandle(), value);
+	m_Queue.AddWaitSemaphore(pContextVk->GetCurrentGPUFence()->GetHandle(), value);
 }
 
 
@@ -348,7 +354,7 @@ void BvCommandContextVk::SetRayTracingPipeline(const IBvRayTracingPipelineState*
 }
 
 
-void BvCommandContextVk::SetShaderResourceParams(u32 resourceParamsCount, BvShaderResourceParams* const* ppResourceParams, u32 startIndex)
+void BvCommandContextVk::SetShaderResourceParams(u32 resourceParamsCount, IBvShaderResourceParams* const* ppResourceParams, u32 startIndex)
 {
 	m_pCurrCommandBuffer->SetShaderResourceParams(resourceParamsCount, ppResourceParams, startIndex);
 }
@@ -497,7 +503,7 @@ void BvCommandContextVk::DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64
 }
 
 
-void BvCommandContextVk::CopyBufferVk(const IBvBufferVk* pSrcBuffer, IBvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
+void BvCommandContextVk::CopyBufferVk(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
 {
 	m_pCurrCommandBuffer->CopyBuffer(pSrcBuffer, pDstBuffer, copyRegion);
 }
@@ -527,7 +533,7 @@ void BvCommandContextVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* 
 }
 
 
-void BvCommandContextVk::CopyBufferToTextureVk(const IBvBufferVk* pSrcBuffer, IBvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandContextVk::CopyBufferToTextureVk(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	m_pCurrCommandBuffer->CopyBufferToTexture(pSrcBuffer, pDstTexture, copyCount, pCopyRegions);
 }
@@ -539,7 +545,7 @@ void BvCommandContextVk::CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTex
 }
 
 
-void BvCommandContextVk::CopyTextureToBufferVk(const IBvTextureVk* pSrcTexture, IBvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandContextVk::CopyTextureToBufferVk(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	m_pCurrCommandBuffer->CopyTextureToBuffer(pSrcTexture, pDstBuffer, copyCount, pCopyRegions);
 }
@@ -639,13 +645,13 @@ void BvCommandContextVk::DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offs
 }
 
 
-void BvCommandContextVk::AddSwapChain(IBvSwapChainVk* pSwapChain)
+void BvCommandContextVk::AddSwapChain(BvSwapChainVk* pSwapChain)
 {
 	m_SwapChains.EmplaceBack(pSwapChain);
 }
 
 
-void BvCommandContextVk::RemoveSwapChain(IBvSwapChainVk* pSwapChain)
+void BvCommandContextVk::RemoveSwapChain(BvSwapChainVk* pSwapChain)
 {
 	for (auto it = m_SwapChains.begin(); it != m_SwapChains.end(); ++it)
 	{
@@ -667,7 +673,6 @@ void BvCommandContextVk::RemoveFramebuffers(VkImageView view)
 }
 
 
-IBvRenderDevice* BvCommandContextVk::GetDevice()
+void BvCommandContextVk::Destroy()
 {
-	return m_pDevice;
 }

@@ -250,9 +250,9 @@ VkColorSpaceKHR GetVkColorSpace(ColorSpace colorSpace)
 {
 	switch (colorSpace)
 	{
-	case ColorSpace::kSRGBNonLinear: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-	case ColorSpace::kExtendedLinear: return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
-	case ColorSpace::kHDR10: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
+	case ColorSpace::kSRGB: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	case ColorSpace::kExtendedSRGB: return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+	case ColorSpace::kHDR10_ST2084: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
 	default: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	}
 }

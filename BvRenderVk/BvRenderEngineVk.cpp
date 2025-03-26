@@ -10,24 +10,11 @@ bool IsDeviceSuitable(VkPhysicalDevice gpu);
 void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo);
 
 
-bool BvRenderEngineVk::CreateRenderDevice(const BvRenderDeviceCreateDesc& deviceCreateDesc, IBvRenderDevice** ppObj)
+IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc)
 {
 	BvRenderDeviceCreateDescVk descVk;
 	memcpy(&descVk, &deviceCreateDesc, sizeof(BvRenderDeviceCreateDesc));
-	IBvRenderDeviceVk* pObjVk;
-	if (CreateRenderDeviceVk(descVk, &pObjVk))
-	{
-		*ppObj = pObjVk;
-		return true;
-	}
-
-	return false;
-}
-
-
-bool BvRenderEngineVk::CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& deviceDesc, IBvRenderDeviceVk** ppObj)
-{
-	u32 gpuIndex = deviceDesc.m_GPUIndex;
+	u32 gpuIndex = descVk.m_GPUIndex;
 	if (gpuIndex >= m_GPUs.Size())
 	{
 		gpuIndex = 0;
@@ -45,18 +32,15 @@ bool BvRenderEngineVk::CreateRenderDeviceVk(const BvRenderDeviceCreateDescVk& de
 	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
 	if (!pDevice)
 	{
-		pDevice = BV_OBJECT_CREATE(BvRenderDeviceVk, this, (VkPhysicalDevice)m_GPUs[gpuIndex].m_pPhysicalDevice, deviceDesc);
+		pDevice = BV_NEW(BvRenderDeviceVk)(this, m_GPUs[gpuIndex], descVk);
 		if (!pDevice->IsValid())
 		{
 			pDevice->Release();
 			pDevice = nullptr;
-			return false;
 		}
 	}
 
-	*ppObj = pDevice;
-
-	return true;
+	return pDevice;
 }
 
 
@@ -373,24 +357,10 @@ void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo)
 class BvRenderEngineVkHelper
 {
 public:
-	static bool CreateEngine(IBvRenderEngineVk** ppObj)
+	static BvRenderEngineVk* GetEngine()
 	{
-		static bool initialized = false;
-		static BvRenderEngineVk* pEngine = nullptr;
-		if (!initialized)
-		{
-			initialized = true;
-			//pEngine = BV_NEW(BvRenderEngineVk)();
-			pEngine = BV_OBJECT_CREATE(BvRenderEngineVk);
-			if (pEngine->GetGPUs().Size() == 0)
-			{
-				BV_DELETE(pEngine);
-				pEngine = nullptr;
-			}
-		}
-		*ppObj = pEngine;
-
-		return pEngine != nullptr;
+		static BvRenderEngineVk engine;
+		return engine.GetGPUs().Size() > 0 ? &engine : nullptr;
 	}
 };
 
@@ -399,22 +369,15 @@ namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API bool CreateRenderEngine(IBvRenderEngine** ppObj)
+		BV_API IBvRenderEngine* CreateRenderEngine()
 		{
-			IBvRenderEngineVk* pObjVk;
-			if (CreateRenderEngineVk(&pObjVk))
-			{
-				*ppObj = pObjVk;
-				return true;
-			}
-
-			return false;
+			return CreateRenderEngineVk();
 		}
 
 
-		BV_API bool CreateRenderEngineVk(IBvRenderEngineVk** ppObj)
+		BV_API BvRenderEngineVk* CreateRenderEngineVk()
 		{
-			return BvRenderEngineVkHelper::CreateEngine(ppObj);
+			return BvRenderEngineVkHelper::GetEngine();
 		}
 	}
 }

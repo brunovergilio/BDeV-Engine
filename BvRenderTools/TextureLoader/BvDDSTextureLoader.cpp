@@ -50,7 +50,7 @@ IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureInternal(BvVector<u8>& b
 	auto result = LoadDDSTexture(buffer.Data(), buffer.Size(), textureInfo, subresources);
 	if (result == IBvTextureLoader::Result::kOk)
 	{
-		auto pBlob = BV_OBJECT_CREATE(BvTextureBlob, buffer, textureInfo, subresources);
+		auto pBlob = BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
 		*ppTextureBlob = pBlob;
 	}
 	
@@ -58,14 +58,19 @@ IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureInternal(BvVector<u8>& b
 }
 
 
+void BvDDSTextureLoader::SelfDestroy()
+{
+	BV_DELETE(this);
+}
+
+
 namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API bool CreateDDSTextureLoader(IBvTextureLoader** ppObj)
+		BV_API IBvTextureLoader* CreateDDSTextureLoader()
 		{
-			*ppObj = BV_OBJECT_CREATE(BvDDSTextureLoader);
-			return true;
+			return BV_NEW(BvDDSTextureLoader)();
 		}
 	}
 }

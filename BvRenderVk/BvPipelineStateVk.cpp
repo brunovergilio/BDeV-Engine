@@ -10,12 +10,19 @@
 VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode, VkShaderStageFlagBits shaderStage);
 
 
+BV_VK_DEVICE_RES_DEF(BvGraphicsPipelineStateVk)
+
+
 BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, const VkPipelineCache pipelineCache)
 	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
 {
-	auto pVertexInputDescs = BV_NEW_ARRAY(VertexInputDesc, m_PipelineStateDesc.m_VertexInputDescCount);
-	memcpy(pVertexInputDescs, m_PipelineStateDesc.m_pVertexInputDescs, sizeof(VertexInputDesc) * m_PipelineStateDesc.m_VertexInputDescCount);
-	m_PipelineStateDesc.m_pVertexInputDescs = pVertexInputDescs;
+	VertexInputDesc* pVertexInputDescs = nullptr;
+	if (m_PipelineStateDesc.m_VertexInputDescCount)
+	{
+		pVertexInputDescs = BV_NEW_ARRAY(VertexInputDesc, m_PipelineStateDesc.m_VertexInputDescCount);
+		memcpy(pVertexInputDescs, m_PipelineStateDesc.m_pVertexInputDescs, sizeof(VertexInputDesc) * m_PipelineStateDesc.m_VertexInputDescCount);
+		m_PipelineStateDesc.m_pVertexInputDescs = pVertexInputDescs;
+	}
 
 	for (auto i = 0u; i < m_PipelineStateDesc.m_VertexInputDescCount; ++i)
 	{
@@ -47,12 +54,6 @@ BvGraphicsPipelineStateVk::~BvGraphicsPipelineStateVk()
 	}
 
 	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pVertexInputDescs);
-}
-
-
-IBvRenderDevice* BvGraphicsPipelineStateVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 
@@ -297,6 +298,9 @@ void BvGraphicsPipelineStateVk::Destroy()
 }
 
 
+BV_VK_DEVICE_RES_DEF(BvComputePipelineStateVk)
+
+
 BvComputePipelineStateVk::BvComputePipelineStateVk(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc & pipelineStateDesc,
 	const VkPipelineCache pipelineCache)
 	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_PipelineCache(pipelineCache)
@@ -308,12 +312,6 @@ BvComputePipelineStateVk::BvComputePipelineStateVk(BvRenderDeviceVk* pDevice, co
 BvComputePipelineStateVk::~BvComputePipelineStateVk()
 {
 	Destroy();
-}
-
-
-IBvRenderDevice* BvComputePipelineStateVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 
@@ -343,6 +341,9 @@ void BvComputePipelineStateVk::Destroy()
 		m_PipelineCache = nullptr;
 	}
 }
+
+
+BV_VK_DEVICE_RES_DEF(BvRayTracingPipelineStateVk)
 
 
 BvRayTracingPipelineStateVk::BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc,
@@ -388,12 +389,6 @@ BvRayTracingPipelineStateVk::~BvRayTracingPipelineStateVk()
 
 	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pShaderGroupDescs);
 	BV_DELETE_ARRAY(m_PipelineStateDesc.m_ppShaders);
-}
-
-
-IBvRenderDevice* BvRayTracingPipelineStateVk::GetDevice()
-{
-	return m_pDevice;
 }
 
 

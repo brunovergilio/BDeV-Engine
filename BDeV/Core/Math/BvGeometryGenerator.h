@@ -3,221 +3,144 @@
 
 #include "BvMath.h"
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "BDeV/Core/Container/BvVector.h"
 
 
-struct BvGeometryVertex
+class BvGeometryGenerator
 {
-	Float3 m_Position;
-	Float2 m_UV;
-	Float3 m_Normal;
-	Float3 m_Tangent;
-	Float3 m_Bitangent;
+public:
+	struct Vertex
+	{
+		Float3 m_Position;
+		Float2 m_UV;
+		Float3 m_Normal;
+		Float3 m_Tangent;
+		Float3 m_Bitangent;
+	};
+
+	struct Data
+	{
+		BvVector<Vertex> m_Vertices;
+		BvVector<u32> m_Indices;
+	};
+
+	BvGeometryGenerator() = default;
+	~BvGeometryGenerator() = default;
+
+	void GenerateBox(f32 width = 1.0f, f32 height = 1.0f, f32 depth = 1.0f);
+	void GenerateGeoSphere(f32 radius = 1.0f, u32 numSubDivisions = 1);
+
+	BV_INLINE const auto& GetData() const { return m_Data; }
+
+private:
+	void Subdivide();
+	Vertex GetMidPoint(const Vertex& v0, const Vertex& v1);
+
+private:
+	Data m_Data;
 };
 
 
-namespace Internal
+class BvVertexUtilities
 {
-	template<typename T, typename U>
-	constexpr T ConstexprPow(T base, U exponent)
+public:
+	template<i32 PosOffset, i32 UVOffset, i32 TangentOffset, i32 BitangentOffset = -1, typename IndexType>
+	static void CalculateTangent(void* pVertices, u32 vertexCount, u32 vertexStride, IndexType* pIndices, u32 indexCount);
+	template<typename T>
+	static void ReverseWindingOrder(T* pIndices, u32 indexCount);
+};
+
+
+template<i32 PosOffset, i32 UVOffset, i32 TangentOffset, i32 BitangentOffset, typename IndexType>
+void BvVertexUtilities::CalculateTangent(void* pVertices, u32 vertexCount, u32 vertexStride, IndexType* pIndices, u32 indexCount)
+{
+	static_assert(PosOffset != -1 && UVOffset != -1 && TangentOffset != -1);
+
+	MemType mem{ pVertices };
+	for (auto i = 0; i < indexCount; i += 3)
 	{
-		static_assert(std::is_integral<U>(), "Exponent must be integral");
-		return exponent == 0 ? 1 : base * ConstexprPow(base, exponent - 1);
+		auto pV0 = mem.pAsCharPtr + vertexStride * pIndices[i];
+		auto pV1 = mem.pAsCharPtr + vertexStride * pIndices[i + 1];
+		auto pV2 = mem.pAsCharPtr + vertexStride * pIndices[i + 2];
+
+		BvVec3 p0(*reinterpret_cast<Float3*>(pV0 + PosOffset));
+		BvVec3 p1(*reinterpret_cast<Float3*>(pV1 + PosOffset));
+		BvVec3 p2(*reinterpret_cast<Float3*>(pV2 + PosOffset));
+
+		BvVec2 uv0(*reinterpret_cast<Float2*>(pV0 + UVOffset));
+		BvVec2 uv1(*reinterpret_cast<Float2*>(pV1 + UVOffset));
+		BvVec2 uv2(*reinterpret_cast<Float2*>(pV2 + UVOffset));
+
+		auto deltaPos1 = p1 - p0;
+		auto deltaPos2 = p2 - p0;
+
+		auto deltaUV1 = uv1 - uv0;
+		auto deltaUV2 = uv2 - uv0;
+
+		auto r = 1.0f / (deltaUV1.GetX() * deltaUV2.GetY() - deltaUV1.GetY() * deltaUV2.GetX());
+		auto tangent = (deltaPos1 * deltaUV2.GetY() - deltaPos2 * deltaUV1.GetY()) * r;
+		auto bitangent = (deltaPos2 * deltaUV1.GetX() - deltaPos1 * deltaUV2.GetX()) * r;
+
+		auto& tg0 = *reinterpret_cast<Float3*>(pV0 + TangentOffset);
+		auto& tg1 = *reinterpret_cast<Float3*>(pV1 + TangentOffset);
+		auto& tg2 = *reinterpret_cast<Float3*>(pV2 + TangentOffset);
+
+		BvVec3 t0(tg0);
+		BvVec3 t1(tg1);
+		BvVec3 t2(tg2);
+		t0 += tangent;
+		t1 += tangent;
+		t2 += tangent;
+
+		tg0 = t0.ToFloat();
+		tg1 = t1.ToFloat();
+		tg2 = t2.ToFloat();
+
+		if constexpr (BitangentOffset != -1)
+		{
+			auto& bt0 = *reinterpret_cast<Float3*>(pV0 + BitangentOffset);
+			auto& bt1 = *reinterpret_cast<Float3*>(pV1 + BitangentOffset);
+			auto& bt2 = *reinterpret_cast<Float3*>(pV2 + BitangentOffset);
+
+			BvVec3 b0(bt0);
+			BvVec3 b1(bt1);
+			BvVec3 b2(bt2);
+			b0 += bitangent;
+			b1 += bitangent;
+			b2 += bitangent;
+
+			bt0 = b0.ToFloat();
+			bt1 = b1.ToFloat();
+			bt2 = b2.ToFloat();
+		}
 	}
 
-	//void CalculateTangent(u32 vertexCount, BvGeometryVertex* pVertices, u32 indexCount, u32* pIndices);
+	mem.pAsVoidPtr = pVertices;
+	for (auto i = 0; i < vertexCount; ++i)
+	{
+		auto& tg = *reinterpret_cast<Float3*>(mem.pAsCharPtr + vertexStride * i + TangentOffset);
+
+		BvVec3 t(tg);
+		t.Normalize();
+		tg = t.ToFloat();
+	
+		if constexpr (BitangentOffset != -1)
+		{
+			auto& bt = *reinterpret_cast<Float3*>(mem.pAsCharPtr + vertexStride * i + BitangentOffset);
+
+			BvVec3 b(bt);
+			b.Normalize();
+			bt = b.ToFloat();
+		}
+	}
 }
 
-//template<i32 PosOffset = 0, i32 UVOffset = -1, i32 NormalOffset = -1, i32 TangentOffset = -1, i32 BitangentOffset = -1>
-//void CopyVertices(BvGeometryVertex* pSrcVertices, void* pDstVertices, size_t vertexCount, size_t dstVertexStride)
-//{
-//	MemType mem{ pVertices };
-//	for (auto i = 0; i < kBoxVertexCount; ++i, mem.pAsCharPtr += vertexStride)
-//	{
-//		if constexpr (PosOffset != -1)
-//		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + PosOffset) = m_Vertices[i].m_Position;
-//		}
-//		if constexpr (UVOffset != -1)
-//		{
-//			*reinterpret_cast<Float2*>(mem.pAsCharPtr + UVOffset) = m_Vertices[i].m_UV;
-//		}
-//		if constexpr (NormalOffset != -1)
-//		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + NormalOffset) = m_Vertices[i].m_Normal;
-//		}
-//		if constexpr (TangentOffset != -1)
-//		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + TangentOffset) = m_Vertices[i].m_Tangent;
-//		}
-//		if constexpr (BitangentOffset != -1)
-//		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + BitangentOffset) = m_Vertices[i].m_Bitangent;
-//		}
-//	}
-//}
 
-
-//class BvBox
-//{
-//public:
-//	static constexpr u32 kTotalVertexCount = 24;
-//	static constexpr u32 kTotalIndexCount = 36;
-//
-//	BV_DEFAULTCOPYMOVE(BvBox);
-//
-//	BvBox();
-//	BvBox(float size);
-//	BvBox(float width, float height, float depth);
-//
-//	BV_INLINE const auto GetVertices() const { return m_Vertices; }
-//	BV_INLINE const auto GetIndices() const { return m_Indices; }
-//
-//private:
-//	BvGeometryVertex m_Vertices[kTotalVertexCount];
-//	u32 m_Indices[kTotalIndexCount];
-//};
-//
-//
-//template<u32 Subdivisions>
-//class BvGeosphere
-//{
-//public:
-//	static_assert(Subdivisions < 6);
-//
-//	static constexpr u32 kTotalVertexCount = 12 + 30 * (Internal::ConstexprPow(2, Subdivisions) - 1);
-//	static constexpr u32 kTotalIndexCount = 20 * Internal::ConstexprPow(4, Subdivisions) * 3;
-//
-//	BV_DEFAULTCOPYMOVE(BvGeosphere);
-//
-//	BvGeosphere();
-//	BvGeosphere(float radius);
-//
-//	BV_INLINE const auto GetVertices() const { return m_Vertices; }
-//	BV_INLINE const auto GetIndices() const { return m_Indices; }
-//
-//private:
-//	void Subdivide(u32& currVertex, u32& currIndex);
-//	u32 AddMidPoint(u32& currVertex, u32 v0, u32 v1);
-//	void CalculateUV(BvGeometryVertex& vertex, float invRadius);
-//
-//private:
-//	BvGeometryVertex m_Vertices[kTotalVertexCount];
-//	u32 m_Indices[kTotalIndexCount];
-//};
-//
-//
-//template<u32 Subdivisions>
-//BvGeosphere<Subdivisions>::BvGeosphere()
-//	: BvGeosphere(1.0f)
-//{
-//}
-//
-//
-//template<u32 Subdivisions>
-//BvGeosphere<Subdivisions>::BvGeosphere(float radius)
-//{
-//	constexpr float kX = 0.525731f;
-//	constexpr float kZ = 0.850651f;
-//
-//	m_Vertices[0] = { { -kX, 0.0f, kZ }, {}, {}, {}, {} };
-//	m_Vertices[1] = { { kX, 0.0f, kZ }, {}, {}, {}, {} };
-//	m_Vertices[2] = { { -kX, 0.0f, -kZ }, {}, {}, {}, {} };
-//	m_Vertices[3] = { { kX, 0.0f, -kZ }, {}, {}, {}, {} };
-//	m_Vertices[4] = { { 0.0f, kZ, kX }, {}, {}, {}, {} };
-//	m_Vertices[5] = { { 0.0f, kZ, -kX }, {}, {}, {}, {} };
-//	m_Vertices[6] = { { 0.0f, -kZ, kX }, {}, {}, {}, {} };
-//	m_Vertices[7] = { { 0.0f, -kZ, -kX }, {}, {}, {}, {} };
-//	m_Vertices[8] = { { kZ, kX, 0.0f }, {}, {}, {}, {} };
-//	m_Vertices[9] = { { -kZ, kX, 0.0f }, {}, {}, {}, {} };
-//	m_Vertices[10] = { { kZ, -kX, 0.0f }, {}, {}, {}, {} };
-//	m_Vertices[11] = { { -kZ, -kX, 0.0f }, {}, {}, {}, {} };
-//
-//	constexpr u32 kIndices[] =
-//	{
-//		0, 4, 1, 0, 9, 4, 9, 5, 4, 4, 5, 8, 4, 8, 1,
-//		8, 10, 1, 8, 3, 10, 5, 3, 8, 5, 2, 3, 2, 7, 3,
-//		7, 10, 3, 7, 6, 10, 7, 11, 6, 11, 0, 6, 0, 1, 6,
-//		6, 1, 10, 9, 0, 11, 9, 11, 2, 9, 2, 5, 7, 2, 11
-//	};
-//
-//	memcpy(m_Indices, kIndices, sizeof(kIndices));
-//
-//	u32 currVertex = 12;
-//	u32 currIndex = 60;
-//	for (auto i = 0; i < Subdivisions; ++i)
-//	{
-//		Subdivide(currVertex, currIndex);
-//	}
-//
-//	f32 invRadius = 1.0f / radius;
-//	for (auto i = 0; i < kTotalVertexCount; ++i)
-//	{
-//		auto& vertex = m_Vertices[i];
-//		BvVec n(vertex.m_Position);
-//		n.Normalize();
-//		
-//		BvVec p(n * radius);
-//
-//		vertex.m_Position = p.v3;
-//		vertex.m_Normal = n.v3;
-//		CalculateUV(vertex, invRadius);
-//	}
-//	
-//	Internal::CalculateTangent(kTotalVertexCount, m_Vertices, kTotalIndexCount, m_Indices);
-//}
-//
-//template<u32 Subdivisions>
-//void BvGeosphere<Subdivisions>::Subdivide(u32& currVertex, u32& currIndex)
-//{
-//	u32 tmpIndices[kTotalIndexCount];
-//	u32 newIndexCount = 0;
-//	for (auto i = 0; i < currIndex; i += 3)
-//	{
-//		u32 v0 = m_Indices[i];
-//		u32 v1 = m_Indices[i + 1];
-//		u32 v2 = m_Indices[i + 2];
-//
-//		u32 a = AddMidPoint(currVertex, v0, v1);
-//		u32 b = AddMidPoint(currVertex, v1, v2);
-//		u32 c = AddMidPoint(currVertex, v2, v0);
-//
-//		// Add new triangles in clockwise order
-//		tmpIndices[newIndexCount++] = v0; tmpIndices[newIndexCount++] = a; tmpIndices[newIndexCount++] = c;
-//		tmpIndices[newIndexCount++] = v1; tmpIndices[newIndexCount++] = b; tmpIndices[newIndexCount++] = a;
-//		tmpIndices[newIndexCount++] = v2; tmpIndices[newIndexCount++] = c; tmpIndices[newIndexCount++] = b;
-//		tmpIndices[newIndexCount++] = a; tmpIndices[newIndexCount++] = b; tmpIndices[newIndexCount++] = c;
-//	}
-//
-//	memcpy(m_Indices, tmpIndices, sizeof(u32) * newIndexCount);
-//	currIndex = newIndexCount;
-//}
-//
-//
-//template<u32 Subdivisions>
-//u32 BvGeosphere<Subdivisions>::AddMidPoint(u32& currVertex, u32 v0, u32 v1)
-//{
-//	BvVec p0(m_Vertices[v0].m_Position);
-//	BvVec p1(m_Vertices[v1].m_Position);
-//
-//	auto midPoint = 0.5f * (p0 + p1);
-//	midPoint.Normalize();
-//
-//	m_Vertices[currVertex].m_Position = midPoint.v3;
-//
-//	return currVertex++;
-//}
-//
-//
-//template<u32 Subdivisions>
-//void BvGeosphere<Subdivisions>::CalculateUV(BvGeometryVertex& vertex, float invRadius)
-//{
-//	float u = std::atan2f(vertex.m_Position.z, vertex.m_Position.x);
-//	if (u < 0.0f)
-//	{
-//		u += k2Pi;
-//	}
-//	u *= k1Div2Pi;
-//
-//	float v = std::acosf(vertex.m_Position.y * invRadius) * k1DivPi;
-//	vertex.m_UV = Float2(u, v);
-//}
+template<typename T>
+void BvVertexUtilities::ReverseWindingOrder(T* pIndices, u32 indexCount)
+{
+	for (auto i = 0u; i < indexCount; ++i)
+	{
+		std::swap(pIndices[i], pIndices[i + 2]);
+	}
+}

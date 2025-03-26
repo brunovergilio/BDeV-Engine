@@ -11,32 +11,23 @@
 class BvRenderDeviceVk;
 
 
-BV_OBJECT_DEFINE_ID(IBvRenderPassVk, "1be279e7-57e1-49a2-98f0-61bb54edac9b");
-class IBvRenderPassVk : public IBvRenderPass
+//BV_OBJECT_DEFINE_ID(IBvRenderPassVk, "1be279e7-57e1-49a2-98f0-61bb54edac9b");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderPassVk);
+
+
+class BvRenderPassVk final : public IBvRenderPass, public IBvResourceVk
 {
-public:
-	virtual const VkRenderPass GetHandle() const = 0;
-	virtual bool IsValid() const = 0;
+	BV_VK_DEVICE_RES_DECL;
 
-protected:
-	IBvRenderPassVk() {}
-	~IBvRenderPassVk() {}
-};
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderPassVk);
-
-
-class BvRenderPassVk final : public IBvRenderPassVk
-{
 public:
 	BvRenderPassVk(BvRenderDeviceVk* pDevice, const RenderPassDesc& renderPassDesc);
 	~BvRenderPassVk();
 
-	IBvRenderDevice* GetDevice() override;
 	BV_INLINE const RenderPassDesc& GetDesc() const override { return m_RenderPassDesc; }
-	BV_INLINE const VkRenderPass GetHandle() const override { return m_RenderPass; }
-	BV_INLINE bool IsValid() const override { return m_RenderPass != VK_NULL_HANDLE; }
+	BV_INLINE const VkRenderPass GetHandle() const { return m_RenderPass; }
+	BV_INLINE bool IsValid() const { return m_RenderPass != VK_NULL_HANDLE; }
 
-	BV_OBJECT_IMPL_INTERFACE(IBvRenderPassVk, IBvRenderPass, IBvRenderDeviceObject);
+	//BV_OBJECT_IMPL_INTERFACE(IBvRenderPassVk, IBvRenderPass, IBvRenderDeviceObject);
 
 private:
 	void Create();
@@ -61,4 +52,4 @@ private:
 };
 
 
-BV_CREATE_CAST_TO_VK(IBvRenderPass)
+BV_CREATE_CAST_TO_VK(BvRenderPass)

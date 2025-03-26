@@ -3,7 +3,7 @@
 
 #include "BvRenderCommon.h"
 #include "BDeV/Core/Container/BvString.h"
-#include "BvRenderDeviceObject.h"
+#include "BDeV/Core/Utils/BvObject.h"
 
 
 class IBvTextureView;
@@ -15,13 +15,14 @@ struct SwapChainDesc
 {
 	u32 m_SwapChainImageCount = 3;
 	Format m_Format = Format::kUnknown;
-	ColorSpace m_ColorSpace = ColorSpace::kSRGBNonLinear;
+	ColorSpace m_ColorSpace = ColorSpace::kAuto;
 	bool m_VSync = false;
 };
 
 
-BV_OBJECT_DEFINE_ID(IBvSwapChain, "239e8b95-158a-4313-8f79-f68369441372");
-class IBvSwapChain : public IBvRenderDeviceObject
+//BV_OBJECT_DEFINE_ID(IBvSwapChain, "239e8b95-158a-4313-8f79-f68369441372");
+//BV_OBJECT_ENABLE_ID_OPERATOR(IBvSwapChain);
+class IBvSwapChain : public BvRCObj
 {
 public:
 	virtual void Present(bool vSync = false) = 0;
@@ -36,4 +37,3 @@ protected:
 	IBvSwapChain() {}
 	~IBvSwapChain() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvSwapChain);
