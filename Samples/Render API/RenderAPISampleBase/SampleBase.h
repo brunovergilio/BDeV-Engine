@@ -6,6 +6,7 @@
 #include "BDeV/Core/System/HID/BvMouse.h"
 #include "UIOverlay.h"
 #include "BDeV/Core/RenderAPI/BvRenderEngine.h"
+#include "BDeV/Core/RenderAPI/BvTextureLoader.h"
 #include "FPSCounter.h"
 
 
@@ -19,6 +20,7 @@ public:
 	void Update();
 	void Render();
 	void Shutdown();
+	BvRCRef<IBvShader> CompileShader(const char* pSource, size_t length, ShaderStage stage);
 
 	virtual void OnInitialize() = 0;
 	virtual void OnUpdate() = 0;
@@ -29,22 +31,28 @@ public:
 	virtual void OnUpdateUI();
 	virtual void OnRenderUI();
 
+	void BeginDrawDefaultUI();
+	void EndDrawDefaultUI();
+
 	virtual bool IsDone() { return m_IsDone; }
 
 protected:
 	BvApplication m_App;
 	BvSharedLib m_RenderLib;
+	BvSharedLib m_ToolsLib;
 	BvRenderDeviceCreateDesc m_RenderDeviceDesc;
 	BvWindow* m_pWindow = nullptr;
-	IBvRenderEngine* m_pEngine = nullptr;
+	BvRCRef<IBvRenderEngine> m_pEngine;
 	BvRCRef<IBvRenderDevice> m_Device;
 	BvRCRef<IBvCommandContext> m_Context;
 	BvRCRef<IBvSwapChain> m_SwapChain;
-	BvRCRef<IBvShaderCompiler> m_ShaderCompiler;
+	BvRCRef<IBvShaderCompiler> m_SpvCompiler;
+	BvRCRef<IBvTextureLoader> m_TextureLoader;
 	UIOverlay m_Overlay;
 	BvKeyboard m_Keyboard;
 	BvMouse m_Mouse;
 	FPSCounter m_FPSCounter;
+	BvString m_AppName;
 	i64 m_Prev = 0;
 	i64 m_Curr = 0;
 	f32 m_Dt = 0.0f;

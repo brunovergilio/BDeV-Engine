@@ -56,8 +56,8 @@ public:
 		kFail
 	};
 
-	virtual IBvTextureLoader::Result LoadTextureFromFile(const char* pFilename, IBvTextureBlob** ppTextureBlob) = 0;
-	virtual IBvTextureLoader::Result LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureBlob** ppTextureBlob) = 0;
+	virtual BvRCRaw<IBvTextureBlob> LoadTextureFromFile(const char* pFilename, IBvTextureLoader::Result* pResult = nullptr) = 0;
+	virtual BvRCRaw<IBvTextureBlob> LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureLoader::Result* pResult = nullptr) = 0;
 
 protected:
 	IBvTextureLoader() {}

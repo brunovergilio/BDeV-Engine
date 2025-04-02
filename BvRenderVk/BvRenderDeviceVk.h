@@ -82,10 +82,10 @@ struct BvDeviceInfoVk
 //BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderDeviceVk);
 
 
-class BvRenderDeviceVk final : public IBvRenderDevice
+class BvRenderDeviceVk final : public IBvRenderDevice, public IBvResourceVk
 {
 public:
-	BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc);
+	BvRenderDeviceVk(BvRenderEngineVk* pEngine, VkPhysicalDevice physicalDevice, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc);
 	~BvRenderDeviceVk();
 
 	IBvSwapChain* CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext) override;
@@ -162,6 +162,7 @@ private:
 	const BvGPUInfo& m_GPUInfo;
 	BvDeviceInfoVk* m_pDeviceInfo = nullptr;
 	RenderDeviceCapabilities m_DeviceCaps;
+	u32 m_Index = 0;
 };
 
 

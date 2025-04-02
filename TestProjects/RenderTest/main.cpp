@@ -264,9 +264,8 @@ IBvShader* GetVS(IBvRenderDevice* pDevice)
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	shaderDesc.m_pSourceCode = pVSShader2;
 	shaderDesc.m_SourceCodeSize = strlen(pVSShader2);
-	IBvShaderBlob* shader;
-	auto result = g_pCompiler->Compile(shaderDesc, &shader);
-	BV_ASSERT(result, "Invalid Shader");
+	IBvShaderBlob* shader = g_pCompiler->Compile(shaderDesc);
+	BV_ASSERT(shader != nullptr, "Invalid Shader");
 
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();
@@ -285,9 +284,8 @@ IBvShader* GetPS(IBvRenderDevice* pDevice)
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	shaderDesc.m_pSourceCode = pPSShader2;
 	shaderDesc.m_SourceCodeSize = strlen(pPSShader2);
-	IBvShaderBlob* shader;
-	auto result = g_pCompiler->Compile(shaderDesc, &shader);
-	BV_ASSERT(result, "Invalid Shader");
+	IBvShaderBlob* shader = g_pCompiler->Compile(shaderDesc);
+	BV_ASSERT(shader != nullptr, "Invalid Shader");
 
 	shaderDesc.m_pByteCode = (const u8*)shader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = shader->GetBufferSize();

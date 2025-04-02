@@ -16,8 +16,8 @@ public:
 	BvSPIRVCompiler();
 	~BvSPIRVCompiler();
 
-	bool Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob = nullptr) override;
-	bool CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob = nullptr) override;
+	BvRCRaw<IBvShaderBlob> Compile(const ShaderCreateDesc& shaderDesc, BvRCRaw<IBvShaderBlob>* pErrorBlob = nullptr) override;
+	BvRCRaw<IBvShaderBlob> CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, BvRCRaw<IBvShaderBlob>* pErrorBlob = nullptr) override;
 
 	//BV_OBJECT_IMPL_INTERFACE(BvSPIRVCompiler, IBvShaderCompiler);
 

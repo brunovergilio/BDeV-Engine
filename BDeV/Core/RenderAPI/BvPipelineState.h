@@ -13,35 +13,6 @@ class IBvShader;
 class IBvRenderPass;
 
 
-struct GraphicsPipelineStateDesc
-{
-	u32							m_VertexInputDescCount = 0;
-	VertexInputDesc*			m_pVertexInputDescs = nullptr;
-	IBvShader*					m_Shaders[kMaxShaderStages]{};
-	InputAssemblyStateDesc		m_InputAssemblyStateDesc;
-	TessellationStateDesc		m_TessellationStateDesc;
-	ViewportStateDesc			m_ViewportStateDesc;
-	RasterizerStateDesc			m_RasterizerStateDesc;
-	DepthStencilDesc			m_DepthStencilDesc;
-	BlendStateDesc				m_BlendStateDesc;
-	u32							m_SampleCount = 1;
-	IBvShaderResourceLayout*	m_pShaderResourceLayout = nullptr;
-	IBvRenderPass*				m_pRenderPass = nullptr;
-	Format						m_RenderTargetFormats[kMaxRenderTargets]{};
-	Format						m_DepthStencilFormat = Format::kUnknown;
-	bool						m_ShadingRateEnabled = false;
-	u32							m_SampleMask = kMax<u32>;
-	u32							m_SubpassIndex = 0;
-};
-
-
-struct ComputePipelineStateDesc
-{
-	IBvShader*					m_pShader = nullptr;
-	IBvShaderResourceLayout*	m_pShaderResourceLayout = nullptr;
-};
-
-
 //BV_OBJECT_DEFINE_ID(IBvGraphicsPipelineState, "863fd051-1ea0-4913-bd1c-2dd02f69589f");
 //BV_OBJECT_ENABLE_ID_OPERATOR(IBvGraphicsPipelineState);
 class IBvGraphicsPipelineState : public BvRCObj

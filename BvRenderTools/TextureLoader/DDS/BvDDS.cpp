@@ -844,6 +844,7 @@ namespace
 
 	//--------------------------------------------------------------------------------------
 	IBvTextureLoader::Result CreateTextureFromDDS(const DDS_HEADER* header,
+		const DDS_HEADER_DXT10* dx10Header,
 		const uint8_t* bitData,
 		size_t bitSize,
 		size_t maxsize,
@@ -868,9 +869,9 @@ namespace
 		}
 
 		if ((header->ddspf.flags & DDS_FOURCC) &&
-			(MAKEFOURCC('D', 'X', '1', '0') == header->ddspf.fourCC))
+			(MAKEFOURCC('D', 'X', '1', '0') == header->ddspf.fourCC) && dx10Header)
 		{
-			auto d3d10ext = reinterpret_cast<const DDS_HEADER_DXT10*>(reinterpret_cast<const char*>(header) + sizeof(DDS_HEADER));
+			auto d3d10ext = dx10Header;
 
 			arraySize = d3d10ext->arraySize;
 			if (arraySize == 0)
@@ -1186,7 +1187,7 @@ IBvTextureLoader::Result LoadDDSTexture(const uint8_t* bitData, size_t bitSize, 
 		return result;
 	}
 
-	return CreateTextureFromDDS(&hdr, pTextureData, textureDataSize, 0, textureInfo, subresources);
+	return CreateTextureFromDDS(&hdr, &dxt10Hdr, pTextureData, textureDataSize, 0, textureInfo, subresources);
 }
 
 

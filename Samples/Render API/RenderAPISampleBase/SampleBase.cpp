@@ -6,10 +6,19 @@ void SampleBase::Initialize()
 	m_App.Initialize();
 	m_App.RegisterRawInput(true, true);
 	m_RenderLib.Open("BvRenderVk.dll");
+	m_ToolsLib.Open("BvRenderTools.dll");
 
 	using EngineFnType = IBvRenderEngine*(*)();
 	auto pFnEngine = m_RenderLib.GetProcAddressT<EngineFnType>("CreateRenderEngine");
-	m_pEngine = pFnEngine();
+	m_pEngine = BvRCRaw(pFnEngine());
+
+	using ShaderCompilerFnType = IBvShaderCompiler*(*)();
+	ShaderCompilerFnType compilerFn = m_ToolsLib.GetProcAddressT<ShaderCompilerFnType>("CreateSPIRVCompiler");
+	m_SpvCompiler = BvRCRaw(compilerFn());
+
+	using TextureLoaderFnType = IBvTextureLoader*(*)();
+	auto pFnTextureLoader = m_ToolsLib.GetProcAddressT<TextureLoaderFnType>("CreateDDSTextureLoader");
+	m_TextureLoader = BvRCRaw(pFnTextureLoader());
 
 	m_Device = m_pEngine->CreateRenderDevice(m_RenderDeviceDesc);
 	m_Context = m_Device->GetGraphicsContext(0);
@@ -23,7 +32,7 @@ void SampleBase::Initialize()
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
 	m_SwapChain = m_Device->CreateSwapChain(m_pWindow, swapChainDesc, m_Context);
 
-	m_Overlay.Initialize(m_Device, m_Context);
+	m_Overlay.Initialize(m_Device, m_Context, m_SpvCompiler);
 	OnInitialize();
 	OnInitializeUI();
 	m_Curr = BvTime::GetCurrentTimestampInUs();
@@ -47,7 +56,13 @@ void SampleBase::Update()
 	OnUpdate();
 	if (m_UseOverlay && m_Overlay.Update(m_Dt, m_pWindow))
 	{
+		ImGui::NewFrame();
+
 		OnUpdateUI();
+
+		ImGui::EndFrame();
+
+		ImGui::Render();
 	}
 }
 
@@ -72,8 +87,23 @@ void SampleBase::Shutdown()
 	m_Context.Reset();
 	m_App.DestroyWindow(m_pWindow);
 	m_Device.Reset();
+	m_pEngine.Reset();
 
 	m_App.Shutdown();
+}
+
+
+BvRCRef<IBvShader> SampleBase::CompileShader(const char* pSource, size_t length, ShaderStage stage)
+{
+	ShaderCreateDesc shaderDesc;
+	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
+	shaderDesc.m_ShaderStage = stage;
+	shaderDesc.m_pSourceCode = pSource;
+	shaderDesc.m_SourceCodeSize = length;
+	BvRCRef<IBvShaderBlob> compiledShader = m_SpvCompiler->Compile(shaderDesc);
+	shaderDesc.m_pByteCode = (const u8*)compiledShader->GetBufferPointer();
+	shaderDesc.m_ByteCodeSize = compiledShader->GetBufferSize();
+	return m_Device->CreateShader(shaderDesc);
 }
 
 
@@ -85,10 +115,28 @@ void SampleBase::OnInitializeUI()
 
 void SampleBase::OnUpdateUI()
 {
+	BeginDrawDefaultUI();
+	EndDrawDefaultUI();
 }
 
 
 void SampleBase::OnRenderUI()
 {
 	m_Overlay.Render();
+}
+
+
+void SampleBase::BeginDrawDefaultUI()
+{
+	ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Render Sample", nullptr);
+	ImGui::TextUnformatted(m_AppName.CStr());
+	ImGui::Text("FPS: %d", m_FPSCounter.GetFPS());
+}
+
+
+void SampleBase::EndDrawDefaultUI()
+{
+	ImGui::End();
 }

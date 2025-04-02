@@ -111,9 +111,19 @@ public:
 	BV_INLINE void SetAccelerationStructures(const IBvAccelerationStructure* pResource, u32 set, u32 binding, u32 startIndex) { SetAccelerationStructures(1, &pResource, set, binding, startIndex); }
 	template<typename T> BV_INLINE void SetShaderConstantsT(const T& value, u32 binding, u32 set) { SetShaderConstants(sizeof(T), &value, binding, set); }
 
-	virtual void SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) = 0;
-	BV_INLINE void SetVertexBufferView(const IBvBufferView* pVertexBufferView, const u32 firstBinding = 0) { SetVertexBufferViews(1, &pVertexBufferView, firstBinding); }
-	virtual void SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat) = 0;
+	virtual void SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding = 0) = 0;
+	BV_INLINE void SetVertexBufferView(const BufferViewDesc& vertexBufferView, u32 firstBinding = 0) { SetVertexBufferViews(1, &vertexBufferView, firstBinding); }
+	BV_INLINE void SetVertexBufferView(IBvBuffer* pBuffer, u32 stride, u64 offset = 0, u32 firstBinding = 0)
+	{
+		auto vb = BufferViewDesc::AsVertexBuffer(pBuffer, stride, offset);
+		SetVertexBufferViews(1, &vb, firstBinding);
+	}
+	virtual void SetIndexBufferView(const BufferViewDesc& indexBufferView) = 0;
+	BV_INLINE void SetIndexBufferView(IBvBuffer* pBuffer, IndexFormat format, u64 offset = 0)
+	{
+		auto ib = BufferViewDesc::AsIndexBuffer(pBuffer, format, offset);
+		SetIndexBufferView(ib);
+	}
 
 	virtual void Draw(const DrawCommandArgs& args) = 0;
 	virtual void DrawIndexed(const DrawIndexedCommandArgs& args) = 0;

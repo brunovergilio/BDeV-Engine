@@ -584,28 +584,37 @@ void BvCommandBufferVk::SetShaderConstants(u32 size, const void* pData, u32 bind
 }
 
 
-void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding)
+void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding)
 {
-	constexpr u32 kMaxVertexBufferViews = 16;
-	BV_ASSERT(vertexBufferCount <= kMaxVertexBufferViews, "Vertex buffer view count greater than limit");
+	BV_ASSERT(vertexBufferCount <= kMaxVertexBuffers, "Vertex buffer view count greater than limit");
 
-	VkBuffer vertexBuffers[kMaxVertexBufferViews];
-	VkDeviceSize vertexBufferOffsets[kMaxVertexBufferViews];
+	VkBuffer vertexBuffers[kMaxVertexBuffers]{};
+	VkDeviceSize vertexBufferOffsets[kMaxVertexBuffers]{};
 	for (auto i = 0u; i < vertexBufferCount; i++)
 	{
-		vertexBuffers[i] = TO_VK(pVertexBufferViews[i]->GetDesc().m_pBuffer)->GetHandle();
-		vertexBufferOffsets[i] = pVertexBufferViews[i]->GetDesc().m_Offset;
+		if (pVertexBufferViews[i].m_pBuffer)
+		{
+			vertexBuffers[i] = TO_VK(pVertexBufferViews[i].m_pBuffer)->GetHandle();
+			vertexBufferOffsets[i] = pVertexBufferViews[i].m_Offset;
+		}
 	}
 
 	vkCmdBindVertexBuffers(m_CommandBuffer, firstBinding, vertexBufferCount, vertexBuffers, vertexBufferOffsets);
 }
 
 
-void BvCommandBufferVk::SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat)
+void BvCommandBufferVk::SetIndexBufferView(const BufferViewDesc& indexBufferView)
 {
-	auto formatVk = GetVkIndexType(indexFormat);
+	auto formatVk = GetVkIndexType(indexBufferView.m_IndexFormat);
+	VkBuffer indexBuffer = VK_NULL_HANDLE;
+	VkDeviceSize indexBufferOffset = 0;
+	if (indexBufferView.m_pBuffer)
+	{
+		indexBuffer = TO_VK(indexBufferView.m_pBuffer)->GetHandle();
+		indexBufferOffset = indexBufferView.m_Offset;
+	}
 	
-	vkCmdBindIndexBuffer(m_CommandBuffer, TO_VK(pIndexBufferView->GetDesc().m_pBuffer)->GetHandle(), pIndexBufferView->GetDesc().m_Offset, formatVk);
+	vkCmdBindIndexBuffer(m_CommandBuffer, indexBuffer, indexBufferView.m_Offset, formatVk);
 }
 
 

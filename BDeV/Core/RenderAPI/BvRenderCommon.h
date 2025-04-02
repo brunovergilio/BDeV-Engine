@@ -17,6 +17,7 @@ class IBvShader;
 class IBvShaderResourceLayout;
 class IBvShaderBindingTable;
 class IBvShaderCompiler;
+class IBvRenderPass;
 
 
 constexpr u32 kMaxRenderTargets = 8;
@@ -613,8 +614,19 @@ struct BufferViewDesc
 	IBvBuffer* m_pBuffer = nullptr;
 	u64 m_Offset = 0;
 	u64 m_ElementCount = 0;
-	u64 m_Stride = 0;
+	u32 m_Stride = 0;
 	Format m_Format = Format::kUnknown;
+	IndexFormat m_IndexFormat = IndexFormat::kUnknown;
+
+	BV_INLINE static BufferViewDesc AsVertexBuffer(IBvBuffer* pBuffer, u32 stride, u64 offset = 0)
+	{
+		return { pBuffer, offset, 0, stride, Format::kUnknown, IndexFormat::kUnknown };
+	}
+
+	BV_INLINE static BufferViewDesc AsIndexBuffer(IBvBuffer* pBuffer, IndexFormat format, u64 offset = 0)
+	{
+		return { pBuffer, offset, 0, 0, Format::kUnknown, format };
+	}
 };
 
 
@@ -725,7 +737,7 @@ struct TextureInitData
 {
 	IBvCommandContext* m_pContext = nullptr;
 	u32 m_SubresourceCount = 0;
-	SubresourceData* m_pSubresources = nullptr;
+	const SubresourceData* m_pSubresources = nullptr;
 };
 
 
@@ -922,7 +934,7 @@ struct SamplerDesc
 	float			m_MaxAnisotropy = 1.0f;
 	float			m_MipLodBias = 0.0f;
 	float			m_MinLod = 0.0f;
-	float			m_MaxLod = 1.0f;
+	float			m_MaxLod = kF32Max;
 	float			m_BorderColor[4]{};
 };
 
@@ -1268,19 +1280,6 @@ struct InputAssemblyStateDesc
 };
 
 
-struct TessellationStateDesc
-{
-	u8 m_PatchControlPoints = 0;
-};
-
-
-struct ViewportStateDesc
-{
-	u8 m_MaxViewportCount = 1;
-	u8 m_MaxScissorCount = 1;
-};
-
-
 struct RasterizerStateDesc
 {
 	FillMode m_FillMode = FillMode::kSolid;
@@ -1337,6 +1336,34 @@ struct BlendStateDesc
 	LogicOp m_LogicOp = LogicOp::kClear;
 	bool m_LogicEnable = false;
 	bool m_AlphaToCoverageEnable = false;
+};
+
+
+struct GraphicsPipelineStateDesc
+{
+	u32							m_VertexInputDescCount = 0;
+	VertexInputDesc*			m_pVertexInputDescs = nullptr;
+	IBvShader*					m_Shaders[kMaxShaderStages]{};
+	InputAssemblyStateDesc		m_InputAssemblyStateDesc;
+	RasterizerStateDesc			m_RasterizerStateDesc;
+	DepthStencilDesc			m_DepthStencilDesc;
+	BlendStateDesc				m_BlendStateDesc;
+	IBvShaderResourceLayout*	m_pShaderResourceLayout = nullptr;
+	IBvRenderPass*				m_pRenderPass = nullptr;
+	Format						m_RenderTargetFormats[kMaxRenderTargets]{};
+	Format						m_DepthStencilFormat = Format::kUnknown;
+	u32							m_SampleCount = 1;
+	u8							m_PatchControlPoints = 0;
+	bool						m_ShadingRateEnabled = false;
+	u32							m_SampleMask = kMax<u32>;
+	u32							m_SubpassIndex = 0;
+};
+
+
+struct ComputePipelineStateDesc
+{
+	IBvShader* m_pShader = nullptr;
+	IBvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
 };
 
 

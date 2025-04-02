@@ -437,15 +437,15 @@ void BvCommandContextVk::SetShaderConstants(u32 size, const void* pData, u32 bin
 }
 
 
-void BvCommandContextVk::SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding /*= 0*/)
+void BvCommandContextVk::SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding /*= 0*/)
 {
 	m_pCurrCommandBuffer->SetVertexBufferViews(vertexBufferCount, pVertexBufferViews, firstBinding);
 }
 
 
-void BvCommandContextVk::SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat)
+void BvCommandContextVk::SetIndexBufferView(const BufferViewDesc& indexBufferView)
 {
-	m_pCurrCommandBuffer->SetIndexBufferView(pIndexBufferView, indexFormat);
+	m_pCurrCommandBuffer->SetIndexBufferView(indexBufferView);
 }
 
 

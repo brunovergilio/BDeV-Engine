@@ -4,6 +4,40 @@
 #include "BvDebugReportVk.h"
 
 
+class BvRenderEngineVkHelper
+{
+public:
+	static BvRenderEngineVk* s_pEngine;
+
+	static BvRenderEngineVk* Create()
+	{
+		static bool initialized = false;
+		if (!initialized)
+		{
+			initialized = true;
+			s_pEngine = BV_NEW(BvRenderEngineVk)();
+			if (s_pEngine->GetGPUs().Size() == 0)
+			{
+				BV_DELETE(s_pEngine);
+				s_pEngine = nullptr;
+			}
+		}
+		else if (s_pEngine)
+		{
+			s_pEngine->AddRef();
+		}
+
+		return s_pEngine;
+	}
+
+	static void Destroy()
+	{
+		BV_DELETE(s_pEngine);
+	}
+};
+BvRenderEngineVk* BvRenderEngineVkHelper::s_pEngine = nullptr;
+
+
 bool IsInstanceExtensionSupported(const BvVector<VkExtensionProperties>& extensions, const char* pExtension);
 bool IsInstanceLayerSupported(const BvVector<VkLayerProperties>& layers, const char* pLayer);
 bool IsDeviceSuitable(VkPhysicalDevice gpu);
@@ -28,11 +62,11 @@ IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCr
 		}
 	}
 
-	auto& pDevice = m_Devices[gpuIndex];
+	auto& pDevice = m_Devices[gpuIndex].second;
 	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
 	if (!pDevice)
 	{
-		pDevice = BV_NEW(BvRenderDeviceVk)(this, m_GPUs[gpuIndex], descVk);
+		pDevice = BV_NEW(BvRenderDeviceVk)(this, m_Devices[gpuIndex].first, gpuIndex, m_GPUs[gpuIndex], descVk);
 		if (!pDevice->IsValid())
 		{
 			pDevice->Release();
@@ -41,6 +75,12 @@ IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCr
 	}
 
 	return pDevice;
+}
+
+
+void BvRenderEngineVk::OnDeviceDestroyed(u32 index)
+{
+	m_Devices[index] = { VK_NULL_HANDLE, nullptr };
 }
 
 
@@ -203,6 +243,7 @@ void BvRenderEngineVk::Create()
 	for (auto i = 0; i < m_GPUs.Size(); ++i)
 	{
 		SetupGPUInfo(physicalDevices[i], m_GPUs[i]);
+		m_Devices[i].first = physicalDevices[i];
 	}
 
 	if (IsInstanceExtensionSupported(supportedExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
@@ -218,18 +259,33 @@ void BvRenderEngineVk::Create()
 
 void BvRenderEngineVk::Destroy()
 {
-	if (m_pDebugReport)
-	{
-		BV_DELETE(m_pDebugReport);
-	}
-
 	if (m_Instance)
 	{
+		for (auto& devicePair : m_Devices)
+		{
+			auto pDevice = devicePair.second;
+			if (pDevice)
+			{
+				static_cast<IBvResourceVk*>(pDevice)->Destroy();
+			}
+		}
+
+		if (m_pDebugReport)
+		{
+			BV_DELETE(m_pDebugReport);
+		}
+
 		vkDestroyInstance(m_Instance, nullptr);
 		m_Instance = VK_NULL_HANDLE;
-	}
 
-	m_VulkanLib.Close();
+		m_VulkanLib.Close();
+	}
+}
+
+
+void BvRenderEngineVk::SelfDestroy()
+{
+	BvRenderEngineVkHelper::Destroy();
 }
 
 
@@ -349,19 +405,6 @@ void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo)
 		gpuInfo.m_Type = GPUType::kUnknown;
 		break;
 	}
-
-	gpuInfo.m_pPhysicalDevice = gpu;
-};
-
-
-class BvRenderEngineVkHelper
-{
-public:
-	static BvRenderEngineVk* GetEngine()
-	{
-		static BvRenderEngineVk engine;
-		return engine.GetGPUs().Size() > 0 ? &engine : nullptr;
-	}
 };
 
 
@@ -371,13 +414,12 @@ namespace BvRenderVk
 	{
 		BV_API IBvRenderEngine* CreateRenderEngine()
 		{
-			return CreateRenderEngineVk();
+			return BvRenderEngineVkHelper::Create();
 		}
-
 
 		BV_API BvRenderEngineVk* CreateRenderEngineVk()
 		{
-			return BvRenderEngineVkHelper::GetEngine();
+			return BvRenderEngineVkHelper::Create();
 		}
 	}
 }

@@ -18,11 +18,8 @@ public:
 private:
 	void CreateShaderResourceLayout();
 	void CreatePipeline();
-	void CompileShaders();
 
 private:
 	BvRCRef<IBvShaderResourceLayout> m_SRL;
-	BvRCRef<IBvShader> m_VS;
-	BvRCRef<IBvShader> m_PS;
 	BvRCRef<IBvGraphicsPipelineState> m_PSO;
 };

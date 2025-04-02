@@ -25,6 +25,7 @@ class BvRenderEngineVk final : public IBvRenderEngine
 
 public:
 	IBvRenderDevice* CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc) override;
+	void OnDeviceDestroyed(u32 index);
 	BV_INLINE const BvVector<BvGPUInfo>& GetGPUs() const override { return m_GPUs; }
 	BV_INLINE VkInstance GetHandle() const { return m_Instance; }
 	BV_INLINE bool HasDebugUtils() const { return m_HasDebugUtils; }
@@ -39,12 +40,13 @@ private:
 
 	void Create();
 	void Destroy();
+	void SelfDestroy() override;
 
 private:
 	BvSharedLib m_VulkanLib;
 	VkInstance m_Instance = VK_NULL_HANDLE;
 	BvVector<BvGPUInfo> m_GPUs;
-	BvVector<BvRenderDeviceVk*> m_Devices;
+	BvVector<std::pair<VkPhysicalDevice, BvRenderDeviceVk*>> m_Devices;
 	BvDebugReportVk* m_pDebugReport = nullptr;
 	bool m_HasDebugUtils = false;
 };

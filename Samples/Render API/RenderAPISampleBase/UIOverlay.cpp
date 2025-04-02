@@ -65,10 +65,11 @@ UIOverlay::~UIOverlay()
 }
 
 
-void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext)
+void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext, IBvShaderCompiler* pCompiler)
 {
 	m_Device = pDevice;
 	m_Context = pContext;
+	m_Compiler = pCompiler;
 
 	// Init ImGui
 	ImGui::CreateContext();
@@ -114,7 +115,7 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	texData.m_SubresourceCount = 1;
 	texData.m_pSubresources = &texSubRes;
 	texData.m_pContext = pContext;
-	m_Texture.Set(m_Device->CreateTexture(texDesc, &texData));
+	m_Texture = m_Device->CreateTexture(texDesc, &texData);
 	
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = texDesc.m_Format;
@@ -122,11 +123,11 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	viewDesc.m_ViewType = TextureViewType::kTexture2D;
 	viewDesc.m_SubresourceDesc.mipCount = 1;
 	viewDesc.m_SubresourceDesc.layerCount = 1;
-	m_TextureView.Set(m_Device->CreateTextureView(viewDesc));
+	m_TextureView = m_Device->CreateTextureView(viewDesc);
 
 	SamplerDesc samDesc;
 	samDesc.m_AddressModeU = samDesc.m_AddressModeV = samDesc.m_AddressModeW = AddressMode::kClamp;
-	m_Sampler.Set(m_Device->CreateSampler(samDesc));
+	m_Sampler = m_Device->CreateSampler(samDesc);
 
 	ShaderResourceDesc resources[] =
 	{
@@ -147,47 +148,37 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	ShaderResourceLayoutDesc srlDesc;
 	srlDesc.m_ShaderResourceSetCount = 1;
 	srlDesc.m_pShaderResourceSets = &setDesc;
-	m_SRL.Set(m_Device->CreateShaderResourceLayout(srlDesc));
+	m_SRL = m_Device->CreateShaderResourceLayout(srlDesc);
 }
 
 
 void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRenderPass* pRenderPass)
 {
-	BvRCRef<IBvShaderCompiler> compiler;
-	BvSharedLib renderToolsLib("BvRenderTools.dll");
-	typedef IBvShaderCompiler*(*pFNGetShaderCompiler)();
-	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
-	compiler.Set(compilerFn());
-
-	BvRCRef<IBvShaderBlob> vsBlob;
-	BvRCRef<IBvShaderBlob> psBlob;
-
 	ShaderCreateDesc vsDesc;
 	vsDesc.m_ShaderStage = ShaderStage::kVertex;
 	vsDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	vsDesc.m_pSourceCode = pVS;
 	vsDesc.m_SourceCodeSize = vsSize;
-	compiler->Compile(vsDesc, &vsBlob);
+	BvRCRef<IBvShaderBlob> vsBlob = m_Compiler->Compile(vsDesc);
 
 	ShaderCreateDesc psDesc;
 	psDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
 	psDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	psDesc.m_pSourceCode = pPS;
 	psDesc.m_SourceCodeSize = psSize;
-	compiler->Compile(psDesc, &psBlob);
+	BvRCRef<IBvShaderBlob> psBlob = m_Compiler->Compile(psDesc);
 
 	BvRCRef<IBvShader> vs;
 	vsDesc.m_pByteCode = (const u8*)vsBlob->GetBufferPointer();
 	vsDesc.m_ByteCodeSize = vsBlob->GetBufferSize();
-	vs.Set(m_Device->CreateShader(vsDesc));
+	vs = m_Device->CreateShader(vsDesc);
 	vsBlob.Reset();
 
 	BvRCRef<IBvShader> ps;
 	psDesc.m_pByteCode = (const u8*)psBlob->GetBufferPointer();
 	psDesc.m_ByteCodeSize = psBlob->GetBufferSize();
-	ps.Set(m_Device->CreateShader(psDesc));
+	ps = m_Device->CreateShader(psDesc);
 	psBlob.Reset();
-	compiler.Reset();
 
 	GraphicsPipelineStateDesc psoDesc;
 	psoDesc.m_Shaders[0] = vs;
@@ -210,7 +201,7 @@ void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRen
 	inputDescs[2].m_Format = Format::kRGBA8_UNorm;
 	psoDesc.m_VertexInputDescCount = 3;
 	psoDesc.m_pVertexInputDescs = inputDescs;
-	m_Pipeline.Set(m_Device->CreateGraphicsPipeline(psoDesc));
+	m_Pipeline = m_Device->CreateGraphicsPipeline(psoDesc);
 }
 
 
@@ -267,7 +258,6 @@ void UIOverlay::Render()
 	// Vertex buffer
 	if ((!m_VB) || (m_VertexCount < pImDrawData->TotalVtxCount))
 	{
-		m_VBView.Reset();
 		m_VB.Reset();
 		CreateVB(vertexBufferSize, m_VertexCount);
 		m_VertexCount = pImDrawData->TotalVtxCount;
@@ -276,7 +266,6 @@ void UIOverlay::Render()
 	// Index buffer
 	if ((!m_IB) || (m_IndexCount < pImDrawData->TotalIdxCount))
 	{
-		m_IBView.Reset();
 		m_IB.Reset();
 		CreateIB(indexBufferSize, m_IndexCount);
 		m_IndexCount = pImDrawData->TotalIdxCount;
@@ -312,8 +301,8 @@ void UIOverlay::Render()
 
 	m_Context->SetShaderConstantsT<PushConstBlock>(m_PC, 0, 0);
 
-	m_Context->SetVertexBufferView(m_VBView);
-	m_Context->SetIndexBufferView(m_IBView, IndexFormat::kU16);
+	m_Context->SetVertexBufferView(m_VB, sizeof(ImDrawVert));
+	m_Context->SetIndexBufferView(m_IB, IndexFormat::kU16);
 
 	for (auto i = 0; i < pImDrawData->CmdListsCount; i++)
 	{
@@ -343,8 +332,6 @@ void UIOverlay::Shutdown()
 	}
 	m_Pipeline.Reset();
 	m_SRL.Reset();
-	m_VBView.Reset();
-	m_IBView.Reset();
 	m_VB.Reset();
 	m_IB.Reset();
 	m_TextureView.Reset();
@@ -362,13 +349,7 @@ void UIOverlay::CreateVB(u64 size, u32 count)
 	desc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 	desc.m_Size = size;
 	desc.m_UsageFlags = BufferUsage::kVertexBuffer;
-	m_VB.Set(m_Device->CreateBuffer(desc, nullptr));
-
-	BufferViewDesc viewDesc;
-	viewDesc.m_pBuffer = m_VB;
-	viewDesc.m_ElementCount = count;
-	viewDesc.m_Stride = sizeof(ImDrawVert);
-	m_VBView.Set(m_Device->CreateBufferView(viewDesc));
+	m_VB = m_Device->CreateBuffer(desc, nullptr);
 }
 
 
@@ -379,11 +360,5 @@ void UIOverlay::CreateIB(u64 size, u32 count)
 	desc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 	desc.m_Size = size;
 	desc.m_UsageFlags = BufferUsage::kIndexBuffer;
-	m_IB.Set(m_Device->CreateBuffer(desc, nullptr));
-
-	BufferViewDesc viewDesc;
-	viewDesc.m_pBuffer = m_IB;
-	viewDesc.m_ElementCount = count;
-	viewDesc.m_Stride = sizeof(ImDrawIdx);
-	m_IBView.Set(m_Device->CreateBufferView(viewDesc));
+	m_IB = m_Device->CreateBuffer(desc, nullptr);
 }

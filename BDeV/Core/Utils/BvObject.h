@@ -464,6 +464,34 @@ concept BvRCType = std::is_base_of_v<BvRCObj, T>;
 
 
 template<BvRCType T>
+class BvRCRaw
+{
+public:
+	BvRCRaw() = default;
+	BvRCRaw(const BvRCRaw& rhs) = default;
+	BvRCRaw(BvRCRaw&& rhs) = default;
+	BvRCRaw& operator=(const BvRCRaw& rhs) = default;
+	BvRCRaw& operator=(BvRCRaw&& rhs) = default;
+	~BvRCRaw() = default;
+
+	BvRCRaw(T* pObj) : m_pObj(pObj) {}
+	T* operator->() const { return m_pObj; }
+	operator bool() const { return m_pObj != nullptr; }
+	operator T* () const { return m_pObj; }
+
+private:
+	T* m_pObj;
+};
+
+
+template<typename T, typename U>
+concept BvRCIsRawType = std::is_same_v<T, BvRCRaw<U>>;
+
+template<typename T, typename U>
+concept BvRCIsNotRawType = !BvRCIsRawType<T, U>;
+
+
+template<BvRCType T>
 class BvRCRef
 {
 public:
@@ -471,7 +499,13 @@ public:
 		: m_pObj(nullptr)
 	{
 	}
-	BvRCRef(T* pObj)
+	template<BvRCIsRawType<T> U>
+	BvRCRef(U obj)
+		: m_pObj(obj)
+	{
+	}
+	template<BvRCIsNotRawType<T> U>
+	BvRCRef(U* pObj)
 		: m_pObj(pObj)
 	{
 		InternalAddRef();
@@ -506,18 +540,12 @@ public:
 		InternalRelease();
 	}
 
-	void Set(T* pObj)
-	{
-		m_pObj = pObj;
-	}
-
 	void Reset()
 	{
 		InternalRelease();
 	}
 
 	T* operator->() const { return m_pObj; }
-	T** operator&() { return &m_pObj; }
 	operator bool() const { return m_pObj != nullptr; }
 	operator T*() const { return m_pObj; }
 

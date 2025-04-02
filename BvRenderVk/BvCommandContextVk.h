@@ -122,8 +122,8 @@ public:
 	void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex) override;
 	void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set) override;
 
-	void SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding = 0) override;
-	void SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat) override;
+	void SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding = 0) override;
+	void SetIndexBufferView(const BufferViewDesc& indexBufferView) override;
 
 	void Draw(const DrawCommandArgs& args) override;
 	void DrawIndexed(const DrawIndexedCommandArgs& args) override;

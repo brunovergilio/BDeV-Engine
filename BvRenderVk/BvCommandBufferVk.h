@@ -76,8 +76,8 @@ public:
 	void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set);
 
-	void SetVertexBufferViews(u32 vertexBufferCount, const IBvBufferView* const* pVertexBufferViews, u32 firstBinding = 0);
-	void SetIndexBufferView(const IBvBufferView* pIndexBufferView, IndexFormat indexFormat);
+	void SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding = 0);
+	void SetIndexBufferView(const BufferViewDesc& indexBufferView);
 
 	void SetDepthBounds(float min, float max);
 	void SetStencilRef(u32 stencilRef);

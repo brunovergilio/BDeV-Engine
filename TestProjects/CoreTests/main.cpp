@@ -152,21 +152,8 @@ BvFiber* pFb = nullptr;
 BvFiber* pFb2 = nullptr;
 
 
-struct GG
-{
-	template<typename T = int>
-	void PrintMe()
-	{
-		printf("%s\n", BV_FUNCTION);
-	}
-};
-
-
 int main()
 {
-	GG ff;
-	ff.PrintMe();
-	ff.PrintMe<f32>();
 	//BvFiber& mfb = BvThread::ConvertToFiber();
 
 	//BvSignal s;

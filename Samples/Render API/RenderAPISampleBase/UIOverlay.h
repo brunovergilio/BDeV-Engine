@@ -11,7 +11,7 @@ public:
 	UIOverlay();
 	~UIOverlay();
 
-	void Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext);
+	void Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext, IBvShaderCompiler* pCompiler);
 	void SetupPipeline(Format swapChainFormat, Format depthFormat = Format::kUnknown, IBvRenderPass* pRenderPass = nullptr);
 	bool Update(f32 dt, BvWindow* pWindow);
 	void Render();
@@ -23,10 +23,9 @@ private:
 
 private:
 	BvRCRef<IBvRenderDevice> m_Device;
+	BvRCRef<IBvShaderCompiler> m_Compiler;
 	BvRCRef<IBvBuffer> m_VB;
 	BvRCRef<IBvBuffer> m_IB;
-	BvRCRef<IBvBufferView> m_VBView;
-	BvRCRef<IBvBufferView> m_IBView;
 	BvRCRef<IBvGraphicsPipelineState> m_Pipeline;
 	BvRCRef<IBvShaderResourceLayout> m_SRL;
 	BvRCRef<IBvTexture> m_Texture;

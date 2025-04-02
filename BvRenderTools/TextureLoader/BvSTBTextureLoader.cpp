@@ -21,12 +21,17 @@ BvSTBTextureLoader::~BvSTBTextureLoader()
 }
 
 
-IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureFromFile(const char* pFilename, IBvTextureBlob** ppTextureBlob)
+BvRCRaw<IBvTextureBlob> BvSTBTextureLoader::LoadTextureFromFile(const char* pFilename, IBvTextureLoader::Result* pResult)
 {
-	BvFile file(pFilename);
+	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
-		return IBvTextureLoader::Result::kInvalidArg;
+		if (pResult)
+		{
+			*pResult = IBvTextureLoader::Result::kInvalidArg;
+		}
+
+		return nullptr;
 	}
 
 	u64 bufferSize = file.GetSize();
@@ -34,22 +39,21 @@ IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureFromFile(const char* pFi
 	file.Read(buffer.Data(), (u32)bufferSize);
 	file.Close();
 
-	return LoadTextureInternal(buffer, ppTextureBlob);
+	return LoadTextureInternal(buffer, pResult);
 }
 
 
-IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureBlob** ppTextureBlob)
+BvRCRaw<IBvTextureBlob> BvSTBTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureLoader::Result* pResult)
 {
 	BvVector<u8> buffer(bufferSize);
 	memcpy(buffer.Data(), pBuffer, bufferSize);
 
-	return LoadTextureInternal(buffer, ppTextureBlob);
+	return LoadTextureInternal(buffer, pResult);
 }
 
 
-IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBvTextureBlob** ppTextureBlob)
+BvTextureBlob* BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBvTextureLoader::Result* pResult)
 {
-	ppTextureBlob = nullptr;
 	BvVector<SubresourceData> subresources;
 	IBvTextureBlob::Info textureInfo;
 
@@ -59,7 +63,11 @@ IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& b
 	Format format = Format::kUnknown;
 	if (!stbi_info_from_memory(buffer.Data(), i32(buffer.Size()), &x, &y, &comp))
 	{
-		return IBvTextureLoader::Result::kNotSupported;
+		if (pResult)
+		{
+			*pResult = IBvTextureLoader::Result::kNotSupported;
+		}
+		return nullptr;
 	}
 
 	if (stbi_is_16_bit_from_memory(buffer.Data(), buffer.Size()))
@@ -111,12 +119,20 @@ IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& b
 
 	if (!pData)
 	{
-		return IBvTextureLoader::Result::kInvalidData;
+		if (pResult)
+		{
+			*pResult = IBvTextureLoader::Result::kInvalidData;
+		}
+		return nullptr;
 	}
 	else if (format == Format::kUnknown)
 	{
 		stbi_image_free(pData);
-		return IBvTextureLoader::Result::kNotSupported;
+		if (pResult)
+		{
+			*pResult = IBvTextureLoader::Result::kNotSupported;
+		}
+		return nullptr;
 	}
 
 	textureInfo.m_TextureType = TextureType::kTexture2D;
@@ -140,10 +156,11 @@ IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& b
 	memcpy(buffer.Data(), pData, buffer.Size());
 	stbi_image_free(pData);
 
-	auto pBlob = BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
-	*ppTextureBlob = pBlob;
-
-	return IBvTextureLoader::Result::kOk;
+	if (pResult)
+	{
+		*pResult = IBvTextureLoader::Result::kOk;
+	}
+	return BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
 }
 
 

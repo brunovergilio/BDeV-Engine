@@ -15,13 +15,13 @@ public:
 	BvSTBTextureLoader();
 	~BvSTBTextureLoader();
 
-	IBvTextureLoader::Result LoadTextureFromFile(const char* pFilename, IBvTextureBlob** ppTextureBlob) override;
-	IBvTextureLoader::Result LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureBlob** ppTextureBlob) override;
+	BvRCRaw<IBvTextureBlob> LoadTextureFromFile(const char* pFilename, IBvTextureLoader::Result* pResult = nullptr) override;
+	BvRCRaw<IBvTextureBlob> LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureLoader::Result* pResult = nullptr) override;
 
 	//BV_OBJECT_IMPL_INTERFACE(BvSTBTextureLoader, IBvTextureLoader);
 
 private:
-	IBvTextureLoader::Result LoadTextureInternal(BvVector<u8>& buffer, IBvTextureBlob** ppTextureBlob);
+	BvTextureBlob* LoadTextureInternal(BvVector<u8>& buffer, IBvTextureLoader::Result* pResult);
 	//void GenerateMips(const IBvTextureBlob::Info& textureInfo, const BvVector<u8>& inputBuffer, BvVector<u8>& outputBuffer, BvVector<SubresourceData>& subresources);
 	void SelfDestroy() override;
 };

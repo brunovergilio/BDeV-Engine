@@ -51,6 +51,7 @@ constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 void Buffers::OnInitialize()
 {
+	m_AppName = "Buffers";
 	CreateBuffers();
 	CreateRenderTargets();
 	CreateShaderResourceLayout();
@@ -93,23 +94,6 @@ void Buffers::OnUpdate()
 }
 
 
-void Buffers::OnUpdateUI()
-{
-	ImGui::NewFrame();
-
-	ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Render Sample", nullptr);
-	ImGui::TextUnformatted("Buffers");
-	ImGui::Text("FPS: %d", m_FPSCounter.GetFPS());
-	ImGui::End();
-
-	ImGui::EndFrame();
-
-	ImGui::Render();
-}
-
-
 void Buffers::OnRender()
 {
 	auto width = m_pWindow->GetWidth();
@@ -127,9 +111,9 @@ void Buffers::OnRender()
 	m_Context->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
 	m_Context->SetScissor({ 0, 0, width, height });
 	m_Context->SetConstantBuffer(m_UBView, 0, 0);
-	m_Context->SetVertexBufferView(m_VBView);
-	m_Context->SetIndexBufferView(m_IBView, IndexFormat::kU32);
-	m_Context->DrawIndexed(m_IBView->GetDesc().m_ElementCount);
+	m_Context->SetVertexBufferView(m_VB, sizeof(Vertex));
+	m_Context->SetIndexBufferView(m_IB, IndexFormat::kU32);
+	m_Context->DrawIndexed(36);
 	OnRenderUI();
 	m_Context->Execute();
 
@@ -144,8 +128,6 @@ void Buffers::OnShutdown()
 	m_UB.Reset();
 	m_VB.Reset();
 	m_IB.Reset();
-	m_VBView.Reset();
-	m_IBView.Reset();
 	m_UBView.Reset();
 	m_Depth.Reset();
 	m_DepthView.Reset();
@@ -173,11 +155,11 @@ void Buffers::CreateShaderResourceLayout()
 
 void Buffers::CreatePipeline()
 {
-	CompileShaders();
-
+	auto vs = CompileShader(g_pVSShader, g_VSSize, ShaderStage::kVertex);
+	auto ps = CompileShader(g_pPSShader, g_PSSize, ShaderStage::kPixelOrFragment);
 	GraphicsPipelineStateDesc pipelineDesc;
-	pipelineDesc.m_Shaders[0] = m_VS;
-	pipelineDesc.m_Shaders[1] = m_PS;
+	pipelineDesc.m_Shaders[0] = vs;
+	pipelineDesc.m_Shaders[1] = ps;
 	pipelineDesc.m_RenderTargetFormats[0] = m_SwapChain->GetDesc().m_Format;
 	pipelineDesc.m_DepthStencilFormat = m_DepthView->GetDesc().m_Format;
 	pipelineDesc.m_DepthStencilDesc.m_DepthTestEnable = true;
@@ -193,41 +175,6 @@ void Buffers::CreatePipeline()
 	pipelineDesc.m_pVertexInputDescs = inputDescs;
 
 	m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
-
-	m_VS.Reset();
-	m_PS.Reset();
-}
-
-
-void Buffers::CompileShaders()
-{
-	BvSharedLib renderToolsLib("BvRenderTools.dll");
-	using ShaderCompilerFnType = IBvShaderCompiler*(*)();
-	ShaderCompilerFnType compilerFn = renderToolsLib.GetProcAddressT<ShaderCompilerFnType>("CreateSPIRVCompiler");
-	BvRCRef<IBvShaderCompiler> compiler = compilerFn();
-
-	ShaderCreateDesc shaderDesc;
-	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
-	shaderDesc.m_ShaderStage = ShaderStage::kVertex;
-	shaderDesc.m_pSourceCode = g_pVSShader;
-	shaderDesc.m_SourceCodeSize = g_VSSize;
-	BvRCRef<IBvShaderBlob> compiledShader;
-	auto result = compiler->Compile(shaderDesc, &compiledShader);
-	BV_ASSERT(result, "Invalid Shader");
-	shaderDesc.m_pByteCode = (const u8*)compiledShader->GetBufferPointer();
-	shaderDesc.m_ByteCodeSize = compiledShader->GetBufferSize();
-	m_VS = m_Device->CreateShader(shaderDesc);
-	compiledShader.Reset();
-
-	shaderDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
-	shaderDesc.m_pSourceCode = g_pPSShader;
-	shaderDesc.m_SourceCodeSize = g_PSSize;
-	result = compiler->Compile(shaderDesc, &compiledShader);
-	BV_ASSERT(result, "Invalid Shader");
-	shaderDesc.m_pByteCode = (const u8*)compiledShader->GetBufferPointer();
-	shaderDesc.m_ByteCodeSize = compiledShader->GetBufferSize();
-	m_PS = m_Device->CreateShader(shaderDesc);
-	compiledShader.Reset();
 }
 
 
@@ -256,22 +203,12 @@ void Buffers::CreateBuffers()
 	bufferData.m_Size = bufferDesc.m_Size;
 	m_VB = m_Device->CreateBuffer(bufferDesc, &bufferData);
 
-	viewDesc.m_pBuffer = m_VB;
-	viewDesc.m_Stride = sizeof(Vertex);
-	viewDesc.m_ElementCount = vertices.Size();
-	m_VBView = m_Device->CreateBufferView(viewDesc);
-
 	bufferDesc.m_Size = sizeof(u32) * data.m_Indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kIndexBuffer;
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = data.m_Indices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
 	m_IB = m_Device->CreateBuffer(bufferDesc, &bufferData);
-
-	viewDesc.m_pBuffer = m_IB;
-	viewDesc.m_Stride = sizeof(u32);
-	viewDesc.m_ElementCount = data.m_Indices.Size();
-	m_IBView = m_Device->CreateBufferView(viewDesc);
 
 	bufferDesc.m_Size = sizeof(Float44);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;

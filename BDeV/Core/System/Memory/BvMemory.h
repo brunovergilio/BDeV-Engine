@@ -43,12 +43,6 @@ namespace Internal
 	template<typename Type>
 	void Delete(Type* pObj, const BvSourceInfo& sourceInfo)
 	{
-		// Only call the dtor if needed
-		if constexpr (!std::is_trivially_destructible_v<Type>)
-		{
-			pObj->~Type();
-		}
-
 		BvMemory::Free(pObj);
 
 		BvConsole::Print(BvColorI::BrightCyan, "Delete called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
@@ -136,12 +130,6 @@ namespace Internal
 	template<typename Type, class Allocator>
 	void Delete(Type* pObj, Allocator& allocator, const BvSourceInfo& sourceInfo)
 	{
-		// Only call the dtor if needed
-		if constexpr (!std::is_trivially_destructible_v<Type>)
-		{
-			pObj->~Type();
-		}
-
 		allocator.Free(pObj, sourceInfo);
 	}
 
@@ -214,7 +202,15 @@ namespace Internal
 #define BV_MNEW(allocator, Type) new(Internal::New<Type>(allocator, BV_SOURCE_INFO)) Type
 #define BV_MNEW_SI(allocator, sourceInfo, Type) new(Internal::New<Type>(allocator, sourceInfo)) Type
 // Free type
-#define BV_MDELETE(allocator, pObj) Internal::Delete(pObj, allocator, BV_SOURCE_INFO)
+#define BV_MDELETE(allocator, pObj) do \
+{ \
+	if (pObj) \
+	{ \
+		using ObjType = std::remove_reference_t<decltype(*pObj)>; \
+		if constexpr (!std::is_trivially_destructible_v<ObjType>) { pObj->~ObjType(); } \
+		Internal::Delete(pObj, allocator, BV_SOURCE_INFO) \
+	} \
+} while (0)
 // Allocate array of type
 #define BV_MNEW_ARRAY(allocator, Type, count) Internal::NewArray<Type>(count, allocator, BV_SOURCE_INFO)
 #define BV_MNEW_ARRAY_SI(allocator, sourceInfo, Type, count) Internal::NewArray<Type>(count, allocator, sourceInfo)
@@ -233,7 +229,15 @@ namespace Internal
 #define BV_NEW(Type) new(Internal::New<Type>(BV_SOURCE_INFO)) Type
 #define BV_NEW_SI(sourceInfo, Type) new(Internal::New<Type>(sourceInfo)) Type
 // Free type
-#define BV_DELETE(pObj) Internal::Delete(pObj, BV_SOURCE_INFO)
+#define BV_DELETE(pObj) do \
+{ \
+	if (pObj) \
+	{ \
+		using ObjType = std::remove_reference_t<decltype(*pObj)>; \
+		if constexpr (!std::is_trivially_destructible_v<ObjType>) { pObj->~ObjType(); } \
+		Internal::Delete(pObj, BV_SOURCE_INFO); \
+	} \
+} while (0)
 // Allocate array of type
 #define BV_NEW_ARRAY(Type, count) Internal::NewArray<Type>(count, BV_SOURCE_INFO)
 #define BV_NEW_ARRAY_SI(sourceInfo, Type, count) Internal::NewArray<Type>(count, sourceInfo)

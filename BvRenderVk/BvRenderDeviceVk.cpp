@@ -30,8 +30,8 @@ u32 GetQueueFamilyIndex(const BvVector<VkQueueFamilyProperties2>& queueFamilyPro
 bool QueueSupportsPresent(VkPhysicalDevice physicalDevice, u32 index);
 
 
-BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
-	: m_pEngine(pEngine), m_PhysicalDevice((VkPhysicalDevice)gpuInfo.m_pPhysicalDevice), m_pDeviceInfo(BV_NEW(BvDeviceInfoVk)()), m_GPUInfo(gpuInfo)
+BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, VkPhysicalDevice physicalDevice, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
+	: m_pEngine(pEngine), m_PhysicalDevice(physicalDevice), m_pDeviceInfo(BV_NEW(BvDeviceInfoVk)()), m_GPUInfo(gpuInfo), m_Index(index)
 {
 	Create(deviceDesc);
 }
@@ -513,6 +513,8 @@ void BvRenderDeviceVk::Destroy()
 
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
+		
+		m_pEngine->OnDeviceDestroyed(m_Index);
 	}
 }
 

@@ -31,8 +31,8 @@ BvShaderVk::~BvShaderVk()
 
 void BvShaderVk::Compile(const ShaderCreateDesc& shaderCreateDesc)
 {
-	IBvShaderBlob* pBlob = nullptr;
-	if (shaderCreateDesc.pShaderCompiler->Compile(shaderCreateDesc, &pBlob))
+	IBvShaderBlob* pBlob = shaderCreateDesc.pShaderCompiler->Compile(shaderCreateDesc);
+	if (pBlob)
 	{
 		m_ShaderBlob.Resize(pBlob->GetBufferSize());
 		memcpy(&m_ShaderBlob[0], pBlob->GetBufferPointer(), m_ShaderBlob.Size());

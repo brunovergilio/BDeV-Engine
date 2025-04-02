@@ -53,7 +53,10 @@ BvGraphicsPipelineStateVk::~BvGraphicsPipelineStateVk()
 		}
 	}
 
-	BV_DELETE_ARRAY(m_PipelineStateDesc.m_pVertexInputDescs);
+	if (m_PipelineStateDesc.m_pVertexInputDescs)
+	{
+		BV_DELETE_ARRAY(m_PipelineStateDesc.m_pVertexInputDescs);
+	}
 }
 
 
@@ -120,12 +123,9 @@ void BvGraphicsPipelineStateVk::Create()
 	iaCI.primitiveRestartEnable = m_PipelineStateDesc.m_InputAssemblyStateDesc.m_PrimitiveRestart;
 	iaCI.topology = GetVkPrimitiveTopology(m_PipelineStateDesc.m_InputAssemblyStateDesc.m_Topology);
 
-	VkPipelineTessellationStateCreateInfo tessCI{ VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
-	tessCI.patchControlPoints = m_PipelineStateDesc.m_TessellationStateDesc.m_PatchControlPoints;
+	VkPipelineTessellationStateCreateInfo tessCI{ VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO, nullptr, 0, m_PipelineStateDesc.m_PatchControlPoints };
 
 	VkPipelineViewportStateCreateInfo viewportCI{ VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-	//viewportCI.viewportCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxViewportCount;
-	//viewportCI.scissorCount = m_PipelineStateDesc.m_ViewportStateDesc.m_MaxScissorCount;
 
 	VkPipelineRasterizationStateCreateInfo rasterizerCI{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 	rasterizerCI.polygonMode = GetVkPolygonMode(m_PipelineStateDesc.m_RasterizerStateDesc.m_FillMode);
@@ -248,6 +248,7 @@ void BvGraphicsPipelineStateVk::Create()
 	dynamicStateCI.dynamicStateCount = (u32)dynamicStates.Size();
 	dynamicStateCI.pDynamicStates = dynamicStates.Data();
 
+	bool hasTessellation = false;
 	BvFixedVector<VkPipelineShaderStageCreateInfo, kMaxShaderStages> shaderStages;
 	for (auto i = 0u; i < kMaxShaderStages && m_PipelineStateDesc.m_Shaders[i] != nullptr; i++)
 	{
@@ -255,6 +256,10 @@ void BvGraphicsPipelineStateVk::Create()
 		const auto& byteCode = m_PipelineStateDesc.m_Shaders[i]->GetShaderBlob();
 		shaderStage.pName = m_PipelineStateDesc.m_Shaders[i]->GetEntryPoint();
 		shaderStage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_Shaders[i]->GetShaderStage());
+		if (shaderStage.stage & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
+		{
+			hasTessellation = true;
+		}
 		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
 	}
 
@@ -265,7 +270,7 @@ void BvGraphicsPipelineStateVk::Create()
 	pipelineCI.pStages = shaderStages.Data();
 	pipelineCI.pVertexInputState = &vertexCI;
 	pipelineCI.pInputAssemblyState = &iaCI;
-	pipelineCI.pTessellationState = m_PipelineStateDesc.m_TessellationStateDesc.m_PatchControlPoints > 0 ? &tessCI : nullptr;
+	pipelineCI.pTessellationState = hasTessellation ? &tessCI : nullptr;
 	pipelineCI.pViewportState = &viewportCI;
 	pipelineCI.pRasterizationState = &rasterizerCI;
 	pipelineCI.pMultisampleState = &msCI;

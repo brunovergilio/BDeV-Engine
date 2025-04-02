@@ -43,5 +43,4 @@ struct BvGPUInfo
 	u32 m_TransferContextCount;
 	GPUType m_Type;
 	GPUVendor m_Vendor;
-	void* m_pPhysicalDevice;
 };

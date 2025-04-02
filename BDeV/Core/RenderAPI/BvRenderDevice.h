@@ -27,26 +27,26 @@ class IBvRenderDevice : public BvRCObj
 	BV_NOCOPYMOVE(IBvRenderDevice);
 
 public:
-	template<typename T = IBvSwapChain> BV_INLINE T* CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext) { return static_cast<T*>(CreateSwapChainImpl(pWindow, desc, pContext)); }
-	template<typename T = IBvBuffer> BV_INLINE T* CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData) { return static_cast<T*>(CreateBufferImpl(desc, pInitData)); }
-	template<typename T = IBvBufferView> BV_INLINE T* CreateBufferView(const BufferViewDesc& desc) { return static_cast<T*>(CreateBufferViewImpl(desc)); }
-	template<typename T = IBvTexture> BV_INLINE T* CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData) { return static_cast<T*>(CreateTextureImpl(desc, pInitData)); }
-	template<typename T = IBvTextureView> BV_INLINE T* CreateTextureView(const TextureViewDesc& desc) { return static_cast<T*>(CreateTextureViewImpl(desc)); }
-	template<typename T = IBvSampler> BV_INLINE T* CreateSampler(const SamplerDesc& desc) { return static_cast<T*>(CreateSamplerImpl(desc)); }
-	template<typename T = IBvRenderPass> BV_INLINE T* CreateRenderPass(const RenderPassDesc& renderPassDesc) { return static_cast<T*>(CreateRenderPassImpl(renderPassDesc)); }
-	template<typename T = IBvShaderResourceLayout> BV_INLINE T* CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc) { return static_cast<T*>(CreateShaderResourceLayoutImpl(srlDesc)); }
-	template<typename T = IBvShader> BV_INLINE T* CreateShader(const ShaderCreateDesc& shaderDesc) { return static_cast<T*>(CreateShaderImpl(shaderDesc)); }
-	template<typename T = IBvGraphicsPipelineState> BV_INLINE T* CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) { return static_cast<T*>(CreateGraphicsPipelineImpl(graphicsPipelineStateDesc)); }
-	template<typename T = IBvComputePipelineState> BV_INLINE T* CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) { return static_cast<T*>(CreateComputePipelineImpl(computePipelineStateDesc)); }
-	template<typename T = IBvRayTracingPipelineState> BV_INLINE T* CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc) { return static_cast<T*>(CreateRayTracingPipelineImpl(rayTracingPipelineStateDesc)); }
-	template<typename T = IBvQuery> BV_INLINE T* CreateQuery(QueryType queryType) { return static_cast<T*>(CreateQueryImpl(queryType)); }
-	template<typename T = IBvGPUFence> BV_INLINE T* CreateFence(u64 value) { return static_cast<T*>(CreateFenceImpl(value)); }
-	template<typename T = IBvAccelerationStructure> BV_INLINE T* CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc) { return static_cast<T*>(CreateAccelerationStructureImpl(asDesc)); }
-	template<typename T = IBvShaderBindingTable> BV_INLINE T* CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) { return static_cast<T*>(CreateShaderBindingTableImpl(sbtDesc)); }
-	template<typename T = IBvCommandContext> BV_INLINE T* GetGraphicsContext(u32 index = 0) { return static_cast<T*>(GetGraphicsContextImpl(index)); }
-	template<typename T = IBvCommandContext> BV_INLINE T* GetComputeContext(u32 index = 0) { return static_cast<T*>(GetComputeContextImpl(index)); }
-	template<typename T = IBvCommandContext> BV_INLINE T* GetTransferContext(u32 index = 0) { return static_cast<T*>(GetTransferContextImpl(index)); }
-	
+	template<typename T = IBvSwapChain> BV_INLINE BvRCRaw<T> CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext) { return static_cast<T*>(CreateSwapChainImpl(pWindow, desc, pContext)); }
+	template<typename T = IBvBuffer> BV_INLINE BvRCRaw<T> CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData) { return static_cast<T*>(CreateBufferImpl(desc, pInitData)); }
+	template<typename T = IBvBufferView> BV_INLINE BvRCRaw<T> CreateBufferView(const BufferViewDesc& desc) { return static_cast<T*>(CreateBufferViewImpl(desc)); }
+	template<typename T = IBvTexture> BV_INLINE BvRCRaw<T> CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData) { return static_cast<T*>(CreateTextureImpl(desc, pInitData)); }
+	template<typename T = IBvTextureView> BV_INLINE BvRCRaw<T> CreateTextureView(const TextureViewDesc& desc) { return static_cast<T*>(CreateTextureViewImpl(desc)); }
+	template<typename T = IBvSampler> BV_INLINE BvRCRaw<T> CreateSampler(const SamplerDesc& desc) { return static_cast<T*>(CreateSamplerImpl(desc)); }
+	template<typename T = IBvRenderPass> BV_INLINE BvRCRaw<T> CreateRenderPass(const RenderPassDesc& renderPassDesc) { return static_cast<T*>(CreateRenderPassImpl(renderPassDesc)); }
+	template<typename T = IBvShaderResourceLayout> BV_INLINE BvRCRaw<T> CreateShaderResourceLayout(const ShaderResourceLayoutDesc& srlDesc) { return static_cast<T*>(CreateShaderResourceLayoutImpl(srlDesc)); }
+	template<typename T = IBvShader> BV_INLINE BvRCRaw<T> CreateShader(const ShaderCreateDesc& shaderDesc) { return static_cast<T*>(CreateShaderImpl(shaderDesc)); }
+	template<typename T = IBvGraphicsPipelineState> BV_INLINE BvRCRaw<T> CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) { return static_cast<T*>(CreateGraphicsPipelineImpl(graphicsPipelineStateDesc)); }
+	template<typename T = IBvComputePipelineState> BV_INLINE BvRCRaw<T> CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc) { return static_cast<T*>(CreateComputePipelineImpl(computePipelineStateDesc)); }
+	template<typename T = IBvRayTracingPipelineState> BV_INLINE BvRCRaw<T> CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc) { return static_cast<T*>(CreateRayTracingPipelineImpl(rayTracingPipelineStateDesc)); }
+	template<typename T = IBvQuery> BV_INLINE BvRCRaw<T> CreateQuery(QueryType queryType) { return static_cast<T*>(CreateQueryImpl(queryType)); }
+	template<typename T = IBvGPUFence> BV_INLINE BvRCRaw<T> CreateFence(u64 value) { return static_cast<T*>(CreateFenceImpl(value)); }
+	template<typename T = IBvAccelerationStructure> BV_INLINE BvRCRaw<T> CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc) { return static_cast<T*>(CreateAccelerationStructureImpl(asDesc)); }
+	template<typename T = IBvShaderBindingTable> BV_INLINE BvRCRaw<T> CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) { return static_cast<T*>(CreateShaderBindingTableImpl(sbtDesc)); }
+	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetGraphicsContext(u32 index = 0) { return static_cast<T*>(GetGraphicsContextImpl(index)); }
+	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetComputeContext(u32 index = 0) { return static_cast<T*>(GetComputeContextImpl(index)); }
+	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetTransferContext(u32 index = 0) { return static_cast<T*>(GetTransferContextImpl(index)); }
+
 	virtual void WaitIdle() const = 0;
 
 	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr) const = 0;

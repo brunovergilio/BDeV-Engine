@@ -28,8 +28,8 @@ class IBvShaderCompiler : public BvRCObj
 	BV_NOCOPYMOVE(IBvShaderCompiler);
 
 public:
-	virtual bool Compile(const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob = nullptr) = 0;
-	virtual bool CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, IBvShaderBlob** ppShaderBlob, IBvShaderBlob** ppErrorBlob = nullptr) = 0;
+	virtual BvRCRaw<IBvShaderBlob> Compile(const ShaderCreateDesc& shaderDesc, BvRCRaw<IBvShaderBlob>* pErrorBlob = nullptr) = 0;
+	virtual BvRCRaw<IBvShaderBlob> CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, BvRCRaw<IBvShaderBlob>* pErrorBlob = nullptr) = 0;
 
 protected:
 	IBvShaderCompiler() {}

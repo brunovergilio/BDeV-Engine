@@ -15,12 +15,16 @@ BvDDSTextureLoader::~BvDDSTextureLoader()
 }
 
 
-IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromFile(const char* pFilename, IBvTextureBlob** ppTextureBlob)
+BvRCRaw<IBvTextureBlob> BvDDSTextureLoader::LoadTextureFromFile(const char* pFilename, IBvTextureLoader::Result* pResult)
 {
-	BvFile file(pFilename);
+	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
-		return IBvTextureLoader::Result::kInvalidArg;
+		if (pResult)
+		{
+			*pResult = IBvTextureLoader::Result::kInvalidArg;
+		}
+		return nullptr;
 	}
 
 	u64 bufferSize = file.GetSize();
@@ -28,33 +32,31 @@ IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromFile(const char* pFi
 	file.Read(buffer.Data(), (u32)bufferSize);
 	file.Close();
 
-	return LoadTextureInternal(buffer, ppTextureBlob);
+	return LoadTextureInternal(buffer, pResult);
 }
 
 
-IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureBlob** ppTextureBlob)
+BvRCRaw<IBvTextureBlob> BvDDSTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureLoader::Result* pResult)
 {
 	BvVector<u8> buffer(bufferSize);
 	memcpy(buffer.Data(), pBuffer, bufferSize);
 
-	return LoadTextureInternal(buffer, ppTextureBlob);
+	return LoadTextureInternal(buffer, pResult);
 }
 
 
-IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBvTextureBlob** ppTextureBlob)
+BvTextureBlob* BvDDSTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBvTextureLoader::Result* pResult)
 {
-	ppTextureBlob = nullptr;
 	BvVector<SubresourceData> subresources;
 	IBvTextureBlob::Info textureInfo;
 
 	auto result = LoadDDSTexture(buffer.Data(), buffer.Size(), textureInfo, subresources);
-	if (result == IBvTextureLoader::Result::kOk)
+	if (pResult)
 	{
-		auto pBlob = BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
-		*ppTextureBlob = pBlob;
+		*pResult = result;
 	}
-	
-	return result;
+
+	return result == IBvTextureLoader::Result::kOk ? BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources) : nullptr;
 }
 
 
