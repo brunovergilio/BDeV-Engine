@@ -100,7 +100,13 @@ BvRCRef<IBvShader> SampleBase::CompileShader(const char* pSource, size_t length,
 	shaderDesc.m_ShaderStage = stage;
 	shaderDesc.m_pSourceCode = pSource;
 	shaderDesc.m_SourceCodeSize = length;
-	BvRCRef<IBvShaderBlob> compiledShader = m_SpvCompiler->Compile(shaderDesc);
+	BvRCRaw<IBvShaderBlob> error = nullptr;
+	BvRCRef<IBvShaderBlob> compiledShader = m_SpvCompiler->Compile(shaderDesc, &error);
+	if (error)
+	{
+		const char* pErr = (const char*)error->GetBufferPointer();
+		BV_ASSERT(error == nullptr, "Check shader error!");
+	}
 	shaderDesc.m_pByteCode = (const u8*)compiledShader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = compiledShader->GetBufferSize();
 	return m_Device->CreateShader(shaderDesc);

@@ -57,6 +57,7 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk*
 	bool isDirty = false;
 	switch (descriptorType)
 	{
+	case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 	case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 	{
 		auto layout = !IsDepthStencilFormat(pResource->GetDesc().m_Format) ?

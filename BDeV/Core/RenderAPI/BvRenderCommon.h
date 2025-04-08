@@ -44,6 +44,7 @@ enum RenderDeviceCapabilities : u32
 	kMeshShader						= BvBit(10),
 	kRayTracing						= BvBit(11),
 	kRayQuery						= BvBit(12),
+	kMultiView						= BvBit(13)
 };
 BV_USE_ENUM_CLASS_OPERATORS(RenderDeviceCapabilities);
 
@@ -616,17 +617,22 @@ struct BufferViewDesc
 	u64 m_ElementCount = 0;
 	u32 m_Stride = 0;
 	Format m_Format = Format::kUnknown;
+};
+
+
+struct VertexBufferView
+{
+	IBvBuffer* m_pBuffer = nullptr;
+	u64 m_Offset = 0;
+	u32 m_Stride = 0;
+};
+
+
+struct IndexBufferView
+{
+	IBvBuffer* m_pBuffer = nullptr;
+	u64 m_Offset = 0;
 	IndexFormat m_IndexFormat = IndexFormat::kUnknown;
-
-	BV_INLINE static BufferViewDesc AsVertexBuffer(IBvBuffer* pBuffer, u32 stride, u64 offset = 0)
-	{
-		return { pBuffer, offset, 0, stride, Format::kUnknown, IndexFormat::kUnknown };
-	}
-
-	BV_INLINE static BufferViewDesc AsIndexBuffer(IBvBuffer* pBuffer, IndexFormat format, u64 offset = 0)
-	{
-		return { pBuffer, offset, 0, 0, Format::kUnknown, format };
-	}
 };
 
 
@@ -892,6 +898,7 @@ enum class ShaderResourceType : u8
 	kTexture,
 	kRWTexture,
 	kSampler,
+	kInputAttachment,
 	kAccelerationStructure,
 };
 
@@ -1276,7 +1283,7 @@ struct InputAssemblyStateDesc
 {
 	Topology	m_Topology = Topology::kTriangleList;
 	bool		m_PrimitiveRestart = false;
-	IndexFormat m_IndexFormatForPrimitiveRestart = IndexFormat::kU16;
+	IndexFormat m_IndexFormatForPrimitiveRestart = IndexFormat::kUnknown;
 };
 
 
@@ -1352,9 +1359,9 @@ struct GraphicsPipelineStateDesc
 	IBvRenderPass*				m_pRenderPass = nullptr;
 	Format						m_RenderTargetFormats[kMaxRenderTargets]{};
 	Format						m_DepthStencilFormat = Format::kUnknown;
-	u32							m_SampleCount = 1;
 	u8							m_PatchControlPoints = 0;
 	bool						m_ShadingRateEnabled = false;
+	u32							m_SampleCount = 1;
 	u32							m_SampleMask = kMax<u32>;
 	u32							m_SubpassIndex = 0;
 };

@@ -70,12 +70,13 @@ struct std::hash<FramebufferDesc>
 class BvFramebufferManagerVk
 {
 public:
-	BvFramebufferManagerVk();
+	BvFramebufferManagerVk(VkDevice device);
 	~BvFramebufferManagerVk();
 
-	VkFramebuffer GetFramebuffer(VkDevice device, const FramebufferDesc& framebufferDesc);
+	VkFramebuffer GetFramebuffer(const FramebufferDesc& framebufferDesc);
 	void RemoveFramebuffersWithView(VkImageView view);
 
 private:
+	VkDevice m_Device = VK_NULL_HANDLE;
 	BvRobinMap<FramebufferDesc, VkFramebuffer> m_Framebuffers;
 };

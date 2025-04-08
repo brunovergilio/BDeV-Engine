@@ -12,7 +12,7 @@ public:
 	~UIOverlay();
 
 	void Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext, IBvShaderCompiler* pCompiler);
-	void SetupPipeline(Format swapChainFormat, Format depthFormat = Format::kUnknown, IBvRenderPass* pRenderPass = nullptr);
+	void SetupPipeline(Format swapChainFormat, Format depthFormat = Format::kUnknown, IBvRenderPass* pRenderPass = nullptr, u32 subpassIndex = 0);
 	bool Update(f32 dt, BvWindow* pWindow);
 	void Render();
 	void Shutdown();

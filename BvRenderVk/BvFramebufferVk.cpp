@@ -5,19 +5,24 @@
 
 
 
-BvFramebufferManagerVk::BvFramebufferManagerVk()
+BvFramebufferManagerVk::BvFramebufferManagerVk(VkDevice device)
+	: m_Device(device)
 {
-
 }
 
 
 BvFramebufferManagerVk::~BvFramebufferManagerVk()
 {
-
+	for (auto& fbPair : m_Framebuffers)
+	{
+		auto fb = fbPair.second;
+		vkDestroyFramebuffer(m_Device, fb, nullptr);
+	}
+	m_Framebuffers.Clear();
 }
 
 
-VkFramebuffer BvFramebufferManagerVk::GetFramebuffer(VkDevice device, const FramebufferDesc& framebufferDesc)
+VkFramebuffer BvFramebufferManagerVk::GetFramebuffer(const FramebufferDesc& framebufferDesc)
 {
 	auto& framebuffer = m_Framebuffers[framebufferDesc];
 	if (framebuffer == VK_NULL_HANDLE)
@@ -29,7 +34,7 @@ VkFramebuffer BvFramebufferManagerVk::GetFramebuffer(VkDevice device, const Fram
 		fbCI.width = framebufferDesc.m_Width;
 		fbCI.height = framebufferDesc.m_Height;
 		fbCI.layers = framebufferDesc.m_LayerCount;
-		vkCreateFramebuffer(device, &fbCI, nullptr, &framebuffer);
+		vkCreateFramebuffer(m_Device, &fbCI, nullptr, &framebuffer);
 	}
 
 	return framebuffer;
@@ -47,6 +52,8 @@ void BvFramebufferManagerVk::RemoveFramebuffersWithView(VkImageView view)
 			{
 				if (pair.first.m_Views[i] == view)
 				{
+					auto fb = pair.second;
+					vkDestroyFramebuffer(m_Device, fb, nullptr);
 					m_Framebuffers.Erase(pair.first);
 					found = true;
 					break;

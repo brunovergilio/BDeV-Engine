@@ -45,7 +45,7 @@ public:
 
 	void Reset();
 	BvCommandBufferVk* RequestCommandBuffer();
-	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, bool bindless = false);
+	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless = false);
 	void UpdateSignalIndex(u64 value);
 	void UpdateSignalValue();
 	void ClearActiveCommandBuffers();
@@ -96,6 +96,7 @@ public:
 	void WaitForGPU() override;
 
 	void BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets) override;
+	void NextSubpass() override;
 	void EndRenderPass() override;
 
 	void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets) override;
@@ -119,11 +120,12 @@ public:
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetInputAttachments(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex) override;
 	void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set) override;
 
-	void SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding = 0) override;
-	void SetIndexBufferView(const BufferViewDesc& indexBufferView) override;
+	void SetVertexBufferViews(u32 vertexBufferCount, const VertexBufferView* pVertexBufferViews, u32 firstBinding = 0) override;
+	void SetIndexBufferView(const IndexBufferView& indexBufferView) override;
 
 	void Draw(const DrawCommandArgs& args) override;
 	void DrawIndexed(const DrawIndexedCommandArgs& args) override;

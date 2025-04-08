@@ -152,7 +152,7 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 }
 
 
-void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRenderPass* pRenderPass)
+void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRenderPass* pRenderPass, u32 subpassIndex)
 {
 	ShaderCreateDesc vsDesc;
 	vsDesc.m_ShaderStage = ShaderStage::kVertex;
@@ -194,6 +194,7 @@ void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRen
 	psoDesc.m_RenderTargetFormats[0] = swapChainFormat;
 	psoDesc.m_DepthStencilFormat = depthFormat;
 	psoDesc.m_pRenderPass = pRenderPass;
+	psoDesc.m_SubpassIndex = subpassIndex;
 
 	VertexInputDesc inputDescs[3];
 	inputDescs[0].m_Format = Format::kRG32_Float;

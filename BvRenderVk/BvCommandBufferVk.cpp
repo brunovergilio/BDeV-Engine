@@ -85,7 +85,11 @@ void BvCommandBufferVk::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 re
 	fbDesc.m_LayerCount = kU32Max;
 	for (auto i = 0u; i < renderPassTargetCount; ++i)
 	{
-		auto viewVk = TO_VK(pRenderPassTargets->m_pView);
+		auto viewVk = TO_VK(pRenderPassTargets[i].m_pView);
+		if (auto pSwapChain = TO_VK(viewVk->GetDesc().m_pTexture)->GetSwapChain())
+		{
+			m_SwapChains.EmplaceBack(pSwapChain);
+		}
 		auto& viewDesc = viewVk->GetDesc();
 		auto& desc = viewDesc.m_pTexture->GetDesc();
 		fbDesc.m_Width = std::min(desc.m_Size.width, fbDesc.m_Width);
@@ -310,7 +314,12 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
 
 			barrier.oldLayout = GetVkImageLayout(renderTarget.m_State);
-			barrier.newLayout = GetVkImageLayout(renderTarget.m_StateAfter);
+			auto stateAfter = GetVkImageLayout(renderTarget.m_StateAfter);
+			if (stateAfter == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && (isDepthTarget || isStencilTarget))
+			{
+				stateAfter = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			}
+			barrier.newLayout = stateAfter;
 
 			barrier.srcAccessMask = GetVkAccessFlags(renderTarget.m_State);
 			barrier.dstAccessMask = GetVkAccessFlags(renderTarget.m_StateAfter);
@@ -398,7 +407,8 @@ void BvCommandBufferVk::SetGraphicsPipeline(const IBvGraphicsPipelineState* pPip
 	m_pRayTracingPipeline = nullptr;
 	m_pGraphicsPipeline = TO_VK(pPipeline);
 	m_pShaderResourceLayout = TO_VK(m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout);
-	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGraphicsPipeline->GetHandle());
+	m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+	vkCmdBindPipeline(m_CommandBuffer, m_PipelineBindPoint, m_pGraphicsPipeline->GetHandle());
 }
 
 
@@ -410,7 +420,8 @@ void BvCommandBufferVk::SetComputePipeline(const IBvComputePipelineState* pPipel
 	m_pRayTracingPipeline = nullptr;
 	m_pComputePipeline = TO_VK(pPipeline);
 	m_pShaderResourceLayout = TO_VK(m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
-	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE, m_pComputePipeline->GetHandle());
+	m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
+	vkCmdBindPipeline(m_CommandBuffer, m_PipelineBindPoint, m_pComputePipeline->GetHandle());
 }
 
 
@@ -422,7 +433,8 @@ void BvCommandBufferVk::SetRayTracingPipeline(const IBvRayTracingPipelineState* 
 	m_pComputePipeline = nullptr;
 	m_pRayTracingPipeline = TO_VK(pPipeline);
 	m_pShaderResourceLayout = TO_VK(m_pRayTracingPipeline->GetDesc().m_pShaderResourceLayout);
-	vkCmdBindPipeline(m_CommandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_pRayTracingPipeline->GetHandle());
+	m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+	vkCmdBindPipeline(m_CommandBuffer, m_PipelineBindPoint, m_pRayTracingPipeline->GetHandle());
 }
 
 
@@ -439,17 +451,7 @@ void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, IBvShad
 		m_DescriptorSets[i] = pSRP ? pSRP->GetHandle() : VK_NULL_HANDLE;
 	}
 
-	auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-	if (m_pComputePipeline)
-	{
-		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
-	}
-	else if (m_pRayTracingPipeline)
-	{
-		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
-	}
-
-	vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), startIndex, resourceParamsCount, m_DescriptorSets.Data() + startIndex, 0, nullptr);
+	vkCmdBindDescriptorSets(m_CommandBuffer, m_PipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), startIndex, resourceParamsCount, m_DescriptorSets.Data() + startIndex, 0, nullptr);
 }
 
 
@@ -562,6 +564,16 @@ void BvCommandBufferVk::SetSamplers(u32 count, const IBvSampler* const* ppResour
 }
 
 
+void BvCommandBufferVk::SetInputAttachments(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, TO_VK(ppResources[i]), set, binding, startIndex + i);
+	}
+}
+
+
 void BvCommandBufferVk::SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
@@ -574,36 +586,36 @@ void BvCommandBufferVk::SetAccelerationStructures(u32 count, const IBvAccelerati
 
 void BvCommandBufferVk::SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set)
 {
-	auto pSRL = TO_VK(m_pGraphicsPipeline ? m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout :
-		m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
-
-	if (auto pConstant = pSRL->GetPushConstantData(size, binding, set))
+	if (auto pConstant = m_pShaderResourceLayout->GetPushConstantData(size, binding, set))
 	{
-		vkCmdPushConstants(m_CommandBuffer, pSRL->GetPipelineLayoutHandle(), pConstant->m_ShaderStages, pConstant->m_Offset, size, pData);
+		vkCmdPushConstants(m_CommandBuffer, m_pShaderResourceLayout->GetPipelineLayoutHandle(), pConstant->m_ShaderStages, pConstant->m_Offset, size, pData);
 	}
 }
 
 
-void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding)
+void BvCommandBufferVk::SetVertexBufferViews(u32 vertexBufferCount, const VertexBufferView* pVertexBufferViews, u32 firstBinding)
 {
 	BV_ASSERT(vertexBufferCount <= kMaxVertexBuffers, "Vertex buffer view count greater than limit");
 
 	VkBuffer vertexBuffers[kMaxVertexBuffers]{};
 	VkDeviceSize vertexBufferOffsets[kMaxVertexBuffers]{};
+	VkDeviceSize vertexBufferSizes[kMaxVertexBuffers]{};
+	VkDeviceSize vertexBufferStrides[kMaxVertexBuffers]{};
 	for (auto i = 0u; i < vertexBufferCount; i++)
 	{
 		if (pVertexBufferViews[i].m_pBuffer)
 		{
 			vertexBuffers[i] = TO_VK(pVertexBufferViews[i].m_pBuffer)->GetHandle();
 			vertexBufferOffsets[i] = pVertexBufferViews[i].m_Offset;
+			vertexBufferSizes[i] = pVertexBufferViews[i].m_pBuffer->GetDesc().m_Size;
+			vertexBufferStrides[i] = pVertexBufferViews[i].m_Stride;
 		}
 	}
-
-	vkCmdBindVertexBuffers(m_CommandBuffer, firstBinding, vertexBufferCount, vertexBuffers, vertexBufferOffsets);
+	vkCmdBindVertexBuffers2(m_CommandBuffer, firstBinding, vertexBufferCount, vertexBuffers, vertexBufferOffsets, vertexBufferSizes, vertexBufferStrides);
 }
 
 
-void BvCommandBufferVk::SetIndexBufferView(const BufferViewDesc& indexBufferView)
+void BvCommandBufferVk::SetIndexBufferView(const IndexBufferView& indexBufferView)
 {
 	auto formatVk = GetVkIndexType(indexBufferView.m_IndexFormat);
 	VkBuffer indexBuffer = VK_NULL_HANDLE;
@@ -1270,16 +1282,7 @@ void BvCommandBufferVk::FlushDescriptorSets()
 		return;
 	}
 
-	auto pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-	if (m_pComputePipeline)
-	{
-		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE;
-	}
-	else if (m_pRayTracingPipeline)
-	{
-		pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
-	}
-
+	u64 hashSeed = 0;
 	auto& srlDesc = m_pShaderResourceLayout->GetDesc();
 	for (auto i = 0u; i < srlDesc.m_ShaderResourceSetCount; ++i)
 	{
@@ -1311,21 +1314,26 @@ void BvCommandBufferVk::FlushDescriptorSets()
 						case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 						case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 							writeSet.pBufferInfo = &pResourceData->m_Data.m_BufferInfo;
+							HashCombine(hashSeed, pResourceData->m_Data.m_BufferInfo);
 							break;
 						case VK_DESCRIPTOR_TYPE_SAMPLER:
 						case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 						case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+						case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 							writeSet.pImageInfo = &pResourceData->m_Data.m_ImageInfo;
+							HashCombine(hashSeed, pResourceData->m_Data.m_ImageInfo);
 							break;
 						case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 						case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 							writeSet.pTexelBufferView = &pResourceData->m_Data.m_BufferView;
+							HashCombine(hashSeed, pResourceData->m_Data.m_BufferView);
 							break;
 						case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
 							auto& asWrite = m_ASWriteSets.EmplaceBack(VkWriteDescriptorSetAccelerationStructureKHR{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR });
 							asWrite.accelerationStructureCount = 1;
 							asWrite.pAccelerationStructures = &pResourceData->m_Data.m_AccelerationStructure;
 							writeSet.pNext = &asWrite;
+							HashCombine(hashSeed, pResourceData->m_Data.m_AccelerationStructure);
 							break;
 						}
 					}
@@ -1344,7 +1352,7 @@ void BvCommandBufferVk::FlushDescriptorSets()
 			VkDescriptorSet descriptorSet;
 			if (isSetDirty)
 			{
-				descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets, resourceSet.m_Bindless);
+				descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets, hashSeed, resourceSet.m_Bindless);
 				if (m_DescriptorSets.Size() <= set)
 				{
 					m_DescriptorSets.Resize(set + 1, VK_NULL_HANDLE);
@@ -1356,7 +1364,7 @@ void BvCommandBufferVk::FlushDescriptorSets()
 				descriptorSet = m_DescriptorSets[set];
 			}
 
-			vkCmdBindDescriptorSets(m_CommandBuffer, pipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), set,
+			vkCmdBindDescriptorSets(m_CommandBuffer, m_PipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), set,
 				1, &descriptorSet, m_DynamicOffsets.Size(), m_DynamicOffsets.Size() > 0 ? m_DynamicOffsets.Data() : nullptr);
 			m_WriteSets.Clear();
 			m_ASWriteSets.Clear();

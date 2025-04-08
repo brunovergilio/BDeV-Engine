@@ -125,7 +125,7 @@ void BvRenderPassVk::Create()
 
 	BvVector<VkSubpassDescription2> subpasses;
 	BvVector<VkAttachmentReference2> attachmentReferences;
-	BvVector<VkFragmentShadingRateAttachmentInfoKHR> shadingRateRefs{ VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR };
+	BvVector<VkFragmentShadingRateAttachmentInfoKHR> shadingRateRefs;
 	SetupSubpasses(subpasses, attachmentReferences, shadingRateRefs);
 
 	BvVector<VkSubpassDependency2> dependencies;
@@ -238,6 +238,7 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 
 		if (subpass.m_InputAttachmentCount > 0)
 		{
+			subpassVk.inputAttachmentCount = subpass.m_InputAttachmentCount;
 			auto currIndex = (u32)attachmentRefs.Size();
 			for (auto j = 0u; j < subpass.m_InputAttachmentCount; ++j)
 			{
@@ -247,6 +248,11 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 				refVk.aspectMask = GetVkFormatMap(m_RenderPassDesc.m_pAttachments[ref.m_Index].m_Format).aspectFlags;
 				refVk.attachment = ref.m_Index;
 				refVk.layout = GetVkImageLayout(ref.m_ResourceState);
+				if ((refVk.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+					&& refVk.layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+				{
+					refVk.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				}
 			}
 			subpassVk.pInputAttachments = &attachmentRefs[currIndex];
 		}
@@ -276,7 +282,7 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 			refVk.attachment = ref.m_Index;
 			refVk.layout = GetVkImageLayout(ref.m_ResourceState);
 
-			auto& shadingRateRef = shadingRateRefs.EmplaceBack();
+			auto& shadingRateRef = shadingRateRefs.EmplaceBack(VkFragmentShadingRateAttachmentInfoKHR{ VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR });
 			shadingRateRef.shadingRateAttachmentTexelSize = VkExtent2D{ subpass.m_pShadingRateAttachment->m_TexelSizes[0],
 				subpass.m_pShadingRateAttachment->m_TexelSizes[1] };
 			shadingRateRef.pFragmentShadingRateAttachment = &refVk;

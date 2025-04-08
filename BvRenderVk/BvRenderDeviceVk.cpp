@@ -488,8 +488,6 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 	CreateVMA();
 
-	u32 querySizes[kQueryTypeCount]{ 16, 16, 16 };
-
 	m_DeviceCaps = deviceCaps;
 }
 
@@ -767,8 +765,11 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
 	}
 
+	*pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties;
+	pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties.pNext;
+
 	// =================================
-	// Store properties / features / memory properties
+	// Store features / properties / memory properties
 	vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceInfo.m_DeviceFeatures);
 	vkGetPhysicalDeviceProperties2(physicalDevice, &deviceInfo.m_DeviceProperties);
 	vkGetPhysicalDeviceMemoryProperties2(physicalDevice, &deviceInfo.m_DeviceMemoryProperties);
@@ -824,6 +825,10 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 	if (rayQuery)
 	{
 		caps |= RenderDeviceCapabilities::kRayQuery;
+	}
+	if (deviceInfo.m_DeviceFeatures1_1.multiview)
+	{
+		caps |= RenderDeviceCapabilities::kMultiView;
 	}
 
 	// =================================

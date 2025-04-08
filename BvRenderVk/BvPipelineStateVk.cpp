@@ -62,14 +62,14 @@ BvGraphicsPipelineStateVk::~BvGraphicsPipelineStateVk()
 
 void BvGraphicsPipelineStateVk::Create()
 {
-	BvFixedVector<VkVertexInputAttributeDescription, kMaxVertexBindings> attributeDescs(m_PipelineStateDesc.m_VertexInputDescCount, {});
+	BvFixedVector<VkVertexInputAttributeDescription, kMaxVertexBindings> attributeDescs;
 	BvFixedVector<VkVertexInputBindingDescription, kMaxVertexBindings> bindingDescs;
 	BvFixedVector<VkVertexInputBindingDivisorDescriptionEXT, kMaxVertexBindings> divisorDescs;
 	
 	{
 		BvFixedVector<u32, kMaxVertexBindings> bindingIndices(kMaxVertexBindings, kU32Max);
 		BvFixedVector<u32, kMaxVertexBindings> bindingElemLocations(kMaxVertexBindings, 0);
-		for (auto i = 0u; i < attributeDescs.Size(); i++)
+		for (auto i = 0u; i < m_PipelineStateDesc.m_VertexInputDescCount; i++)
 		{
 			auto& viDesc = m_PipelineStateDesc.m_pVertexInputDescs[i];
 			u32 stride = GetFormatInfo(viDesc.m_Format).m_BitsPerPixel >> 3;
@@ -84,13 +84,14 @@ void BvGraphicsPipelineStateVk::Create()
 				bindingIndex = bindingDescs.Size() - 1;
 			}
 
-			attributeDescs[i].format = GetVkFormat(viDesc.m_Format);
-			attributeDescs[i].location = bindingElemLocations[viDesc.m_Binding]++;
-			attributeDescs[i].binding = viDesc.m_Binding;
-			attributeDescs[i].offset = viDesc.m_Offset;
-			if (attributeDescs[i].offset == VertexInputDesc::kAutoOffset)
+			auto& attribute = attributeDescs.EmplaceBack();
+			attribute.format = GetVkFormat(viDesc.m_Format);
+			attribute.location = bindingElemLocations[viDesc.m_Binding]++;
+			attribute.binding = viDesc.m_Binding;
+			attribute.offset = viDesc.m_Offset;
+			if (attribute.offset == VertexInputDesc::kAutoOffset)
 			{
-				attributeDescs[i].offset = bindingDescs[bindingIndex].stride;
+				attribute.offset = bindingDescs[bindingIndex].stride;
 			}
 
 			bindingDescs[bindingIndex].stride += stride;
@@ -197,7 +198,7 @@ void BvGraphicsPipelineStateVk::Create()
 		rtvFormats.EmplaceBack(GetVkFormat(m_PipelineStateDesc.m_RenderTargetFormats[i]));
 	}
 
-	VkPipelineRenderingCreateInfoKHR pipelineRenderingCI{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+	VkPipelineRenderingCreateInfo pipelineRenderingCI{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 	VkRenderPass renderPass = m_PipelineStateDesc.m_pRenderPass ? static_cast<BvRenderPassVk*>(m_PipelineStateDesc.m_pRenderPass)->GetHandle() : VK_NULL_HANDLE;
 	if (renderPass == VK_NULL_HANDLE)
 	{
@@ -207,7 +208,14 @@ void BvGraphicsPipelineStateVk::Create()
 		pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
 	}
 
-	BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets> blendAttachments(rtvFormats.Size(), {});
+	auto attachmentCount = rtvFormats.Size();
+	if (!attachmentCount && m_PipelineStateDesc.m_pRenderPass)
+	{
+		auto& subpass = m_PipelineStateDesc.m_pRenderPass->GetDesc().m_pSubpasses[m_PipelineStateDesc.m_SubpassIndex];
+		attachmentCount = subpass.m_ColorAttachmentCount;
+	}
+
+	BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets> blendAttachments(attachmentCount, {});
 	for (auto i = 0u; i < blendAttachments.Size(); i++)
 	{
 		blendAttachments[i].blendEnable = m_PipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_BlendEnable;
@@ -229,12 +237,36 @@ void BvGraphicsPipelineStateVk::Create()
 	blendCI.logicOpEnable = m_PipelineStateDesc.m_BlendStateDesc.m_LogicEnable;
 	blendCI.logicOp = GetVkLogicOp(m_PipelineStateDesc.m_BlendStateDesc.m_LogicOp);
 
+	bool hasTessellationShader = false;
+	bool hasMeshShader = false;
+	BvFixedVector<VkPipelineShaderStageCreateInfo, kMaxShaderStages> shaderStages;
+	for (auto i = 0u; i < kMaxShaderStages && m_PipelineStateDesc.m_Shaders[i] != nullptr; i++)
+	{
+		auto& shaderStage = shaderStages.EmplaceBack(VkPipelineShaderStageCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
+		const auto& byteCode = m_PipelineStateDesc.m_Shaders[i]->GetShaderBlob();
+		shaderStage.pName = m_PipelineStateDesc.m_Shaders[i]->GetEntryPoint();
+		shaderStage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_Shaders[i]->GetShaderStage());
+		if (shaderStage.stage & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
+		{
+			hasTessellationShader = true;
+		}
+		else if (shaderStage.stage & (VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT))
+		{
+			hasMeshShader = true;
+		}
+		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
+	}
+
 	constexpr u32 kMaxDynamicStates = 8; // Change as needed
 	BvFixedVector<VkDynamicState, kMaxDynamicStates> dynamicStates{};
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
+	if (!hasMeshShader)
+	{
+		dynamicStates.PushBack(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE);
+	}
 	if (m_PipelineStateDesc.m_DepthStencilDesc.m_DepthBoundsTestEnable && m_pDevice->GetDeviceInfo()->m_DeviceFeatures.features.depthBounds)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
@@ -248,21 +280,6 @@ void BvGraphicsPipelineStateVk::Create()
 	dynamicStateCI.dynamicStateCount = (u32)dynamicStates.Size();
 	dynamicStateCI.pDynamicStates = dynamicStates.Data();
 
-	bool hasTessellation = false;
-	BvFixedVector<VkPipelineShaderStageCreateInfo, kMaxShaderStages> shaderStages;
-	for (auto i = 0u; i < kMaxShaderStages && m_PipelineStateDesc.m_Shaders[i] != nullptr; i++)
-	{
-		auto& shaderStage = shaderStages.EmplaceBack(VkPipelineShaderStageCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
-		const auto& byteCode = m_PipelineStateDesc.m_Shaders[i]->GetShaderBlob();
-		shaderStage.pName = m_PipelineStateDesc.m_Shaders[i]->GetEntryPoint();
-		shaderStage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_Shaders[i]->GetShaderStage());
-		if (shaderStage.stage & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
-		{
-			hasTessellation = true;
-		}
-		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
-	}
-
 	VkGraphicsPipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 	pipelineCI.pNext = !m_PipelineStateDesc.m_pRenderPass ? &pipelineRenderingCI : nullptr;
 	//pipelineCI.flags = 0;
@@ -270,7 +287,7 @@ void BvGraphicsPipelineStateVk::Create()
 	pipelineCI.pStages = shaderStages.Data();
 	pipelineCI.pVertexInputState = &vertexCI;
 	pipelineCI.pInputAssemblyState = &iaCI;
-	pipelineCI.pTessellationState = hasTessellation ? &tessCI : nullptr;
+	pipelineCI.pTessellationState = hasTessellationShader ? &tessCI : nullptr;
 	pipelineCI.pViewportState = &viewportCI;
 	pipelineCI.pRasterizationState = &rasterizerCI;
 	pipelineCI.pMultisampleState = &msCI;

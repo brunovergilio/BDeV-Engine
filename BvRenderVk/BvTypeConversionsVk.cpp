@@ -551,6 +551,7 @@ VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType)
 	case ShaderResourceType::kTexture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	case ShaderResourceType::kRWTexture:				return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	case ShaderResourceType::kSampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;
+	case ShaderResourceType::kInputAttachment:			return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 	case ShaderResourceType::kAccelerationStructure:	return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 	}
 

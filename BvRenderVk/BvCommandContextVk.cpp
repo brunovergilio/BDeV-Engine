@@ -82,7 +82,7 @@ BvCommandBufferVk* BvFrameDataVk::RequestCommandBuffer()
 }
 
 
-VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, bool bindless)
+VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless)
 {
 	auto srlHash = MurmurHash64A(&pLayout->GetSetLayoutHandles().At(set), sizeof(VkDescriptorSetLayout));
 	auto& pool = m_pContextData->m_DescriptorPools[srlHash];
@@ -111,7 +111,7 @@ VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResou
 	}
 	else
 	{
-		u64 descriptorSetHash = 0;
+		u64 descriptorSetHash = hashSeed;
 		for (auto& writeSet : writeSets)
 		{
 			HashCombine(descriptorSetHash, writeSet);
@@ -163,7 +163,7 @@ void BvFrameDataVk::AddQuery(BvQueryVk* pQuery)
 
 VkFramebuffer BvFrameDataVk::GetFramebuffer(const FramebufferDesc& fbDesc)
 {
-	return m_pContextData->m_pFramebufferManager->GetFramebuffer(m_pDevice->GetHandle(), fbDesc);
+	return m_pContextData->m_pFramebufferManager->GetFramebuffer(fbDesc);
 }
 
 
@@ -193,7 +193,7 @@ BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount
 	u32 querySizes[kQueryTypeCount] = { 2, 2, 2 };
 	m_pContextData = BV_NEW(ContextDataVk)();
 	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, querySizes, frameCount);
-	m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)();
+	m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
 	m_Frames.Reserve(frameCount);
 	for (auto i = 0; i < frameCount; ++i)
 	{
@@ -312,6 +312,12 @@ void BvCommandContextVk::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 r
 }
 
 
+void BvCommandContextVk::NextSubpass()
+{
+	m_pCurrCommandBuffer->NextSubpass();
+}
+
+
 void BvCommandContextVk::EndRenderPass()
 {
 	m_pCurrCommandBuffer->EndRenderPass();
@@ -425,6 +431,12 @@ void BvCommandContextVk::SetSamplers(u32 count, const IBvSampler* const* ppResou
 }
 
 
+void BvCommandContextVk::SetInputAttachments(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
+{
+	m_pCurrCommandBuffer->SetInputAttachments(count, ppResources, set, binding, startIndex);
+}
+
+
 void BvCommandContextVk::SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	m_pCurrCommandBuffer->SetAccelerationStructures(count, ppResources, set, binding, startIndex);
@@ -437,13 +449,13 @@ void BvCommandContextVk::SetShaderConstants(u32 size, const void* pData, u32 bin
 }
 
 
-void BvCommandContextVk::SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding /*= 0*/)
+void BvCommandContextVk::SetVertexBufferViews(u32 vertexBufferCount, const VertexBufferView* pVertexBufferViews, u32 firstBinding /*= 0*/)
 {
 	m_pCurrCommandBuffer->SetVertexBufferViews(vertexBufferCount, pVertexBufferViews, firstBinding);
 }
 
 
-void BvCommandContextVk::SetIndexBufferView(const BufferViewDesc& indexBufferView)
+void BvCommandContextVk::SetIndexBufferView(const IndexBufferView& indexBufferView)
 {
 	m_pCurrCommandBuffer->SetIndexBufferView(indexBufferView);
 }

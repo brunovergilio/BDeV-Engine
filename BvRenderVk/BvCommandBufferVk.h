@@ -73,11 +73,12 @@ public:
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
+	void SetInputAttachments(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set);
 
-	void SetVertexBufferViews(u32 vertexBufferCount, const BufferViewDesc* pVertexBufferViews, u32 firstBinding = 0);
-	void SetIndexBufferView(const BufferViewDesc& indexBufferView);
+	void SetVertexBufferViews(u32 vertexBufferCount, const VertexBufferView* pVertexBufferViews, u32 firstBinding = 0);
+	void SetIndexBufferView(const IndexBufferView& indexBufferView);
 
 	void SetDepthBounds(float min, float max);
 	void SetStencilRef(u32 stencilRef);
@@ -161,6 +162,8 @@ private:
 
 	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;
+
+	VkPipelineBindPoint m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_MAX_ENUM;
 
 	State m_CurrentState = State::kRecording;
 	bool m_HasDebugUtils = false;

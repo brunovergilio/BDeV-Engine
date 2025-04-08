@@ -67,6 +67,13 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	imageCreateInfo.pQueueFamilyIndices = nullptr;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+	u32 extraMemoryFlags = 0;
+	if (imageCreateInfo.usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT)
+	{
+		extraMemoryFlags |= VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+		imageCreateInfo.usage &= (~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT));
+	}
+
 	auto device = m_pDevice->GetHandle();
 
 	auto result = vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
@@ -76,10 +83,11 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 		return;
 	}
 
+
 	auto vma = m_pDevice->GetAllocator();
 	VmaAllocationCreateInfo vmaACI = {};
 	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType);
-	vmaACI.preferredFlags = GetPreferredVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType);
+	vmaACI.preferredFlags = GetPreferredVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType) | extraMemoryFlags;
 
 	VmaAllocationInfo vmaAI;
 	VmaAllocation vmaA;
@@ -189,6 +197,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		copyDstBarrier.m_pTexture = this;
 		copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
 		copyDstBarrier.m_Subresource.mipCount = mipCount;
+		copyDstBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
 
 		pContext->ResourceBarrier(1, &copyDstBarrier);
 		pContext->CopyBufferToTextureVk(pBuffer, this, (u32)copyRegions.Size(), copyRegions.Data());

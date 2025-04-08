@@ -791,6 +791,7 @@ public:
 	BV_INLINE static BvVec4 UnitX() { return BvVec4(VectorUnitX()); }
 	BV_INLINE static BvVec4 UnitY() { return BvVec4(VectorUnitY()); }
 	BV_INLINE static BvVec4 UnitZ() { return BvVec4(VectorUnitZ()); }
+	BV_INLINE static BvVec4 UnitW() { return BvVec4(VectorUnitW()); }
 
 	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
 	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
