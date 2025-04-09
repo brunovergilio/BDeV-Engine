@@ -12,6 +12,7 @@ public:
 
 	void OnInitialize() override;
 	void OnUpdate() override;
+	void OnUpdateUI() override;
 	void RenderOffscreen();
 	void OnRender() override;
 	void OnShutdown() override;
@@ -27,8 +28,7 @@ private:
 	BvRCRef<IBvShaderResourceLayout> m_SRLOffscreen;
 	BvRCRef<IBvGraphicsPipelineState> m_PSOOffscreen;
 	BvRCRef<IBvShaderResourceLayout> m_SRL;
-	BvRCRef<IBvGraphicsPipelineState> m_PSOColor;
-	BvRCRef<IBvGraphicsPipelineState> m_PSODepth;
+	BvRCRef<IBvGraphicsPipelineState> m_PSO;
 	BvRCRef<IBvBuffer> m_VB;
 	BvRCRef<IBvBuffer> m_IB;
 	BvRCRef<IBvBuffer> m_UB;
@@ -42,5 +42,7 @@ private:
 	struct PCData
 	{
 		Float4 m_PosUV[6];
-	} m_PCColor, m_PCDepth;
+	} m_PCColor;
+	Float2 m_ScreenSizeAndMid;
+	f32 m_ScreenMid = 0.5f;
 };

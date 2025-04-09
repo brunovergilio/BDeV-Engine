@@ -98,7 +98,14 @@ void BvCommandBufferVk::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 re
 			- viewDesc.m_SubresourceDesc.firstLayer, fbDesc.m_LayerCount);
 
 		fbDesc.m_Views.EmplaceBack(viewVk->GetHandle());
-		memcpy(clearValues.EmplaceBack().color.float32, pRenderPassTargets[i].m_ClearValues.colors, sizeof(float) * 4);
+		if (!IsDepthOrStencilFormat(viewDesc.m_Format))
+		{
+			memcpy(clearValues.EmplaceBack().color.float32, pRenderPassTargets[i].m_ClearValues.colors, sizeof(float) * 4);
+		}
+		else
+		{
+			clearValues.EmplaceBack().depthStencil = { pRenderPassTargets[i].m_ClearValues.depth, pRenderPassTargets[i].m_ClearValues.stencil };
+		}
 	}
 
 	renderArea.extent.width = fbDesc.m_Width;

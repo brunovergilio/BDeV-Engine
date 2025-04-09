@@ -88,7 +88,7 @@ layout (push_constant) uniform PushConstants2
 void main()
 {
 	vec4 finalColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	if (gl_FragCoord.x < pushConstants2.screenSize.x * 0.5)
+	if (gl_FragCoord.x < pushConstants2.screenSize.x * pushConstants2.screenSize.y)
 	{
 		float d = 1.0f - subpassLoad(depthInput).r;
 		finalColor = vec4(d, d, d, 1.0f);
@@ -142,8 +142,7 @@ void OffscreenRenderPass::OnInitialize()
 	m_PCColor.m_PosUV[5].w = 1.0f;
 
 	f32 width = m_pWindow->GetWidth();
-	f32 height = m_pWindow->GetHeight();
-	m_ScreenSize = Float2(width, height);
+	m_ScreenSizeAndMid = Float2(width, m_ScreenMid);
 }
 
 
@@ -182,6 +181,14 @@ void OffscreenRenderPass::OnUpdate()
 }
 
 
+void OffscreenRenderPass::OnUpdateUI()
+{
+	BeginDrawDefaultUI();
+	ImGui::SliderFloat("Screen Divisor", &m_ScreenMid, 0.0f, 1.0f);
+	EndDrawDefaultUI();
+}
+
+
 void OffscreenRenderPass::RenderOffscreen()
 {
 	auto width = m_pWindow->GetWidth();
@@ -201,13 +208,12 @@ void OffscreenRenderPass::OnRender()
 {
 	f32 width = m_pWindow->GetWidth();
 	f32 height = m_pWindow->GetHeight();
-
-	RenderTargetDesc mainTarget = RenderTargetDesc::AsSwapChain(m_SwapChain->GetCurrentTextureView(), { 0.1f, 0.1f, 0.3f });
+	m_ScreenSizeAndMid.y = m_ScreenMid;
 
 	m_Context->NewCommandList();
 	RenderPassTargetDesc targets[] =
 	{
-		{ m_ColorView, 1.0f, 1.0f, 1.0f },
+		{ m_ColorView, 0.1f, 0.1f, 0.3f },
 		{ m_DepthView, 1.0f, 0 },
 		{ m_SwapChain->GetCurrentTextureView(), 0.1f, 0.1f, 0.3f },
 	};
@@ -219,7 +225,7 @@ void OffscreenRenderPass::OnRender()
 
 	m_Context->SetGraphicsPipeline(m_PSO);
 	m_Context->SetShaderConstantsT<PCData>(m_PCColor, 3, 0);
-	m_Context->SetShaderConstantsT<Float2>(m_ScreenSize, 4, 0);
+	m_Context->SetShaderConstantsT<Float2>(m_ScreenSizeAndMid, 4, 0);
 	m_Context->SetInputAttachment(m_ColorView, 0, 1);
 	m_Context->SetInputAttachment(m_DepthView, 0, 2);
 	m_Context->Draw(6);

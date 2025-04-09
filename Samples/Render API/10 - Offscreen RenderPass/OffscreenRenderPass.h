@@ -13,6 +13,7 @@ public:
 	void OnInitialize() override;
 	void OnInitializeUI() override;
 	void OnUpdate() override;
+	void OnUpdateUI() override;
 	void RenderOffscreen();
 	void OnRender() override;
 	void OnShutdown() override;
@@ -43,5 +44,6 @@ private:
 	{
 		Float4 m_PosUV[6];
 	} m_PCColor;
-	Float2 m_ScreenSize;
+	Float2 m_ScreenSizeAndMid;
+	f32 m_ScreenMid = 0.5f;
 };

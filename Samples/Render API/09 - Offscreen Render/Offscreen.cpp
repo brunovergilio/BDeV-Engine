@@ -69,7 +69,7 @@ void main()
 constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);
 
 
-constexpr const char* g_pPSShaderColor =
+constexpr const char* g_pPSShader =
 R"raw(
 #version 450
 
@@ -77,35 +77,31 @@ layout (location = 0) in vec2 inTexCoords;
 
 layout (location = 0) out vec4 outColor;
 
-layout (binding = 1) uniform texture2D samplerTexture;
-layout (binding = 2) uniform sampler samplerObj;
+layout (binding = 0) uniform sampler samplerObj;
+layout (binding = 1) uniform texture2D colorTexture;
+layout (binding = 2) uniform texture2D depthTexture;
+
+layout (push_constant) uniform PushConstants2
+{
+	layout(offset = 96) vec2 screenSize;
+} pushConstants2;
 
 void main()
 {
-	outColor = texture(sampler2D(samplerTexture, samplerObj), inTexCoords);
+	vec4 finalColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	if (gl_FragCoord.x < pushConstants2.screenSize.x * pushConstants2.screenSize.y)
+	{
+		float d = 1.0f - texture(sampler2D(depthTexture, samplerObj), inTexCoords).r;
+		finalColor = vec4(d, d, d, 1.0f);
+	}
+	else
+	{
+		finalColor = texture(sampler2D(colorTexture, samplerObj), inTexCoords);
+	}
+	outColor = finalColor;
 }
 )raw";
-constexpr auto g_PSSizeColor = std::char_traits<char>::length(g_pPSShaderColor);
-
-
-constexpr const char* g_pPSShaderDepth =
-R"raw(
-#version 450
-
-layout (location = 0) in vec2 inTexCoords;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 1) uniform texture2D samplerTexture;
-layout (binding = 2) uniform sampler samplerObj;
-
-void main()
-{
-	float d = 1.0f - texture(sampler2D(samplerTexture, samplerObj), inTexCoords).r;
-	outColor = vec4(d, d, d, 1.0f);
-}
-)raw";
-constexpr auto g_PSSizeDepth = std::char_traits<char>::length(g_pPSShaderDepth);
+constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 
 void Offscreen::OnInitialize()
@@ -116,7 +112,7 @@ void Offscreen::OnInitialize()
 	CreateShaderResourceLayout();
 	CreatePipeline();
 
-	m_PCColor.m_PosUV[0].x = 0.0f;
+	m_PCColor.m_PosUV[0].x = -1.0f;
 	m_PCColor.m_PosUV[0].y = 1.0f;
 	m_PCColor.m_PosUV[0].z = 0.0f;
 	m_PCColor.m_PosUV[0].w = 0.0f;
@@ -131,7 +127,7 @@ void Offscreen::OnInitialize()
 	m_PCColor.m_PosUV[2].z = 1.0f;
 	m_PCColor.m_PosUV[2].w = 1.0f;
 
-	m_PCColor.m_PosUV[3].x = 0.0f;
+	m_PCColor.m_PosUV[3].x = -1.0f;
 	m_PCColor.m_PosUV[3].y = 1.0f;
 	m_PCColor.m_PosUV[3].z = 0.0f;
 	m_PCColor.m_PosUV[3].w = 0.0f;
@@ -141,40 +137,13 @@ void Offscreen::OnInitialize()
 	m_PCColor.m_PosUV[4].z = 1.0f;
 	m_PCColor.m_PosUV[4].w = 1.0f;
 
-	m_PCColor.m_PosUV[5].x = 0.0f;
+	m_PCColor.m_PosUV[5].x = -1.0f;
 	m_PCColor.m_PosUV[5].y = -1.0f;
 	m_PCColor.m_PosUV[5].z = 0.0f;
 	m_PCColor.m_PosUV[5].w = 1.0f;
 
-	m_PCDepth.m_PosUV[0].x = -1.0f;
-	m_PCDepth.m_PosUV[0].y = 1.0f;
-	m_PCDepth.m_PosUV[0].z = 0.0f;
-	m_PCDepth.m_PosUV[0].w = 0.0f;
-
-	m_PCDepth.m_PosUV[1].x = 0.0f;
-	m_PCDepth.m_PosUV[1].y = 1.0f;
-	m_PCDepth.m_PosUV[1].z = 1.0f;
-	m_PCDepth.m_PosUV[1].w = 0.0f;
-
-	m_PCDepth.m_PosUV[2].x = 0.0f;
-	m_PCDepth.m_PosUV[2].y = -1.0f;
-	m_PCDepth.m_PosUV[2].z = 1.0f;
-	m_PCDepth.m_PosUV[2].w = 1.0f;
-
-	m_PCDepth.m_PosUV[3].x = -1.0f;
-	m_PCDepth.m_PosUV[3].y = 1.0f;
-	m_PCDepth.m_PosUV[3].z = 0.0f;
-	m_PCDepth.m_PosUV[3].w = 0.0f;
-
-	m_PCDepth.m_PosUV[4].x = 0.0f;
-	m_PCDepth.m_PosUV[4].y = -1.0f;
-	m_PCDepth.m_PosUV[4].z = 1.0f;
-	m_PCDepth.m_PosUV[4].w = 1.0f;
-
-	m_PCDepth.m_PosUV[5].x = -1.0f;
-	m_PCDepth.m_PosUV[5].y = -1.0f;
-	m_PCDepth.m_PosUV[5].z = 0.0f;
-	m_PCDepth.m_PosUV[5].w = 1.0f;
+	f32 width = m_pWindow->GetWidth();
+	m_ScreenSizeAndMid = Float2(width, m_ScreenMid);
 }
 
 
@@ -207,13 +176,21 @@ void Offscreen::OnUpdate()
 }
 
 
+void Offscreen::OnUpdateUI()
+{
+	BeginDrawDefaultUI();
+	ImGui::SliderFloat("Screen Divisor", &m_ScreenMid, 0.0f, 1.0f);
+	EndDrawDefaultUI();
+}
+
+
 void Offscreen::RenderOffscreen()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
 	RenderTargetDesc targets[] =
 	{
-		RenderTargetDesc::AsRenderTarget(m_ColorView, { 1.0f, 1.0f, 1.0f }),
+		RenderTargetDesc::AsRenderTarget(m_ColorView, { 0.1f, 0.1f, 0.3f }),
 		RenderTargetDesc::AsDepthStencil(m_DepthView)
 	};
 
@@ -232,6 +209,7 @@ void Offscreen::OnRender()
 {
 	f32 width = m_pWindow->GetWidth();
 	f32 height = m_pWindow->GetHeight();
+	m_ScreenSizeAndMid.y = m_ScreenMid;
 
 	RenderTargetDesc mainTarget = RenderTargetDesc::AsSwapChain(m_SwapChain->GetCurrentTextureView(), { 0.1f, 0.1f, 0.3f });
 
@@ -239,16 +217,12 @@ void Offscreen::OnRender()
 	RenderOffscreen();
 	m_Context->SetRenderTarget(mainTarget);
 
-	m_Context->SetGraphicsPipeline(m_PSOColor);
+	m_Context->SetGraphicsPipeline(m_PSO);
 	m_Context->SetShaderConstantsT<PCData>(m_PCColor, 3, 0);
+	m_Context->SetShaderConstantsT<Float2>(m_ScreenSizeAndMid, 4, 0);
 	m_Context->SetTexture(m_ColorView, 0, 1);
-	m_Context->SetSampler(m_Sampler, 0, 2);
-	m_Context->Draw(6);
-
-	m_Context->SetGraphicsPipeline(m_PSODepth);
-	m_Context->SetShaderConstantsT<PCData>(m_PCDepth, 3, 0);
-	m_Context->SetTexture(m_DepthView, 0, 1);
-	m_Context->SetSampler(m_Sampler, 0, 2);
+	m_Context->SetTexture(m_DepthView, 0, 2);
+	m_Context->SetSampler(m_Sampler, 0, 0);
 	m_Context->Draw(6);
 
 	OnRenderUI();
@@ -266,12 +240,15 @@ void Offscreen::OnShutdown()
 	m_VB.Reset();
 	m_IB.Reset();
 	m_UBView.Reset();
-	m_Depth.Reset();
 	m_DepthView.Reset();
-
-	m_PSOColor.Reset();
-	m_PSODepth.Reset();
+	m_Depth.Reset();
+	m_ColorView.Reset();
+	m_Color.Reset();
+	m_PSO.Reset();
+	m_PSOOffscreen.Reset();
 	m_SRL.Reset();
+	m_SRLOffscreen.Reset();
+	m_Sampler.Reset();
 }
 
 
@@ -294,17 +271,22 @@ void Offscreen::CreateShaderResourceLayout()
 	{
 		ShaderResourceDesc resourceDescs[] =
 		{
+			ShaderResourceDesc::AsSampler(0, ShaderStage::kPixelOrFragment),
 			ShaderResourceDesc::AsTexture(1, ShaderStage::kPixelOrFragment),
-			ShaderResourceDesc::AsSampler(2, ShaderStage::kPixelOrFragment)
+			ShaderResourceDesc::AsTexture(2, ShaderStage::kPixelOrFragment),
 		};
 
-		ShaderResourceConstantDesc constantDesc = ShaderResourceConstantDesc::As<PCData>(BV_NAME_ID("PC"), 3, ShaderStage::kVertex);
+		ShaderResourceConstantDesc constantDescs[] =
+		{
+			ShaderResourceConstantDesc::As<PCData>(BV_NAME_ID("PC"), 3, ShaderStage::kVertex),
+			ShaderResourceConstantDesc::As<Float2>(BV_NAME_ID("PC2"), 4, ShaderStage::kPixelOrFragment),
+		};
 
 		ShaderResourceSetDesc setDesc{};
-		setDesc.m_ResourceCount = 2;
+		setDesc.m_ResourceCount = 3;
 		setDesc.m_pResources = resourceDescs;
-		setDesc.m_ConstantCount = 1;
-		setDesc.m_pConstants = &constantDesc;
+		setDesc.m_ConstantCount = 2;
+		setDesc.m_pConstants = constantDescs;
 
 		ShaderResourceLayoutDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
@@ -342,18 +324,14 @@ void Offscreen::CreatePipeline()
 
 	{
 		auto vs = CompileShader(g_pVSShader, g_VSSize, ShaderStage::kVertex);
-		auto psC = CompileShader(g_pPSShaderColor, g_PSSizeColor, ShaderStage::kPixelOrFragment);
+		auto ps = CompileShader(g_pPSShader, g_PSSize, ShaderStage::kPixelOrFragment);
 		GraphicsPipelineStateDesc pipelineDesc;
 		pipelineDesc.m_Shaders[0] = vs;
-		pipelineDesc.m_Shaders[1] = psC;
+		pipelineDesc.m_Shaders[1] = ps;
 		pipelineDesc.m_RenderTargetFormats[0] = m_SwapChain->GetDesc().m_Format;
 		pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-		m_PSOColor = m_Device->CreateGraphicsPipeline(pipelineDesc);
-		
-		auto psD = CompileShader(g_pPSShaderDepth, g_PSSizeDepth, ShaderStage::kPixelOrFragment);
-		pipelineDesc.m_Shaders[1] = psD;
-		m_PSODepth = m_Device->CreateGraphicsPipeline(pipelineDesc);
+		m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
 
 	}
 }
