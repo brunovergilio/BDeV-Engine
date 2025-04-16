@@ -798,6 +798,10 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 	{
 		caps |= RenderDeviceCapabilities::kIndirectDrawCount;
 	}
+	if (deviceInfo.m_DeviceFeatures1_2.samplerFilterMinmax)
+	{
+		caps |= RenderDeviceCapabilities::kSamplerMinMaxReduction;
+	}
 	if (customBorderColor)
 	{
 		caps |= RenderDeviceCapabilities::kCustomBorderColor;

@@ -12,9 +12,12 @@ public:
 	~UIOverlay();
 
 	void Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext, IBvShaderCompiler* pCompiler);
-	void SetupPipeline(Format swapChainFormat, Format depthFormat = Format::kUnknown, IBvRenderPass* pRenderPass = nullptr, u32 subpassIndex = 0);
+	void SetupPipeline(Format swapChainFormat, Format depthFormat = Format::kUnknown, u32 sampleCount = 1);
+	void SetupPipeline(IBvRenderPass* pRenderPass = nullptr, u32 subpassIndex = 0, u32 sampleCount = 1);
+	void SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRenderPass* pRenderPass, u32 subpassIndex, u32 sampleCount);
+
 	bool Update(f32 dt, BvWindow* pWindow);
-	void Render();
+	void Render(bool msaa = false);
 	void Shutdown();
 
 private:
@@ -27,11 +30,14 @@ private:
 	BvRCRef<IBvBuffer> m_VB;
 	BvRCRef<IBvBuffer> m_IB;
 	BvRCRef<IBvGraphicsPipelineState> m_Pipeline;
+	BvRCRef<IBvGraphicsPipelineState> m_PipelineMSAA;
 	BvRCRef<IBvShaderResourceLayout> m_SRL;
 	BvRCRef<IBvTexture> m_Texture;
 	BvRCRef<IBvTextureView> m_TextureView;
 	BvRCRef<IBvSampler> m_Sampler;
 	BvRCRef<IBvCommandContext> m_Context;
+	BvRCRef<IBvShader> m_VS;
+	BvRCRef<IBvShader> m_PS;
 
 	u32 m_VertexCount = 0;
 	u32 m_IndexCount = 0;

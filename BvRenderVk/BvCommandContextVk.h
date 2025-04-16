@@ -127,6 +127,11 @@ public:
 	void SetVertexBufferViews(u32 vertexBufferCount, const VertexBufferView* pVertexBufferViews, u32 firstBinding = 0) override;
 	void SetIndexBufferView(const IndexBufferView& indexBufferView) override;
 
+	void SetDepthBounds(f32 min, f32 max) override;
+	void SetStencilRef(u32 stencilRef) override;
+	void SetBlendConstants(const float(pColors[4])) override;
+	void SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp(pCombinerOps[2])) override;
+
 	void Draw(const DrawCommandArgs& args) override;
 	void DrawIndexed(const DrawIndexedCommandArgs& args) override;
 	void Dispatch(const DispatchCommandArgs& args) override;

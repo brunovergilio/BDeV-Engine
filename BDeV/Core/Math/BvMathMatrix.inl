@@ -421,9 +421,9 @@ BV_INLINE mf32 BV_VCALL MatrixScaling(cvf32 s)
 	vf32 v1 = VectorUnitW();
 
 	mf32 r;
-	r.r[0] = VectorBlend<0, 5, 6, 3>(s, v1);
-	r.r[1] = VectorBlend<4, 1, 6, 3>(s, v1);
-	r.r[2] = VectorBlend<4, 5, 2, 3>(s, v1);
+	r.r[0] = VectorBlend<0, 4, 5, 6>(s, v1);
+	r.r[1] = VectorBlend<4, 1, 5, 6>(s, v1);
+	r.r[2] = VectorBlend<4, 5, 2, 6>(s, v1);
 	r.r[3] = v1;
 
 	return r;

@@ -263,7 +263,7 @@ void BvGraphicsPipelineStateVk::Create()
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
-	if (!hasMeshShader)
+	if (!hasMeshShader && vertexCI.vertexBindingDescriptionCount > 0)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE);
 	}

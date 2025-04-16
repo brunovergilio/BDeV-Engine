@@ -35,7 +35,7 @@ private:
 
 	void SetupAttachments(BvVector<VkAttachmentDescription2>& attachments);
 	void SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses, BvVector<VkAttachmentReference2>& attachmentRefs,
-		BvVector<VkFragmentShadingRateAttachmentInfoKHR>& shadingRateRefs);
+		BvVector<VkSubpassDescriptionDepthStencilResolve>& depthStencilResolves, BvVector<VkFragmentShadingRateAttachmentInfoKHR>& shadingRateRefs);
 	void SetupDependencies(BvVector<VkSubpassDependency2>& dependencies, BvVector<VkMemoryBarrier2>& barriers);
 
 	void GetVkFlags(u32 subpassIndex, VkAccessFlags2& accessFlags, VkPipelineStageFlags2& stageFlags);

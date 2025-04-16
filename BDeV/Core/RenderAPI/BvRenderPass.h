@@ -12,10 +12,11 @@ struct AttachmentRef
 {
 	u32 m_Index = 0;
 	ResourceState m_ResourceState = ResourceState::kCommon;
+	ResolveMode m_ResolveMode = ResolveMode::kNone;
 
 	constexpr bool operator==(const AttachmentRef& rhs) const
 	{
-		return m_Index == rhs.m_Index && m_ResourceState == rhs.m_ResourceState;
+		return m_Index == rhs.m_Index && m_ResourceState == rhs.m_ResourceState && m_ResolveMode == rhs.m_ResolveMode;
 	}
 
 	constexpr bool operator!=(const AttachmentRef& rhs) const
@@ -52,6 +53,7 @@ struct SubpassDesc
 	const AttachmentRef* m_pDepthStencilAttachment = nullptr;
 	const AttachmentRef* m_pInputAttachments = nullptr;
 	const AttachmentRef* m_pResolveAttachments = nullptr;
+	const AttachmentRef* m_pDepthStencilResolveAttachment = nullptr;
 	const ShadingRateAttachmentRef* m_pShadingRateAttachment = nullptr;
 
 	constexpr bool operator==(const SubpassDesc& rhs) const
@@ -81,6 +83,12 @@ struct SubpassDesc
 
 		if (m_pResolveAttachments != nullptr && rhs.m_pResolveAttachments != nullptr
 			&& *m_pResolveAttachments != *rhs.m_pResolveAttachments)
+		{
+			return false;
+		}
+
+		if (m_pDepthStencilResolveAttachment != nullptr && rhs.m_pDepthStencilResolveAttachment != nullptr
+			&& *m_pDepthStencilResolveAttachment != *rhs.m_pDepthStencilResolveAttachment)
 		{
 			return false;
 		}

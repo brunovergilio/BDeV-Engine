@@ -190,7 +190,11 @@ BV_VK_DEVICE_RES_DEF(BvCommandContextVk)
 BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex)
 	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyType, queueFamilyIndex, queueIndex)
 {
-	u32 querySizes[kQueryTypeCount] = { 2, 2, 2 };
+	u32 querySizes[kQueryTypeCount];
+	for (auto& querySize : querySizes)
+	{
+		querySize = 2;
+	}
 	m_pContextData = BV_NEW(ContextDataVk)();
 	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, querySizes, frameCount);
 	m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
@@ -458,6 +462,30 @@ void BvCommandContextVk::SetVertexBufferViews(u32 vertexBufferCount, const Verte
 void BvCommandContextVk::SetIndexBufferView(const IndexBufferView& indexBufferView)
 {
 	m_pCurrCommandBuffer->SetIndexBufferView(indexBufferView);
+}
+
+
+void BvCommandContextVk::SetDepthBounds(f32 min, f32 max)
+{
+	m_pCurrCommandBuffer->SetDepthBounds(min, max);
+}
+
+
+void BvCommandContextVk::SetStencilRef(u32 stencilRef)
+{
+	m_pCurrCommandBuffer->SetStencilRef(stencilRef);
+}
+
+
+void BvCommandContextVk::SetBlendConstants(const float(pColors[4]))
+{
+	m_pCurrCommandBuffer->SetBlendConstants(pColors);
+}
+
+
+void BvCommandContextVk::SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp(pCombinerOps[2]))
+{
+	m_pCurrCommandBuffer->SetShadingRate(dimensions, pCombinerOps);
 }
 
 

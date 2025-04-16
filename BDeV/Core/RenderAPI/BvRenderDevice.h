@@ -28,9 +28,9 @@ class IBvRenderDevice : public BvRCObj
 
 public:
 	template<typename T = IBvSwapChain> BV_INLINE BvRCRaw<T> CreateSwapChain(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext) { return static_cast<T*>(CreateSwapChainImpl(pWindow, desc, pContext)); }
-	template<typename T = IBvBuffer> BV_INLINE BvRCRaw<T> CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData) { return static_cast<T*>(CreateBufferImpl(desc, pInitData)); }
+	template<typename T = IBvBuffer> BV_INLINE BvRCRaw<T> CreateBuffer(const BufferDesc& desc, const BufferInitData* pInitData = nullptr) { return static_cast<T*>(CreateBufferImpl(desc, pInitData)); }
 	template<typename T = IBvBufferView> BV_INLINE BvRCRaw<T> CreateBufferView(const BufferViewDesc& desc) { return static_cast<T*>(CreateBufferViewImpl(desc)); }
-	template<typename T = IBvTexture> BV_INLINE BvRCRaw<T> CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData) { return static_cast<T*>(CreateTextureImpl(desc, pInitData)); }
+	template<typename T = IBvTexture> BV_INLINE BvRCRaw<T> CreateTexture(const TextureDesc& desc, const TextureInitData* pInitData = nullptr) { return static_cast<T*>(CreateTextureImpl(desc, pInitData)); }
 	template<typename T = IBvTextureView> BV_INLINE BvRCRaw<T> CreateTextureView(const TextureViewDesc& desc) { return static_cast<T*>(CreateTextureViewImpl(desc)); }
 	template<typename T = IBvSampler> BV_INLINE BvRCRaw<T> CreateSampler(const SamplerDesc& desc) { return static_cast<T*>(CreateSamplerImpl(desc)); }
 	template<typename T = IBvRenderPass> BV_INLINE BvRCRaw<T> CreateRenderPass(const RenderPassDesc& renderPassDesc) { return static_cast<T*>(CreateRenderPassImpl(renderPassDesc)); }

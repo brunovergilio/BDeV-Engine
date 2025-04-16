@@ -22,8 +22,7 @@ BvSamplerVk::~BvSamplerVk()
 
 void BvSamplerVk::Create()
 {
-	VkSamplerCreateInfo samplerCreateInfo{};
-	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	VkSamplerCreateInfo samplerCreateInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 	//samplerCreateInfo.pNext = nullptr;
 	//samplerCreateInfo.flags = 0;
 	samplerCreateInfo.magFilter = GetVkFilter(m_SamplerDesc.m_MagFilter);
@@ -42,14 +41,40 @@ void BvSamplerVk::Create()
 	//samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
 	//samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
-	auto gpuInfo = m_pDevice->GetDeviceInfo();
-	bool usesCustomBorderColor = m_SamplerDesc.m_BorderColor[0] != 0.0f
-		|| m_SamplerDesc.m_BorderColor[1] != 0.0f
-		|| m_SamplerDesc.m_BorderColor[2] != 0.0f
-		|| m_SamplerDesc.m_BorderColor[3] != 0.0f;
+	bool usesCustomBorderColor = false;
+	if (m_SamplerDesc.m_BorderColor[0] == 0.0f
+		|| m_SamplerDesc.m_BorderColor[1] == 0.0f
+		|| m_SamplerDesc.m_BorderColor[2] == 0.0f
+		|| m_SamplerDesc.m_BorderColor[3] == 0.0f)
+	{
+		samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+	}
+	else if (m_SamplerDesc.m_BorderColor[0] == 0.0f
+		|| m_SamplerDesc.m_BorderColor[1] == 0.0f
+		|| m_SamplerDesc.m_BorderColor[2] == 0.0f
+		|| m_SamplerDesc.m_BorderColor[3] == 1.0f)
+	{
+		samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+	}
+	else if (m_SamplerDesc.m_BorderColor[0] == 1.0f
+		|| m_SamplerDesc.m_BorderColor[1] == 1.0f
+		|| m_SamplerDesc.m_BorderColor[2] == 1.0f
+		|| m_SamplerDesc.m_BorderColor[3] == 1.0f)
+	{
+		samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	}
+	else
+	{
+		usesCustomBorderColor = true;
+	}
 
+	auto pDeviceInfo = m_pDevice->GetDeviceInfo();
+	auto supportsBorderColor = pDeviceInfo->m_ExtendedFeatures.customBorderColorFeatures.customBorderColorWithoutFormat;
+	bool supportsReduction = pDeviceInfo->m_DeviceFeatures1_2.samplerFilterMinmax;
+
+	const void** pNext = &samplerCreateInfo.pNext;
 	VkSamplerCustomBorderColorCreateInfoEXT customBorderColorCI{ VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
-	if (usesCustomBorderColor && gpuInfo->m_ExtendedFeatures.customBorderColorFeatures.customBorderColorWithoutFormat)
+	if (usesCustomBorderColor && supportsBorderColor)
 	{
 		// TODO: Maybe use gpuInfo.m_ExtendedProperties.customBorderColorProps.maxCustomBorderColorSamplers
 		// and track number of samplers using it
@@ -60,7 +85,15 @@ void BvSamplerVk::Create()
 		//customBorderColorCI.format = VK_FORMAT_UNDEFINED;
 		
 		samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
-		samplerCreateInfo.pNext = &customBorderColorCI;
+		*pNext = &customBorderColorCI;
+		pNext = &customBorderColorCI.pNext;
+	}
+
+	VkSamplerReductionModeCreateInfo reductionCI{ VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
+	if (m_SamplerDesc.m_ReductionMode != ReductionMode::kStandard && supportsReduction)
+	{
+		reductionCI.reductionMode = GetVkSamplerReductionMode(m_SamplerDesc.m_ReductionMode);
+		*pNext = &reductionCI;
 	}
 
 	auto result = vkCreateSampler(m_pDevice->GetHandle(), &samplerCreateInfo, nullptr, &m_Sampler);

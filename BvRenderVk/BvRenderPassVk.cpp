@@ -126,7 +126,8 @@ void BvRenderPassVk::Create()
 	BvVector<VkSubpassDescription2> subpasses;
 	BvVector<VkAttachmentReference2> attachmentReferences;
 	BvVector<VkFragmentShadingRateAttachmentInfoKHR> shadingRateRefs;
-	SetupSubpasses(subpasses, attachmentReferences, shadingRateRefs);
+	BvVector<VkSubpassDescriptionDepthStencilResolve> depthStencilResolves;
+	SetupSubpasses(subpasses, attachmentReferences, depthStencilResolves, shadingRateRefs);
 
 	BvVector<VkSubpassDependency2> dependencies;
 	BvVector<VkMemoryBarrier2> barriers;
@@ -186,7 +187,9 @@ void BvRenderPassVk::SetupAttachments(BvVector<VkAttachmentDescription2>& attach
 
 
 void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
-	BvVector<VkAttachmentReference2>& attachmentRefs, BvVector<VkFragmentShadingRateAttachmentInfoKHR>& shadingRateRefs)
+	BvVector<VkAttachmentReference2>& attachmentRefs,
+	BvVector<VkSubpassDescriptionDepthStencilResolve>& depthStencilResolves,
+	BvVector<VkFragmentShadingRateAttachmentInfoKHR>& shadingRateRefs)
 {
 	subpasses.Resize(m_RenderPassDesc.m_SubpassCount, VkSubpassDescription2{ VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2 });
 	attachmentRefs.Reserve(m_RenderPassDesc.m_SubpassCount * m_RenderPassDesc.m_AttachmentCount);
@@ -206,6 +209,8 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 		auto& subpass = m_RenderPassDesc.m_pSubpasses[i];
 		
 		auto& subpassVk = subpasses[i];
+		const void** pNext = &subpassVk.pNext;
+
 		subpassVk.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 		if (subpass.m_ColorAttachmentCount > 0)
 		{
@@ -273,6 +278,23 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 			subpassVk.pResolveAttachments = &attachmentRefs[currIndex];
 		}
 
+		if (subpass.m_pDepthStencilResolveAttachment)
+		{
+			auto& ref = *subpass.m_pDepthStencilResolveAttachment;
+
+			auto& refVk = attachmentRefs.EmplaceBack(VkAttachmentReference2{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 });
+			refVk.aspectMask = GetVkFormatMap(m_RenderPassDesc.m_pAttachments[ref.m_Index].m_Format).aspectFlags;
+			refVk.attachment = ref.m_Index;
+			refVk.layout = GetVkImageLayout(ref.m_ResourceState);
+
+			auto& depthStencilResolve = depthStencilResolves.EmplaceBack(VkSubpassDescriptionDepthStencilResolve{ VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE });
+			depthStencilResolve.depthResolveMode = depthStencilResolve.stencilResolveMode = GetVkResolveMode(ref.m_ResolveMode);
+			depthStencilResolve.pDepthStencilResolveAttachment = &refVk;
+
+			*pNext = &depthStencilResolve;
+			pNext = &depthStencilResolve.pNext;
+		}
+
 		if (subpass.m_pShadingRateAttachment)
 		{
 			auto& ref = *subpass.m_pShadingRateAttachment;
@@ -287,7 +309,8 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 				subpass.m_pShadingRateAttachment->m_TexelSizes[1] };
 			shadingRateRef.pFragmentShadingRateAttachment = &refVk;
 
-			subpassVk.pNext = &shadingRateRef;
+			*pNext = &shadingRateRef;
+			pNext = &shadingRateRef.pNext;
 		}
 	}
 }

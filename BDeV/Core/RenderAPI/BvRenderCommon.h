@@ -37,14 +37,15 @@ enum RenderDeviceCapabilities : u32
 	kDepthBoundsTest				= BvBit(3),
 	kTimestampQueries				= BvBit(4),
 	kIndirectDrawCount				= BvBit(5),
-	kCustomBorderColor				= BvBit(6),
-	kPredication					= BvBit(7),
-	kConservativeRasterization		= BvBit(8),
-	kShadingRate					= BvBit(9),
-	kMeshShader						= BvBit(10),
-	kRayTracing						= BvBit(11),
-	kRayQuery						= BvBit(12),
-	kMultiView						= BvBit(13)
+	kSamplerMinMaxReduction			= BvBit(6),
+	kCustomBorderColor				= BvBit(7),
+	kPredication					= BvBit(8),
+	kConservativeRasterization		= BvBit(9),
+	kShadingRate					= BvBit(10),
+	kMeshShader						= BvBit(11),
+	kRayTracing						= BvBit(12),
+	kRayQuery						= BvBit(13),
+	kMultiView						= BvBit(14)
 };
 BV_USE_ENUM_CLASS_OPERATORS(RenderDeviceCapabilities);
 
@@ -199,15 +200,6 @@ enum class Format : u8
 	kP208 = 130, // 2 planes (Y plane and interleaved UV plane)
 	kV208 = 131, // 3 planes (Y plane, V plane, and U plane)
 	kV408 = 132, // 3 planes (Y plane, V plane, and U plane)
-};
-
-
-enum class ColorSpace
-{
-	kAuto,
-	kSRGB,
-	kExtendedSRGB,
-	kHDR10_ST2084
 };
 
 
@@ -577,6 +569,15 @@ struct Offset3D
 };
 
 
+struct SwapChainDesc
+{
+	u32 m_SwapChainImageCount = 3;
+	Format m_Format = Format::kUnknown;
+	bool m_VSync = false;
+	bool m_PreferHDR = false;
+};
+
+
 enum class BufferUsage : u16
 {
 	kNone =						0,
@@ -927,6 +928,14 @@ enum class AddressMode : u8
 };
 
 
+enum class ReductionMode : u8
+{
+	kStandard,
+	kMin,
+	kMax
+};
+
+
 struct SamplerDesc
 {
 	Filter			m_MagFilter = Filter::kLinear;
@@ -937,6 +946,7 @@ struct SamplerDesc
 	AddressMode		m_AddressModeW = AddressMode::kWrap;
 	bool			m_CompareEnable = false;
 	CompareOp		m_CompareOp = CompareOp::kNever;
+	ReductionMode	m_ReductionMode = ReductionMode::kStandard;
 	bool			m_AnisotropyEnable = false;
 	float			m_MaxAnisotropy = 1.0f;
 	float			m_MipLodBias = 0.0f;
@@ -980,10 +990,19 @@ enum class ShadingRateCombinerOp : u8
 
 struct RenderTargetDesc
 {
+	constexpr RenderTargetDesc() = default;
+
 	constexpr RenderTargetDesc(IBvTextureView* pView, const ClearColorValue& clearValues, LoadOp loadOp, StoreOp storeOp,
 		ResourceState stateBefore, ResourceState state, ResourceState stateAfter)
 		: m_pView(pView), m_ClearValues(clearValues), m_LoadOp(loadOp), m_StoreOp(storeOp),
-		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter), m_ShadingRateTexelSizes{}
+		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter)
+	{
+	}
+
+	constexpr RenderTargetDesc(IBvTextureView* pView, const ClearColorValue& clearValues, LoadOp loadOp, StoreOp storeOp,
+		ResourceState stateBefore, ResourceState state, ResourceState stateAfter, ResolveMode resolveMode)
+		: m_pView(pView), m_ClearValues(clearValues), m_LoadOp(loadOp), m_StoreOp(storeOp),
+		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter), m_ResolveMode(resolveMode)
 	{
 	}
 
@@ -1005,9 +1024,15 @@ struct RenderTargetDesc
 		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kDepthStencilWrite, stateAfter);
 	}
 
-	static constexpr RenderTargetDesc AsResolve(IBvTextureView* pView, ResourceState stateBefore = ResourceState::kShaderResource, ResourceState stateAfter = ResourceState::kShaderResource)
+	static constexpr RenderTargetDesc AsColorResolve(IBvTextureView* pView, ResolveMode resolveMode = ResolveMode::kAverage,
+		ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kRenderTarget)
 	{
-		return RenderTargetDesc(pView, ClearColorValue(), LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kTransferDst, stateAfter);
+		return RenderTargetDesc(pView, ClearColorValue(), LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kRenderTarget, stateAfter, resolveMode);
+	}
+
+	static constexpr RenderTargetDesc AsDepthResolve(IBvTextureView* pView, ResolveMode resolveMode, ResourceState stateBefore = ResourceState::kCommon)
+	{
+		return RenderTargetDesc(pView, ClearColorValue(), LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kDepthStencilWrite, ResourceState::kDepthStencilWrite, resolveMode);
 	}
 
 	IBvTextureView* m_pView = nullptr;
@@ -1024,6 +1049,8 @@ struct RenderTargetDesc
 
 struct RenderPassTargetDesc
 {
+	constexpr RenderPassTargetDesc() = default;
+
 	constexpr RenderPassTargetDesc(IBvTextureView* pView)
 		: m_pView(pView) {}
 
@@ -1046,8 +1073,28 @@ enum class QueryType : u8
 	kTimestamp,
 	kOcclusion,
 	kOcclusionBinary,
+	kPipelineStatistics
 };
-constexpr u32 kQueryTypeCount = 3;
+constexpr u32 kQueryTypeCount = 4;
+
+
+struct PipelineStatistics
+{
+	u64 m_InputAssemblyVertices = 0;
+	u64 m_InputAssemblyPrimitives = 0;
+	u64 m_VertexShaderInvocations = 0;
+	u64 m_GeometryShaderInvocations = 0;
+	u64 m_GeometryShaderPrimitives = 0;
+	u64 m_ClippingInvocations = 0;
+	u64 m_ClippingPrimitives = 0;
+	u64 m_PixelOrFragmentShaderInvocations = 0;
+	u64 m_HullOrControlShaderInvocations = 0;
+	u64 m_DomainOrEvaluationShaderInvocations = 0;
+	u64 m_ComputeShaderInvocations = 0;
+	u64 m_AmplificationShaderInvocations = 0;
+	u64 m_MeshShaderInvocations = 0;
+	u64 m_MeshShaderPrimitives = 0;
+};
 
 
 enum class PredicationOp : u8
@@ -1076,6 +1123,7 @@ enum class Topology : u8
 	kLineStripAdj,
 	kTriangleListAdj,
 	kTriangleStripAdj,
+	kPatchList,
 };
 
 

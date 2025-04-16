@@ -246,18 +246,6 @@ VkFormat GetVkFormat(const Format format)
 }
 
 
-VkColorSpaceKHR GetVkColorSpace(ColorSpace colorSpace)
-{
-	switch (colorSpace)
-	{
-	case ColorSpace::kSRGB: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-	case ColorSpace::kExtendedSRGB: return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
-	case ColorSpace::kHDR10_ST2084: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
-	default: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-	}
-}
-
-
 VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags, bool formatted)
 {
 	VkBufferUsageFlags bufferUsageFlags = 0;
@@ -343,6 +331,17 @@ VkCompareOp GetVkCompareOp(const CompareOp compareOp)
 }
 
 
+VkSamplerReductionMode GetVkSamplerReductionMode(ReductionMode reductionMode)
+{
+	switch (reductionMode)
+	{
+	case ReductionMode::kMin: return VK_SAMPLER_REDUCTION_MODE_MIN;
+	case ReductionMode::kMax: return VK_SAMPLER_REDUCTION_MODE_MAX;
+	default: return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+	}
+}
+
+
 VkVertexInputRate GetVkVertexInputRate(const InputRate inputRate)
 {
 	return kVertexInputRates[u32(inputRate)];
@@ -362,6 +361,7 @@ VkPrimitiveTopology GetVkPrimitiveTopology(const Topology topology)
 	case Topology::kLineStripAdj:		return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
 	case Topology::kTriangleListAdj:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
 	case Topology::kTriangleStripAdj:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
+	case Topology::kPatchList:			return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
 	}
 
 	return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
@@ -610,7 +610,7 @@ VkIndexType GetVkIndexType(const IndexFormat indexFormat)
 }
 
 
-VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthStencilFormat)
+VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthStencilFormat, bool isResolveRender)
 {
 	switch (resourceState)
 	{
@@ -624,8 +624,8 @@ VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthSt
 	case ResourceState::kDepthStencilWrite:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	case ResourceState::kPresent:			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	case ResourceState::kShadingRate:		return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-	case ResourceState::kResolveSrc:		return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	case ResourceState::kResolveDst:		return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	case ResourceState::kResolveSrc:		return isResolveRender ? VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	case ResourceState::kResolveDst:		return isResolveRender ? VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	}
 
 	return VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
@@ -810,6 +810,7 @@ VkQueryType GetVkQueryType(QueryType queryHeapType)
 	case QueryType::kTimestamp: return VK_QUERY_TYPE_TIMESTAMP;
 	case QueryType::kOcclusion:
 	case QueryType::kOcclusionBinary: return VK_QUERY_TYPE_OCCLUSION;
+	case QueryType::kPipelineStatistics: return VK_QUERY_TYPE_PIPELINE_STATISTICS;
 	}
 
 	return VK_QUERY_TYPE_TIMESTAMP;

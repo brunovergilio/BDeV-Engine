@@ -149,11 +149,7 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	srlDesc.m_ShaderResourceSetCount = 1;
 	srlDesc.m_pShaderResourceSets = &setDesc;
 	m_SRL = m_Device->CreateShaderResourceLayout(srlDesc);
-}
 
-
-void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRenderPass* pRenderPass, u32 subpassIndex)
-{
 	ShaderCreateDesc vsDesc;
 	vsDesc.m_ShaderStage = ShaderStage::kVertex;
 	vsDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
@@ -168,21 +164,35 @@ void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRen
 	psDesc.m_SourceCodeSize = psSize;
 	BvRCRef<IBvShaderBlob> psBlob = m_Compiler->Compile(psDesc);
 
-	BvRCRef<IBvShader> vs;
 	vsDesc.m_pByteCode = (const u8*)vsBlob->GetBufferPointer();
 	vsDesc.m_ByteCodeSize = vsBlob->GetBufferSize();
-	vs = m_Device->CreateShader(vsDesc);
+	m_VS = m_Device->CreateShader(vsDesc);
 	vsBlob.Reset();
 
-	BvRCRef<IBvShader> ps;
 	psDesc.m_pByteCode = (const u8*)psBlob->GetBufferPointer();
 	psDesc.m_ByteCodeSize = psBlob->GetBufferSize();
-	ps = m_Device->CreateShader(psDesc);
+	m_PS = m_Device->CreateShader(psDesc);
 	psBlob.Reset();
+}
 
+
+void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, u32 sampleCount)
+{
+	SetupPipeline(swapChainFormat, depthFormat, nullptr, 0, sampleCount);
+}
+
+
+void UIOverlay::SetupPipeline(IBvRenderPass* pRenderPass, u32 subpassIndex, u32 sampleCount)
+{
+	SetupPipeline(Format::kUnknown, Format::kUnknown, pRenderPass, subpassIndex, sampleCount);
+}
+
+
+void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRenderPass* pRenderPass, u32 subpassIndex, u32 sampleCount)
+{
 	GraphicsPipelineStateDesc psoDesc;
-	psoDesc.m_Shaders[0] = vs;
-	psoDesc.m_Shaders[1] = ps;
+	psoDesc.m_Shaders[0] = m_VS;
+	psoDesc.m_Shaders[1] = m_PS;
 	psoDesc.m_InputAssemblyStateDesc.m_Topology = Topology::kTriangleList;
 	auto& blendState = psoDesc.m_BlendStateDesc.m_BlendAttachments[0];
 	blendState.m_BlendEnable = true;
@@ -202,7 +212,16 @@ void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRen
 	inputDescs[2].m_Format = Format::kRGBA8_UNorm;
 	psoDesc.m_VertexInputDescCount = 3;
 	psoDesc.m_pVertexInputDescs = inputDescs;
-	m_Pipeline = m_Device->CreateGraphicsPipeline(psoDesc);
+
+	if (sampleCount == 1)
+	{
+		m_Pipeline = m_Device->CreateGraphicsPipeline(psoDesc);
+	}
+	else
+	{
+		psoDesc.m_SampleCount = sampleCount;
+		m_PipelineMSAA = m_Device->CreateGraphicsPipeline(psoDesc);
+	}
 }
 
 
@@ -235,7 +254,7 @@ bool UIOverlay::Update(f32 dt, BvWindow* pWindow)
 }
 
 
-void UIOverlay::Render()
+void UIOverlay::Render(bool msaa)
 {
 	ImDrawData* pImDrawData = ImGui::GetDrawData();
 	int32_t vertexOffset = 0;
@@ -291,7 +310,7 @@ void UIOverlay::Render()
 
 	ImGuiIO& io = ImGui::GetIO();
 
-	m_Context->SetGraphicsPipeline(m_Pipeline);
+	m_Context->SetGraphicsPipeline(msaa ? m_PipelineMSAA : m_Pipeline);
 	m_Context->SetTexture(m_TextureView, 0, 1);
 	m_Context->SetSampler(m_Sampler, 0, 2);
 
@@ -332,6 +351,9 @@ void UIOverlay::Shutdown()
 		ImGui::DestroyContext();
 	}
 	m_Pipeline.Reset();
+	m_PipelineMSAA.Reset();
+	m_VS.Reset();
+	m_PS.Reset();
 	m_SRL.Reset();
 	m_VB.Reset();
 	m_IB.Reset();

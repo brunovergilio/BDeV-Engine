@@ -88,7 +88,7 @@ void BvCommandBufferVk::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 re
 		auto viewVk = TO_VK(pRenderPassTargets[i].m_pView);
 		if (auto pSwapChain = TO_VK(viewVk->GetDesc().m_pTexture)->GetSwapChain())
 		{
-			m_SwapChains.EmplaceBack(pSwapChain);
+			AddSwapChain(pSwapChain);
 		}
 		auto& viewDesc = viewVk->GetDesc();
 		auto& desc = viewDesc.m_pTexture->GetDesc();
@@ -196,7 +196,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		bool isColorTarget = (aspectFlags & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
 		bool isDepthTarget = (aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
 		bool isStencilTarget = (aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT) != 0;
-		bool isShadingRate = renderTarget.m_State == ResourceState::kShadingRate;
+		bool isShadingRate = renderTarget.m_State == ResourceState::kShadingRate
+			|| renderTarget.m_ShadingRateTexelSizes[0] != 0 || renderTarget.m_ShadingRateTexelSizes[1] != 0;
 		bool isResolveImage = renderTarget.m_ResolveMode != ResolveMode::kNone;
 
 		if (isShadingRate)
@@ -225,16 +226,27 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 				// a semaphore from the swap chain
 				if (auto pSwapChain = pTexture->GetSwapChain())
 				{
-					m_SwapChains.EmplaceBack(pSwapChain);
+					AddSwapChain(pSwapChain);
 				}
 				++colorAttachmentCount;
 			}
 			else
 			{
+				BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kAverage, "Invalid resolve mode for render target");
 				colorAttachments[resolveCount].resolveImageView = pView->GetHandle();
 				colorAttachments[resolveCount].resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 				colorAttachments[resolveCount].resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
 				++resolveCount;
+
+				// If any of the view objects happen to be a swap chain texture, we need to request
+				// a semaphore from the swap chain
+				if (auto pSwapChain = pTexture->GetSwapChain())
+				{
+					if (!m_SwapChains.Contains(pSwapChain))
+					{
+						m_SwapChains.EmplaceBack(pSwapChain);
+					}
+				}
 			}
 		}
 		else if (isDepthTarget)
@@ -270,16 +282,16 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			}
 			else
 			{
+				BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kMin || renderTarget.m_ResolveMode == ResolveMode::kMax,
+					"Invalid resolve mode for depth stencil target");
 				depthAttachment.resolveImageView = pView->GetHandle();
-				depthAttachment.resolveImageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-					: VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+				depthAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 				depthAttachment.resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
 
 				if (isStencilTarget)
 				{
 					stencilAttachment.resolveImageView = depthAttachment.resolveImageView;
-					stencilAttachment.resolveImageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
-						: VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
+					stencilAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
 					stencilAttachment.resolveMode = depthAttachment.resolveMode;
 				}
 			}
@@ -297,8 +309,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
 			barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
 
-			barrier.oldLayout = GetVkImageLayout(renderTarget.m_StateBefore);
-			barrier.newLayout = GetVkImageLayout(renderTarget.m_State);
+			barrier.oldLayout = GetVkImageLayout(renderTarget.m_StateBefore, isDepthTarget || isStencilTarget);
+			barrier.newLayout = GetVkImageLayout(renderTarget.m_State, isDepthTarget || isStencilTarget);
 
 			barrier.srcAccessMask = GetVkAccessFlags(renderTarget.m_StateBefore);
 			barrier.dstAccessMask = GetVkAccessFlags(renderTarget.m_State);
@@ -320,13 +332,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
 			barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
 
-			barrier.oldLayout = GetVkImageLayout(renderTarget.m_State);
-			auto stateAfter = GetVkImageLayout(renderTarget.m_StateAfter);
-			if (stateAfter == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && (isDepthTarget || isStencilTarget))
-			{
-				stateAfter = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-			}
-			barrier.newLayout = stateAfter;
+			barrier.oldLayout = GetVkImageLayout(renderTarget.m_State, isDepthTarget || isStencilTarget);
+			barrier.newLayout = GetVkImageLayout(renderTarget.m_StateAfter, isDepthTarget || isStencilTarget);
 
 			barrier.srcAccessMask = GetVkAccessFlags(renderTarget.m_State);
 			barrier.dstAccessMask = GetVkAccessFlags(renderTarget.m_StateAfter);
@@ -791,7 +798,7 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 	auto& srcDesc = pSrcTexture->GetDesc();
 	auto& dstDesc = pDstTexture->GetDesc();
 
-	if (srcDesc.m_Format != dstDesc.m_Format || srcDesc.m_Size != dstDesc.m_Size
+	if ((srcDesc.m_Format != dstDesc.m_Format && srcDesc.m_Format != GetFormatInfo(dstDesc.m_Format).m_SRGBOrLinearVariant) || srcDesc.m_Size != dstDesc.m_Size
 		|| srcDesc.m_MipLevels != dstDesc.m_MipLevels || srcDesc.m_ArraySize != dstDesc.m_ArraySize)
 	{
 		return;
@@ -823,6 +830,10 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 
 	auto pSrc = TO_VK(pSrcTexture);
 	auto pDst = TO_VK(pDstTexture);
+	if (auto pSwapChain = pDst->GetSwapChain())
+	{
+		AddSwapChain(pSwapChain);
+	}
 
 	vkCmdCopyImage(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		pDst->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -873,6 +884,10 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 
 	auto pSrc = TO_VK(pSrcTexture);
 	auto pDst = TO_VK(pDstTexture);
+	if (auto pSwapChain = pDst->GetSwapChain())
+	{
+		AddSwapChain(pSwapChain);
+	}
 
 	vkCmdCopyImage(m_CommandBuffer, pSrc->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		pDst->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1078,6 +1093,14 @@ void BvCommandBufferVk::BeginQuery(IBvQuery* pQuery)
 	{
 		VkQueryControlFlags flags = queryType == QueryType::kOcclusion ? VK_QUERY_CONTROL_PRECISE_BIT : 0;
 		vkCmdBeginQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex), pData->m_QueryIndex, flags);
+		if (queryType == QueryType::kPipelineStatistics)
+		{
+			auto meshPool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1);
+			if (meshPool != VK_NULL_HANDLE)
+			{
+				vkCmdBeginQuery(m_CommandBuffer, meshPool, pData->m_QueryIndex, flags);
+			}
+		}
 	}
 
 	m_pFrameData->AddQuery(pQueryVk);
@@ -1093,6 +1116,7 @@ void BvCommandBufferVk::EndQuery(IBvQuery* pQuery)
 	auto frameIndex = m_pFrameData->GetFrameIndex();
 	auto pData = pQueryVk->GetQueryData(frameIndex);
 	auto pool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex);
+	auto meshPool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1);
 	if (queryType == QueryType::kTimestamp)
 	{
 		vkCmdWriteTimestamp2(m_CommandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, pool, pData->m_QueryIndex);
@@ -1100,6 +1124,10 @@ void BvCommandBufferVk::EndQuery(IBvQuery* pQuery)
 	else
 	{
 		vkCmdEndQuery(m_CommandBuffer, pool, pData->m_QueryIndex);
+		if (queryType == QueryType::kPipelineStatistics && meshPool != VK_NULL_HANDLE)
+		{
+			vkCmdEndQuery(m_CommandBuffer, meshPool, pData->m_QueryIndex);
+		}
 	}
 	VkBuffer buffer;
 	u64 stride = 0, offset = 0;
@@ -1109,7 +1137,13 @@ void BvCommandBufferVk::EndQuery(IBvQuery* pQuery)
 	{
 		flags |= VK_QUERY_RESULT_PARTIAL_BIT;
 	}
+
 	vkCmdCopyQueryPoolResults(m_CommandBuffer, pool, pData->m_QueryIndex, 1, buffer, offset, stride, flags);
+	if (queryType == QueryType::kPipelineStatistics && meshPool != VK_NULL_HANDLE)
+	{
+		pData->m_pQueryHeap->GetBufferInformation(pData->m_HeapIndex, frameIndex, pData->m_QueryIndex, buffer, offset, stride, 1);
+		vkCmdCopyQueryPoolResults(m_CommandBuffer, meshPool, pData->m_QueryIndex, 1, buffer, offset, stride, flags);
+	}
 }
 
 
@@ -1405,5 +1439,14 @@ void BvCommandBufferVk::ResetRenderTargets()
 		m_PostRenderBarriers.Clear();
 
 		m_CurrentState = State::kRecording;
+	}
+}
+
+
+void BvCommandBufferVk::AddSwapChain(BvSwapChainVk* pSwapChain)
+{
+	if (!m_SwapChains.Contains(pSwapChain))
+	{
+		m_SwapChains.EmplaceBack(pSwapChain);
 	}
 }

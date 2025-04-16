@@ -65,6 +65,20 @@ BvQueryHeapVk::BvQueryHeapVk()
 BvQueryHeapVk::BvQueryHeapVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 queryCount, u32 frameCount)
 	: m_pDevice(pDevice), m_QueryCount(queryCount), m_FrameCount(frameCount), m_QueryType(queryType)
 {
+	switch (m_QueryType)
+	{
+	case QueryType::kTimestamp:
+	case QueryType::kOcclusion:
+	case QueryType::kOcclusionBinary:
+		m_QuerySize = sizeof(u64);
+		break;
+	case QueryType::kPipelineStatistics:
+		m_QuerySize = sizeof(PipelineStatistics) - (m_pDevice->GetDeviceInfo()->m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries ? 0 : sizeof(u64) * 3);
+		break;
+	default:
+		BV_ASSERT(false, "Query type not implemented yet");
+		break;
+	}
 }
 
 
@@ -81,6 +95,7 @@ BvQueryHeapVk& BvQueryHeapVk::operator=(BvQueryHeapVk&& rhs) noexcept
 	m_QueryCount = rhs.m_QueryCount;
 	m_FrameCount = rhs.m_FrameCount;
 	m_QueryType = rhs.m_QueryType;
+	m_QuerySize = rhs.m_QuerySize;
 
 	return *this;
 }
@@ -94,15 +109,12 @@ BvQueryHeapVk::~BvQueryHeapVk()
 
 void BvQueryHeapVk::Allocate(u32 frameIndex, QueryDataVk& queryData)
 {
-	VkQueryPool pool = VK_NULL_HANDLE;
 	u32 index = kU32Max;
-
 	u32 heapIndex = 0;
 	for (auto& heapData : m_QueryHeapData)
 	{
 		if (heapData.m_FrameAllocations[frameIndex] < m_QueryCount)
 		{
-			pool = heapData.m_Pool;
 			index = (m_QueryCount * frameIndex) + heapData.m_FrameAllocations[frameIndex]++;
 			break;
 		}
@@ -115,7 +127,6 @@ void BvQueryHeapVk::Allocate(u32 frameIndex, QueryDataVk& queryData)
 		Create();
 		auto& heapData = m_QueryHeapData[m_QueryHeapData.Size() - 1];
 		index = (m_QueryCount * frameIndex) + heapData.m_FrameAllocations[frameIndex]++;
-		pool = heapData.m_Pool;
 	}
 
 	queryData.m_pQueryHeap = this;
@@ -133,7 +144,13 @@ void BvQueryHeapVk::Reset(u32 frameIndex)
 			continue;
 		}
 
-		vkResetQueryPool(m_pDevice->GetHandle(), heapData.m_Pool, frameIndex * m_QueryCount, heapData.m_FrameAllocations[frameIndex]);
+		for (auto pool : heapData.m_Pool)
+		{
+			if (pool != VK_NULL_HANDLE)
+			{
+				vkResetQueryPool(m_pDevice->GetHandle(), pool, frameIndex * m_QueryCount, heapData.m_FrameAllocations[frameIndex]);
+			}
+		}
 
 		heapData.m_FrameAllocations[frameIndex] = 0;
 	}
@@ -143,50 +160,68 @@ void BvQueryHeapVk::Reset(u32 frameIndex)
 bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void* pData, u64 size)
 {
 	auto& heapData = m_QueryHeapData[queryData.m_HeapIndex];
-	auto querySize = GetQuerySize();
-	if (size < querySize)
+	if (size < m_QuerySize)
 	{
 		return false;
 	}
 
-	auto offset = querySize * queryData.m_QueryIndex;
+	auto offset = m_QuerySize * queryData.m_QueryIndex;
 	auto pResultData = reinterpret_cast<u8*>(heapData.m_pBuffer->GetMappedData()) + offset;
 
-	memcpy(pData, pResultData, querySize);
+	memcpy(pData, pResultData, m_QuerySize);
 
 	return true;
 }
 
 
-void BvQueryHeapVk::GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 queryIndex, VkBuffer& buffer, u64& offset, u64& stride)
+void BvQueryHeapVk::GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 queryIndex, VkBuffer& buffer, u64& offset, u64& stride, u32 poolIndex)
 {
 	auto& heapData = m_QueryHeapData[heapIndex];
-	stride = GetQuerySize();
-	offset = stride * queryIndex;
-	buffer = heapData.m_pBuffer->GetHandle();
-}
-
-
-u64 BvQueryHeapVk::GetQuerySize() const
-{
-	switch (m_QueryType)
+	if (m_QueryType != QueryType::kPipelineStatistics)
 	{
-	case QueryType::kTimestamp:
-	case QueryType::kOcclusion:
-	case QueryType::kOcclusionBinary:
-		return sizeof(u64);
-	default:
-		BV_ASSERT(false, "Query not yet implemented");
-		return 0;
+		stride = m_QuerySize;
+		offset = stride * queryIndex;
 	}
+	else
+	{
+		if (poolIndex == 0)
+		{
+			stride = m_QuerySize - (heapData.m_Pool[1] != VK_NULL_HANDLE ? sizeof(u64) : 0);
+			offset = m_QuerySize * queryIndex;
+		}
+		else if (poolIndex == 1 && heapData.m_Pool)
+		{
+			stride = sizeof(u64);
+			offset = m_QuerySize * queryIndex + (m_QuerySize - sizeof(u64));
+		}
+	}
+
+	buffer = heapData.m_pBuffer->GetHandle();
 }
 
 
 void BvQueryHeapVk::Create()
 {
+	bool hasMeshShaderQueries = m_QuerySize == sizeof(PipelineStatistics);
 	VkQueryPoolCreateInfo qpCI{ VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
 	qpCI.queryCount = m_QueryCount * m_FrameCount;
 	qpCI.queryType = GetVkQueryType(m_QueryType);
+	if (m_QueryType == QueryType::kPipelineStatistics)
+	{
+		qpCI.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT
+			| (hasMeshShaderQueries ? (VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT
+			| VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) : 0);
+	}
 
 	VkQueryPool pool;
 	auto result = vkCreateQueryPool(m_pDevice->GetHandle(), &qpCI, nullptr, &pool);
@@ -195,9 +230,22 @@ void BvQueryHeapVk::Create()
 		// TODO: Handle error
 		return;
 	}
+	VkQueryPool meshPool = VK_NULL_HANDLE;
+	if (m_QueryType == QueryType::kPipelineStatistics && hasMeshShaderQueries)
+	{
+		qpCI.queryType = VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT;
+		result = vkCreateQueryPool(m_pDevice->GetHandle(), &qpCI, nullptr, &meshPool);
+		if (result != VK_SUCCESS)
+		{
+			vkDestroyQueryPool(m_pDevice->GetHandle(), pool, nullptr);
+
+			// TODO: Handle error
+			return;
+		}
+	}
 
 	BufferDesc bufferDesc;
-	bufferDesc.m_Size = GetQuerySize() * m_QueryCount * m_FrameCount;
+	bufferDesc.m_Size = m_QuerySize * m_QueryCount * m_FrameCount;
 	bufferDesc.m_MemoryType = MemoryType::kReadBack;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 	BvBufferVk* pBuffer;
@@ -206,9 +254,13 @@ void BvQueryHeapVk::Create()
 		return;
 	}
 
-	m_QueryHeapData.EmplaceBack(BvQueryHeapVk::HeapData{ pool, BvVector<u32>(m_FrameCount), pBuffer });
+	m_QueryHeapData.EmplaceBack(BvQueryHeapVk::HeapData{ { pool, meshPool }, BvVector<u32>(m_FrameCount), pBuffer });
 
 	vkResetQueryPool(m_pDevice->GetHandle(), pool, 0, m_QueryCount * m_FrameCount);
+	if (meshPool != VK_NULL_HANDLE)
+	{
+		vkResetQueryPool(m_pDevice->GetHandle(), meshPool, 0, m_QueryCount * m_FrameCount);
+	}
 }
 
 
@@ -216,10 +268,13 @@ void BvQueryHeapVk::Destroy()
 {
 	for (auto& heapData : m_QueryHeapData)
 	{
-		if (heapData.m_Pool)
+		for (auto& pool : heapData.m_Pool)
 		{
-			vkDestroyQueryPool(m_pDevice->GetHandle(), heapData.m_Pool, nullptr);
-			heapData.m_Pool = nullptr;
+			if (pool != VK_NULL_HANDLE)
+			{
+				vkDestroyQueryPool(m_pDevice->GetHandle(), pool, nullptr);
+				pool = VK_NULL_HANDLE;
+			}
 		}
 
 		if (heapData.m_pBuffer)

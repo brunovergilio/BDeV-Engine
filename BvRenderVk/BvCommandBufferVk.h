@@ -133,6 +133,7 @@ public:
 private:
 	void FlushDescriptorSets();
 	void ResetRenderTargets();
+	void AddSwapChain(BvSwapChainVk* pSwapChain);
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;

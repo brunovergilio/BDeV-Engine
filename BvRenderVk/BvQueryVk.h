@@ -73,14 +73,13 @@ public:
 	void Allocate(u32 frameIndex, QueryDataVk& queryData);
 	void Reset(u32 frameIndex);
 	bool GetResult(const QueryDataVk& queryData, u32 frameIndex, void* pData, u64 size);
-	void GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 queryIndex, VkBuffer& buffer, u64& offset, u64& stride);
-	u64 GetQuerySize() const;
+	void GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 queryIndex, VkBuffer& buffer, u64& offset, u64& stride, u32 poolIndex = 0);
 
-	BV_INLINE VkQueryPool GetHandle(u32 heapIndex) const { return m_QueryHeapData[heapIndex].m_Pool; }
+	BV_INLINE VkQueryPool GetHandle(u32 heapIndex, u32 poolIndex = 0) const { return m_QueryHeapData[heapIndex].m_Pool[poolIndex]; }
 
 	struct HeapData
 	{
-		VkQueryPool m_Pool;
+		VkQueryPool m_Pool[2];
 		BvVector<u32> m_FrameAllocations;
 		BvBufferVk* m_pBuffer;
 	};
@@ -95,6 +94,7 @@ private:
 	u32 m_QueryCount = 0;
 	u32 m_FrameCount = 0;
 	QueryType m_QueryType = QueryType::kTimestamp;
+	u64 m_QuerySize = 0;
 };
 
 

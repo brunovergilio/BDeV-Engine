@@ -128,6 +128,16 @@ public:
 		SetIndexBufferView(ib);
 	}
 
+	virtual void SetDepthBounds(f32 min, f32 max) = 0;
+	virtual void SetStencilRef(u32 stencilRef) = 0;
+	virtual void SetBlendConstants(const float(pColors[4])) = 0;
+	BV_INLINE void SetBlendConstants(f32 r, f32 g, f32 b, f32 a = 1.0f)
+	{
+		f32 colors[]{ r, g, b, a };
+		SetBlendConstants(colors);
+	}
+	virtual void SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp(pCombinerOps[2])) = 0;
+
 	virtual void Draw(const DrawCommandArgs& args) = 0;
 	virtual void DrawIndexed(const DrawIndexedCommandArgs& args) = 0;
 	virtual void Dispatch(const DispatchCommandArgs& args) = 0;
@@ -163,7 +173,7 @@ public:
 	virtual void CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer, const BufferCopyDesc& copyDesc) = 0;
 
 	virtual void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture) = 0;
-	virtual void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture, const TextureCopyDesc& copyDesc = TextureCopyDesc()) = 0;
+	virtual void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture, const TextureCopyDesc& copyDesc) = 0;
 
 	virtual void CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs) = 0;
 	BV_INLINE void CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTexture* pDstTexture, const BufferTextureCopyDesc& copyDesc)

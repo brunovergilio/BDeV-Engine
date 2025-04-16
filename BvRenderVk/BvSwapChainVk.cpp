@@ -160,7 +160,6 @@ bool BvSwapChainVk::Create()
 		// the most commonly accepted formats for a swap chain
 		requestedFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	}
-	VkColorSpaceKHR requestedColorSpace = GetVkColorSpace(m_SwapChainDesc.m_ColorSpace);
 
 	VkFormat format = VkFormat::VK_FORMAT_UNDEFINED;
 	VkColorSpaceKHR colorSpace = VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -181,14 +180,21 @@ bool BvSwapChainVk::Create()
 			{
 				format = surfaceFormat.format;
 				colorSpace = surfaceFormat.colorSpace;
-				if (requestedColorSpace == colorSpace || m_SwapChainDesc.m_ColorSpace == ColorSpace::kAuto)
+
+				// We can stop looking if either is true:
+				// 1) We want an HDR color space and found one
+				// 2) We don't want to use HDR and found a default color space
+				// Formats such as VK_FORMAT_A2B10G10R10_UNORM_PACK32 can be used with different color spaces,
+				// so doing this can help us choose the proper option based on the swap chain's parameters
+				if ((m_SwapChainDesc.m_PreferHDR && surfaceFormat.colorSpace != VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+					|| (!m_SwapChainDesc.m_PreferHDR && surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR))
 				{
 					break;
 				}
 			}
 		}
 
-		// If the requested format is not available, we can try to look for a replacement
+		// If the requested format is not available, see if we can get a "replacement"
 		if (format == VkFormat::VK_FORMAT_UNDEFINED)
 		{
 			// We can try looking for RGBA formats if BGRA are not available and vice versa
@@ -206,18 +212,16 @@ bool BvSwapChainVk::Create()
 				{
 					format = surfaceFormat.format;
 					colorSpace = surfaceFormat.colorSpace;
-					if (requestedColorSpace == colorSpace || m_SwapChainDesc.m_ColorSpace == ColorSpace::kAuto)
-					{
-						break;
-					}
+					break;
 				}
 			}
 
-			// If we still couldn't find anything, then throw an error
+			// If we still couldn't find anything, default to VK_FORMAT_B8G8R8A8_UNORM
 			if (format == VkFormat::VK_FORMAT_UNDEFINED)
 			{
-				BV_ASSERT(false, "Couldn't find a format for Vulkan's SwapChain");
-				return false;
+				format = VK_FORMAT_B8G8R8A8_UNORM;
+				colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+				m_SwapChainDesc.m_Format = Format::kBGRA8_UNorm;
 			}
 		}
 	}
@@ -292,8 +296,7 @@ bool BvSwapChainVk::Create()
 				swapchainPresentMode = VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR;
 				break;
 			}
-			if ((swapchainPresentMode != VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR)
-				&& (presentModes[i] == VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR))
+			else if (presentModes[i] == VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR)
 			{
 				swapchainPresentMode = VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR;
 			}

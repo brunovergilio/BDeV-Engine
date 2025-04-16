@@ -454,27 +454,27 @@ void OffscreenRenderPass::CreateRenderTargets()
 	subpasses[1].m_InputAttachmentCount = 2;
 	subpasses[1].m_pInputAttachments = inputRefs;
 
-	SubpassDependency dependencies[3];
-	dependencies[0].m_SrcSubpass = SubpassDependency::kExternalSubpassIndex;
-	dependencies[0].m_DstSubpass = 0;
-	dependencies[0].m_SrcAccess = ResourceAccess::kAuto;
-	dependencies[0].m_DstAccess = ResourceAccess::kAuto;
-	dependencies[0].m_SrcStage = PipelineStage::kAuto;
-	dependencies[0].m_DstStage = PipelineStage::kAuto;
+	//SubpassDependency dependencies[3];
+	//dependencies[0].m_SrcSubpass = SubpassDependency::kExternalSubpassIndex;
+	//dependencies[0].m_DstSubpass = 0;
+	//dependencies[0].m_SrcAccess = ResourceAccess::kAuto;
+	//dependencies[0].m_DstAccess = ResourceAccess::kAuto;
+	//dependencies[0].m_SrcStage = PipelineStage::kAuto;
+	//dependencies[0].m_DstStage = PipelineStage::kAuto;
 
-	dependencies[1].m_SrcSubpass = 0;
-	dependencies[1].m_DstSubpass = 1;
-	dependencies[1].m_SrcAccess = ResourceAccess::kAuto;
-	dependencies[1].m_DstAccess = ResourceAccess::kAuto;
-	dependencies[1].m_SrcStage = PipelineStage::kAuto;
-	dependencies[1].m_DstStage = PipelineStage::kAuto;
+	//dependencies[1].m_SrcSubpass = 0;
+	//dependencies[1].m_DstSubpass = 1;
+	//dependencies[1].m_SrcAccess = ResourceAccess::kAuto;
+	//dependencies[1].m_DstAccess = ResourceAccess::kAuto;
+	//dependencies[1].m_SrcStage = PipelineStage::kAuto;
+	//dependencies[1].m_DstStage = PipelineStage::kAuto;
 
-	dependencies[2].m_SrcSubpass = 1;
-	dependencies[2].m_DstSubpass = SubpassDependency::kExternalSubpassIndex;
-	dependencies[2].m_SrcAccess = ResourceAccess::kAuto;
-	dependencies[2].m_DstAccess = ResourceAccess::kAuto;
-	dependencies[2].m_SrcStage = PipelineStage::kAuto;
-	dependencies[2].m_DstStage = PipelineStage::kAuto;
+	//dependencies[2].m_SrcSubpass = 1;
+	//dependencies[2].m_DstSubpass = SubpassDependency::kExternalSubpassIndex;
+	//dependencies[2].m_SrcAccess = ResourceAccess::kAuto;
+	//dependencies[2].m_DstAccess = ResourceAccess::kAuto;
+	//dependencies[2].m_SrcStage = PipelineStage::kAuto;
+	//dependencies[2].m_DstStage = PipelineStage::kAuto;
 
 	RenderPassDesc rpDesc;
 	rpDesc.m_AttachmentCount = 3;

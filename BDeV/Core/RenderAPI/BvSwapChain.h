@@ -11,15 +11,6 @@ class BvSemaphore;
 class BvWindow;
 
 
-struct SwapChainDesc
-{
-	u32 m_SwapChainImageCount = 3;
-	Format m_Format = Format::kUnknown;
-	ColorSpace m_ColorSpace = ColorSpace::kAuto;
-	bool m_VSync = false;
-};
-
-
 //BV_OBJECT_DEFINE_ID(IBvSwapChain, "239e8b95-158a-4313-8f79-f68369441372");
 //BV_OBJECT_ENABLE_ID_OPERATOR(IBvSwapChain);
 class IBvSwapChain : public BvRCObj
