@@ -821,6 +821,10 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 	if (meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.taskShader)
 	{
 		caps |= RenderDeviceCapabilities::kMeshShader;
+		if (deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries)
+		{
+			caps |= RenderDeviceCapabilities::kMeshQuery;
+		}
 	}
 	if (rayTracingPipeline)
 	{

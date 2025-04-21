@@ -693,7 +693,7 @@ public:
 	BV_INLINE BvVec3() {}
 	BV_INLINE BvVec3(f32 x, f32 y, f32 z) : m_Vec(VectorSet(x, y, z, 0.0f)) {}
 	BV_INLINE BvVec3(const Float3& v) : m_Vec(Load(v)) {}
-	BV_INLINE explicit BvVec3(cvf32 v) : m_Vec(v) {}
+	BV_INLINE explicit BvVec3(cvf32 v) : m_Vec(VectorSetW(v, 0.0f)) {}
 
 	BV_INLINE static BvVec3 Zero() { return BvVec3(VectorZero()); }
 	BV_INLINE static BvVec3 One() { return BvVec3(VectorOne()); }
@@ -783,7 +783,7 @@ public:
 	BV_INLINE BvVec4() {}
 	BV_INLINE BvVec4(f32 x, f32 y, f32 z, f32 w = 1.0f) : m_Vec(VectorSet(x, y, z, w)) {}
 	BV_INLINE BvVec4(const Float4& v) : m_Vec(Load(v)) {}
-	BV_INLINE explicit BvVec4(BvVec3 v) : m_Vec(VectorSetW(v, 1.0f)) {}
+	BV_INLINE explicit BvVec4(BvVec3 v, f32 w = 1.0f) : m_Vec(VectorSetW(v, w)) {}
 	BV_INLINE explicit BvVec4(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE static BvVec4 Zero() { return BvVec4(VectorZero()); }
@@ -903,6 +903,7 @@ public:
 	BV_INLINE void SetRotationAxis(BvVec3 axis, f32 rad) { m_Mat = MatrixRotationAxis(axis, rad); }
 	BV_INLINE void SetTranslation(f32 x, f32 y, f32 z) { m_Mat = MatrixTranslation(x, y, z); }
 	BV_INLINE void SetTranslation(BvVec3 v) { m_Mat = MatrixTranslation(v); }
+	BV_INLINE void SetTranspose() { m_Mat = MatrixTranspose(m_Mat); }
 	BV_INLINE void SetLookAt(BvVec3 eyePos, BvVec3 dirVec, BvVec3 upVec) { m_Mat = MatrixLookAt(eyePos, dirVec, upVec); }
 	BV_INLINE void SetLookAtLH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { m_Mat = MatrixLookAtLH(eyePos, lookPos, upVec); }
 	BV_INLINE void SetLookAtRH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { m_Mat = MatrixLookAtRH(eyePos, lookPos, upVec); }
@@ -934,9 +935,9 @@ public:
 	BV_INLINE BvMatrix Transpose() const { return BvMatrix(MatrixTranspose(m_Mat)); }
 
 	BV_INLINE BvMatrix operator*(const BvMatrix& m) const { return BvMatrix(MatrixMul(m_Mat, m)); }
-	BV_INLINE BvMatrix& operator*=(const BvMatrix& m) { m_Mat = MatrixMul(m_Mat, m); }
+	BV_INLINE BvMatrix& operator*=(const BvMatrix& m) { m_Mat = MatrixMul(m_Mat, m); return *this; }
 
-	BV_INLINE BvVec3 operator[](size_t index) const { return BvVec3(m_Mat.r[index]); }
+	BV_INLINE BvVec4 operator[](size_t index) const { return BvVec4(m_Mat.r[index]); }
 
 	BV_INLINE operator mf32() const { return m_Mat; }
 
@@ -954,13 +955,14 @@ public:
 	BV_INLINE BvQuat(f32 x, f32 y, f32 z, f32 w) : m_Vec(VectorSet(x, y, z, w)) {}
 	BV_INLINE BvQuat(const Float4& q) : m_Vec(Load(q)) {}
 	BV_INLINE explicit BvQuat(BvVec3 v) : m_Vec(VectorSetW(v, 0.0f)) {}
+	BV_INLINE explicit BvQuat(BvVec3 axis, f32 rad) : m_Vec(QuaternionNormalize(QuaternionRotationAxis(axis, rad))) {}
 	BV_INLINE explicit BvQuat(const BvMatrix& m) : m_Vec(QuaternionFromMatrix(m)) {}
 	BV_INLINE explicit BvQuat(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE static BvQuat Identity() { return BvQuat(QuaternionIdentity()); }
-	BV_INLINE static BvQuat RotationAxis(vf32 v, f32 rad) { return BvQuat(QuaternionRotationAxis(v, rad)); }
+	BV_INLINE static BvQuat RotationAxis(vf32 v, f32 rad) { return BvQuat(QuaternionNormalize(QuaternionRotationAxis(v, rad))); }
 	BV_INLINE void SetIdentity() { m_Vec = QuaternionIdentity(); }
-	BV_INLINE void SetRotationAxis(vf32 v, f32 rad) { m_Vec = QuaternionRotationAxis(v, rad); }
+	BV_INLINE void SetRotationAxis(vf32 v, f32 rad) { m_Vec = QuaternionNormalize(QuaternionRotationAxis(v, rad)); }
 
 	BV_INLINE BvSVec GetX() const { return BvSVec(VectorReplicateX(m_Vec)); }
 	BV_INLINE BvSVec GetY() const { return BvSVec(VectorReplicateY(m_Vec)); }
@@ -986,7 +988,7 @@ public:
 	BV_INLINE BvVec4 operator-() const { return BvVec4(QuaternionConjugate(m_Vec)); }
 
 	BV_INLINE BvQuat operator*(BvQuat q) const { return BvQuat(QuaternionMul(m_Vec, q.m_Vec)); }
-	BV_INLINE BvQuat& operator*=(BvQuat q) { m_Vec = QuaternionMul(m_Vec, q.m_Vec); }
+	BV_INLINE BvQuat& operator*=(BvQuat q) { m_Vec = QuaternionMul(m_Vec, q.m_Vec); return *this; }
 
 	BV_INLINE BvBoolVec IsNearlyEqual(BvQuat q, f32 epsilon = kEpsilon) const { return BvBoolVec(VectorNearlyEqual(m_Vec, q.m_Vec, epsilon)); }
 	BV_INLINE BvBoolVec operator==(BvQuat q) const { return BvBoolVec(VectorEqual(m_Vec, q.m_Vec)); }
@@ -1025,11 +1027,13 @@ BV_INLINE BvVec3 BvVec3::operator*(const BvMatrix& m) const
 BV_INLINE BvVec3& BvVec3::operator*=(BvQuat q)
 {
 	m_Vec = Vector3Rotate(m_Vec, q);
+	return *this;
 }
 
 BV_INLINE BvVec3& BvVec3::operator*=(const BvMatrix& m)
 {
-	m_Vec = Vector3TransformPoint(m_Vec, m);
+	m_Vec = Vector3TransformDir(m_Vec, m);
+	return *this;
 }
 
 BV_INLINE BvVec3 BvVec3::Rotate(BvQuat q) const

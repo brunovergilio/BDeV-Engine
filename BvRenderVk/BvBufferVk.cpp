@@ -205,7 +205,11 @@ void BvBufferVk::Destroy()
 
 void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 {
-	BV_ASSERT(pInitData->m_pContext != nullptr && pInitData->m_Size > 0 && pInitData->m_pData != nullptr, "Invalid init data parameters");
+	//BV_ASSERT(pInitData->m_pContext != nullptr && pInitData->m_Size > 0 && pInitData->m_pData != nullptr, "Invalid init data parameters");
+	if (!pInitData || !pInitData->m_pContext || pInitData->m_Size == 0 || !pInitData->m_pData)
+	{
+		return;
+	}
 
 	BufferDesc bufferDesc;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;

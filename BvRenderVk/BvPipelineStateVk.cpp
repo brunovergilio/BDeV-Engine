@@ -237,8 +237,6 @@ void BvGraphicsPipelineStateVk::Create()
 	blendCI.logicOpEnable = m_PipelineStateDesc.m_BlendStateDesc.m_LogicEnable;
 	blendCI.logicOp = GetVkLogicOp(m_PipelineStateDesc.m_BlendStateDesc.m_LogicOp);
 
-	bool hasTessellationShader = false;
-	bool hasMeshShader = false;
 	BvFixedVector<VkPipelineShaderStageCreateInfo, kMaxShaderStages> shaderStages;
 	for (auto i = 0u; i < kMaxShaderStages && m_PipelineStateDesc.m_Shaders[i] != nullptr; i++)
 	{
@@ -248,14 +246,17 @@ void BvGraphicsPipelineStateVk::Create()
 		shaderStage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_Shaders[i]->GetShaderStage());
 		if (shaderStage.stage & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
 		{
-			hasTessellationShader = true;
+			m_HasTessellationShaders = true;
 		}
 		else if (shaderStage.stage & (VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT))
 		{
-			hasMeshShader = true;
+			m_HasMeshShaders = true;
 		}
 		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
 	}
+
+	BV_ASSERT(m_HasMeshShaders != m_HasTessellationShaders
+		|| (m_HasMeshShaders == false && m_HasTessellationShaders == false), "Pipeline can't have both mesh and tess shaders");
 
 	constexpr u32 kMaxDynamicStates = 8; // Change as needed
 	BvFixedVector<VkDynamicState, kMaxDynamicStates> dynamicStates{};
@@ -263,7 +264,7 @@ void BvGraphicsPipelineStateVk::Create()
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	dynamicStates.PushBack(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
-	if (!hasMeshShader && vertexCI.vertexBindingDescriptionCount > 0)
+	if (!m_HasMeshShaders && vertexCI.vertexBindingDescriptionCount > 0)
 	{
 		dynamicStates.PushBack(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE);
 	}
@@ -285,9 +286,12 @@ void BvGraphicsPipelineStateVk::Create()
 	//pipelineCI.flags = 0;
 	pipelineCI.stageCount = shaderStages.Size();
 	pipelineCI.pStages = shaderStages.Data();
-	pipelineCI.pVertexInputState = &vertexCI;
-	pipelineCI.pInputAssemblyState = &iaCI;
-	pipelineCI.pTessellationState = hasTessellationShader ? &tessCI : nullptr;
+	if (!m_HasMeshShaders)
+	{
+		pipelineCI.pVertexInputState = &vertexCI;
+		pipelineCI.pInputAssemblyState = &iaCI;
+	}
+	pipelineCI.pTessellationState = m_HasTessellationShaders ? &tessCI : nullptr;
 	pipelineCI.pViewportState = &viewportCI;
 	pipelineCI.pRasterizationState = &rasterizerCI;
 	pipelineCI.pMultisampleState = &msCI;

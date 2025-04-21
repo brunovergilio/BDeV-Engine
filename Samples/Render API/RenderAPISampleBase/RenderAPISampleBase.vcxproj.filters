@@ -10,6 +10,7 @@
     <ClInclude Include="Third Party\imstb_textedit.h" />
     <ClInclude Include="Third Party\imstb_truetype.h" />
     <ClInclude Include="FPSCounter.h" />
+    <ClInclude Include="Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SampleBase.cpp" />
@@ -19,5 +20,6 @@
     <ClCompile Include="Third Party\imgui_draw.cpp" />
     <ClCompile Include="Third Party\imgui_tables.cpp" />
     <ClCompile Include="Third Party\imgui_widgets.cpp" />
+    <ClCompile Include="Camera.cpp" />
   </ItemGroup>
 </Project>

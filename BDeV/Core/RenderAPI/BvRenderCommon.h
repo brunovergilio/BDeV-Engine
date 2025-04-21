@@ -43,9 +43,10 @@ enum RenderDeviceCapabilities : u32
 	kConservativeRasterization		= BvBit(9),
 	kShadingRate					= BvBit(10),
 	kMeshShader						= BvBit(11),
-	kRayTracing						= BvBit(12),
-	kRayQuery						= BvBit(13),
-	kMultiView						= BvBit(14)
+	kMeshQuery						= BvBit(12),
+	kRayTracing						= BvBit(13),
+	kRayQuery						= BvBit(14),
+	kMultiView						= BvBit(15)
 };
 BV_USE_ENUM_CLASS_OPERATORS(RenderDeviceCapabilities);
 
@@ -735,8 +736,8 @@ struct SubresourceData
 struct BufferInitData
 {
 	IBvCommandContext* m_pContext = nullptr;
-	const void* m_pData;
-	u64 m_Size;
+	const void* m_pData = nullptr;
+	u64 m_Size = 0;
 };
 
 
@@ -1073,9 +1074,10 @@ enum class QueryType : u8
 	kTimestamp,
 	kOcclusion,
 	kOcclusionBinary,
-	kPipelineStatistics
+	kPipelineStatistics,
+	kMeshPipelineStatistics
 };
-constexpr u32 kQueryTypeCount = 4;
+constexpr u32 kQueryTypeCount = 5;
 
 
 struct PipelineStatistics
@@ -1091,7 +1093,7 @@ struct PipelineStatistics
 	u64 m_HullOrControlShaderInvocations = 0;
 	u64 m_DomainOrEvaluationShaderInvocations = 0;
 	u64 m_ComputeShaderInvocations = 0;
-	u64 m_AmplificationShaderInvocations = 0;
+	u64 m_TaskOrAmplificationShaderInvocations = 0;
 	u64 m_MeshShaderInvocations = 0;
 	u64 m_MeshShaderPrimitives = 0;
 };

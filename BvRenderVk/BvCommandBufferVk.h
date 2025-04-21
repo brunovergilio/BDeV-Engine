@@ -25,6 +25,7 @@ class IBvComputePipelineState;
 class IBvRayTracingPipelineState;
 class IBvShaderResourceParams;
 class BvFrameDataVk;
+class BvQueryVk;
 
 
 class BvCommandBufferVk final
@@ -134,6 +135,8 @@ private:
 	void FlushDescriptorSets();
 	void ResetRenderTargets();
 	void AddSwapChain(BvSwapChainVk* pSwapChain);
+	void BeginMeshQueries();
+	void EndMeshQueries();
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
@@ -163,6 +166,7 @@ private:
 
 	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;
+	BvVector<BvQueryVk*> m_MeshQueries;
 
 	VkPipelineBindPoint m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_MAX_ENUM;
 

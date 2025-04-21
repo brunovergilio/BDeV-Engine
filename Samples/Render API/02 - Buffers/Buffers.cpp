@@ -56,6 +56,8 @@ void Buffers::OnInitialize()
 	CreateRenderTargets();
 	CreateShaderResourceLayout();
 	CreatePipeline();
+
+	m_Camera.SetPos(0.0f, 0.0f, -5.0f);
 }
 
 
@@ -89,8 +91,7 @@ void Buffers::OnUpdate()
 		angleZ = 0.0f;
 	}
 	Store44(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ)
-		* MatrixLookAtLH(VectorSet(0.0f, 0.0f, -5.0f, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f, 1.0f))
-		* MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4), m_pWVP->m);
+		* m_Camera.GetViewProj(), m_pWVP->m);
 }
 
 

@@ -53,6 +53,46 @@ void SampleBase::Update()
 		return;
 	}
 
+	if (m_Keyboard.KeyIsDown(BvKey::kW))
+	{
+		m_Camera.Walk(m_Dt * 8.0f);
+	}
+	if (m_Keyboard.KeyIsDown(BvKey::kS))
+	{
+		m_Camera.Walk(-m_Dt * 8.0f);
+	}
+	if (m_Keyboard.KeyIsDown(BvKey::kA))
+	{
+		m_Camera.Strafe(-m_Dt * 8.0f);
+	}
+	if (m_Keyboard.KeyIsDown(BvKey::kD))
+	{
+		m_Camera.Strafe(m_Dt * 8.0f);
+	}
+	if (m_Keyboard.KeyIsDown(BvKey::kR))
+	{
+		m_Camera.Fly(m_Dt * 8.0f);
+	}
+	if (m_Keyboard.KeyIsDown(BvKey::kF))
+	{
+		m_Camera.Fly(-m_Dt * 8.0f);
+	}
+	auto& mouseState = m_Mouse.GetMouseState();
+	if (m_Keyboard.KeyIsDown(BvKey::kLControl))
+	{
+		if (mouseState.relativeMousePositionY != 0.0f)
+		{
+			m_Camera.Pitch(-mouseState.relativeMousePositionY * m_Dt);
+		}
+		if (mouseState.relativeMousePositionX != 0.0f)
+		{
+			m_Camera.RotateY(-mouseState.relativeMousePositionX * m_Dt);
+		}
+	}
+
+	m_Camera.SetPerspective(0.1f, 100.0f, f32(m_pWindow->GetWidth()) / f32(m_pWindow->GetHeight()), kPiDiv4);
+	m_Camera.Update();
+
 	OnUpdate();
 	if (m_UseOverlay && m_Overlay.Update(m_Dt, m_pWindow))
 	{

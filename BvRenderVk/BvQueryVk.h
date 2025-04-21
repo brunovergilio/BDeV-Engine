@@ -93,8 +93,9 @@ private:
 	BvVector<HeapData> m_QueryHeapData;
 	u32 m_QueryCount = 0;
 	u32 m_FrameCount = 0;
-	QueryType m_QueryType = QueryType::kTimestamp;
 	u64 m_QuerySize = 0;
+	VkQueryPipelineStatisticFlags m_PSOFlags = 0;
+	QueryType m_QueryType = QueryType::kTimestamp;
 };
 
 

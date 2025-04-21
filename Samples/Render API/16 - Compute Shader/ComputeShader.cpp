@@ -88,6 +88,8 @@ void ComputeShader::OnInitialize()
 	CreateShaderResourceLayout();
 	CreatePipeline();
 	CreateTextures();
+
+	m_Query = m_Device->CreateQuery(QueryType::kPipelineStatistics);
 }
 
 
@@ -101,6 +103,29 @@ void ComputeShader::OnUpdate()
 	{
 		m_PC.time += m_Dt;
 	}
+
+	m_Query->GetResult(m_PSOStats);
+}
+
+
+void ComputeShader::OnUpdateUI()
+{
+	BeginDrawDefaultUI();
+	ImGui::Text("Input Assembly Vertices: %llu", m_PSOStats.m_InputAssemblyVertices);
+	ImGui::Text("Input Assembly Primitives: %llu", m_PSOStats.m_InputAssemblyPrimitives);
+	ImGui::Text("Vertex Shader Invocations: %llu", m_PSOStats.m_VertexShaderInvocations);
+	ImGui::Text("Geometry Shader Invocations: %llu", m_PSOStats.m_GeometryShaderInvocations);
+	ImGui::Text("Geometry Shader Primitives: %llu", m_PSOStats.m_GeometryShaderPrimitives);
+	ImGui::Text("Clipping Invocations: %llu", m_PSOStats.m_ClippingInvocations);
+	ImGui::Text("Clipping Primitives: %llu", m_PSOStats.m_ClippingPrimitives);
+	ImGui::Text("Pixel Shader Invocations: %llu", m_PSOStats.m_PixelOrFragmentShaderInvocations);
+	ImGui::Text("Hull Shader Invocations: %llu", m_PSOStats.m_HullOrControlShaderInvocations);
+	ImGui::Text("Domain Shader Invocations: %llu", m_PSOStats.m_DomainOrEvaluationShaderInvocations);
+	ImGui::Text("Compute Shader Invocations: %llu", m_PSOStats.m_ComputeShaderInvocations);
+	ImGui::Text("Task Shader Invocations: %llu", m_PSOStats.m_TaskOrAmplificationShaderInvocations);
+	ImGui::Text("Mesh Shader Invocations: %llu", m_PSOStats.m_MeshShaderInvocations);
+	ImGui::Text("Mesh Shader Primitives: %llu", m_PSOStats.m_MeshShaderPrimitives);
+	EndDrawDefaultUI();
 }
 
 
@@ -110,25 +135,18 @@ void ComputeShader::OnRender()
 	auto height = m_pWindow->GetHeight();
 
 	m_Context->NewCommandList();
-
-	ResourceBarrierDesc barriers[2];
-	barriers[0].m_pTexture = m_RWTex;
-	barriers[0].m_SrcLayout = ResourceState::kPixelShaderResource;
-	barriers[0].m_DstLayout = ResourceState::kRWResource;
-	m_Context->ResourceBarrier(1, barriers);
+	m_Context->BeginQuery(m_Query);
+	ResourceBarrierDesc barrier;
+	barrier.m_pTexture = m_RWTex;
+	barrier.m_SrcLayout = ResourceState::kPixelShaderResource;
+	barrier.m_DstLayout = ResourceState::kRWResource;
+	m_Context->ResourceBarrier(1, &barrier);
 	DoCompute(width, height);
 
-	//barriers[1].m_pTexture = m_SwapChain->GetCurrentTextureView()->GetDesc().m_pTexture;
-	//barriers[1].m_SrcLayout = ResourceState::kPresent;
-	//barriers[1].m_DstLayout = ResourceState::kTransferDst;
-	//m_Context->CopyTexture(m_RWTex, barriers[1].m_pTexture);
+	barrier.m_SrcLayout = ResourceState::kRWResource;
+	barrier.m_DstLayout = ResourceState::kPixelShaderResource;
 
-	barriers[0].m_SrcLayout = ResourceState::kRWResource;
-	barriers[0].m_DstLayout = ResourceState::kPixelShaderResource;
-
-	//barriers[1].m_SrcLayout = ResourceState::kTransferDst;
-	//barriers[1].m_DstLayout = ResourceState::kPresent;
-	m_Context->ResourceBarrier(1, barriers);
+	m_Context->ResourceBarrier(1, &barrier);
 
 	RenderTargetDesc targets[] =
 	{
@@ -144,6 +162,7 @@ void ComputeShader::OnRender()
 	m_Context->Draw(6);
 	OnRenderUI();
 
+	m_Context->EndQuery(m_Query);
 	m_Context->Execute();
 
 	m_SwapChain->Present(false);
@@ -170,6 +189,7 @@ void ComputeShader::OnShutdown()
 	m_RWTexView.Reset();
 	m_RWTex.Reset();
 	m_Sampler.Reset();
+	m_Query.Reset();
 }
 
 

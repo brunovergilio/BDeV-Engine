@@ -12,6 +12,7 @@ class IBvQuery : public BvRCObj
 public:
 	virtual QueryType GetQueryType() const = 0;
 	virtual bool GetResult(void* pData, u64 size) = 0;
+	template<typename T> BV_INLINE bool GetResult(T& val) { return GetResult(&val, sizeof(T)); }
 
 protected:
 	IBvQuery() {}

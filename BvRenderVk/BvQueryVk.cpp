@@ -3,6 +3,7 @@
 #include "BvTypeConversionsVk.h"
 #include "BvBufferVk.h"
 #include "BvGPUFenceVk.h"
+#include <bit>
 
 
 BV_VK_DEVICE_RES_DEF(BvQueryVk)
@@ -65,6 +66,8 @@ BvQueryHeapVk::BvQueryHeapVk()
 BvQueryHeapVk::BvQueryHeapVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 queryCount, u32 frameCount)
 	: m_pDevice(pDevice), m_QueryCount(queryCount), m_FrameCount(frameCount), m_QueryType(queryType)
 {
+	auto pInfo = m_pDevice->GetDeviceInfo();
+
 	switch (m_QueryType)
 	{
 	case QueryType::kTimestamp:
@@ -73,8 +76,41 @@ BvQueryHeapVk::BvQueryHeapVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32
 		m_QuerySize = sizeof(u64);
 		break;
 	case QueryType::kPipelineStatistics:
-		m_QuerySize = sizeof(PipelineStatistics) - (m_pDevice->GetDeviceInfo()->m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries ? 0 : sizeof(u64) * 3);
+	{
+		m_PSOFlags = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
+			| (pInfo->m_DeviceFeatures.features.geometryShader ? (VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT
+				| VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT) : 0)
+			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
+			| (pInfo->m_DeviceFeatures.features.tessellationShader ? (VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT
+				| VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT) : 0)
+			| VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+
+		m_QuerySize = sizeof(u64) * std::popcount(m_PSOFlags);
 		break;
+	}
+	case QueryType::kMeshPipelineStatistics:
+	{
+		m_PSOFlags = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
+			| (pInfo->m_DeviceFeatures.features.geometryShader ? (VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT
+				| VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT) : 0)
+			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
+			| (pInfo->m_DeviceFeatures.features.tessellationShader ? (VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT
+				| VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT) : 0)
+			| VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT
+			| (pInfo->m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries ? (VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT
+				| VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) : 0);
+
+		m_QuerySize = sizeof(u64) * std::popcount(m_PSOFlags) + (pInfo->m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries ? sizeof(u64) : 0);
+		break;
+	}
 	default:
 		BV_ASSERT(false, "Query type not implemented yet");
 		break;
@@ -94,8 +130,9 @@ BvQueryHeapVk& BvQueryHeapVk::operator=(BvQueryHeapVk&& rhs) noexcept
 	std::swap(m_QueryHeapData, rhs.m_QueryHeapData);
 	m_QueryCount = rhs.m_QueryCount;
 	m_FrameCount = rhs.m_FrameCount;
-	m_QueryType = rhs.m_QueryType;
 	m_QuerySize = rhs.m_QuerySize;
+	m_PSOFlags = rhs.m_PSOFlags;
+	m_QueryType = rhs.m_QueryType;
 
 	return *this;
 }
@@ -165,10 +202,52 @@ bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void
 		return false;
 	}
 
-	auto offset = m_QuerySize * queryData.m_QueryIndex;
-	auto pResultData = reinterpret_cast<u8*>(heapData.m_pBuffer->GetMappedData()) + offset;
+	heapData.m_pBuffer->Invalidate(size, 0);
 
-	memcpy(pData, pResultData, m_QuerySize);
+	auto offset = m_QuerySize * queryData.m_QueryIndex;
+	auto pResultData = reinterpret_cast<u64*>(reinterpret_cast<u8*>(heapData.m_pBuffer->GetMappedData()) + offset);
+	
+	switch (m_QueryType)
+	{
+	case QueryType::kTimestamp:
+	case QueryType::kOcclusion:
+	case QueryType::kOcclusionBinary:
+	{
+		auto pValue = reinterpret_cast<u64*>(pData);
+		*pValue = *pResultData;
+		break;
+	}
+	case QueryType::kPipelineStatistics:
+	case QueryType::kMeshPipelineStatistics:
+	{
+		auto& psoStats = *reinterpret_cast<PipelineStatistics*>(pData);
+		i32 currIndex = 0;
+		psoStats.m_InputAssemblyVertices = pResultData[currIndex++];
+		psoStats.m_InputAssemblyPrimitives = pResultData[currIndex++];
+		psoStats.m_VertexShaderInvocations = pResultData[currIndex++];
+		if (m_PSOFlags & (VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT | VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT))
+		{
+			psoStats.m_GeometryShaderInvocations = pResultData[currIndex++];
+			psoStats.m_GeometryShaderPrimitives = pResultData[currIndex++];
+		}
+		psoStats.m_ClippingInvocations = pResultData[currIndex++];
+		psoStats.m_ClippingPrimitives = pResultData[currIndex++];
+		psoStats.m_PixelOrFragmentShaderInvocations = pResultData[currIndex++];
+		if (m_PSOFlags & (VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT | VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT))
+		{
+			psoStats.m_HullOrControlShaderInvocations = pResultData[currIndex++];
+			psoStats.m_DomainOrEvaluationShaderInvocations = pResultData[currIndex++];
+		}
+		psoStats.m_ComputeShaderInvocations = pResultData[currIndex++];
+		if (m_PSOFlags & (VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT | VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT))
+		{
+			psoStats.m_TaskOrAmplificationShaderInvocations = pResultData[currIndex++];
+			psoStats.m_MeshShaderInvocations = pResultData[currIndex++];
+			psoStats.m_MeshShaderPrimitives = pResultData[currIndex++];
+		}
+		break;
+	}
+	}
 
 	return true;
 }
@@ -177,7 +256,7 @@ bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void
 void BvQueryHeapVk::GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 queryIndex, VkBuffer& buffer, u64& offset, u64& stride, u32 poolIndex)
 {
 	auto& heapData = m_QueryHeapData[heapIndex];
-	if (m_QueryType != QueryType::kPipelineStatistics)
+	if (m_PSOFlags == 0)
 	{
 		stride = m_QuerySize;
 		offset = stride * queryIndex;
@@ -202,25 +281,12 @@ void BvQueryHeapVk::GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 quer
 
 void BvQueryHeapVk::Create()
 {
-	bool hasMeshShaderQueries = m_QuerySize == sizeof(PipelineStatistics);
 	VkQueryPoolCreateInfo qpCI{ VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
 	qpCI.queryCount = m_QueryCount * m_FrameCount;
 	qpCI.queryType = GetVkQueryType(m_QueryType);
-	if (m_QueryType == QueryType::kPipelineStatistics)
+	if (m_QueryType == QueryType::kPipelineStatistics || m_QueryType == QueryType::kMeshPipelineStatistics)
 	{
-		qpCI.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT
-			| VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT
-			| (hasMeshShaderQueries ? (VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT
-			| VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) : 0);
+		qpCI.pipelineStatistics = m_PSOFlags;
 	}
 
 	VkQueryPool pool;
@@ -231,7 +297,8 @@ void BvQueryHeapVk::Create()
 		return;
 	}
 	VkQueryPool meshPool = VK_NULL_HANDLE;
-	if (m_QueryType == QueryType::kPipelineStatistics && hasMeshShaderQueries)
+	if (m_QueryType == QueryType::kMeshPipelineStatistics &&
+		(m_PSOFlags & (VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT | VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT)))
 	{
 		qpCI.queryType = VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT;
 		result = vkCreateQueryPool(m_pDevice->GetHandle(), &qpCI, nullptr, &meshPool);
@@ -254,13 +321,13 @@ void BvQueryHeapVk::Create()
 		return;
 	}
 
-	m_QueryHeapData.EmplaceBack(BvQueryHeapVk::HeapData{ { pool, meshPool }, BvVector<u32>(m_FrameCount), pBuffer });
-
 	vkResetQueryPool(m_pDevice->GetHandle(), pool, 0, m_QueryCount * m_FrameCount);
 	if (meshPool != VK_NULL_HANDLE)
 	{
 		vkResetQueryPool(m_pDevice->GetHandle(), meshPool, 0, m_QueryCount * m_FrameCount);
 	}
+
+	m_QueryHeapData.EmplaceBack(BvQueryHeapVk::HeapData{ { pool, meshPool }, BvVector<u32>(m_FrameCount), pBuffer });
 }
 
 

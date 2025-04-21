@@ -164,7 +164,6 @@ void SetGlobalMouseStateData(BvMouseButton mouseButtons, i32 x, i32 y, i32 wheel
 
 	if (g_MouseStateChangeCount == kMaxMouseStateChangesPerFrame)
 	{
-		BV_ASSERT_ONCE(false, "Increase kMaxMouseStateChangesPerFrame");
 		return;
 	}
 	auto& currStateChange = g_MouseStateChanges[g_MouseStateChangeCount++];

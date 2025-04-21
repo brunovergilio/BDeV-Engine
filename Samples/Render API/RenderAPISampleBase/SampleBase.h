@@ -8,6 +8,7 @@
 #include "BDeV/Core/RenderAPI/BvRenderEngine.h"
 #include "BDeV/Core/RenderAPI/BvTextureLoader.h"
 #include "FPSCounter.h"
+#include "Camera.h"
 
 
 class SampleBase
@@ -49,6 +50,7 @@ protected:
 	BvRCRef<IBvShaderCompiler> m_SpvCompiler;
 	BvRCRef<IBvTextureLoader> m_TextureLoader;
 	UIOverlay m_Overlay;
+	Camera m_Camera;
 	BvKeyboard m_Keyboard;
 	BvMouse m_Mouse;
 	FPSCounter m_FPSCounter;

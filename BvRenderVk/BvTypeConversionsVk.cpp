@@ -810,7 +810,8 @@ VkQueryType GetVkQueryType(QueryType queryHeapType)
 	case QueryType::kTimestamp: return VK_QUERY_TYPE_TIMESTAMP;
 	case QueryType::kOcclusion:
 	case QueryType::kOcclusionBinary: return VK_QUERY_TYPE_OCCLUSION;
-	case QueryType::kPipelineStatistics: return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+	case QueryType::kPipelineStatistics:
+	case QueryType::kMeshPipelineStatistics: return VK_QUERY_TYPE_PIPELINE_STATISTICS;
 	}
 
 	return VK_QUERY_TYPE_TIMESTAMP;

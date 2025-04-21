@@ -24,6 +24,8 @@ public:
 	BV_INLINE const GraphicsPipelineStateDesc& GetDesc() const override { return m_PipelineStateDesc; }
 	BV_INLINE VkPipeline GetHandle() const { return m_Pipeline; }
 	BV_INLINE bool IsValid() const { return m_Pipeline != VK_NULL_HANDLE; }
+	BV_INLINE bool HasMeshShaders() const { return m_HasMeshShaders; }
+
 
 	//BV_OBJECT_IMPL_INTERFACE(IBvGraphicsPipelineStateVk, IBvGraphicsPipelineState, IBvRenderDeviceObject);
 
@@ -36,6 +38,8 @@ private:
 	VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	VkPipelineCache m_PipelineCache = VK_NULL_HANDLE;
 	GraphicsPipelineStateDesc m_PipelineStateDesc;
+	bool m_HasMeshShaders = false;
+	bool m_HasTessellationShaders = false;
 };
 
 

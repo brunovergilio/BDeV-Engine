@@ -173,8 +173,7 @@ BV_INLINE vf32 BV_VCALL QuaternionRotationAxis(cvf32 v, f32 angle)
 	f32 halfAngle = angle * 0.5f;
 	f32 sinCos[] = { sinf(halfAngle), cosf(halfAngle) };
 	vf32 q = VectorSet(sinCos[0], sinCos[0], sinCos[0], sinCos[1]);
-	vf32 n = VectorSet(0.0f, 0.0f, 0.0f, 1.0f);
-	n = _mm_or_ps(v, n);
+	vf32 n = VectorSetW(v, 1.0f);
 
 	return VectorMul(q, n);
 }
@@ -185,7 +184,7 @@ BV_INLINE vf32 BV_VCALL QuaternionQVQC(cvf32 q, cvf32 v)
 	vf32 v1 = VectorMul(v0, v0);
 	v0 = VectorAdd(v0, v0);
 
-	vf32 v2 = Vector4Dot(q, q);
+	vf32 v2 = Vector3Dot(q, q);
 	v2 = VectorSub(v1, v2);
 	v2 = VectorMul(v2, v);
 
@@ -205,7 +204,7 @@ BV_INLINE vf32 BV_VCALL QuaternionQCVQ(cvf32 q, cvf32 v)
 	vf32 v1 = VectorMul(v0, v0);
 	v0 = VectorAdd(v0, v0);
 
-	vf32 v2 = Vector4Dot(q, q);
+	vf32 v2 = Vector3Dot(q, q);
 	v2 = VectorSub(v1, v2);
 	v2 = VectorMul(v2, v);
 

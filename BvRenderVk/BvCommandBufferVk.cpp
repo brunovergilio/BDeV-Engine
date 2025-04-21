@@ -417,9 +417,15 @@ void BvCommandBufferVk::SetScissors(u32 scissorCount, const Rect* pScissors)
 
 void BvCommandBufferVk::SetGraphicsPipeline(const IBvGraphicsPipelineState* pPipeline)
 {
+	auto pPSO = TO_VK(pPipeline);
+	if (!pPSO->HasMeshShaders())
+	{
+		EndMeshQueries();
+	}
+
 	m_pComputePipeline = nullptr;
 	m_pRayTracingPipeline = nullptr;
-	m_pGraphicsPipeline = TO_VK(pPipeline);
+	m_pGraphicsPipeline = pPSO;
 	m_pShaderResourceLayout = TO_VK(m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout);
 	m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
 	vkCmdBindPipeline(m_CommandBuffer, m_PipelineBindPoint, m_pGraphicsPipeline->GetHandle());
@@ -713,6 +719,10 @@ void BvCommandBufferVk::Dispatch(const DispatchCommandArgs& args)
 
 void BvCommandBufferVk::DispatchMesh(const DispatchMeshCommandArgs& args)
 {
+	FlushDescriptorSets();
+
+	BeginMeshQueries();
+
 	vkCmdDrawMeshTasksEXT(m_CommandBuffer, args.m_ThreadGroupCountX, args.m_ThreadGroupCountY, args.m_ThreadGroupCountZ);
 }
 
@@ -746,12 +756,20 @@ void BvCommandBufferVk::DispatchIndirect(const IBvBuffer* pBuffer, u64 offset)
 
 void BvCommandBufferVk::DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offset)
 {
+	FlushDescriptorSets();
+
+	BeginMeshQueries();
+
 	vkCmdDrawMeshTasksIndirectEXT(m_CommandBuffer, TO_VK(pBuffer)->GetHandle(), offset, 1, sizeof(VkDispatchIndirectCommand));
 }
 
 
 void BvCommandBufferVk::DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 offset, const IBvBuffer* pCountBuffer, u64 countOffset, u32 maxCount)
 {
+	FlushDescriptorSets();
+
+	BeginMeshQueries();
+
 	vkCmdDrawMeshTasksIndirectCountEXT(m_CommandBuffer, TO_VK(pBuffer)->GetHandle(), offset, TO_VK(pCountBuffer)->GetHandle(), countOffset,
 		maxCount, sizeof(VkDispatchIndirectCommand));
 }
@@ -1093,12 +1111,12 @@ void BvCommandBufferVk::BeginQuery(IBvQuery* pQuery)
 	{
 		VkQueryControlFlags flags = queryType == QueryType::kOcclusion ? VK_QUERY_CONTROL_PRECISE_BIT : 0;
 		vkCmdBeginQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex), pData->m_QueryIndex, flags);
-		if (queryType == QueryType::kPipelineStatistics)
+		if (queryType == QueryType::kMeshPipelineStatistics)
 		{
 			auto meshPool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1);
 			if (meshPool != VK_NULL_HANDLE)
 			{
-				vkCmdBeginQuery(m_CommandBuffer, meshPool, pData->m_QueryIndex, flags);
+				m_MeshQueries.EmplaceBack(pQueryVk);
 			}
 		}
 	}
@@ -1124,10 +1142,6 @@ void BvCommandBufferVk::EndQuery(IBvQuery* pQuery)
 	else
 	{
 		vkCmdEndQuery(m_CommandBuffer, pool, pData->m_QueryIndex);
-		if (queryType == QueryType::kPipelineStatistics && meshPool != VK_NULL_HANDLE)
-		{
-			vkCmdEndQuery(m_CommandBuffer, meshPool, pData->m_QueryIndex);
-		}
 	}
 	VkBuffer buffer;
 	u64 stride = 0, offset = 0;
@@ -1139,7 +1153,7 @@ void BvCommandBufferVk::EndQuery(IBvQuery* pQuery)
 	}
 
 	vkCmdCopyQueryPoolResults(m_CommandBuffer, pool, pData->m_QueryIndex, 1, buffer, offset, stride, flags);
-	if (queryType == QueryType::kPipelineStatistics && meshPool != VK_NULL_HANDLE)
+	if (queryType == QueryType::kMeshPipelineStatistics && meshPool != VK_NULL_HANDLE)
 	{
 		pData->m_pQueryHeap->GetBufferInformation(pData->m_HeapIndex, frameIndex, pData->m_QueryIndex, buffer, offset, stride, 1);
 		vkCmdCopyQueryPoolResults(m_CommandBuffer, meshPool, pData->m_QueryIndex, 1, buffer, offset, stride, flags);
@@ -1421,10 +1435,14 @@ void BvCommandBufferVk::ResetRenderTargets()
 {
 	if (m_CurrentState == State::kRenderPass)
 	{
+		EndMeshQueries();
+
 		EndRenderPass();
 	}
 	else if (m_CurrentState == State::kRenderTarget)
 	{
+		EndMeshQueries();
+
 		vkCmdEndRendering(m_CommandBuffer);
 
 		if (m_PostRenderBarriers.Size() > 0)
@@ -1449,4 +1467,30 @@ void BvCommandBufferVk::AddSwapChain(BvSwapChainVk* pSwapChain)
 	{
 		m_SwapChains.EmplaceBack(pSwapChain);
 	}
+}
+
+
+void BvCommandBufferVk::BeginMeshQueries()
+{
+	for (auto pQueryVk : m_MeshQueries)
+	{
+		auto frameIndex = m_pFrameData->GetFrameIndex();
+		auto pData = pQueryVk->GetQueryData(frameIndex);
+		vkCmdBeginQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1), pData->m_QueryIndex, 0);
+	}
+}
+
+
+void BvCommandBufferVk::EndMeshQueries()
+{
+	for (auto pQueryVk : m_MeshQueries)
+	{
+		auto frameIndex = m_pFrameData->GetFrameIndex();
+		auto pData = pQueryVk->GetQueryData(frameIndex);
+		auto pool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1);
+		auto index = pData->m_QueryIndex;
+		vkCmdEndQuery(m_CommandBuffer, pool, index);
+	}
+
+	m_MeshQueries.Clear();
 }

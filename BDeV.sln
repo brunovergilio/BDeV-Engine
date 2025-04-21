@@ -68,6 +68,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "15 - Tessellation Shader", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "16 - Compute Shader", "Samples\Render API\16 - Compute Shader\16 - Compute Shader.vcxproj", "{793CF2E6-44B1-49CF-8855-335BB2FEA48E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "17 - Mesh Shader", "Samples\Render API\17 - Mesh Shader\17 - Mesh Shader.vcxproj", "{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -268,6 +270,14 @@ Global
 		{793CF2E6-44B1-49CF-8855-335BB2FEA48E}.Release|x64.Build.0 = Release|x64
 		{793CF2E6-44B1-49CF-8855-335BB2FEA48E}.Release|x86.ActiveCfg = Release|Win32
 		{793CF2E6-44B1-49CF-8855-335BB2FEA48E}.Release|x86.Build.0 = Release|Win32
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Debug|x64.ActiveCfg = Debug|x64
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Debug|x64.Build.0 = Debug|x64
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Debug|x86.ActiveCfg = Debug|Win32
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Debug|x86.Build.0 = Debug|Win32
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Release|x64.ActiveCfg = Release|x64
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Release|x64.Build.0 = Release|x64
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Release|x86.ActiveCfg = Release|Win32
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -298,6 +308,7 @@ Global
 		{255FB368-92D0-4AB5-9A2A-BC11632BD764} = {D95F5DFF-E6F2-4CAA-A2B8-67207015B116}
 		{3FF8C4A4-3F1A-4E73-B627-DCEAD3C0519C} = {D95F5DFF-E6F2-4CAA-A2B8-67207015B116}
 		{793CF2E6-44B1-49CF-8855-335BB2FEA48E} = {D95F5DFF-E6F2-4CAA-A2B8-67207015B116}
+		{9B553ECE-AD4D-400D-8C1F-8738BAAFA47B} = {D95F5DFF-E6F2-4CAA-A2B8-67207015B116}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {69D55C40-A5FD-4B8A-BEFC-CA9AFEEB1440}
