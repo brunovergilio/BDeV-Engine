@@ -1,7 +1,6 @@
 #include "BvAccelerationStructureVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvTypeConversionsVk.h"
-#include "BvBufferVk.h"
 
 
 BV_VK_DEVICE_RES_DEF(BvAccelerationStructureVk)
@@ -61,21 +60,24 @@ void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer
 	BV_ASSERT(m_Desc.m_Type == RayTracingAccelerationStructureType::kTopLevel, "Acceleration structure is not a top level one");
 	if (!pStagingBuffer)
 	{
-		if (!m_pStagingBuffer)
+		if (!m_StagingBuffer)
 		{
-			BufferDesc buff;
-			buff.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-			buff.m_MemoryType = MemoryType::kUpload;
-			buff.m_Size = m_PrimitiveCounts[0] * sizeof(VkAccelerationStructureInstanceKHR);
+			BufferDesc bufferDesc;
+			bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
+			bufferDesc.m_MemoryType = MemoryType::kUpload;
+			bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
+			bufferDesc.m_Size = std::max(m_PrimitiveCounts[0] * sizeof(VkAccelerationStructureInstanceKHR), sizeof(VkAccelerationStructureInstanceKHR));
+			m_StagingBuffer = BvRCRaw(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
 		}
-		pStagingBuffer = m_pStagingBuffer;
+		pStagingBuffer = m_StagingBuffer;
 	}
 
 	auto pDst = pStagingBuffer->Map();
 	for (auto i = 0; i < instanceCount && i < m_PrimitiveCounts[0]; ++i)
 	{
-		auto& srcInstance = pInstances[i];
-		auto& dstInstance = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(pDst)[i];
+		const TLASBuildInstanceDesc& srcInstance = pInstances[i];
+		VkAccelerationStructureInstanceKHR& dstInstance = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(pDst)[i];
+
 		dstInstance.accelerationStructureReference = TO_VK(srcInstance.m_pBLAS)->GetDeviceAddress();
 		dstInstance.instanceCustomIndex = srcInstance.m_InstanceId;
 		dstInstance.mask = srcInstance.m_InstanceMask;
@@ -83,20 +85,30 @@ void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer
 		dstInstance.flags = GetVkGeometryInstanceFlags(srcInstance.m_Flags);
 		memcpy(dstInstance.transform.matrix, srcInstance.m_Transform, sizeof(VkTransformMatrixKHR));
 	}
+	pStagingBuffer->Flush();
 }
 
 
 IBvBuffer* BvAccelerationStructureVk::GetTopLevelStagingInstanceBuffer() const
 {
-	return m_pBuffer;
+	return m_StagingBuffer;
 }
+
+
+//VkDeviceAddress BvAccelerationStructureVk::GetDeviceAddress() const
+//{
+//	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR, nullptr, m_Handle };
+//	return vkGetAccelerationStructureDeviceAddressKHR(m_pDevice->GetHandle(), &addressInfo);
+//}
 
 
 void BvAccelerationStructureVk::Create()
 {
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+	VkAccelerationStructureTypeKHR asType{};
 	if (m_Desc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
 	{
+		asType = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+
 		m_Geometries.Resize(m_Desc.m_BLAS.m_GeometryCount, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
 		m_PrimitiveCounts.Resize(m_Geometries.Size());
 
@@ -105,14 +117,14 @@ void BvAccelerationStructureVk::Create()
 			if (m_Desc.m_BLAS.m_pGeometries[i].m_Type == RayTracingGeometryType::kTriangles)
 			{
 				auto& srcGeometry = m_Desc.m_BLAS.m_pGeometries[i].m_Triangle;
-				auto& dstGeometry = m_Geometries[i];
-				auto& triangle = dstGeometry.geometry.triangles;
 
+				VkAccelerationStructureGeometryKHR& dstGeometry = m_Geometries[i];
 				//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 				//dstGeometry.pNext = nullptr;
 				dstGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-				dstGeometry.flags = 0;
+				dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_BLAS.m_pGeometries[i].m_Flags);
 
+				VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
 				triangle.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
 				triangle.pNext = nullptr;
 				triangle.vertexFormat = GetVkFormat(srcGeometry.m_VertexFormat);
@@ -120,20 +132,20 @@ void BvAccelerationStructureVk::Create()
 				triangle.maxVertex = srcGeometry.m_VertexCount - 1;
 				triangle.indexType = GetVkIndexType(srcGeometry.m_IndexFormat);
 
-				auto primitiveCount = srcGeometry.m_IndexCount / 3;
+				u32 primitiveCount = srcGeometry.m_IndexCount > 0 ? srcGeometry.m_IndexCount / 3 : srcGeometry.m_VertexCount / 3;
 				m_PrimitiveCounts[i] = primitiveCount;
 			}
 			else if (m_Desc.m_BLAS.m_pGeometries[i].m_Type == RayTracingGeometryType::kAABB)
 			{
 				auto& srcGeometry = m_Desc.m_BLAS.m_pGeometries[i].m_AABB;
-				auto& dstGeometry = m_Geometries[i];
-				auto& aabb = dstGeometry.geometry.aabbs;
 
+				VkAccelerationStructureGeometryKHR& dstGeometry = m_Geometries[i];
 				//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 				//dstGeometry.pNext = nullptr;
 				dstGeometry.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
-				dstGeometry.flags = 0;
+				dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_BLAS.m_pGeometries[i].m_Flags);
 
+				VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
 				aabb.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
 				aabb.pNext = nullptr;
 				aabb.stride = srcGeometry.m_Stride;
@@ -144,22 +156,29 @@ void BvAccelerationStructureVk::Create()
 	}
 	else if (m_Desc.m_Type == RayTracingAccelerationStructureType::kTopLevel)
 	{
+		asType = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+
 		m_Geometries.Resize(1, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
 		m_PrimitiveCounts.Resize(1, m_Desc.m_TLAS.m_InstanceCount);
 
-		VkAccelerationStructureGeometryKHR &geometry = m_Geometries.Back();
-		geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+		VkAccelerationStructureGeometryKHR &dstGeometry = m_Geometries.Back();
+		//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+		//dstGeometry.pNext = nullptr;
+		dstGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+		dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_TLAS.m_Flags);
 
-		auto& instances = geometry.geometry.instances;
+		VkAccelerationStructureGeometryInstancesDataKHR& instances = dstGeometry.geometry.instances;
 		instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
 		instances.arrayOfPointers = VK_FALSE;
 	}
 
+	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+	//buildInfo.pNext = nullptr;
+	buildInfo.type = asType;
 	buildInfo.flags = GetVkBuildAccelerationStructureFlags(m_Desc.m_Flags);
-	//buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-	buildInfo.pGeometries = m_Geometries.Data();
+	buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
 	buildInfo.geometryCount = u32(m_Geometries.Size());
+	buildInfo.pGeometries = m_Geometries.Data();
 
 	VkAccelerationStructureBuildSizesInfoKHR sizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
 
@@ -172,27 +191,23 @@ void BvAccelerationStructureVk::Create()
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	bufferDesc.m_MemoryType = MemoryType::kDevice;
 	bufferDesc.m_Size = sizeInfo.accelerationStructureSize;
-	if (!(m_pBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, nullptr)))
-	{
-		return;
-	}
+	m_Buffer = BvRCRaw(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
 
 	auto device = m_pDevice->GetHandle();
 
 	VkAccelerationStructureCreateInfoKHR accelerationStructureCI{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
 	//accelerationStructureCI.createFlags = 0;
-	accelerationStructureCI.buffer = m_pBuffer->GetHandle();
+	accelerationStructureCI.buffer = m_Buffer->GetHandle();
 	//accelerationStructureCI.offset = 0;
 	accelerationStructureCI.size = sizeInfo.accelerationStructureSize;
-	accelerationStructureCI.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+	accelerationStructureCI.type = asType;
 	if (vkCreateAccelerationStructureKHR(device, &accelerationStructureCI, nullptr, &m_Handle) != VK_SUCCESS)
 	{
 		Destroy();
 		return;
 	}
 
-	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR };
-	addressInfo.accelerationStructure = m_Handle;
+	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR, nullptr, m_Handle };
 	m_DeviceAddress = vkGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
 }
 
@@ -204,18 +219,9 @@ void BvAccelerationStructureVk::Destroy()
 	{
 		vkDestroyAccelerationStructureKHR(device, m_Handle, nullptr);
 		m_Handle = nullptr;
-	}
-
-	if (m_pBuffer)
-	{
-		m_pBuffer->Release();
-		m_pBuffer = nullptr;
-	}
-
-	if (m_pStagingBuffer)
-	{
-		m_pStagingBuffer->Release();
-		m_pStagingBuffer = nullptr;
+		
+		m_Buffer.Reset();
+		m_StagingBuffer.Reset();
 	}
 }
 

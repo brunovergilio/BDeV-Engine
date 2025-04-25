@@ -5,10 +5,10 @@
 #include "BDeV/Core/RenderAPI/BvAccelerationStructure.h"
 #include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/Container/BvRobinMap.h"
+#include "BvBufferVk.h"
 
 
 class BvRenderDeviceVk;
-class BvBufferVk;
 
 
 //BV_OBJECT_DEFINE_ID(IBvAccelerationStructureVk, "70617509-5657-4c47-9a4e-dc318b535076");
@@ -34,8 +34,9 @@ public:
 	BV_INLINE BvVector<VkAccelerationStructureGeometryKHR>& GetGeometries() { return m_Geometries; }
 	BV_INLINE BvVector<u32>& GetPrimitiveCounts() { return m_PrimitiveCounts; }
 	BV_INLINE VkAccelerationStructureKHR GetHandle() const { return m_Handle; }
-	BV_INLINE BvBufferVk* GetBuffer() const { return m_pBuffer; }
+	BV_INLINE BvBufferVk* GetBuffer() const { return m_Buffer; }
 	BV_INLINE VkDeviceAddress GetDeviceAddress() const { return m_DeviceAddress; }
+	//VkDeviceAddress GetDeviceAddress() const;
 	BV_INLINE bool IsValid() const { return m_Handle != VK_NULL_HANDLE; }
 
 	//BV_OBJECT_IMPL_INTERFACE(IBvAccelerationStructureVk, IBvAccelerationStructure, IBvRenderDeviceObject);
@@ -50,8 +51,8 @@ private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkAccelerationStructureKHR m_Handle = VK_NULL_HANDLE;
 	VkDeviceAddress m_DeviceAddress = 0;
-	BvBufferVk* m_pBuffer = nullptr;
-	BvBufferVk* m_pStagingBuffer = nullptr;
+	BvRCRef<BvBufferVk> m_Buffer = nullptr;
+	BvRCRef<BvBufferVk> m_StagingBuffer = nullptr;
 	RayTracingAccelerationStructureScratchSize m_ScratchSizes;
 	BvVector<VkAccelerationStructureGeometryKHR> m_Geometries;
 	BvVector<u32> m_PrimitiveCounts;

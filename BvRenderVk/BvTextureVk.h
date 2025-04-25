@@ -35,7 +35,7 @@ private:
 	void Create(const TextureInitData* pInitData);
 	void Destroy();
 
-	void CopyInitDataAndTransitionState(const TextureInitData* pInitData, u32 mipCount);
+	void CopyInitDataToGPUAndTransitionState(const TextureInitData* pInitData, u32 mipCount);
 	void GenerateMips(BvCommandContextVk* pContext);
 
 protected:

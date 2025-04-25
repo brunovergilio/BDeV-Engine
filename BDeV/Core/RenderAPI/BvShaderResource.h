@@ -45,9 +45,9 @@ struct ShaderResourceDesc
 	bool m_Bindless;
 
 	template<ShaderResourceType Type>
-	static ShaderResourceDesc As(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ name, binding, 0, count, Type, shaderStages, nullptr }; }
+	static ShaderResourceDesc As(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ name, binding, count, Type, shaderStages, nullptr }; }
 	template<ShaderResourceType Type>
-	static ShaderResourceDesc As(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ BvStringId::Empty(), binding, 0, count, Type, shaderStages, nullptr}; }
+	static ShaderResourceDesc As(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ BvStringId::Empty(), binding, count, Type, shaderStages, nullptr}; }
 
 	static ShaderResourceDesc AsConstantBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kConstantBuffer, shaderStages, nullptr }; }
 	static ShaderResourceDesc AsStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kStructuredBuffer, shaderStages, nullptr }; }
@@ -61,6 +61,7 @@ struct ShaderResourceDesc
 	static ShaderResourceDesc AsRWTexture(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kRWTexture, shaderStages, nullptr }; }
 	static ShaderResourceDesc AsSampler(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kSampler, shaderStages, nullptr }; }
 	static ShaderResourceDesc AsInputAttachment(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kInputAttachment, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsAccelerationStructure(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kAccelerationStructure, shaderStages, nullptr }; }
 	static ShaderResourceDesc AsStaticSampler(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kSampler, shaderStages, ppSamplers }; }
 
 	static ShaderResourceDesc AsConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsConstantBuffer(BvStringId::Empty(), binding, shaderStages, count); }
@@ -75,6 +76,7 @@ struct ShaderResourceDesc
 	static ShaderResourceDesc AsRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWTexture(BvStringId::Empty(), binding, shaderStages, count); }
 	static ShaderResourceDesc AsSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsSampler(BvStringId::Empty(), binding, shaderStages, count); }
 	static ShaderResourceDesc AsInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsInputAttachment(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count); }
 	static ShaderResourceDesc AsStaticSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return AsStaticSampler(BvStringId::Empty(), binding, shaderStages, count, ppSamplers); }
 
 	friend bool operator<(const ShaderResourceDesc& lhs, const ShaderResourceDesc& rhs)

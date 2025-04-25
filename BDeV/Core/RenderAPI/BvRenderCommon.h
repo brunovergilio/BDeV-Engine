@@ -1585,7 +1585,7 @@ struct BLASBuildDesc
 struct TLASDesc
 {
 	u32 m_InstanceCount = 0;
-	RayTracingInstanceFlags m_Flags = RayTracingInstanceFlags::kNone;
+	RayTracingGeometryFlags m_Flags = RayTracingGeometryFlags::kNone;
 };
 
 

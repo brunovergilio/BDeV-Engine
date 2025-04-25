@@ -83,7 +83,6 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 		return;
 	}
 
-
 	auto vma = m_pDevice->GetAllocator();
 	VmaAllocationCreateInfo vmaACI = {};
 	vmaACI.requiredFlags = GetVkMemoryPropertyFlags(m_TextureDesc.m_MemoryType);
@@ -108,10 +107,13 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	}
 	m_VMAAllocation = vmaA;
 
+	// I'm using '&&' in the condition below because, if we happen to have data to be copied,
+	// the resource will have to be transitioned to kTransferDst, but then we can't
+	// transition back to kCommon (undefined), so we don't do anything
 	if (m_TextureDesc.m_ResourceState != ResourceState::kCommon && pInitData)
 	{
 		BV_ASSERT(pInitData->m_pContext != nullptr, "Invalid command context");
-		CopyInitDataAndTransitionState(pInitData, mipCount);
+		CopyInitDataToGPUAndTransitionState(pInitData, mipCount);
 	}
 }
 
@@ -132,16 +134,16 @@ void BvTextureVk::Destroy()
 }
 
 
-void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitData, u32 mipCount)
+void BvTextureVk::CopyInitDataToGPUAndTransitionState(const TextureInitData* pInitData, u32 mipCount)
 {
+	u32 planeCount = GetFormatInfo(m_TextureDesc.m_Format).m_PlaneCount;
+	u32 alignment = m_pDevice->GetDeviceInfo()->m_DeviceProperties.properties.limits.optimalBufferCopyOffsetAlignment;
+	BvRCRef<BvBufferVk> stagingBuffer = nullptr;
+	
 	auto pContext = TO_VK(pInitData->m_pContext);
 	pContext->NewCommandList();
-	auto fi = GetFormatInfo(m_TextureDesc.m_Format);
-	u32 planeCount = fi.m_PlaneCount;
-	u32 alignment = m_pDevice->GetDeviceInfo()->m_DeviceProperties.properties.limits.optimalBufferCopyOffsetAlignment;
 	ResourceState currState = ResourceState::kCommon;
 	bool isValidTextureData = pInitData->m_SubresourceCount == (planeCount * m_TextureDesc.m_ArraySize * mipCount) && pInitData->m_pSubresources != nullptr;
-	BvBufferVk* pBuffer = nullptr;
 	if (isValidTextureData)
 	{
 		BvVector<VkBufferImageCopy> copyRegions(pInitData->m_SubresourceCount);
@@ -157,9 +159,8 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		bufferDesc.m_MemoryType = MemoryType::kUpload;
 		bufferDesc.m_Size = bufferSize;
 		bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-
-		pBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, nullptr);
-		auto pDstData = static_cast<u8*>(pBuffer->GetMappedData());
+		stagingBuffer = BvRCRaw<BvBufferVk>(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
+		auto pBufferMemory = static_cast<u8*>(stagingBuffer->GetMappedData());
 
 		// Calculate copy regions
 		u32 index = 0;
@@ -187,8 +188,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 
 					BV_ASSERT(srcSubresourceData.m_SlicePitch == footprint.m_Subresource.m_SlicePitch, "Slice pitch is different between src and dst");
 
-					auto pDst = pDstData + copyRegion.bufferOffset;
-					memcpy(pDst, srcSubresourceData.m_pData, srcSubresourceData.m_SlicePitch * footprint.m_Subresource.m_Detph);
+					memcpy(pBufferMemory + copyRegion.bufferOffset, srcSubresourceData.m_pData, srcSubresourceData.m_SlicePitch * footprint.m_Subresource.m_Detph);
 				}
 			}
 		}
@@ -200,7 +200,7 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 		copyDstBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
 
 		pContext->ResourceBarrier(1, &copyDstBarrier);
-		pContext->CopyBufferToTextureVk(pBuffer, this, (u32)copyRegions.Size(), copyRegions.Data());
+		pContext->CopyBufferToTextureVk(stagingBuffer, this, (u32)copyRegions.Size(), copyRegions.Data());
 
 		currState = ResourceState::kTransferDst;
 
@@ -233,11 +233,6 @@ void BvTextureVk::CopyInitDataAndTransitionState(const TextureInitData* pInitDat
 
 	pContext->Execute();
 	pContext->WaitForGPU();
-
-	if (pBuffer)
-	{
-		pBuffer->Release();
-	}
 }
 
 

@@ -21,7 +21,7 @@ BvBufferVk::~BvBufferVk()
 }
 
 
-void * const BvBufferVk::Map(const u64 size, const u64 offset)
+void* const BvBufferVk::Map(const u64 size, const u64 offset)
 {
 	if (!m_pMapped)
 	{
@@ -156,33 +156,33 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	const auto& memoryType = m_pDevice->GetDeviceInfo()->m_DeviceMemoryProperties.memoryProperties.memoryTypes[vmaAI.memoryType];
 	m_NeedsFlush = ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0);
 
-	if (m_BufferDesc.m_MemoryType != MemoryType::kDevice
-		&& (EHasFlag(m_BufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped)))
+	bool createMapped = EHasFlag(m_BufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped);
+	if (m_BufferDesc.m_MemoryType != MemoryType::kDevice && createMapped)
 	{
-		Map(kU64Max, 0);
+		Map(m_BufferDesc.m_Size, 0);
 	}
 
-	if (m_BufferDesc.m_ResourceState != ResourceState::kCommon || pInitData)
+	if (pInitData)
 	{
 		if (m_BufferDesc.m_MemoryType == MemoryType::kDevice)
 		{
-			CopyInitDataAndTransitionState(pInitData);
+			CopyInitDataToGPU(pInitData);
 		}
 		else
 		{
-			BV_ASSERT(m_BufferDesc.m_MemoryType != MemoryType::kReadBack, "Readback shouldn't have initial data");
+			BV_ASSERT(m_BufferDesc.m_MemoryType != MemoryType::kReadBack
+				&& m_BufferDesc.m_MemoryType != MemoryType::kReadBackNC, "Readback shouldn't have initial data");
 
-			auto pMappedData = GetMappedData();
-			if (!pMappedData)
+			auto size = std::min(m_BufferDesc.m_Size, pInitData->m_Size);
+			if (!createMapped)
 			{
-				pMappedData = Map(kU64Max, 0);
+				Map(size, 0);
 			}
-
-			memcpy(pMappedData, pInitData->m_pData, pInitData->m_Size);
-
-			if (m_NeedsFlush)
+			memcpy(m_pMapped, pInitData->m_pData, size);
+			Flush(size, 0);
+			if (!createMapped)
 			{
-				Flush(kU64Max, 0);
+				Unmap();
 			}
 		}
 	}
@@ -203,10 +203,9 @@ void BvBufferVk::Destroy()
 }
 
 
-void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
+void BvBufferVk::CopyInitDataToGPU(const BufferInitData* pInitData)
 {
-	//BV_ASSERT(pInitData->m_pContext != nullptr && pInitData->m_Size > 0 && pInitData->m_pData != nullptr, "Invalid init data parameters");
-	if (!pInitData || !pInitData->m_pContext || pInitData->m_Size == 0 || !pInitData->m_pData)
+	if (!pInitData->m_pContext || !pInitData->m_Size || !pInitData->m_pData)
 	{
 		return;
 	}
@@ -215,35 +214,12 @@ void BvBufferVk::CopyInitDataAndTransitionState(const BufferInitData* pInitData)
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_Size = pInitData->m_Size;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
+	BvBufferVk srcBuffer(m_pDevice, bufferDesc, pInitData);
 	
-	BvBufferVk* pSrcBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, nullptr);
-	auto* pData = pSrcBuffer->GetMappedData();
-	memcpy(pData, pInitData->m_pData, pInitData->m_Size);
-	VkBufferCopy copyRegion{};
-	copyRegion.size = std::min(m_BufferDesc.m_Size, pInitData->m_Size);
-
+	VkBufferCopy copyRegion{ 0, 0, std::min(m_BufferDesc.m_Size, pInitData->m_Size) };
 	auto pContext = static_cast<BvCommandContextVk*>(pInitData->m_pContext);
 	pContext->NewCommandList();
-	pContext->CopyBufferVk(pSrcBuffer, this, copyRegion);
-
-	VkBufferMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
-	//barrier.pNext = nullptr;
-	barrier.buffer = m_Buffer;
-	barrier.size = VK_WHOLE_SIZE;
-	//barrier.offset = 0;
-
-	barrier.srcAccessMask = VK_ACCESS_2_HOST_WRITE_BIT;
-	barrier.dstAccessMask = GetVkAccessFlags(m_BufferDesc.m_UsageFlags);
-
-	barrier.srcStageMask |= VK_PIPELINE_STAGE_2_HOST_BIT;
-	barrier.dstStageMask |= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	
-	pContext->ResourceBarrierVk(1, &barrier, 0, nullptr, 0, nullptr);
+	pContext->CopyBufferVk(&srcBuffer, this, copyRegion);
 	pContext->Execute();
 	pContext->WaitForGPU();
-
-	pSrcBuffer->Release();
 }

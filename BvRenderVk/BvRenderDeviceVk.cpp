@@ -486,6 +486,8 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 	volkLoadDevice(m_Device);
 
+	SetupSupportedDisplayFormats();
+
 	CreateVMA();
 
 	m_DeviceCaps = deviceCaps;
@@ -649,6 +651,7 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 	bool customBorderColor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 	bool memoryBudget = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 	bool deferredHostOperations = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+	bool deviceAddress = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 	bool predication = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
 	bool depthClipEnable = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
 
@@ -686,7 +689,7 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 	}
 
-	if (accelerationStructure && deferredHostOperations && deviceInfo.m_DeviceFeatures1_2.bufferDeviceAddress)
+	if (accelerationStructure && deferredHostOperations && deviceAddress)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures.pNext;

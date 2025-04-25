@@ -117,6 +117,7 @@ public:
 	FormatFeatures GetFormatFeatures(Format format) const override;
 	BV_INLINE RenderDeviceCapabilities GetDeviceCaps() const override { return m_DeviceCaps; }
 	BV_INLINE const BvGPUInfo& GetGPUInfo() const override { return m_GPUInfo; }
+	BV_INLINE const BvVector<Format>& GetSupportedDisplayFormats() const override { return m_SupportedDisplayFormats; }
 
 	BV_INLINE VkDevice GetHandle() const { return m_Device; }
 	BV_INLINE VkPhysicalDevice GetPhysicalDeviceHandle() const { return m_PhysicalDevice; }
@@ -150,6 +151,7 @@ private:
 
 	void CreateVMA();
 	void DestroyVMA();
+	void SetupSupportedDisplayFormats();
 
 private:
 	BvRenderEngineVk* m_pEngine = nullptr;
@@ -163,6 +165,7 @@ private:
 	const BvGPUInfo& m_GPUInfo;
 	BvDeviceInfoVk* m_pDeviceInfo = nullptr;
 	RenderDeviceCapabilities m_DeviceCaps;
+	BvVector<Format> m_SupportedDisplayFormats;
 	u32 m_Index = 0;
 };
 

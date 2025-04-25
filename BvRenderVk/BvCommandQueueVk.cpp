@@ -86,7 +86,7 @@ void BvCommandQueueVk::Submit(const BvVector<BvCommandBufferVk*>& commandBuffers
 			auto& scSignalInfo = m_SignalSemaphores.EmplaceBack();
 			scSignalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 			scSignalInfo.semaphore = pSwapChain->GetCurrentRenderCompleteSemaphore();
-			scSignalInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			scSignalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
 			auto& scWaitInfo = m_WaitSemaphores.EmplaceBack();
 			scWaitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -105,7 +105,7 @@ void BvCommandQueueVk::Submit(const BvVector<BvCommandBufferVk*>& commandBuffers
 	submitInfo.signalSemaphoreInfoCount = (u32)m_SignalSemaphores.Size();
 	submitInfo.pSignalSemaphoreInfos = m_SignalSemaphores.Data();
 
-	vkQueueSubmit2(m_Queue, 1, &submitInfo, VK_NULL_HANDLE);
+	auto result = vkQueueSubmit2(m_Queue, 1, &submitInfo, VK_NULL_HANDLE);
 	
 	m_CommandBuffers.Clear();
 	m_WaitSemaphores.Clear();

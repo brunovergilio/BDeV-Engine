@@ -35,6 +35,8 @@ public:
 	BV_INLINE BvVec3 GetLook() const { return m_Look; }
 	BV_INLINE BvMatrix GetView() const { return m_View; }
 	BV_INLINE BvMatrix GetProj() const { return m_Proj; }
+	BV_INLINE BvMatrix GetViewInv() const { return m_View.Inverse(); }
+	BV_INLINE BvMatrix GetProjInv() const { return m_Proj.Inverse(); }
 	BV_INLINE BvMatrix GetViewProj() const { return m_View * m_Proj; }
 
 private:

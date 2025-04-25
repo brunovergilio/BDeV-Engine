@@ -38,7 +38,7 @@ public:
 private:
 	void Create(const BufferInitData* pInitData);
 	void Destroy();
-	void CopyInitDataAndTransitionState(const BufferInitData* pInitData);
+	void CopyInitDataToGPU(const BufferInitData* pInitData);
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;

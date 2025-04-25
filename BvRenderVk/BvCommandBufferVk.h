@@ -97,17 +97,17 @@ public:
 	void DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 	void DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 offset, const IBvBuffer* pCountBuffer, u64 countOffset, u32 maxCount);
 
-	void CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion);
+	void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, const VkBufferCopy& copyRegion);
 	void CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer);
 	void CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer, const BufferCopyDesc& copyDesc);
 	
 	void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture);
 	void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture, const TextureCopyDesc& copyDesc);
 
-	void CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
+	void CopyBufferToTexture(VkBuffer srcBuffer, VkImage dstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
 	void CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
 
-	void CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
+	void CopyTextureToBuffer(VkImage srcTexture, VkBuffer dstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions);
 	void CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
 
 	void ResourceBarrier(u32 bufferBarrierCount, const VkBufferMemoryBarrier2* pBufferBarriers,
@@ -164,8 +164,8 @@ private:
 	const BvRayTracingPipelineStateVk* m_pRayTracingPipeline = nullptr;
 	const BvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
 
-	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;
+	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 	BvVector<BvQueryVk*> m_MeshQueries;
 
 	VkPipelineBindPoint m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_MAX_ENUM;

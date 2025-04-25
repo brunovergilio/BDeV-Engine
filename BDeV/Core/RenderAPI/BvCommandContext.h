@@ -95,7 +95,7 @@ public:
 	virtual void SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetInputAttachments(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
-	virtual void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex) = 0;
+	virtual void SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetShaderConstants(u32 size, const void* pData, u32 binding, u32 set) = 0;
 
 	BV_INLINE void SetShaderResourceParams(IBvShaderResourceParams* pResourceParams, u32 startIndex = 0) { SetShaderResourceParams(1, &pResourceParams, startIndex); }
@@ -111,7 +111,7 @@ public:
 	BV_INLINE void SetRWTexture(const IBvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWTextures(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetSampler(const IBvSampler* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetSamplers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetInputAttachment(const IBvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetInputAttachments(1, &pResource, set, binding, startIndex); }
-	BV_INLINE void SetAccelerationStructures(const IBvAccelerationStructure* pResource, u32 set, u32 binding, u32 startIndex) { SetAccelerationStructures(1, &pResource, set, binding, startIndex); }
+	BV_INLINE void SetAccelerationStructure(const IBvAccelerationStructure* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetAccelerationStructures(1, &pResource, set, binding, startIndex); }
 	template<typename T> BV_INLINE void SetShaderConstantsT(const T& value, u32 binding, u32 set) { SetShaderConstants(sizeof(T), &value, binding, set); }
 
 	virtual void SetVertexBufferViews(u32 vertexBufferCount, const VertexBufferView* pVertexBufferViews, u32 firstBinding = 0) = 0;

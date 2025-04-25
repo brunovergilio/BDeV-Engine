@@ -3,10 +3,11 @@
 
 #include "BvCommonVk.h"
 #include "BDeV/Core/RenderAPI/BvShaderBindingTable.h"
+#include "BDeV/Core/Utils/BvObject.h"
+#include "BvBufferVk.h"
 
 
 class BvRenderDeviceVk;
-class BvBufferVk;
 class BvCommandContextVk;
 
 
@@ -27,7 +28,7 @@ public:
 	BV_INLINE const ShaderBindingTableDesc& GetDesc() const override { return m_SBTDesc; }
 	void GetDeviceAddressRange(ShaderBindingTableGroupType type, u32 index, DeviceAddressRange& addressRange) const override;
 	void GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType type, u32 index, DeviceAddressRangeAndStride& addressRangeAndStride) const override;
-	BV_INLINE bool IsValid() const { return m_pBuffer != nullptr; }
+	BV_INLINE bool IsValid() const { return m_Buffer != nullptr; }
 
 	//BV_OBJECT_IMPL_INTERFACE(IBvShaderBindingTableVk, IBvShaderBindingTable, IBvRenderDeviceObject);
 
@@ -37,7 +38,7 @@ private:
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
-	BvBufferVk* m_pBuffer = nullptr;
+	BvRCRef<BvBufferVk> m_Buffer = nullptr;
 	ShaderBindingTableDesc m_SBTDesc;
 	VkStridedDeviceAddressRegionKHR m_Regions[u32(ShaderBindingTableGroupType::kCount)]{};
 	u32 m_HandleSize = 0;

@@ -570,6 +570,12 @@ VkShaderStageFlags GetVkShaderStageFlags(const ShaderStage stages)
 	if (EHasFlag(stages, ShaderStage::kCompute				)) { shaderStages |= VK_SHADER_STAGE_COMPUTE_BIT;					}
 	if (EHasFlag(stages, ShaderStage::kMesh					)) { shaderStages |= VK_SHADER_STAGE_MESH_BIT_EXT;					}
 	if (EHasFlag(stages, ShaderStage::kAmplificationOrTask	)) { shaderStages |= VK_SHADER_STAGE_TASK_BIT_EXT;					}
+	if (EHasFlag(stages, ShaderStage::kRayGen				)) { shaderStages |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;				}
+	if (EHasFlag(stages, ShaderStage::kAnyHit				)) { shaderStages |= VK_SHADER_STAGE_ANY_HIT_BIT_KHR;				}
+	if (EHasFlag(stages, ShaderStage::kClosestHit			)) { shaderStages |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;			}
+	if (EHasFlag(stages, ShaderStage::kIntersection			)) { shaderStages |= VK_SHADER_STAGE_INTERSECTION_BIT_KHR;			}
+	if (EHasFlag(stages, ShaderStage::kMiss					)) { shaderStages |= VK_SHADER_STAGE_MISS_BIT_KHR;					}
+	if (EHasFlag(stages, ShaderStage::kCallable				)) { shaderStages |= VK_SHADER_STAGE_CALLABLE_BIT_KHR;				}
 
 	return shaderStages;
 }
@@ -602,11 +608,11 @@ VkIndexType GetVkIndexType(const IndexFormat indexFormat)
 {
 	switch (indexFormat)
 	{
-	//case IndexFormat::kU16:
+	case IndexFormat::kU16: return VK_INDEX_TYPE_UINT16;
 	case IndexFormat::kU32:	return VK_INDEX_TYPE_UINT32;
 	}
 
-	return VK_INDEX_TYPE_UINT16;
+	return VK_INDEX_TYPE_NONE_KHR;
 }
 
 
@@ -616,8 +622,8 @@ VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthSt
 	{
 	case ResourceState::kTransferSrc:		return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	case ResourceState::kTransferDst:		return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	case ResourceState::kPixelShaderResource:
 	case ResourceState::kShaderResource:	return !isDepthStencilFormat ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-	case ResourceState::kPixelShaderResource:	return !isDepthStencilFormat ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 	case ResourceState::kRWResource:		return VK_IMAGE_LAYOUT_GENERAL;
 	case ResourceState::kRenderTarget:		return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	case ResourceState::kDepthStencilRead:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
@@ -671,7 +677,8 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kIndexBuffer:		return VK_ACCESS_2_INDEX_READ_BIT;
 	case ResourceState::kConstantBuffer:	return VK_ACCESS_2_UNIFORM_READ_BIT;
 	case ResourceState::kIndirectBuffer:	return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
-	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+	case ResourceState::kPixelShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 	case ResourceState::kRWResource:		return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
 	case ResourceState::kTransferSrc:		return VK_ACCESS_2_TRANSFER_READ_BIT;
 	case ResourceState::kTransferDst:		return VK_ACCESS_2_TRANSFER_WRITE_BIT;
@@ -730,7 +737,8 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 			| VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT
 			| VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
 			| VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT
-			| VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT;
+			| VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT
+			| VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
 	}
 	if (accessFlags & (VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT))
 	{
@@ -879,9 +887,19 @@ VkGeometryTypeKHR GetVkGeometryType(RayTracingGeometryType type)
 }
 
 
+VkGeometryFlagsKHR GetVkGeometryFlags(RayTracingGeometryFlags flags)
+{
+	VkGeometryFlagsKHR result = 0;
+	if (EHasFlag(flags, RayTracingGeometryFlags::kOpaque)) { result |= VK_GEOMETRY_OPAQUE_BIT_KHR; }
+	if (EHasFlag(flags, RayTracingGeometryFlags::kNoDuplicateAnyHitInvocation)) { result |= VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR; }
+
+	return result;
+}
+
+
 VkGeometryInstanceFlagsKHR GetVkGeometryInstanceFlags(RayTracingInstanceFlags flags)
 {
-	auto result = 0;
+	VkGeometryInstanceFlagsKHR result = 0;
 	if (EHasFlag(flags, RayTracingInstanceFlags::kTriangleCullDisable)) { result |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR; }
 	if (EHasFlag(flags, RayTracingInstanceFlags::kTriangleFrontCounterclockwise)) { result |= VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR; }
 	if (EHasFlag(flags, RayTracingInstanceFlags::kForceOpaque)) { result |= VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR; }

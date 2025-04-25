@@ -7,7 +7,7 @@
 #include "BvShaderResourceVk.h"
 
 
-VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode, VkShaderStageFlagBits shaderStage);
+VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode);
 
 
 BV_VK_DEVICE_RES_DEF(BvGraphicsPipelineStateVk)
@@ -252,7 +252,7 @@ void BvGraphicsPipelineStateVk::Create()
 		{
 			m_HasMeshShaders = true;
 		}
-		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
+		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data());
 	}
 
 	BV_ASSERT(m_HasMeshShaders != m_HasTessellationShaders
@@ -349,7 +349,7 @@ void BvComputePipelineStateVk::Create()
 	pipelineCI.stage.pName = m_PipelineStateDesc.m_pShader->GetEntryPoint();
 	pipelineCI.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
 	auto& blob = m_PipelineStateDesc.m_pShader->GetShaderBlob();
-	pipelineCI.stage.module = CreateShaderModule(m_pDevice->GetHandle(), blob.Size(), blob.Data(), pipelineCI.stage.stage);
+	pipelineCI.stage.module = CreateShaderModule(m_pDevice->GetHandle(), blob.Size(), blob.Data());
 	pipelineCI.basePipelineIndex = -1;
 
 	auto result = vkCreateComputePipelines(m_pDevice->GetHandle(), m_PipelineCache, 1, &pipelineCI, nullptr, &m_Pipeline);
@@ -422,6 +422,7 @@ void BvRayTracingPipelineStateVk::Create()
 {
 	BvVector<VkPipelineShaderStageCreateInfo> shaderStages(m_PipelineStateDesc.m_ShaderCount, { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
 	BvVector<VkRayTracingShaderGroupCreateInfoKHR> groups(m_PipelineStateDesc.m_ShaderGroupCount, { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR });
+	m_ShaderStages.Resize(m_PipelineStateDesc.m_ShaderCount);
 
 	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderCount; i++)
 	{
@@ -429,42 +430,21 @@ void BvRayTracingPipelineStateVk::Create()
 		const auto& byteCode = m_PipelineStateDesc.m_ppShaders[i]->GetShaderBlob();
 		shaderStage.pName = m_PipelineStateDesc.m_ppShaders[i]->GetEntryPoint();
 		shaderStage.stage = GetVkShaderStageFlagBits(m_PipelineStateDesc.m_ppShaders[i]->GetShaderStage());
-		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data(), shaderStages[i].stage);
+		shaderStage.module = CreateShaderModule(m_pDevice->GetHandle(), byteCode.Size(), byteCode.Data());
+		m_ShaderStages[i] = shaderStage.stage;
 	}
 
 	for (auto i = 0u; i < m_PipelineStateDesc.m_ShaderGroupCount; ++i)
 	{
 		auto& groupDesc = m_PipelineStateDesc.m_pShaderGroupDescs[i];
-		auto& group = groups[i];
+		BV_ASSERT(groupDesc.m_Type != ShaderGroupType::kNone, "Shader hit group type can't be kNone");
 
-		switch (groupDesc.m_Type)
-		{
-		case ShaderGroupType::kNone:
-			BV_ASSERT(false, "Shader hit group type can't be kNone");
-			Destroy();
-			return;
-		case ShaderGroupType::kGeneral:
-			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-			group.generalShader = groupDesc.m_General;
-			group.closestHitShader = VK_SHADER_UNUSED_KHR;
-			group.anyHitShader = VK_SHADER_UNUSED_KHR;
-			group.intersectionShader = VK_SHADER_UNUSED_KHR;
-			break;
-		case ShaderGroupType::kTriangles:
-			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-			group.generalShader = VK_SHADER_UNUSED_KHR;
-			group.closestHitShader = groupDesc.m_ClosestHit;
-			group.anyHitShader = groupDesc.m_AnyHit;
-			group.intersectionShader = VK_SHADER_UNUSED_KHR;
-			break;
-		case ShaderGroupType::kProcedural:
-			group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
-			group.generalShader = VK_SHADER_UNUSED_KHR;
-			group.closestHitShader = groupDesc.m_ClosestHit;
-			group.anyHitShader = groupDesc.m_AnyHit;
-			group.intersectionShader = groupDesc.m_Intersection;
-			break;
-		}
+		auto& group = groups[i];
+		group.type = GetVkRayTracingShaderGroupType(groupDesc.m_Type);
+		group.generalShader = groupDesc.m_General;
+		group.closestHitShader = groupDesc.m_ClosestHit;
+		group.anyHitShader = groupDesc.m_AnyHit;
+		group.intersectionShader = groupDesc.m_Intersection;
 	}
 
 	VkRayTracingPipelineInterfaceCreateInfoKHR pici{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR, nullptr,
@@ -483,6 +463,11 @@ void BvRayTracingPipelineStateVk::Create()
 	}
 
 	vkCreateRayTracingPipelinesKHR(m_pDevice->GetHandle(), VK_NULL_HANDLE, m_PipelineCache, 1, &ci, nullptr, &m_Pipeline);
+
+	for (auto i = 0u; i < shaderStages.Size(); i++)
+	{
+		vkDestroyShaderModule(m_pDevice->GetHandle(), shaderStages[i].module, nullptr);
+	}
 }
 
 
@@ -497,7 +482,7 @@ void BvRayTracingPipelineStateVk::Destroy()
 }
 
 
-VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode, VkShaderStageFlagBits shaderStage)
+VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode)
 {
 	VkShaderModuleCreateInfo shaderCI{};
 	shaderCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

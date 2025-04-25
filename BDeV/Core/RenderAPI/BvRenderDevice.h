@@ -42,7 +42,7 @@ public:
 	template<typename T = IBvQuery> BV_INLINE BvRCRaw<T> CreateQuery(QueryType queryType) { return static_cast<T*>(CreateQueryImpl(queryType)); }
 	template<typename T = IBvGPUFence> BV_INLINE BvRCRaw<T> CreateFence(u64 value) { return static_cast<T*>(CreateFenceImpl(value)); }
 	template<typename T = IBvAccelerationStructure> BV_INLINE BvRCRaw<T> CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc) { return static_cast<T*>(CreateAccelerationStructureImpl(asDesc)); }
-	template<typename T = IBvShaderBindingTable> BV_INLINE BvRCRaw<T> CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) { return static_cast<T*>(CreateShaderBindingTableImpl(sbtDesc)); }
+	template<typename T = IBvShaderBindingTable> BV_INLINE BvRCRaw<T> CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) { return static_cast<T*>(CreateShaderBindingTableImpl(sbtDesc, pContext)); }
 	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetGraphicsContext(u32 index = 0) { return static_cast<T*>(GetGraphicsContextImpl(index)); }
 	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetComputeContext(u32 index = 0) { return static_cast<T*>(GetComputeContextImpl(index)); }
 	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetTransferContext(u32 index = 0) { return static_cast<T*>(GetTransferContextImpl(index)); }
@@ -57,6 +57,7 @@ public:
 
 	virtual RenderDeviceCapabilities GetDeviceCaps() const = 0;
 	virtual const BvGPUInfo& GetGPUInfo() const = 0;
+	virtual const BvVector<Format>& GetSupportedDisplayFormats() const = 0;
 
 protected:
 	IBvRenderDevice() {}

@@ -775,11 +775,11 @@ void BvCommandBufferVk::DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64 
 }
 
 
-void BvCommandBufferVk::CopyBuffer(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
+void BvCommandBufferVk::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, const VkBufferCopy& copyRegion)
 {
 	ResetRenderTargets();
 
-	vkCmdCopyBuffer(m_CommandBuffer, pSrcBuffer->GetHandle(), pDstBuffer->GetHandle(), 1, &copyRegion);
+	vkCmdCopyBuffer(m_CommandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 }
 
 
@@ -791,7 +791,7 @@ void BvCommandBufferVk::CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstB
 	auto pSrc = TO_VK(pSrcBuffer);
 	auto pDst = TO_VK(pDstBuffer);
 
-	CopyBuffer(pSrc, pDst, region);
+	CopyBuffer(pSrc->GetHandle(), pDst->GetHandle(), region);
 }
 
 
@@ -805,7 +805,7 @@ void BvCommandBufferVk::CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstB
 	auto pSrc = TO_VK(pSrcBuffer);
 	auto pDst = TO_VK(pDstBuffer);
 
-	CopyBuffer(pSrc, pDst, region);
+	CopyBuffer(pSrc->GetHandle(), pDst->GetHandle(), region);
 }
 
 
@@ -913,11 +913,11 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 }
 
 
-void BvCommandBufferVk::CopyBufferToTexture(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandBufferVk::CopyBufferToTexture(VkBuffer srcBuffer, VkImage dstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	ResetRenderTargets();
 
-	vkCmdCopyBufferToImage(m_CommandBuffer, pSrcBuffer->GetHandle(), pDstTexture->GetHandle(),
+	vkCmdCopyBufferToImage(m_CommandBuffer, srcBuffer, dstTexture,
 		VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copyCount, pCopyRegions);
 }
 
@@ -941,18 +941,18 @@ void BvCommandBufferVk::CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvText
 		m_BufferImageCopyRegions[i].imageSubresource.layerCount = 1;
 	}
 
-	CopyBufferToTexture(pSrc, pDst, copyCount, m_BufferImageCopyRegions.Data());
+	CopyBufferToTexture(pSrc->GetHandle(), pDst->GetHandle(), copyCount, m_BufferImageCopyRegions.Data());
 	
 	m_BufferImageCopyRegions.Clear();
 }
 
 
-void BvCommandBufferVk::CopyTextureToBuffer(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
+void BvCommandBufferVk::CopyTextureToBuffer(VkImage srcTexture, VkBuffer dstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
 	ResetRenderTargets();
 
-	vkCmdCopyImageToBuffer(m_CommandBuffer, pSrcTexture->GetHandle(), VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-		pDstBuffer->GetHandle(), copyCount, pCopyRegions);
+	vkCmdCopyImageToBuffer(m_CommandBuffer, srcTexture, VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		dstBuffer, copyCount, pCopyRegions);
 }
 
 
@@ -975,7 +975,7 @@ void BvCommandBufferVk::CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBu
 		m_BufferImageCopyRegions[i].imageSubresource.layerCount = 1;
 	}
 
-	CopyTextureToBuffer(pSrc, pDst, copyCount, m_BufferImageCopyRegions.Data());
+	CopyTextureToBuffer(pSrc->GetHandle(), pDst->GetHandle(), copyCount, m_BufferImageCopyRegions.Data());
 
 	m_BufferImageCopyRegions.Clear();
 }
@@ -1233,12 +1233,11 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc)
 			continue;
 		}
 
-		auto& geom = m_ASGeometries.EmplaceBack(VkAccelerationStructureGeometryKHR{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR});
-		auto& range = m_ASRanges.EmplaceBack();
-		geom = geoms[index];
+		VkAccelerationStructureGeometryKHR& dstGeometry = m_ASGeometries.EmplaceBack(geoms[index]);
+		VkAccelerationStructureBuildRangeInfoKHR& range = m_ASRanges.EmplaceBack();
 		if (srcGeometry.m_Type == RayTracingGeometryType::kTriangles)
 		{
-			auto& triangle = geom.geometry.triangles;
+			VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
 			triangle.vertexData.deviceAddress = TO_VK(srcGeometry.m_Triangle.m_pVertexBuffer)->GetDeviceAddress() + srcGeometry.m_Triangle.m_VertexOffset;
 			if (srcGeometry.m_Triangle.m_pIndexBuffer)
 			{
@@ -1247,7 +1246,7 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc)
 		}
 		else if (srcGeometry.m_Type == RayTracingGeometryType::kAABB)
 		{
-			auto& aabb = geom.geometry.aabbs;
+			VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
 			aabb.data.deviceAddress = TO_VK(srcGeometry.m_AABB.m_pBuffer)->GetDeviceAddress() + srcGeometry.m_AABB.m_Offset;
 		}
 		range.primitiveCount = pAS->GetPrimitiveCounts()[index];
@@ -1271,16 +1270,19 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc)
 	//buildInfo.ppGeometries = nullptr;
 	buildInfo.scratchData.deviceAddress = TO_VK(desc.m_pScratchBuffer)->GetDeviceAddress() + desc.m_ScratchBufferOffset;
 
-	auto pRanges = m_ASRanges.Data();
+	VkAccelerationStructureBuildRangeInfoKHR* pRanges = m_ASRanges.Data();
 	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, &pRanges);
+
+	m_ASGeometries.Clear();
+	m_ASRanges.Clear();
 }
 
 
 void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc)
 {
 	auto pAS = TO_VK(desc.m_pTLAS);
-	auto geom = pAS->GetGeometries()[0];
-	geom.geometry.instances.data.deviceAddress = TO_VK(desc.m_pInstanceBuffer)->GetDeviceAddress() + desc.m_InstanceBufferOffset;
+	VkAccelerationStructureGeometryKHR& dstGeometry = m_ASGeometries.EmplaceBack(pAS->GetGeometries()[0]);
+	dstGeometry.geometry.instances.data.deviceAddress = TO_VK(desc.m_pInstanceBuffer)->GetDeviceAddress() + desc.m_InstanceBufferOffset;
 
 	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
 	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
@@ -1295,21 +1297,26 @@ void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc)
 		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
 	}
 	buildInfo.dstAccelerationStructure = pAS->GetHandle();
-	buildInfo.geometryCount = 1;
-	buildInfo.pGeometries = &geom;
+	buildInfo.geometryCount = u32(m_ASGeometries.Size());
+	buildInfo.pGeometries = m_ASGeometries.Data();
 	//buildInfo.ppGeometries = nullptr;
 	buildInfo.scratchData.deviceAddress = TO_VK(desc.m_pScratchBuffer)->GetDeviceAddress() + desc.m_ScratchBufferOffset;
 
-	VkAccelerationStructureBuildRangeInfoKHR range{};
+	VkAccelerationStructureBuildRangeInfoKHR& range = m_ASRanges.EmplaceBack(VkAccelerationStructureBuildRangeInfoKHR{});
 	range.primitiveCount = desc.m_InstanceCount;
 
-	VkAccelerationStructureBuildRangeInfoKHR* pRanges[] = { &range };
-	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, pRanges);
+	VkAccelerationStructureBuildRangeInfoKHR* pRanges = m_ASRanges.Data();
+	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, &pRanges);
+
+	m_ASGeometries.Clear();
+	m_ASRanges.Clear();
 }
 
 
 void BvCommandBufferVk::DispatchRays(const DispatchRaysCommandArgs& args)
 {
+	FlushDescriptorSets();
+
 	VkStridedDeviceAddressRegionKHR addressRegions[4] =
 	{
 		{ args.m_RayGenShader.m_Address, args.m_RayGenShader.m_Size, args.m_RayGenShader.m_Size }, // For RayGen, stride == size
@@ -1324,6 +1331,8 @@ void BvCommandBufferVk::DispatchRays(const DispatchRaysCommandArgs& args)
 
 void BvCommandBufferVk::DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset)
 {
+	FlushDescriptorSets();
+
 	auto deviceAddress = pBuffer->GetDeviceAddress() + offset;
 	vkCmdTraceRaysIndirect2KHR(m_CommandBuffer, deviceAddress);
 }

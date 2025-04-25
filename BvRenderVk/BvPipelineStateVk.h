@@ -90,6 +90,7 @@ public:
 	BV_INLINE const RayTracingPipelineStateDesc& GetDesc() const override { return m_PipelineStateDesc; }
 	BV_INLINE VkPipeline GetHandle() const { return m_Pipeline; }
 	BV_INLINE bool IsValid() const { return m_Pipeline != VK_NULL_HANDLE; }
+	BV_INLINE const auto& GetShaderStages() const { return m_ShaderStages; }
 
 	//BV_OBJECT_IMPL_INTERFACE(IBvRayTracingPipelineStateVk, IBvRayTracingPipelineState, IBvRenderDeviceObject);
 
@@ -102,6 +103,7 @@ private:
 	VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	VkPipelineCache m_PipelineCache = VK_NULL_HANDLE;
 	RayTracingPipelineStateDesc m_PipelineStateDesc;
+	BvVector<VkShaderStageFlagBits> m_ShaderStages;
 };
 
 

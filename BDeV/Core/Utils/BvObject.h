@@ -510,6 +510,10 @@ public:
 	{
 		InternalAddRef();
 	}
+	BvRCRef(std::nullptr_t)
+		: m_pObj(nullptr)
+	{
+	}
 	BvRCRef(const BvRCRef& rhs)
 		: m_pObj(rhs.m_pObj)
 	{

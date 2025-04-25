@@ -203,12 +203,7 @@ void MeshShader::OnUpdate()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
-	auto camPos = VectorSet(0.0f, 0.0f, -10.0f, 1.0f);
-	auto v = MatrixLookAtLH(camPos, VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f, 1.0f));
-	auto p = MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4);
-	auto vp = v * p;
-	auto vp2 = m_Camera.GetViewProj();
-	Store44(vp2, m_PC.viewProj.m);
+	Store44(m_Camera.GetViewProj(), m_PC.viewProj.m);
 	Store3(m_Camera.GetPos(), m_PC.cameraPos.v);
 
 	m_Query->GetResult(m_PSOStats);

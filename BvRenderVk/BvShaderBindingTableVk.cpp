@@ -1,7 +1,6 @@
 #include "BvShaderBindingTableVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvPipelineStateVk.h"
-#include "BvBufferVk.h"
 #include "BvCommandContextVk.h"
 
 
@@ -42,6 +41,7 @@ void BvShaderBindingTableVk::GetDeviceAddressRangeAndStride(ShaderBindingTableGr
 
 void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 {
+	auto& stages = TO_VK(m_SBTDesc.m_pPSO)->GetShaderStages();
 	BvVector<u32> groupIndices[4];
 	auto& psoDesc = m_SBTDesc.m_pPSO->GetDesc();
 	for (auto i = 0; i < psoDesc.m_ShaderGroupCount; ++i)
@@ -50,16 +50,16 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 		auto& currGroup = psoDesc.m_pShaderGroupDescs[i];
 		if (currGroup.m_Type == ShaderGroupType::kGeneral)
 		{
-			auto pShader = psoDesc.m_ppShaders[currGroup.m_General];
-			switch (pShader->GetShaderStage())
+			auto stage = stages[currGroup.m_General];
+			switch (stage)
 			{
-			case ShaderStage::kRayGen:
+			case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
 				index = 0;
 				break;
-			case ShaderStage::kMiss:
+			case VK_SHADER_STAGE_MISS_BIT_KHR:
 				index = 1;
 				break;
-			case ShaderStage::kCallable:
+			case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
 				index = 3;
 				break;
 			}
@@ -72,7 +72,8 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 		groupIndices[index].PushBack(i);
 	}
 
-	u32 sbtSize = psoDesc.m_ShaderGroupCount * m_HandleSize;
+	u64 handleSizeAligned = RoundToNearestPowerOf2(m_HandleSize, m_GroupHandleAlignment);
+	u32 sbtSize = psoDesc.m_ShaderGroupCount * handleSizeAligned;
 	BvVector<u8> shaderHandleData(sbtSize);
 
 	auto result = vkGetRayTracingShaderGroupHandlesKHR(m_pDevice->GetHandle(), TO_VK(m_SBTDesc.m_pPSO)->GetHandle(), 0,
@@ -82,7 +83,6 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 		return;
 	}
 
-	u64 handleSizeAligned = RoundToNearestPowerOf2(m_HandleSize, m_GroupHandleAlignment);
 	m_Regions[0].stride = RoundToNearestPowerOf2(handleSizeAligned, m_BaseGroupAlignment);
 	m_Regions[0].size = m_Regions[0].stride;
 	m_Regions[1].stride = handleSizeAligned;
@@ -115,20 +115,25 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 	initData.m_pData = bufferData.Data();
 	initData.m_Size = bufferData.Size();
 
-	m_pBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, &initData);
-	auto deviceAddress = m_pBuffer->GetDeviceAddress();
+	m_Buffer = BvRCRaw(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, &initData));
+	auto deviceAddress = m_Buffer->GetDeviceAddress();
 	m_Regions[0].deviceAddress = deviceAddress;
-	m_Regions[1].deviceAddress = m_Regions[0].deviceAddress + m_Regions[0].size * groupIndices[0].Size();
-	m_Regions[2].deviceAddress = m_Regions[1].deviceAddress + m_Regions[1].size;
-	m_Regions[3].deviceAddress = m_Regions[2].deviceAddress + m_Regions[2].size;
+	u64 currOffset = m_Regions[0].size * groupIndices[0].Size();
+	for (auto i = 1; i < 4; ++i)
+	{
+		if (groupIndices[i].Size() == 0)
+		{
+			m_Regions[i] = {};
+			continue;
+		}
+
+		m_Regions[i].deviceAddress = deviceAddress + currOffset;
+		currOffset += m_Regions[i].size;
+	}
 }
 
 
 void BvShaderBindingTableVk::Destroy()
 {
-	if (m_pBuffer)
-	{
-		m_pBuffer->Release();
-		m_pBuffer = nullptr;
-	}
+	m_Buffer.Reset();
 }

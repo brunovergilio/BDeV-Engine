@@ -56,6 +56,7 @@
     <ClCompile Include="BvGPUFenceVk.cpp" />
     <ClCompile Include="BvAccelerationStructureVk.cpp" />
     <ClCompile Include="BvShaderBindingTableVk.cpp" />
+    <ClCompile Include="Windows\BvRenderDeviceVkWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BvRenderVk.def" />

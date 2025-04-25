@@ -161,6 +161,12 @@ EShLanguage GetShaderStage(const ShaderStage stage)
 	case ShaderStage::kCompute:				return EShLanguage::EShLangCompute;
 	case ShaderStage::kMesh:				return EShLanguage::EShLangMesh;
 	case ShaderStage::kAmplificationOrTask:	return EShLanguage::EShLangTask;
+	case ShaderStage::kRayGen:				return EShLanguage::EShLangRayGen;
+	case ShaderStage::kIntersection:		return EShLanguage::EShLangIntersect;
+	case ShaderStage::kAnyHit:				return EShLanguage::EShLangAnyHit;
+	case ShaderStage::kClosestHit:			return EShLanguage::EShLangClosestHit;
+	case ShaderStage::kMiss:				return EShLanguage::EShLangMiss;
+	case ShaderStage::kCallable:			return EShLanguage::EShLangCallable;
 	default:
 		BV_ASSERT(0, "This code should be unreachable");
 		return EShLanguage::EShLangCount;

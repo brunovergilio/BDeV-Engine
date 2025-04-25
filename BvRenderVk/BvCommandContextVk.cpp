@@ -7,6 +7,7 @@
 #include "BvGPUFenceVk.h"
 #include "BvFramebufferVk.h"
 #include "BvShaderBindingTableVk.h"
+#include "BvBufferVk.h"
 
 
 BvFrameDataVk::BvFrameDataVk()
@@ -250,7 +251,7 @@ void BvCommandContextVk::Execute(IBvGPUFence* pFence, u64 value)
 	auto pFenceVk = TO_VK(pFence);
 	m_Queue.AddSignalSemaphore(pFenceVk->GetHandle(), value);
 
-	Execute(value);
+	Execute();
 }
 
 
@@ -307,6 +308,8 @@ void BvCommandContextVk::WaitForGPU()
 	m_Queue.WaitIdle();
 
 	m_Frames[m_ActiveFrameIndex].UpdateSignalValue();
+
+	m_Frames[m_ActiveFrameIndex].Reset();
 }
 
 
@@ -545,7 +548,7 @@ void BvCommandContextVk::DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64
 
 void BvCommandContextVk::CopyBufferVk(const BvBufferVk* pSrcBuffer, BvBufferVk* pDstBuffer, const VkBufferCopy& copyRegion)
 {
-	m_pCurrCommandBuffer->CopyBuffer(pSrcBuffer, pDstBuffer, copyRegion);
+	m_pCurrCommandBuffer->CopyBuffer(pSrcBuffer->GetHandle(), pDstBuffer->GetHandle(), copyRegion);
 }
 
 
@@ -575,7 +578,7 @@ void BvCommandContextVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* 
 
 void BvCommandContextVk::CopyBufferToTextureVk(const BvBufferVk* pSrcBuffer, BvTextureVk* pDstTexture, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
-	m_pCurrCommandBuffer->CopyBufferToTexture(pSrcBuffer, pDstTexture, copyCount, pCopyRegions);
+	m_pCurrCommandBuffer->CopyBufferToTexture(pSrcBuffer->GetHandle(), pDstTexture->GetHandle(), copyCount, pCopyRegions);
 }
 
 
@@ -587,7 +590,7 @@ void BvCommandContextVk::CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTex
 
 void BvCommandContextVk::CopyTextureToBufferVk(const BvTextureVk* pSrcTexture, BvBufferVk* pDstBuffer, u32 copyCount, const VkBufferImageCopy* pCopyRegions)
 {
-	m_pCurrCommandBuffer->CopyTextureToBuffer(pSrcTexture, pDstBuffer, copyCount, pCopyRegions);
+	m_pCurrCommandBuffer->CopyTextureToBuffer(pSrcTexture->GetHandle(), pDstBuffer->GetHandle(), copyCount, pCopyRegions);
 }
 
 
