@@ -140,8 +140,8 @@ void RayTracing1::OnRender()
 
 	ResourceBarrierDesc barrier;
 	barrier.m_pTexture = m_Tex;
-	barrier.m_SrcLayout = ResourceState::kPixelShaderResource;
-	barrier.m_DstLayout = ResourceState::kRWResource;
+	barrier.m_SrcState = ResourceState::kPixelShaderResource;
+	barrier.m_DstState = ResourceState::kRWResource;
 
 	m_Context->NewCommandList();
 	m_Context->ResourceBarrier(1, &barrier);
@@ -151,8 +151,8 @@ void RayTracing1::OnRender()
 	m_Context->SetShaderConstantsT<Float3>(m_BackColor, 2, 0);
 	m_Context->DispatchRays(m_SBT, 0, 0, 0, 0, width, height, 1);
 
-	barrier.m_SrcLayout = ResourceState::kRWResource;
-	barrier.m_DstLayout = ResourceState::kPixelShaderResource;
+	barrier.m_SrcState = ResourceState::kRWResource;
+	barrier.m_DstState = ResourceState::kPixelShaderResource;
 	m_Context->ResourceBarrier(1, &barrier);
 
 	RenderTargetDesc targets[] =

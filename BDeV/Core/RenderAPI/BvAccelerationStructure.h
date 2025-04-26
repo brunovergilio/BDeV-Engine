@@ -22,6 +22,7 @@ public:
 	virtual u64 GetTopLevelInstanceSize() const = 0;
 	virtual IBvBuffer* GetTopLevelStagingInstanceBuffer() const = 0;
 	virtual RayTracingAccelerationStructureScratchSize GetBuildSizes() const = 0;
+	virtual u64 GetRayTracingInstanceSize() const = 0;
 	
 	BV_INLINE void WriteTopLevelInstances(u32 instanceCount, const TLASBuildInstanceDesc* pInstances)
 	{

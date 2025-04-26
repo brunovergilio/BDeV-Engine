@@ -138,13 +138,13 @@ void ComputeShader::OnRender()
 	m_Context->BeginQuery(m_Query);
 	ResourceBarrierDesc barrier;
 	barrier.m_pTexture = m_RWTex;
-	barrier.m_SrcLayout = ResourceState::kPixelShaderResource;
-	barrier.m_DstLayout = ResourceState::kRWResource;
+	barrier.m_SrcState = ResourceState::kPixelShaderResource;
+	barrier.m_DstState = ResourceState::kRWResource;
 	m_Context->ResourceBarrier(1, &barrier);
 	DoCompute(width, height);
 
-	barrier.m_SrcLayout = ResourceState::kRWResource;
-	barrier.m_DstLayout = ResourceState::kPixelShaderResource;
+	barrier.m_SrcState = ResourceState::kRWResource;
+	barrier.m_DstState = ResourceState::kPixelShaderResource;
 
 	m_Context->ResourceBarrier(1, &barrier);
 

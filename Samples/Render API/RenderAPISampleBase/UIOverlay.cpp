@@ -250,6 +250,21 @@ bool UIOverlay::Update(f32 dt, BvWindow* pWindow)
 	io.AddMouseButtonEvent(2, EHasFlag(currState.mouseButtonStates, BvMouseButton::kMiddle));
 	io.AddMouseWheelEvent(currState.mouseWheelDeltaX, currState.mouseWheelDeltaY);
 
+	constexpr u32 kMaxCharInputs = 4;
+	BvKeyboard::CharInput inputs[kMaxCharInputs];
+	BvKeyboard keyboard;
+	auto inputCount = keyboard.GetCharInputs(inputs);
+	for (auto i = 0; i < inputCount; ++i)
+	{
+		if (!inputs[i].m_IsDeadChar)
+		{
+			char utf8[5]{};
+			char32_t utf32 = inputs[i].m_CodePoint;
+			BvTextUtilities::ConvertUTF32ToUTF8Char(&utf32, 2, utf8, 5);
+			io.AddInputCharactersUTF8(utf8);
+		}
+	}
+
 	return true;
 }
 

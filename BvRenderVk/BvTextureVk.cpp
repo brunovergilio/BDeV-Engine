@@ -195,7 +195,7 @@ void BvTextureVk::CopyInitDataToGPUAndTransitionState(const TextureInitData* pIn
 
 		ResourceBarrierDesc copyDstBarrier;
 		copyDstBarrier.m_pTexture = this;
-		copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
+		copyDstBarrier.m_DstState = ResourceState::kTransferDst;
 		copyDstBarrier.m_Subresource.mipCount = mipCount;
 		copyDstBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
 
@@ -208,8 +208,8 @@ void BvTextureVk::CopyInitDataToGPUAndTransitionState(const TextureInitData* pIn
 		{
 			ResourceBarrierDesc copySrcBarrier;
 			copySrcBarrier.m_pTexture = this;
-			copySrcBarrier.m_SrcLayout = ResourceState::kTransferDst;
-			copySrcBarrier.m_DstLayout = ResourceState::kTransferSrc;
+			copySrcBarrier.m_SrcState = ResourceState::kTransferDst;
+			copySrcBarrier.m_DstState = ResourceState::kTransferSrc;
 			copySrcBarrier.m_Subresource.firstLayer = 0;
 			copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
 			copySrcBarrier.m_Subresource.firstMip = 0;
@@ -225,8 +225,8 @@ void BvTextureVk::CopyInitDataToGPUAndTransitionState(const TextureInitData* pIn
 	{
 		ResourceBarrierDesc barrier;
 		barrier.m_pTexture = this;
-		barrier.m_SrcLayout = currState;
-		barrier.m_DstLayout = m_TextureDesc.m_ResourceState;
+		barrier.m_SrcState = currState;
+		barrier.m_DstState = m_TextureDesc.m_ResourceState;
 
 		pContext->ResourceBarrier(1, &barrier);
 	}
@@ -263,7 +263,7 @@ void BvTextureVk::GenerateMips(BvCommandContextVk* pContext)
 
 			ResourceBarrierDesc copyDstBarrier;
 			copyDstBarrier.m_pTexture = this;
-			copyDstBarrier.m_DstLayout = ResourceState::kTransferDst;
+			copyDstBarrier.m_DstState = ResourceState::kTransferDst;
 			copyDstBarrier.m_Subresource.firstLayer = 0;
 			copyDstBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
 			copyDstBarrier.m_Subresource.firstMip = i;
@@ -285,8 +285,8 @@ void BvTextureVk::GenerateMips(BvCommandContextVk* pContext)
 
 			ResourceBarrierDesc copySrcBarrier;
 			copySrcBarrier.m_pTexture = this;
-			copySrcBarrier.m_SrcLayout = ResourceState::kTransferDst;
-			copySrcBarrier.m_DstLayout = ResourceState::kTransferSrc;
+			copySrcBarrier.m_SrcState = ResourceState::kTransferDst;
+			copySrcBarrier.m_DstState = ResourceState::kTransferSrc;
 			copySrcBarrier.m_Subresource.firstLayer = 0;
 			copySrcBarrier.m_Subresource.layerCount = m_TextureDesc.m_ArraySize;
 			copySrcBarrier.m_Subresource.firstMip = i;

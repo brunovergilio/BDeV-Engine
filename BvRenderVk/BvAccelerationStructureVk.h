@@ -36,7 +36,7 @@ public:
 	BV_INLINE VkAccelerationStructureKHR GetHandle() const { return m_Handle; }
 	BV_INLINE BvBufferVk* GetBuffer() const { return m_Buffer; }
 	BV_INLINE VkDeviceAddress GetDeviceAddress() const { return m_DeviceAddress; }
-	//VkDeviceAddress GetDeviceAddress() const;
+	BV_INLINE u64 GetRayTracingInstanceSize() const override { return m_Desc.m_TLAS.m_InstanceCount * sizeof(VkAccelerationStructureInstanceKHR); }
 	BV_INLINE bool IsValid() const { return m_Handle != VK_NULL_HANDLE; }
 
 	//BV_OBJECT_IMPL_INTERFACE(IBvAccelerationStructureVk, IBvAccelerationStructure, IBvRenderDeviceObject);

@@ -148,6 +148,30 @@ struct Float43
 };
 
 
+struct Float34
+{
+	union
+	{
+		Float4 r[3]{};
+		f32 m[12];
+		struct
+		{
+			f32 m0, m1, m2, m3,
+				m4, m5, m6, m7,
+				m8, m9, m10, m11;
+		};
+	};
+
+	constexpr Float34() {}
+	constexpr Float34(const Float4& r0, const Float4& r1, const Float4& r2)
+	{
+		r[0] = r0;
+		r[1] = r1;
+		r[2] = r2;
+	}
+};
+
+
 struct Float44
 {
 	union
@@ -235,26 +259,28 @@ struct mf32
 using cmf32 = const mf32&;
 
 
-vf32 BV_VCALL Load1(const f32* p);
-vf32 BV_VCALL Load2(const f32* p);
-vf32 BV_VCALL Load3(const f32* p);
-vf32 BV_VCALL Load4(const f32* p);
-vf32 BV_VCALL Load4A(const f32* p);
-void BV_VCALL Store1(cvf32 v, f32* p);
-void BV_VCALL Store2(cvf32 v, f32* p);
-void BV_VCALL Store3(cvf32 v, f32* p);
-void BV_VCALL Store4(cvf32 v, f32* p);
-void BV_VCALL Store4A(cvf32 v, f32* p);
-mf32 BV_VCALL Load22(const f32* p);
-mf32 BV_VCALL Load33(const f32* p);
-mf32 BV_VCALL Load43(const f32* p);
-mf32 BV_VCALL Load44(const f32* p);
-mf32 BV_VCALL Load44A(const f32* p);
-void BV_VCALL Store22(const mf32& m, f32* p);
-void BV_VCALL Store33(const mf32& m, f32* p);
-void BV_VCALL Store43(const mf32& m, f32* p);
-void BV_VCALL Store44(const mf32& m, f32* p);
-void BV_VCALL Store44A(const mf32& m, f32* p);
+BV_INLINE vf32 BV_VCALL Load1(const f32* p);
+BV_INLINE vf32 BV_VCALL Load2(const f32* p);
+BV_INLINE vf32 BV_VCALL Load3(const f32* p);
+BV_INLINE vf32 BV_VCALL Load4(const f32* p);
+BV_INLINE vf32 BV_VCALL Load4A(const f32* p);
+BV_INLINE void BV_VCALL Store1(cvf32 v, f32* p);
+BV_INLINE void BV_VCALL Store2(cvf32 v, f32* p);
+BV_INLINE void BV_VCALL Store3(cvf32 v, f32* p);
+BV_INLINE void BV_VCALL Store4(cvf32 v, f32* p);
+BV_INLINE void BV_VCALL Store4A(cvf32 v, f32* p);
+BV_INLINE mf32 BV_VCALL Load22(const f32* p);
+BV_INLINE mf32 BV_VCALL Load33(const f32* p);
+BV_INLINE mf32 BV_VCALL Load43(const f32* p);
+BV_INLINE mf32 BV_VCALL Load34(const f32* p);
+BV_INLINE mf32 BV_VCALL Load44(const f32* p);
+BV_INLINE mf32 BV_VCALL Load44A(const f32* p);
+BV_INLINE void BV_VCALL Store22(const mf32& m, f32* p);
+BV_INLINE void BV_VCALL Store33(const mf32& m, f32* p);
+BV_INLINE void BV_VCALL Store43(const mf32& m, f32* p);
+BV_INLINE void BV_VCALL Store34(const mf32& m, f32* p);
+BV_INLINE void BV_VCALL Store44(const mf32& m, f32* p);
+BV_INLINE void BV_VCALL Store44A(const mf32& m, f32* p);
 
 BV_INLINE vf32 BV_VCALL Load(f32 f) { return Load1(&f); }
 BV_INLINE vf32 BV_VCALL Load(const Float2& f) { return Load2(f.v); }
@@ -269,11 +295,13 @@ BV_INLINE void BV_VCALL Store(cvf32 v, Float4A& f) { Store4A(v, f.v); }
 BV_INLINE mf32 BV_VCALL Load(const Float22& r) { return Load22(r.m); }
 BV_INLINE mf32 BV_VCALL Load(const Float33& r) { return Load33(r.m); }
 BV_INLINE mf32 BV_VCALL Load(const Float43& r) { return Load43(r.m); }
+BV_INLINE mf32 BV_VCALL Load(const Float34& r) { return Load43(r.m); }
 BV_INLINE mf32 BV_VCALL Load(const Float44& r) { return Load44(r.m); }
 BV_INLINE mf32 BV_VCALL Load(const Float44A& r) { return Load44A(r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float22& r) { Store22(m, r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float33& r) { Store33(m, r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float43& r) { Store43(m, r.m); }
+BV_INLINE void BV_VCALL Store(cmf32 m, Float34& r) { Store34(m, r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float44& r) { Store44(m, r.m); }
 BV_INLINE void BV_VCALL Store(cmf32 m, Float44A& r) { Store44A(m, r.m); }
 

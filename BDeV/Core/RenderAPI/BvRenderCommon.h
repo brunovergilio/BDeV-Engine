@@ -4,6 +4,7 @@
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Container/BvStringId.h"
+#include "BDeV/Core/Math/BvMath.h"
 #include <algorithm>
 
 
@@ -867,8 +868,8 @@ struct ResourceBarrierDesc
 	IBvBuffer* m_pBuffer = nullptr;
 	IBvAccelerationStructure* m_pAS = nullptr;
 
-	ResourceState m_SrcLayout = ResourceState::kCommon;
-	ResourceState m_DstLayout = ResourceState::kCommon;
+	ResourceState m_SrcState = ResourceState::kCommon;
+	ResourceState m_DstState = ResourceState::kCommon;
 
 	Type m_Type = Type::kStateTransition;
 
@@ -1591,7 +1592,7 @@ struct TLASDesc
 
 struct TLASBuildInstanceDesc
 {
-	f32 m_Transform[3][4]{};
+	Float34 m_Transform{};
 	u32 m_InstanceId = 0;
 	u32 m_InstanceMask = 0;
 	u32 m_ShaderBindingTableIndex = 0;

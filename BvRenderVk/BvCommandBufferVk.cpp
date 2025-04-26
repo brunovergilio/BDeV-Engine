@@ -1007,9 +1007,9 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			auto& barrier = m_MemoryBarriers.EmplaceBack(VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_SrcLayout) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
+				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstLayout) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
+				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 
 			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
@@ -1026,9 +1026,9 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			//barrier.offset = 0;
 		
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_SrcLayout) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
+				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstLayout) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
+				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 		
 			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
@@ -1049,13 +1049,13 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.subresourceRange.baseArrayLayer = pBarriers[i].m_Subresource.firstLayer;
 			barrier.subresourceRange.layerCount = pBarriers[i].m_Subresource.layerCount;
 
-			barrier.oldLayout = GetVkImageLayout(pBarriers[i].m_SrcLayout);
-			barrier.newLayout = GetVkImageLayout(pBarriers[i].m_DstLayout);
+			barrier.oldLayout = GetVkImageLayout(pBarriers[i].m_SrcState);
+			barrier.newLayout = GetVkImageLayout(pBarriers[i].m_DstState);
 
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_SrcLayout) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
+				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstLayout) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
+				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 
 			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);

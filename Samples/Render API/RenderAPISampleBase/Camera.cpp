@@ -118,7 +118,14 @@ void Camera::SetPerspective(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 	m_AspectRatio = aspectRatio;
 	m_FovY = fovY;
 
-	m_Proj = BvMatrix::PerspectiveLH_DX(m_NearZ, m_FarZ, m_AspectRatio, m_FovY);
+	m_Proj = m_FlipViewportY ? BvMatrix::PerspectiveLH_VK(m_NearZ, m_FarZ, m_AspectRatio, m_FovY)
+		: BvMatrix::PerspectiveLH_DX(m_NearZ, m_FarZ, m_AspectRatio, m_FovY);
+}
+
+
+void Camera::SetFlipViewportY(bool flip)
+{
+	m_FlipViewportY = flip;
 }
 
 

@@ -1,4 +1,5 @@
-#include "RayTracing2.h"
+#include "RayTracing3.h"
+#include "BDeV/Core/Math/BvGeometryGenerator.h"
 
 
 constexpr const char* g_pRGenShader =
@@ -140,28 +141,49 @@ void main()
 constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 
-void RayTracing2::OnInitialize()
+void RayTracing3::OnInitialize()
 {
-	m_AppName = "Ray Tracing 2";
+	m_AppName = "Ray Tracing 3";
 	CreateShaderResourceLayout();
 	CreatePipeline();
 	CreateResources();
 	CreateBLAS();
 	CreateTLAS();
-	
+
 	m_Camera.SetPos(0.0f, 0.0f, -2.0f);
 	m_Camera.SetFlipViewportY(true);
 }
 
 
-void RayTracing2::OnUpdate()
+void RayTracing3::OnUpdate()
 {
+	static f32 speed = 2.0f;
+	static f32 angleX = 0.0f;
+	static f32 angleY = 0.0f;
+	static f32 angleZ = 0.0f;
+	angleX += m_Dt * speed;
+	if (angleX > k2Pi)
+	{
+		angleX = 0.0f;
+	}
+	angleY += m_Dt * speed;
+	if (angleY > k2Pi)
+	{
+		angleY = 0.0f;
+	}
+	angleZ += m_Dt * speed;
+	if (angleZ > k2Pi)
+	{
+		angleZ = 0.0f;
+	}
+
+	Store(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ), m_CubeInstance.m_Transform);
 	Store(m_Camera.GetViewInv(), m_pRayData->viewInv);
 	Store(m_Camera.GetProjInv(), m_pRayData->projInv);
 }
 
 
-void RayTracing2::OnUpdateUI()
+void RayTracing3::OnUpdateUI()
 {
 	BeginDrawDefaultUI();
 	ImGui::ColorEdit3("Background", m_BackColor.v);
@@ -169,19 +191,26 @@ void RayTracing2::OnUpdateUI()
 }
 
 
-void RayTracing2::OnRender()
+void RayTracing3::OnRender()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
 
 	m_Context->NewCommandList();
 
-	ResourceBarrierDesc barrier;
-	barrier.m_pTexture = m_Tex;
-	barrier.m_SrcState = ResourceState::kPixelShaderResource;
-	barrier.m_DstState = ResourceState::kRWResource;
+	ResourceBarrierDesc barriers[2];
+	barriers[0].m_pTexture = m_Tex;
+	barriers[0].m_SrcState = ResourceState::kPixelShaderResource;
+	barriers[0].m_DstState = ResourceState::kRWResource;
 
-	m_Context->ResourceBarrier(1, &barrier);
+	barriers[1].m_pBuffer = m_ScratchTLAS;
+	barriers[1].m_Type = ResourceBarrierDesc::Type::kMemory;
+	barriers[1].m_SrcState = ResourceState::kASBuildWrite;
+	barriers[1].m_DstState = ResourceState::kASBuildRead;
+
+	UpdateTLAS();
+
+	m_Context->ResourceBarrier(2, barriers);
 	m_Context->SetRayTracingPipeline(m_RayPSO);
 	m_Context->SetRWTexture(m_TexView, 0, 0);
 	m_Context->SetAccelerationStructure(m_TLAS, 0, 1);
@@ -189,9 +218,9 @@ void RayTracing2::OnRender()
 	m_Context->SetShaderConstantsT<Float3>(m_BackColor, 3, 0);
 	m_Context->DispatchRays(m_SBT, 0, 0, 0, 0, width, height, 1);
 
-	barrier.m_SrcState = ResourceState::kRWResource;
-	barrier.m_DstState = ResourceState::kPixelShaderResource;
-	m_Context->ResourceBarrier(1, &barrier);
+	barriers[0].m_SrcState = ResourceState::kRWResource;
+	barriers[0].m_DstState = ResourceState::kPixelShaderResource;
+	m_Context->ResourceBarrier(1, barriers);
 
 	RenderTargetDesc targets[] =
 	{
@@ -215,7 +244,7 @@ void RayTracing2::OnRender()
 }
 
 
-void RayTracing2::OnShutdown()
+void RayTracing3::OnShutdown()
 {
 	m_RayPSO.Reset();
 	m_RaySRL.Reset();
@@ -227,15 +256,15 @@ void RayTracing2::OnShutdown()
 	m_TLAS.Reset();
 	m_BLAS.Reset();
 	m_SBT.Reset();
-	m_VBTri.Reset();
-	m_IBTri.Reset();
+	m_VB.Reset();
+	m_IB.Reset();
 	m_UBRayData.Reset();
 	m_UBViewRayData.Reset();
 
 }
 
 
-void RayTracing2::CreateShaderResourceLayout()
+void RayTracing3::CreateShaderResourceLayout()
 {
 	{
 		ShaderResourceDesc descs[3];
@@ -278,7 +307,7 @@ void RayTracing2::CreateShaderResourceLayout()
 }
 
 
-void RayTracing2::CreatePipeline()
+void RayTracing3::CreatePipeline()
 {
 	{
 		auto rgen = CompileShader(g_pRGenShader, g_RGenSize, ShaderStage::kRayGen);
@@ -328,7 +357,7 @@ void RayTracing2::CreatePipeline()
 }
 
 
-void RayTracing2::CreateResources()
+void RayTracing3::CreateResources()
 {
 	TextureDesc desc;
 	desc.m_Size = { m_pWindow->GetWidth(), m_pWindow->GetHeight(), 1 };
@@ -350,24 +379,21 @@ void RayTracing2::CreateResources()
 	bufferInitData.m_pContext = m_Context;
 	BufferDesc bufferDesc;
 
-	Float3 vertices[3] =
-	{
-		{ 0.5f, -0.5f,  1.0f},
-		{-0.5f, -0.5f,  1.0f},
-		{ 0.0f,  0.5f,  1.0f},
-	};
-	bufferDesc.m_Size = sizeof(vertices);
-	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
-	bufferInitData.m_pData = vertices;
-	bufferInitData.m_Size = bufferDesc.m_Size;
-	m_VBTri = m_Device->CreateBuffer(bufferDesc, &bufferInitData);
+	BvGeometryGenerator gen;
+	gen.GenerateBox();
+	auto& box = gen.GetData();
 
-	u32 indices[3] = { 0, 1, 2 };
-	bufferDesc.m_Size = sizeof(indices);
+	bufferDesc.m_Size = sizeof(BvGeometryGenerator::Vertex) * box.m_Vertices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
-	bufferInitData.m_pData = indices;
+	bufferInitData.m_pData = box.m_Vertices.Data();
 	bufferInitData.m_Size = bufferDesc.m_Size;
-	m_IBTri = m_Device->CreateBuffer(bufferDesc, &bufferInitData);
+	m_VB = m_Device->CreateBuffer(bufferDesc, &bufferInitData);
+
+	bufferDesc.m_Size = sizeof(u32) * box.m_Indices.Size();
+	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
+	bufferInitData.m_pData = box.m_Indices.Data();
+	bufferInitData.m_Size = bufferDesc.m_Size;
+	m_IB = m_Device->CreateBuffer(bufferDesc, &bufferInitData);
 
 	bufferDesc.m_Size = sizeof(RayData);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
@@ -384,16 +410,16 @@ void RayTracing2::CreateResources()
 }
 
 
-void RayTracing2::CreateBLAS()
+void RayTracing3::CreateBLAS()
 {
 	BLASGeometryDesc geomDesc;
 	geomDesc.m_Type = RayTracingGeometryType::kTriangles;
 	geomDesc.m_Flags = RayTracingGeometryFlags::kOpaque;
 	geomDesc.m_Id = BV_NAME_ID("Triangle");
-	geomDesc.m_Triangle.m_VertexCount = 3;
+	geomDesc.m_Triangle.m_VertexCount = 24;
 	geomDesc.m_Triangle.m_VertexFormat = Format::kRGB32_Float;
-	geomDesc.m_Triangle.m_VertexStride = sizeof(Float3);
-	geomDesc.m_Triangle.m_IndexCount = 3;
+	geomDesc.m_Triangle.m_VertexStride = sizeof(BvGeometryGenerator::Vertex);
+	geomDesc.m_Triangle.m_IndexCount = 36;
 	geomDesc.m_Triangle.m_IndexFormat = IndexFormat::kU32;
 
 	RayTracingAccelerationStructureDesc blasDesc;
@@ -412,8 +438,8 @@ void RayTracing2::CreateBLAS()
 	blasBuildGeomDesc.m_Type = RayTracingGeometryType::kTriangles;
 	blasBuildGeomDesc.m_Flags = RayTracingGeometryFlags::kOpaque;
 	blasBuildGeomDesc.m_Id = BV_NAME_ID("Triangle");
-	blasBuildGeomDesc.m_Triangle.m_pVertexBuffer = m_VBTri;
-	blasBuildGeomDesc.m_Triangle.m_pIndexBuffer = m_IBTri;
+	blasBuildGeomDesc.m_Triangle.m_pVertexBuffer = m_VB;
+	blasBuildGeomDesc.m_Triangle.m_pIndexBuffer = m_IB;
 
 	BLASBuildDesc blasBuildDesc;
 	blasBuildDesc.m_pBLAS = m_BLAS;
@@ -428,34 +454,34 @@ void RayTracing2::CreateBLAS()
 }
 
 
-void RayTracing2::CreateTLAS()
+void RayTracing3::CreateTLAS()
 {
 	RayTracingAccelerationStructureDesc tlasDesc;
 	tlasDesc.m_Type = RayTracingAccelerationStructureType::kTopLevel;
-	tlasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace;
+	tlasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace | RayTracingAccelerationStructureFlags::kAllowUpdate;
 	tlasDesc.m_TLAS.m_InstanceCount = 1;
 	tlasDesc.m_TLAS.m_Flags = RayTracingGeometryFlags::kOpaque;
 	m_TLAS = m_Device->CreateAccelerationStructure(tlasDesc);
 
 	BufferDesc bufferDesc;
-	bufferDesc.m_Size = m_TLAS->GetBuildSizes().m_Build;
+	auto [build, update] = m_TLAS->GetBuildSizes();
+	bufferDesc.m_Size = std::max(build, update);
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
-	BvRCRef<IBvBuffer> scratchTlas = m_Device->CreateBuffer(bufferDesc);
+	m_ScratchTLAS = m_Device->CreateBuffer(bufferDesc);
 
-	TLASBuildInstanceDesc tlasInstance;
-	tlasInstance.m_pBLAS = m_BLAS;
-	tlasInstance.m_Flags = RayTracingInstanceFlags::kTriangleCullDisable;
-	tlasInstance.m_InstanceMask = 0xFF;
-	tlasInstance.m_InstanceId = 0;
-	tlasInstance.m_ShaderBindingTableIndex = 0;
-	tlasInstance.m_Transform[0][0] = tlasInstance.m_Transform[1][1] = tlasInstance.m_Transform[2][2] = 1.0f; // Identity matrix
-	m_TLAS->WriteTopLevelInstances(1, &tlasInstance);
+	m_CubeInstance.m_pBLAS = m_BLAS;
+	m_CubeInstance.m_Flags = RayTracingInstanceFlags::kTriangleCullDisable;
+	m_CubeInstance.m_InstanceMask = 0xFF;
+	m_CubeInstance.m_InstanceId = 0;
+	m_CubeInstance.m_ShaderBindingTableIndex = 0;
+	m_CubeInstance.m_Transform.m[0] = m_CubeInstance.m_Transform.m[5] = m_CubeInstance.m_Transform.m[10] = 1.0f; // Identity matrix
+	m_TLAS->WriteTopLevelInstances(1, &m_CubeInstance);
 
 	TLASBuildDesc tlasBuilDesc;
 	tlasBuilDesc.m_InstanceCount = 1;
 	tlasBuilDesc.m_pInstanceBuffer = m_TLAS->GetTopLevelStagingInstanceBuffer();
 	tlasBuilDesc.m_pTLAS = m_TLAS;
-	tlasBuilDesc.m_pScratchBuffer = scratchTlas;
+	tlasBuilDesc.m_pScratchBuffer = m_ScratchTLAS;
 
 	m_Context->NewCommandList();
 	m_Context->BuildTLAS(tlasBuilDesc);
@@ -464,4 +490,19 @@ void RayTracing2::CreateTLAS()
 }
 
 
-SAMPLE_MAIN(RayTracing2)
+void RayTracing3::UpdateTLAS()
+{
+	m_TLAS->WriteTopLevelInstances(1, &m_CubeInstance);
+
+	TLASBuildDesc tlasBuilDesc;
+	tlasBuilDesc.m_InstanceCount = 1;
+	tlasBuilDesc.m_pInstanceBuffer = m_TLAS->GetTopLevelStagingInstanceBuffer();
+	tlasBuilDesc.m_pTLAS = m_TLAS;
+	tlasBuilDesc.m_pScratchBuffer = m_ScratchTLAS;
+	tlasBuilDesc.m_Update = true;
+
+	m_Context->BuildTLAS(tlasBuilDesc);
+}
+
+
+SAMPLE_MAIN(RayTracing3)

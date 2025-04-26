@@ -91,6 +91,17 @@ BV_INLINE mf32 BV_VCALL Load43(const f32* p)
 	return r;
 }
 
+BV_INLINE mf32 BV_VCALL Load34(const f32* p)
+{
+	mf32 r;
+	r.r[0] = Load4(p);
+	r.r[1] = Load4(p + 4);
+	r.r[2] = Load4(p + 8);
+	r.r[3] = VectorUnitW();
+
+	return MatrixTranspose(r);
+}
+
 BV_INLINE mf32 BV_VCALL Load44(const f32* p)
 {
 	mf32 r;
@@ -132,6 +143,31 @@ BV_INLINE void BV_VCALL Store43(const mf32& m, f32* p)
 	Store3(m.r[1], p + 3);
 	Store3(m.r[2], p + 6);
 	Store3(m.r[3], p + 9);
+}
+
+BV_INLINE void BV_VCALL Store34(const mf32& m, f32* p)
+{
+	// Transpose only the first 3 rows
+
+	// top left 2x2 matrix
+	vf32 upperBlock = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(1, 0, 1, 0));
+	// bottom left 2x2 matrix
+	vf32 lowerBlock = _mm_shuffle_ps(m.r[2], m.r[3], _MM_SHUFFLE(1, 0, 1, 0));
+
+	mf32 mT;
+	mT.r[0] = _mm_shuffle_ps(upperBlock, lowerBlock, _MM_SHUFFLE(2, 0, 2, 0));
+	mT.r[1] = _mm_shuffle_ps(upperBlock, lowerBlock, _MM_SHUFFLE(3, 1, 3, 1));
+
+	// top right 2x2 matrix
+	upperBlock = _mm_shuffle_ps(m.r[0], m.r[1], _MM_SHUFFLE(3, 2, 3, 2));
+	// bottom right 2x2 matrix
+	lowerBlock = _mm_shuffle_ps(m.r[2], m.r[3], _MM_SHUFFLE(3, 2, 3, 2));
+
+	mT.r[2] = _mm_shuffle_ps(upperBlock, lowerBlock, _MM_SHUFFLE(2, 0, 2, 0));
+
+	Store4(mT.r[0], p);
+	Store4(mT.r[1], p + 4);
+	Store4(mT.r[2], p + 8);
 }
 
 BV_INLINE void BV_VCALL Store44(const mf32& m, f32* p)

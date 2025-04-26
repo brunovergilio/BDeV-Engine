@@ -27,6 +27,8 @@ public:
 
 	void SetPerspective(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY);
 
+	void SetFlipViewportY(bool flip);
+
 	void Update();
 
 	BV_INLINE BvVec3 GetPos() const { return m_Pos; }
@@ -53,5 +55,6 @@ private:
 	f32 m_AspectRatio = 1.77777778f;
 	f32 m_FovY = kPiDiv4;
 
+	bool m_FlipViewportY = false;
 	bool m_Dirty = true;
 };
