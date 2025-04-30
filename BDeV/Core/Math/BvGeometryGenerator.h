@@ -16,6 +16,10 @@ public:
 		Float3 m_Normal;
 		Float3 m_Tangent;
 		Float3 m_Bitangent;
+
+		constexpr Vertex() {}
+		constexpr Vertex(const Float3& position, const Float2& uv, const Float3& normal, const Float3& tangent, const Float3& bitangent)
+			: m_Position(position), m_UV(uv), m_Normal(normal), m_Tangent(tangent), m_Bitangent(bitangent) {}
 	};
 
 	struct Data
@@ -29,6 +33,7 @@ public:
 
 	void GenerateBox(f32 width = 1.0f, f32 height = 1.0f, f32 depth = 1.0f);
 	void GenerateGeoSphere(f32 radius = 1.0f, u32 numSubDivisions = 1);
+	void GenerateGrid(f32 xSize = 1.0f, f32 zSize = 1.0f, u32 xDiv = 1, u32 zDiv = 1);
 
 	BV_INLINE const auto& GetData() const { return m_Data; }
 

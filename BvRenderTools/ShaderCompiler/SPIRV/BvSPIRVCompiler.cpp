@@ -283,17 +283,24 @@ BvRCRaw<IBvShaderBlob> BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDe
 	std::vector<u32> spvOpt;
 	spvtools::Optimizer optimizer(GetTargetEnv(shaderDesc.m_ShaderTarget));
 	optimizer.RegisterPerformancePasses();
+
+	BvVector<u8> compiledShaderBlob;
+
 	if (!optimizer.Run(spv.data(), spv.size(), &spvOpt))
 	{
-		if (pErrorBlob)
-		{
-			*pErrorBlob = BV_NEW(BvShaderBlob)("Error optimizing spirv binary.");
-		}
-		return nullptr;
+		//if (pErrorBlob)
+		//{
+		//	*pErrorBlob = BV_NEW(BvShaderBlob)("Error optimizing spirv binary.");
+		//}
+		//return nullptr;
+		compiledShaderBlob.Resize(spv.size() * sizeof(u32));
+		memcpy(compiledShaderBlob.Data(), spv.data(), compiledShaderBlob.Size());
 	}
-
-	BvVector<u8> compiledShaderBlob(spvOpt.size() * sizeof(u32));
-	memcpy(compiledShaderBlob.Data(), spvOpt.data(), compiledShaderBlob.Size());
+	else
+	{
+		compiledShaderBlob.Resize(spvOpt.size() * sizeof(u32));
+		memcpy(compiledShaderBlob.Data(), spvOpt.data(), compiledShaderBlob.Size());
+	}
 
 	return BV_NEW(BvShaderBlob)(compiledShaderBlob);
 }

@@ -26,7 +26,7 @@ public:
 
 	BV_INLINE const RayTracingAccelerationStructureDesc& GetDesc() const override { return m_Desc; }
 	u32 GetGeometryIndex(BvStringId id) const override;
-	void WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances) override;
+	void WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances, u32 firstInstance = 0) override;
 	BV_INLINE u64 GetTopLevelInstanceSize() const override { return sizeof(VkAccelerationStructureInstanceKHR); }
 	IBvBuffer* GetTopLevelStagingInstanceBuffer() const override;
 	BV_INLINE RayTracingAccelerationStructureScratchSize GetBuildSizes() const override { return m_ScratchSizes; }

@@ -448,7 +448,6 @@ void RayTracing2::CreateTLAS()
 	tlasInstance.m_InstanceMask = 0xFF;
 	tlasInstance.m_InstanceId = 0;
 	tlasInstance.m_ShaderBindingTableIndex = 0;
-	tlasInstance.m_Transform[0][0] = tlasInstance.m_Transform[1][1] = tlasInstance.m_Transform[2][2] = 1.0f; // Identity matrix
 	m_TLAS->WriteTopLevelInstances(1, &tlasInstance);
 
 	TLASBuildDesc tlasBuilDesc;

@@ -76,22 +76,22 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 
 	// Color scheme
 	ImGuiStyle& style = ImGui::GetStyle();
-	style.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-	style.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-	style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.0f, 0.0f, 0.0f, 0.1f);
-	style.Colors[ImGuiCol_MenuBarBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-	style.Colors[ImGuiCol_Header] = ImVec4(0.8f, 0.0f, 0.0f, 0.4f);
-	style.Colors[ImGuiCol_HeaderActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-	style.Colors[ImGuiCol_HeaderHovered] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+	style.Colors[ImGuiCol_TitleBg] = ImVec4(0.0f, 0.3f, 0.4f, 1.0f);
+	style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.0f, 0.3f, 0.4f, 1.0f);
+	style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.0f, 0.3f, 0.4f, 0.1f);
+	style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.0f, 0.3f, 0.4f, 0.4f);
+	style.Colors[ImGuiCol_Header] = ImVec4(0.0f, 0.8f, 0.0f, 0.4f);
+	style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.0f, 0.3f, 0.4f, 0.4f);
+	style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.0f, 0.3f, 0.4f, 0.4f);
 	style.Colors[ImGuiCol_FrameBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.8f);
-	style.Colors[ImGuiCol_CheckMark] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
-	style.Colors[ImGuiCol_SliderGrab] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-	style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
+	style.Colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 0.3f, 0.4f, 0.8f);
+	style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.0f, 0.3f, 0.4f, 0.4f);
+	style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.0f, 0.3f, 0.4f, 0.8f);
 	style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(1.0f, 1.0f, 1.0f, 0.1f);
 	style.Colors[ImGuiCol_FrameBgActive] = ImVec4(1.0f, 1.0f, 1.0f, 0.2f);
-	style.Colors[ImGuiCol_Button] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-	style.Colors[ImGuiCol_ButtonHovered] = ImVec4(1.0f, 0.0f, 0.0f, 0.6f);
-	style.Colors[ImGuiCol_ButtonActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
+	style.Colors[ImGuiCol_Button] = ImVec4(0.0f, 0.3f, 0.4f, 0.4f);
+	style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.0f, 0.3f, 0.4f, 0.6f);
+	style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.0f, 0.3f, 0.4f, 0.8f);
 
 	u8* pFontData;
 	i32 w, h;
@@ -227,14 +227,16 @@ void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRen
 
 bool UIOverlay::Update(f32 dt, BvWindow* pWindow)
 {
+	BvKeyboard keyboard;
+	auto inputCount = keyboard.GetCharInputs();
 	m_OverlayTimer -= dt;
-	if (m_OverlayTimer >= 0.0f)
+	if (m_OverlayTimer >= 0.0f && inputCount == 0)
 	{
 		return false;
 	}
 	m_OverlayTimer = 1.0f / 60.0f;
 
-	auto [width, height] = std::pair(pWindow->GetWidth(), pWindow->GetHeight());
+	auto [width, height] = pWindow->GetSize();
 
 	ImGuiIO& io = ImGui::GetIO();
 
@@ -252,8 +254,7 @@ bool UIOverlay::Update(f32 dt, BvWindow* pWindow)
 
 	constexpr u32 kMaxCharInputs = 4;
 	BvKeyboard::CharInput inputs[kMaxCharInputs];
-	BvKeyboard keyboard;
-	auto inputCount = keyboard.GetCharInputs(inputs);
+	keyboard.GetCharInputs(inputs);
 	for (auto i = 0; i < inputCount; ++i)
 	{
 		if (!inputs[i].m_IsDeadChar)

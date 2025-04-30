@@ -4,11 +4,11 @@
 #include "Samples/Render API/RenderAPISampleBase/SampleBase.h"
 
 
-class RayTracing3 : public SampleBase
+class RayTracing5 : public SampleBase
 {
 public:
-	RayTracing3() {}
-	~RayTracing3() {}
+	RayTracing5() {}
+	~RayTracing5() {}
 
 	void OnInitialize() override;
 	void OnUpdate() override;
@@ -33,15 +33,16 @@ private:
 	BvRCRef<IBvTexture> m_Tex;
 	BvRCRef<IBvTextureView> m_TexView;
 	BvRCRef<IBvSampler> m_Sampler;
-	BvRCRef<IBvAccelerationStructure> m_BLAS;
+	BvRCRef<IBvAccelerationStructure> m_BLAS[2];
 	BvRCRef<IBvAccelerationStructure> m_TLAS;
 	BvRCRef<IBvShaderBindingTable> m_SBT;
 	BvRCRef<IBvBuffer> m_ScratchTLAS;
 	BvRCRef<IBvBuffer> m_VB;
 	BvRCRef<IBvBuffer> m_IB;
-
-	BvRCRef<IBvBufferView> m_VBView;
-	BvRCRef<IBvBufferView> m_IBView;
+	BvRCRef<IBvBuffer> m_UBVertex;
+	BvRCRef<IBvBuffer> m_UBIndex;
+	BvRCRef<IBvBufferView> m_UBViewVertex;
+	BvRCRef<IBvBufferView> m_UBViewIndex;
 
 	BvRCRef<IBvBuffer> m_UBRayData;
 	BvRCRef<IBvBufferView> m_UBViewRayData;
@@ -50,18 +51,18 @@ private:
 		Float44 viewInv;
 		Float44 projInv;
 	} *m_pRayData = nullptr;
-	TLASBuildInstanceDesc m_CubeInstance{};
+	TLASBuildInstanceDesc m_Instances[3];
 
 	BvRCRef<IBvBuffer> m_UBHitData;
 	BvRCRef<IBvBufferView> m_UBViewHitData;
 	struct HitData
 	{
-		Float44 world;
+		Float44 world[3];
 		Float3 lightDir;
 	} *m_pHitData = nullptr;
 
 	Float3 m_BackColor{};
-	BvMatrix m_WorldPos = BvMatrix::Identity();
+	BvMatrix m_WorldPos[3]{ BvMatrix::Identity(), BvMatrix::Identity(), BvMatrix::Identity() };
 
 	bool m_Animate = true;
 };

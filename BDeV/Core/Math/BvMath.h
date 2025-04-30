@@ -345,6 +345,8 @@ vf32 BV_VCALL VectorSqrt(cvf32 v);
 vf32 BV_VCALL VectorRSqrt(cvf32 v);
 vf32 BV_VCALL VectorRcp(cvf32 v);
 vf32 BV_VCALL VectorNegate(cvf32 v);
+vf32 BV_VCALL VectorNegate2(cvf32 v);
+vf32 BV_VCALL VectorNegate3(cvf32 v);
 template<u32 X, u32 Y, u32 Z, u32 W> vf32 BV_VCALL VectorChangeSign(cvf32 v);
 vf32 BV_VCALL VectorZero();
 vf32 BV_VCALL VectorOne();
@@ -637,8 +639,12 @@ public:
 	BV_DEFAULTCOPYMOVE(BvVec2);
 
 	BV_INLINE BvVec2() {}
+	
+	BV_INLINE BvVec2(f32 s) : m_Vec(VectorSet(s, s, 0.0f, 0.0f)) {}
 	BV_INLINE BvVec2(f32 x, f32 y) : m_Vec(VectorSet(x, y, 0.0f, 0.0f)) {}
+	
 	BV_INLINE BvVec2(const Float2& v) : m_Vec(Load(v)) {}
+	
 	BV_INLINE explicit BvVec2(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE static BvVec2 Zero() { return BvVec2(VectorZero()); }
@@ -719,8 +725,16 @@ public:
 	BV_DEFAULTCOPYMOVE(BvVec3);
 
 	BV_INLINE BvVec3() {}
+	
+	BV_INLINE BvVec3(f32 s) : m_Vec(VectorSet(s, s, s, 0.0f)) {}
 	BV_INLINE BvVec3(f32 x, f32 y, f32 z) : m_Vec(VectorSet(x, y, z, 0.0f)) {}
+
 	BV_INLINE BvVec3(const Float3& v) : m_Vec(Load(v)) {}
+	BV_INLINE BvVec3(const Float2& xy, f32 z) : m_Vec(VectorSet(xy.x, xy.y, z, 0.0f)) {}
+	BV_INLINE BvVec3(f32 x, const Float2& yz) : m_Vec(VectorSet(x, yz.x, yz.y, 0.0f)) {}
+	
+	BV_INLINE explicit BvVec3(BvVec2 xy, f32 z) : m_Vec(VectorSetZ(xy, z)) {}
+	BV_INLINE explicit BvVec3(f32 x, BvVec2 yz) : m_Vec(VectorSetX(yz, x)) {}
 	BV_INLINE explicit BvVec3(cvf32 v) : m_Vec(VectorSetW(v, 0.0f)) {}
 
 	BV_INLINE static BvVec3 Zero() { return BvVec3(VectorZero()); }
@@ -809,9 +823,25 @@ public:
 	BV_DEFAULTCOPYMOVE(BvVec4);
 
 	BV_INLINE BvVec4() {}
+	
+	BV_INLINE BvVec4(f32 s) : m_Vec(VectorSet(s)) {}
 	BV_INLINE BvVec4(f32 x, f32 y, f32 z, f32 w = 1.0f) : m_Vec(VectorSet(x, y, z, w)) {}
+
 	BV_INLINE BvVec4(const Float4& v) : m_Vec(Load(v)) {}
-	BV_INLINE explicit BvVec4(BvVec3 v, f32 w = 1.0f) : m_Vec(VectorSetW(v, w)) {}
+	BV_INLINE BvVec4(const Float3& xyz, f32 w) : m_Vec(VectorSet(xyz.x, xyz.y, xyz.z, w)) {}
+	BV_INLINE BvVec4(f32 x, const Float3& yzw) : m_Vec(VectorSet(x, yzw.x, yzw.y, yzw.z)) {}
+	BV_INLINE BvVec4(const Float2& xy, f32 z, f32 w) : m_Vec(VectorSet(xy.x, xy.y, z, w)) {}
+	BV_INLINE BvVec4(f32 x, const Float2& yz, f32 w) : m_Vec(VectorSet(x, yz.x, yz.y, w)) {}
+	BV_INLINE BvVec4(f32 x, f32 y, const Float2& zw) : m_Vec(VectorSet(x, y, zw.x, zw.y)) {}
+	BV_INLINE BvVec4(const Float2& xy, const Float2& zw) : m_Vec(VectorSet(xy.x, xy.y, zw.x, zw.y)) {}
+	
+	BV_INLINE explicit BvVec4(BvVec3 xyz, f32 w) : m_Vec(VectorSetW(xyz, w)) {}
+	BV_INLINE explicit BvVec4(f32 x, BvVec3 yzw) : m_Vec(VectorSetX(yzw, x)) {}
+	BV_INLINE explicit BvVec4(BvVec2 xy, f32 z, f32 w) : m_Vec(VectorBlend<0, 1, 6, 7>(xy, VectorSet(0.0f, 0.0f, z, w))) {}
+	BV_INLINE explicit BvVec4(f32 x, BvVec2 yz, f32 w) : m_Vec(VectorBlend<4, 0, 1, 7>(yz, VectorSet(x, 0.0f, 0.0f, w))) {}
+	BV_INLINE explicit BvVec4(f32 x, f32 y, BvVec2 zw) : m_Vec(VectorBlend<4, 5, 0, 1>(zw, VectorSet(x, y, 0.0f, 0.0f))) {}
+	BV_INLINE explicit BvVec4(BvVec2 xy, BvVec2 zw) : m_Vec(VectorBlend<0, 1, 4, 5>(xy, zw)) {}
+	
 	BV_INLINE explicit BvVec4(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE static BvVec4 Zero() { return BvVec4(VectorZero()); }
@@ -931,7 +961,6 @@ public:
 	BV_INLINE void SetRotationAxis(BvVec3 axis, f32 rad) { m_Mat = MatrixRotationAxis(axis, rad); }
 	BV_INLINE void SetTranslation(f32 x, f32 y, f32 z) { m_Mat = MatrixTranslation(x, y, z); }
 	BV_INLINE void SetTranslation(BvVec3 v) { m_Mat = MatrixTranslation(v); }
-	BV_INLINE void SetTranspose() { m_Mat = MatrixTranspose(m_Mat); }
 	BV_INLINE void SetLookAt(BvVec3 eyePos, BvVec3 dirVec, BvVec3 upVec) { m_Mat = MatrixLookAt(eyePos, dirVec, upVec); }
 	BV_INLINE void SetLookAtLH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { m_Mat = MatrixLookAtLH(eyePos, lookPos, upVec); }
 	BV_INLINE void SetLookAtRH(BvVec3 eyePos, BvVec3 lookPos, BvVec3 upVec) { m_Mat = MatrixLookAtRH(eyePos, lookPos, upVec); }
@@ -961,6 +990,9 @@ public:
 	BV_INLINE BvSVec Determinant() const { return BvSVec(MatrixDeterminant(m_Mat)); }
 	BV_INLINE BvMatrix Inverse() const { return BvMatrix(MatrixInverse(m_Mat)); }
 	BV_INLINE BvMatrix Transpose() const { return BvMatrix(MatrixTranspose(m_Mat)); }
+
+	BV_INLINE void SetInverse() { m_Mat = MatrixInverse(m_Mat); }
+	BV_INLINE void SetTranspose() { m_Mat = MatrixTranspose(m_Mat); }
 
 	BV_INLINE BvMatrix operator*(const BvMatrix& m) const { return BvMatrix(MatrixMul(m_Mat, m)); }
 	BV_INLINE BvMatrix& operator*=(const BvMatrix& m) { m_Mat = MatrixMul(m_Mat, m); return *this; }

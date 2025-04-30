@@ -210,8 +210,8 @@ void BvShaderResourceLayoutVk::Create()
 			layoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
 		}
 
-		vkCreateDescriptorSetLayout(m_pDevice->GetHandle(), &layoutCI, nullptr, &layouts[layoutIndex++]);
-		m_Layouts[set.m_Index] = layouts.Back();
+		vkCreateDescriptorSetLayout(m_pDevice->GetHandle(), &layoutCI, nullptr, &layouts[layoutIndex]);
+		m_Layouts[set.m_Index] = layouts[layoutIndex++];
 
 		bindings.Clear();
 		samplers.Clear();

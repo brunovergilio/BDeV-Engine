@@ -7,6 +7,7 @@ struct Vertex
 {
 	Float3 pos;
 	Float4 color;
+	Float3 normal;
 };
 
 
@@ -16,6 +17,7 @@ R"raw(
 
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec4 inColor;
+layout (location = 2) in vec3 inNormal;
 
 layout (location = 0) out vec4 outColor;
 
@@ -115,6 +117,7 @@ void Buffers::OnRender()
 	m_Context->SetVertexBufferView(m_VB, sizeof(Vertex));
 	m_Context->SetIndexBufferView(m_IB, IndexFormat::kU32);
 	m_Context->DrawIndexed(36);
+	//m_Context->DrawIndexed(150);
 	OnRenderUI();
 	m_Context->Execute();
 
@@ -183,6 +186,7 @@ void Buffers::CreateBuffers()
 {
 	BvGeometryGenerator gen;
 	gen.GenerateBox();
+	//gen.GenerateGrid(5.0f, 5.0f, 5, 5);
 	auto& data = gen.GetData();
 	BvVector<Vertex> vertices(data.m_Vertices.Size());
 	BvPCG rand;

@@ -233,6 +233,16 @@ BV_INLINE vf32 BV_VCALL VectorNegate(cvf32 v)
 	return _mm_xor_ps(v, _mm_set1_ps(-0.0f));
 }
 
+BV_INLINE vf32 BV_VCALL VectorNegate2(cvf32 v)
+{
+	return VectorChangeSign<1, 1, 0, 0>(v);
+}
+
+BV_INLINE vf32 BV_VCALL VectorNegate3(cvf32 v)
+{
+	return VectorChangeSign<1, 1, 1, 0>(v);
+}
+
 BV_INLINE vf32 BV_VCALL VectorZero()
 {
 	return _mm_setzero_ps();

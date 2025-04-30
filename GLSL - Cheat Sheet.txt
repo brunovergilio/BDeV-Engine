@@ -176,3 +176,23 @@ nint atomicOr(inout nint mem​, nint data​)
 nint atomicXor(inout nint mem​, nint data​)
 nint atomicExchange(inout nint mem​, nint data​)
 nint atomicCompSwap(inout nint mem​, nint compare​, nint data​)
+
+
+// =============================================
+Ray Tracing
+// =============================================
+Built-in GLSL Variable	What It Represents
+gl_LaunchIDEXT	uvec3 — ID of the current ray (x, y, z) within the launch grid.
+gl_LaunchSizeEXT	uvec3 — Size of the dispatch (width, height, depth).
+gl_InstanceIDEXT	uint — Index of the instance in the TLAS (instanceIndex field from TLAS).
+gl_InstanceCustomIndexEXT	uint — Your custom instance index (instanceCustomIndex field from TLAS).
+gl_GeometryIndexEXT	uint — Which geometry in the BLAS was hit (if multiple geometries).
+gl_PrimitiveID	uint — Triangle (primitive) index inside the geometry that was hit.
+gl_WorldRayOriginEXT	vec3 — Ray starting point in world space.
+gl_WorldRayDirectionEXT	vec3 — Ray direction in world space.
+gl_ObjectRayOriginEXT	vec3 — Ray origin transformed into object (BLAS) space.
+gl_ObjectRayDirectionEXT	vec3 — Ray direction transformed into object (BLAS) space.
+gl_HitTEXT	float — Ray t value at the current hit (distance along the ray).
+gl_HitKindEXT	uint — Type of hit (e.g., triangle front face, triangle back face).
+gl_ObjectToWorldEXT	mat4x3 — Object → world transform of the instance that was hit.
+gl_WorldToObjectEXT	mat4x3 — World → object transform of the instance that was hit.

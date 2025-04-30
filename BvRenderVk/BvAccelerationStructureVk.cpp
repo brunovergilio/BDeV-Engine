@@ -55,7 +55,7 @@ u32 BvAccelerationStructureVk::GetGeometryIndex(BvStringId id) const
 }
 
 
-void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances)
+void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances, u32 firstInstance = 0)
 {
 	BV_ASSERT(m_Desc.m_Type == RayTracingAccelerationStructureType::kTopLevel, "Acceleration structure is not a top level one");
 	if (!pStagingBuffer)
@@ -72,7 +72,7 @@ void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer
 		pStagingBuffer = m_StagingBuffer;
 	}
 
-	auto pDst = pStagingBuffer->Map();
+	auto pDst = reinterpret_cast<u8>(pStagingBuffer->Map()) + sizeof(VkAccelerationStructureInstanceKHR) * firstInstance;
 	for (auto i = 0; i < instanceCount && i < m_PrimitiveCounts[0]; ++i)
 	{
 		const TLASBuildInstanceDesc& srcInstance = pInstances[i];

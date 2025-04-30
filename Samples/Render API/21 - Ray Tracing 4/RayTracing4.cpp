@@ -1,4 +1,4 @@
-#include "RayTracing3.h"
+#include "RayTracing4.h"
 #include "BDeV/Core/Math/BvGeometryGenerator.h"
 
 
@@ -80,7 +80,13 @@ R"raw(
 #version 460
 #extension GL_EXT_ray_tracing : require
 
+struct ShadowPayload
+{
+	bool inShadow;
+};
+
 layout(location = 0) rayPayloadInEXT vec4 payload;
+layout(location = 1) rayPayloadEXT ShadowPayload shadowPayload;
 
 hitAttributeEXT vec2 attribs;
 
@@ -90,6 +96,8 @@ struct Vertex
 	vec2 uv;
     vec3 normal;
 };
+
+layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
 
 layout(set = 1, binding = 0) readonly buffer VertexBuffer
 {
@@ -103,44 +111,116 @@ layout(set = 1, binding = 1) readonly buffer IndexBuffer
 
 layout(set = 1, binding = 2) uniform HitData
 {
-	mat4 modelMatrix;
+	mat4 modelMatrix[2];
 	vec3 lightDir;
 };
 
-Vertex GetVertex(uint index)
+Vertex GetVertex(uint index, uint vertexOffset)
 {
-	uint baseIndex = 2 * index;
-	Vertex v;
-	v.pos = vertices[baseIndex].xyz;
-	v.uv = vec2(vertices[baseIndex].w, vertices[baseIndex + 1].x);
-	v.normal = vertices[baseIndex + 1].yzw;
+    uint baseIndex = 2 * (index + vertexOffset);
+    Vertex v;
+    v.pos = vertices[baseIndex].xyz;
+    v.uv = vec2(vertices[baseIndex].w, vertices[baseIndex + 1].x);
+    v.normal = vertices[baseIndex + 1].yzw;
+    return v;
+}
 
-	return v;
+uint GetIndex(uint primIndex, uint vertexInTri, uint indexOffset)
+{
+    return indices[indexOffset + primIndex * 3 + vertexInTri];
 }
 
 void main()
 {
-	const uint primIndex = gl_PrimitiveID;
-    const uint index0 = indices[primIndex * 3 + 0];
-    const uint index1 = indices[primIndex * 3 + 1];
-    const uint index2 = indices[primIndex * 3 + 2];
-	
-    const Vertex v0 = GetVertex(index0);
-    const Vertex v1 = GetVertex(index1);
-    const Vertex v2 = GetVertex(index2);
+    const uint primIndex = gl_PrimitiveID;
+    const uint instanceId = gl_InstanceCustomIndexEXT;
+
+    // Precompute the per-instance offsets only once
+    uint vertexOffset = 0;
+    uint indexOffset = 0;
+    if (instanceId > 0)
+    {
+        vertexOffset = 24; // 24 vertices for the grid
+        indexOffset = 36;  // 36 indices for the grid
+    }
+
+    const uint index0 = GetIndex(primIndex, 0, indexOffset);
+    const uint index1 = GetIndex(primIndex, 1, indexOffset);
+    const uint index2 = GetIndex(primIndex, 2, indexOffset);
+
+    const Vertex v0 = GetVertex(index0, vertexOffset);
+    const Vertex v1 = GetVertex(index1, vertexOffset);
+    const Vertex v2 = GetVertex(index2, vertexOffset);
 
 	const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
 	vec3 normal = normalize(v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z);
 	
-    normal = normalize((modelMatrix * vec4(normal, 0.0)).xyz); // Transform to world space
-	
-    float NdotL = max(dot(normal, -lightDir), 0.1); // 0.1 for min ambient
-    
-	payload = vec4(1.0, 1.0, 1.0, 1.0) * NdotL; // Light-tinted beige
+    normal = normalize((modelMatrix[instanceId] * vec4(normal, 0.0)).xyz); // Transform to world space
+
+	float minTerm = 0.05;
+    vec3 baseColor = vec3(1.0, 1.0, 1.0);
+	vec3 lDir = normalize(-lightDir);
+	float NdotL = dot(normal, lDir);
+	if (NdotL > 0.0)
+	{
+		shadowPayload.inShadow = true; // Assume not shadowed
+
+		// Compute world-space hit position
+		vec3 worldPos = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
+		vec3 rayOrigin = worldPos + normal * 0.001; // Offset a little to avoid self-hit
+		vec3 rayDirection = lDir;   // Towards light (negate because lightDir points TO surface)
+
+		traceRayEXT(
+			topLevelAS, // (you must declare this somewhere, usually a uniform acceleration structure)
+			gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT,
+			0xFF,       // cull mask
+			0, 0, 1,    // SBT record offsets for shadow rays
+			rayOrigin,
+			0.001,      // min t
+			rayDirection,
+			10000.0,     // max t
+			1           // payload location
+		);
+		
+		if (shadowPayload.inShadow)
+		{
+			baseColor *= minTerm; // Darken if in shadow
+		}
+		else
+		{
+			baseColor *= NdotL; // Otherwise normal lighting
+		}
+	}
+	else
+	{
+		baseColor *= 0.01; // Darken if in shadow
+	}
+
+    payload = vec4(baseColor, 1.0);
 }
 )raw";
 constexpr auto g_RCHitSize = std::char_traits<char>::length(g_pRCHitShader);
+
+
+constexpr const char* g_pRMissShadowShader =
+R"raw(
+#version 460
+#extension GL_EXT_ray_tracing : require
+
+struct ShadowPayload
+{
+	bool inShadow;
+};
+
+layout(location = 1) rayPayloadInEXT ShadowPayload payload;
+
+void main()
+{
+	payload.inShadow = false;
+}
+)raw";
+constexpr auto g_RMissShadowSize = std::char_traits<char>::length(g_pRMissShadowShader);
 
 
 constexpr const char* g_pVSShader =
@@ -196,9 +276,9 @@ void main()
 constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 
-void RayTracing3::OnInitialize()
+void RayTracing4::OnInitialize()
 {
-	m_AppName = "Ray Tracing 3";
+	m_AppName = "Ray Tracing 4";
 	CreateShaderResourceLayout();
 	CreatePipeline();
 	CreateResources();
@@ -210,7 +290,7 @@ void RayTracing3::OnInitialize()
 }
 
 
-void RayTracing3::OnUpdate()
+void RayTracing4::OnUpdate()
 {
 	static f32 speed = 2.0f;
 	static f32 angleX = 0.0f;
@@ -235,29 +315,33 @@ void RayTracing3::OnUpdate()
 			angleZ = 0.0f;
 		}
 
-		m_WorldPos = BvMatrix(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ));
-		Store(m_WorldPos, m_CubeInstance.m_Transform);
+		m_WorldPos[0] = BvMatrix(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ));
+		Store(m_WorldPos[0], m_Instances[0].m_Transform);
 	}
+
+	m_WorldPos[1] = BvMatrix::Translation(0.0f, -2.0f, 0.0f);
+	Store(m_WorldPos[1], m_Instances[1].m_Transform);
 
 	Store(m_Camera.GetViewInv(), m_pRayData->viewInv);
 	Store(m_Camera.GetProjInv(), m_pRayData->projInv);
 
 	BvVec3 lightDir = BvVec3(0.5f, -0.5f, 1.0f).Normalize();
-	Store(m_WorldPos, m_pHitData->world);
+	Store(m_WorldPos[0], m_pHitData->world[0]);
+	Store(m_WorldPos[1], m_pHitData->world[1]);
 	Store(lightDir, m_pHitData->lightDir);
 }
 
 
-void RayTracing3::OnUpdateUI()
+void RayTracing4::OnUpdateUI()
 {
 	BeginDrawDefaultUI();
-	ImGui::Checkbox("Animate TLAS", &m_Animate);
+	ImGui::Checkbox("Animate Cube", &m_Animate);
 	ImGui::ColorEdit3("Background", m_BackColor.v);
 	EndDrawDefaultUI();
 }
 
 
-void RayTracing3::OnRender()
+void RayTracing4::OnRender()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
@@ -318,7 +402,7 @@ void RayTracing3::OnRender()
 }
 
 
-void RayTracing3::OnShutdown()
+void RayTracing4::OnShutdown()
 {
 	m_RayPSO.Reset();
 	m_RaySRL.Reset();
@@ -328,7 +412,8 @@ void RayTracing3::OnShutdown()
 	m_TexView.Reset();
 	m_Sampler.Reset();
 	m_TLAS.Reset();
-	m_BLAS.Reset();
+	m_BLAS[0].Reset();
+	m_BLAS[1].Reset();
 	m_SBT.Reset();
 	m_ScratchTLAS.Reset();
 	m_VBView.Reset();
@@ -342,12 +427,12 @@ void RayTracing3::OnShutdown()
 }
 
 
-void RayTracing3::CreateShaderResourceLayout()
+void RayTracing4::CreateShaderResourceLayout()
 {
 	{
 		ShaderResourceDesc descs[3];
 		descs[0] = ShaderResourceDesc::AsRWTexture(0, ShaderStage::kRayGen);
-		descs[1] = ShaderResourceDesc::AsAccelerationStructure(1, ShaderStage::kRayGen);
+		descs[1] = ShaderResourceDesc::AsAccelerationStructure(1, ShaderStage::kRayGen | ShaderStage::kClosestHit);
 		descs[2] = ShaderResourceDesc::AsConstantBuffer(2, ShaderStage::kRayGen);
 
 		ShaderResourceConstantDesc constDesc = ShaderResourceConstantDesc::As<Float3>(BV_NAME_ID("PC"), 3, ShaderStage::kMiss);
@@ -396,19 +481,21 @@ void RayTracing3::CreateShaderResourceLayout()
 }
 
 
-void RayTracing3::CreatePipeline()
+void RayTracing4::CreatePipeline()
 {
 	{
 		auto rgen = CompileShader(g_pRGenShader, g_RGenSize, ShaderStage::kRayGen);
 		auto rmis = CompileShader(g_pRMissShader, g_RMissSize, ShaderStage::kMiss);
 		auto rcht = CompileShader(g_pRCHitShader, g_RCHitSize, ShaderStage::kClosestHit);
 
+		auto rmisShadow = CompileShader(g_pRMissShadowShader, g_RMissShadowSize, ShaderStage::kMiss);
+
 		IBvShader* ppShaders[] =
 		{
-			rgen, rmis, rcht
+			rgen, rmis, rcht, rmisShadow
 		};
 
-		ShaderGroupDesc groupDescs[3];
+		ShaderGroupDesc groupDescs[5];
 		groupDescs[0].m_Type = ShaderGroupType::kGeneral;
 		groupDescs[0].m_General = 0;
 
@@ -418,13 +505,16 @@ void RayTracing3::CreatePipeline()
 		groupDescs[2].m_Type = ShaderGroupType::kTriangles;
 		groupDescs[2].m_ClosestHit = 2;
 
+		groupDescs[3].m_Type = ShaderGroupType::kGeneral;
+		groupDescs[3].m_General = 3;
+
 		RayTracingPipelineStateDesc pipelineDesc;
-		pipelineDesc.m_ShaderGroupCount = 3;
+		pipelineDesc.m_ShaderGroupCount = 4;
 		pipelineDesc.m_pShaderGroupDescs = groupDescs;
-		pipelineDesc.m_ShaderCount = 3;
+		pipelineDesc.m_ShaderCount = 4;
 		pipelineDesc.m_ppShaders = ppShaders;
 		pipelineDesc.m_pShaderResourceLayout = m_RaySRL;
-		pipelineDesc.m_MaxPipelineRayRecursionDepth = 1;
+		pipelineDesc.m_MaxPipelineRayRecursionDepth = 2;
 		m_RayPSO = m_Device->CreateRayTracingPipeline(pipelineDesc);
 
 		ShaderBindingTableDesc sbtDesc;
@@ -446,7 +536,7 @@ void RayTracing3::CreatePipeline()
 }
 
 
-void RayTracing3::CreateResources()
+void RayTracing4::CreateResources()
 {
 	TextureDesc desc;
 	desc.m_Size = { m_pWindow->GetWidth(), m_pWindow->GetHeight(), 1 };
@@ -469,17 +559,39 @@ void RayTracing3::CreateResources()
 	BufferDesc bufferDesc;
 	BufferViewDesc bufferViewDesc;
 	bufferViewDesc.m_ElementCount = 1;
+	
+	BvGeometryGenerator boxGen;
+	boxGen.GenerateBox();
+	auto& box = boxGen.GetData();
 
-	BvGeometryGenerator gen;
-	gen.GenerateBox();
-	auto& box = gen.GetData();
+	BvGeometryGenerator gridGen;
+	gridGen.GenerateGrid(16.0f, 16.0f, 8, 8);
+	auto& grid = gridGen.GetData();
 
-	BvVector<Vertex> vertices(box.m_Vertices.Size());
-	for (auto i = 0; i < vertices.Size(); ++i)
+	BvVector<Vertex> vertices(box.m_Vertices.Size() + grid.m_Vertices.Size());
+	auto currIndex = 0;
+	for (auto i = 0; i < box.m_Vertices.Size(); ++i, ++currIndex)
 	{
-		vertices[i].m_Position = box.m_Vertices[i].m_Position;
-		vertices[i].m_UV = box.m_Vertices[i].m_UV;
-		vertices[i].m_Normal = box.m_Vertices[i].m_Normal;
+		vertices[currIndex].m_Position = box.m_Vertices[i].m_Position;
+		vertices[currIndex].m_UV = box.m_Vertices[i].m_UV;
+		vertices[currIndex].m_Normal = box.m_Vertices[i].m_Normal;
+	}
+	for (auto i = 0; i < grid.m_Vertices.Size(); ++i, ++currIndex)
+	{
+		vertices[currIndex].m_Position = grid.m_Vertices[i].m_Position;
+		vertices[currIndex].m_UV = grid.m_Vertices[i].m_UV;
+		vertices[currIndex].m_Normal = grid.m_Vertices[i].m_Normal;
+	}
+
+	BvVector<u32> indices(box.m_Indices.Size() + grid.m_Indices.Size());
+	currIndex = 0;
+	for (auto i = 0; i < box.m_Indices.Size(); ++i, ++currIndex)
+	{
+		indices[currIndex] = box.m_Indices[i];
+	}
+	for (auto i = 0; i < grid.m_Indices.Size(); ++i, ++currIndex)
+	{
+		indices[currIndex] = grid.m_Indices[i];
 	}
 
 	bufferDesc.m_Size = sizeof(Vertex) * vertices.Size();
@@ -492,9 +604,9 @@ void RayTracing3::CreateResources()
 	bufferViewDesc.m_pBuffer = m_VB;
 	m_VBView = m_Device->CreateBufferView(bufferViewDesc);
 
-	bufferDesc.m_Size = sizeof(u32) * box.m_Indices.Size();
+	bufferDesc.m_Size = sizeof(u32) * indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing | BufferUsage::kStructuredBuffer;
-	bufferInitData.m_pData = box.m_Indices.Data();
+	bufferInitData.m_pData = indices.Data();
 	bufferInitData.m_Size = bufferDesc.m_Size;
 	m_IB = m_Device->CreateBuffer(bufferDesc, &bufferInitData);
 
@@ -523,56 +635,94 @@ void RayTracing3::CreateResources()
 }
 
 
-void RayTracing3::CreateBLAS()
+void RayTracing4::CreateBLAS()
 {
-	BLASGeometryDesc geomDesc;
-	geomDesc.m_Type = RayTracingGeometryType::kTriangles;
-	geomDesc.m_Flags = RayTracingGeometryFlags::kOpaque;
-	geomDesc.m_Id = BV_NAME_ID("Triangle");
-	geomDesc.m_Triangle.m_VertexCount = 24;
-	geomDesc.m_Triangle.m_VertexFormat = Format::kRGB32_Float;
-	geomDesc.m_Triangle.m_VertexStride = sizeof(Vertex);
-	geomDesc.m_Triangle.m_IndexCount = 36;
-	geomDesc.m_Triangle.m_IndexFormat = IndexFormat::kU32;
+	{
+		BLASGeometryDesc geomDesc;
+		geomDesc.m_Type = RayTracingGeometryType::kTriangles;
+		geomDesc.m_Flags = RayTracingGeometryFlags::kOpaque;
+		geomDesc.m_Id = BV_NAME_ID("Cube");
+		geomDesc.m_Triangle.m_VertexCount = 24;
+		geomDesc.m_Triangle.m_VertexFormat = Format::kRGB32_Float;
+		geomDesc.m_Triangle.m_VertexStride = sizeof(Vertex);
+		geomDesc.m_Triangle.m_IndexCount = 36;
+		geomDesc.m_Triangle.m_IndexFormat = IndexFormat::kU32;
 
-	RayTracingAccelerationStructureDesc blasDesc;
-	blasDesc.m_Type = RayTracingAccelerationStructureType::kBottomLevel;
-	blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace;
-	blasDesc.m_BLAS.m_GeometryCount = 1;
-	blasDesc.m_BLAS.m_pGeometries = &geomDesc;
-	m_BLAS = m_Device->CreateAccelerationStructure(blasDesc);
+		RayTracingAccelerationStructureDesc blasDesc;
+		blasDesc.m_Type = RayTracingAccelerationStructureType::kBottomLevel;
+		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace;
+		blasDesc.m_BLAS.m_GeometryCount = 1;
+		blasDesc.m_BLAS.m_pGeometries = &geomDesc;
+		m_BLAS[0] = m_Device->CreateAccelerationStructure(blasDesc);
+	}
+
+	{
+		BLASGeometryDesc geomDesc;
+		geomDesc.m_Type = RayTracingGeometryType::kTriangles;
+		geomDesc.m_Flags = RayTracingGeometryFlags::kOpaque;
+		geomDesc.m_Id = BV_NAME_ID("Grid");
+		geomDesc.m_Triangle.m_VertexCount = m_VB->GetDesc().m_Size / sizeof(Vertex) - 24;
+		geomDesc.m_Triangle.m_VertexFormat = Format::kRGB32_Float;
+		geomDesc.m_Triangle.m_VertexStride = sizeof(Vertex);
+		geomDesc.m_Triangle.m_IndexCount = m_IB->GetDesc().m_Size / sizeof(u32) - 36;
+		geomDesc.m_Triangle.m_IndexFormat = IndexFormat::kU32;
+
+		RayTracingAccelerationStructureDesc blasDesc;
+		blasDesc.m_Type = RayTracingAccelerationStructureType::kBottomLevel;
+		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace;
+		blasDesc.m_BLAS.m_GeometryCount = 1;
+		blasDesc.m_BLAS.m_pGeometries = &geomDesc;
+		m_BLAS[1] = m_Device->CreateAccelerationStructure(blasDesc);
+	}
+
+	u64 sizes[] = { m_BLAS[0]->GetBuildSizes().m_Build, m_BLAS[1]->GetBuildSizes().m_Build };
 
 	BufferDesc bufferDesc;
-	bufferDesc.m_Size = m_BLAS->GetBuildSizes().m_Build;
+	bufferDesc.m_Size = sizes[0] + sizes[1];
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	BvRCRef<IBvBuffer> scratchBlas = m_Device->CreateBuffer(bufferDesc);
 
-	BLASBuildGeometryDesc blasBuildGeomDesc;
-	blasBuildGeomDesc.m_Type = RayTracingGeometryType::kTriangles;
-	blasBuildGeomDesc.m_Flags = RayTracingGeometryFlags::kOpaque;
-	blasBuildGeomDesc.m_Id = BV_NAME_ID("Triangle");
-	blasBuildGeomDesc.m_Triangle.m_pVertexBuffer = m_VB;
-	blasBuildGeomDesc.m_Triangle.m_pIndexBuffer = m_IB;
+	BLASBuildGeometryDesc blasBuildGeomDescs[2];
+	blasBuildGeomDescs[0].m_Type = RayTracingGeometryType::kTriangles;
+	blasBuildGeomDescs[0].m_Flags = RayTracingGeometryFlags::kOpaque;
+	blasBuildGeomDescs[0].m_Id = BV_NAME_ID("Cube");
+	blasBuildGeomDescs[0].m_Triangle.m_pVertexBuffer = m_VB;
+	blasBuildGeomDescs[0].m_Triangle.m_pIndexBuffer = m_IB;
 
-	BLASBuildDesc blasBuildDesc;
-	blasBuildDesc.m_pBLAS = m_BLAS;
-	blasBuildDesc.m_pScratchBuffer = scratchBlas;
-	blasBuildDesc.m_GeometryCount = 1;
-	blasBuildDesc.m_pGeometries = &blasBuildGeomDesc;
+	blasBuildGeomDescs[1].m_Type = RayTracingGeometryType::kTriangles;
+	blasBuildGeomDescs[1].m_Flags = RayTracingGeometryFlags::kOpaque;
+	blasBuildGeomDescs[1].m_Id = BV_NAME_ID("Grid");
+	blasBuildGeomDescs[1].m_Triangle.m_pVertexBuffer = m_VB;
+	blasBuildGeomDescs[1].m_Triangle.m_VertexOffset = sizeof(Vertex) * 24;
+	blasBuildGeomDescs[1].m_Triangle.m_pIndexBuffer = m_IB;
+	blasBuildGeomDescs[1].m_Triangle.m_IndexOffset = sizeof(u32) * 36;
+
+	BLASBuildDesc blasBuildDescs[2];
+	blasBuildDescs[0].m_pBLAS = m_BLAS[0];
+	blasBuildDescs[0].m_pScratchBuffer = scratchBlas;
+	blasBuildDescs[0].m_GeometryCount = 1;
+	blasBuildDescs[0].m_pGeometries = &blasBuildGeomDescs[0];
+
+	blasBuildDescs[1].m_pBLAS = m_BLAS[1];
+	blasBuildDescs[1].m_pScratchBuffer = scratchBlas;
+	blasBuildDescs[1].m_ScratchBufferOffset = sizes[0];
+	blasBuildDescs[1].m_GeometryCount = 1;
+	blasBuildDescs[1].m_pGeometries = &blasBuildGeomDescs[1];
 
 	m_Context->NewCommandList();
-	m_Context->BuildBLAS(blasBuildDesc);
+	m_Context->BuildBLAS(blasBuildDescs[0]);
+	m_Context->BuildBLAS(blasBuildDescs[1]);
 	m_Context->Execute();
 	m_Context->WaitForGPU();
 }
 
 
-void RayTracing3::CreateTLAS()
+void RayTracing4::CreateTLAS()
 {
 	RayTracingAccelerationStructureDesc tlasDesc;
 	tlasDesc.m_Type = RayTracingAccelerationStructureType::kTopLevel;
-	tlasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace | RayTracingAccelerationStructureFlags::kAllowUpdate;
-	tlasDesc.m_TLAS.m_InstanceCount = 1;
+	tlasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastBuild | RayTracingAccelerationStructureFlags::kAllowUpdate;
+	tlasDesc.m_TLAS.m_InstanceCount = 2;
 	tlasDesc.m_TLAS.m_Flags = RayTracingGeometryFlags::kOpaque;
 	m_TLAS = m_Device->CreateAccelerationStructure(tlasDesc);
 
@@ -582,15 +732,21 @@ void RayTracing3::CreateTLAS()
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	m_ScratchTLAS = m_Device->CreateBuffer(bufferDesc);
 
-	m_CubeInstance.m_pBLAS = m_BLAS;
-	m_CubeInstance.m_Flags = RayTracingInstanceFlags::kTriangleCullDisable;
-	m_CubeInstance.m_InstanceMask = 0xFF;
-	m_CubeInstance.m_InstanceId = 0;
-	m_CubeInstance.m_ShaderBindingTableIndex = 0;
-	m_TLAS->WriteTopLevelInstances(1, &m_CubeInstance);
+	m_Instances[0].m_pBLAS = m_BLAS[0];
+	m_Instances[0].m_Flags = RayTracingInstanceFlags::kTriangleCullDisable;
+	m_Instances[0].m_InstanceMask = 0xFF;
+	m_Instances[0].m_InstanceId = 0;
+	m_Instances[0].m_ShaderBindingTableIndex = 0;
+	
+	m_Instances[1].m_pBLAS = m_BLAS[1];
+	m_Instances[1].m_Flags = RayTracingInstanceFlags::kTriangleCullDisable;
+	m_Instances[1].m_InstanceMask = 0xFF;
+	m_Instances[1].m_InstanceId = 1;
+	m_Instances[1].m_ShaderBindingTableIndex = 0;
+	m_TLAS->WriteTopLevelInstances(2, m_Instances);
 
 	TLASBuildDesc tlasBuilDesc;
-	tlasBuilDesc.m_InstanceCount = 1;
+	tlasBuilDesc.m_InstanceCount = 2;
 	tlasBuilDesc.m_pInstanceBuffer = m_TLAS->GetTopLevelStagingInstanceBuffer();
 	tlasBuilDesc.m_pTLAS = m_TLAS;
 	tlasBuilDesc.m_pScratchBuffer = m_ScratchTLAS;
@@ -602,12 +758,12 @@ void RayTracing3::CreateTLAS()
 }
 
 
-void RayTracing3::UpdateTLAS()
+void RayTracing4::UpdateTLAS()
 {
-	m_TLAS->WriteTopLevelInstances(1, &m_CubeInstance);
+	m_TLAS->WriteTopLevelInstances(2, m_Instances);
 
 	TLASBuildDesc tlasBuilDesc;
-	tlasBuilDesc.m_InstanceCount = 1;
+	tlasBuilDesc.m_InstanceCount = 2;
 	tlasBuilDesc.m_pInstanceBuffer = m_TLAS->GetTopLevelStagingInstanceBuffer();
 	tlasBuilDesc.m_pTLAS = m_TLAS;
 	tlasBuilDesc.m_pScratchBuffer = m_ScratchTLAS;
@@ -617,4 +773,4 @@ void RayTracing3::UpdateTLAS()
 }
 
 
-SAMPLE_MAIN(RayTracing3)
+SAMPLE_MAIN(RayTracing4)

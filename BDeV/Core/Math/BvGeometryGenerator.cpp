@@ -14,43 +14,41 @@ void BvGeometryGenerator::GenerateBox(f32 width, f32 height, f32 depth)
 	f32 h = height * 0.5f;
 	f32 d = depth * 0.5f;
 
-	// Clockwise order, left-handed
-	// 
-	// Front face
-	m_Data.m_Vertices[0] = { {  w, -h, -d }, { 0.0f, 1.0f }, { 0.0f,  0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[1] = { { -w, -h, -d }, { 1.0f, 1.0f }, { 0.0f,  0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[2] = { { -w,  h, -d }, { 1.0f, 0.0f }, { 0.0f,  0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[3] = { {  w,  h, -d }, { 0.0f, 0.0f }, { 0.0f,  0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
+	auto& v = m_Data.m_Vertices;
+	v[0] = Vertex({ -w, -h, -d }, { 0.0f, 1.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
+	v[1] = Vertex({ -w, +h, -d }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
+	v[2] = Vertex({ +w, +h, -d }, { 1.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
+	v[3] = Vertex({ +w, -h, -d }, { 1.0f, 1.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
 
-	// Back face
-	m_Data.m_Vertices[4] = { { -w, -h,  d }, { 0.0f, 1.0f }, { 0.0f,  0.0f, 1.0f }, { -1.0f, 0.0f,  0.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[5] = { {  w, -h,  d }, { 1.0f, 1.0f }, { 0.0f,  0.0f, 1.0f }, { -1.0f, 0.0f,  0.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[6] = { {  w,  h,  d }, { 1.0f, 0.0f }, { 0.0f,  0.0f, 1.0f }, { -1.0f, 0.0f,  0.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[7] = { { -w,  h,  d }, { 0.0f, 0.0f }, { 0.0f,  0.0f, 1.0f }, { -1.0f, 0.0f,  0.0f }, { 0.0f, 1.0f, 0.0f } };
+	// Fill in the back face vertex data.
+	v[4] = Vertex({ -w, -h, +d }, { 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
+	v[5] = Vertex({ +w, -h, +d }, { 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
+	v[6] = Vertex({ +w, +h, +d }, { 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
+	v[7] = Vertex({ -w, +h, +d }, { 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f });
 
-	// Left face
-	m_Data.m_Vertices[8] = { { -w, -h, -d }, { 0.0f, 1.0f }, { -1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[9] = { { -w, -h,  d }, { 1.0f, 1.0f }, { -1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[10] = { { -w,  h,  d }, { 1.0f, 0.0f }, { -1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[11] = { { -w,  h, -d }, { 0.0f, 0.0f }, { -1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 1.0f, 0.0f } };
+	// Fill in the top face vertex data.
+	v[8] =  Vertex({ -w, +h, -d }, { 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
+	v[9] =  Vertex({ -w, +h, +d }, { 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
+	v[10] = Vertex({ +w, +h, +d }, { 1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
+	v[11] = Vertex({ +w, +h, -d }, { 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
 
-	// Right face
-	m_Data.m_Vertices[12] = { {  w, -h,  d }, { 0.0f, 1.0f }, { 1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[13] = { {  w, -h, -d }, { 1.0f, 1.0f }, { 1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[14] = { {  w,  h, -d }, { 1.0f, 0.0f }, { 1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f } };
-	m_Data.m_Vertices[15] = { {  w,  h,  d }, { 0.0f, 0.0f }, { 1.0f,  0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f } };
+	// Fill in the bottom face vertex data.
+	v[12] = Vertex({ -w, -h, -d }, { 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
+	v[13] = Vertex({ +w, -h, -d }, { 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
+	v[14] = Vertex({ +w, -h, +d }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
+	v[15] = Vertex({ -w, -h, +d }, { 1.0f, 0.0f }, { 0.0f, -1.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f });
 
-	// Top face
-	m_Data.m_Vertices[16] = { { -w,  h,  d }, { 0.0f, 1.0f }, { 0.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };
-	m_Data.m_Vertices[17] = { {  w,  h,  d }, { 1.0f, 1.0f }, { 0.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };
-	m_Data.m_Vertices[18] = { {  w,  h, -d }, { 1.0f, 0.0f }, { 0.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };
-	m_Data.m_Vertices[19] = { { -w,  h, -d }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };
+	// Fill in the left face vertex data.
+	v[16] = Vertex({ -w, -h, +d }, { 0.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, -1.0f, 0.0f });
+	v[17] = Vertex({ -w, +h, +d }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, -1.0f, 0.0f });
+	v[18] = Vertex({ -w, +h, -d }, { 1.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, -1.0f, 0.0f });
+	v[19] = Vertex({ -w, -h, -d }, { 1.0f, 1.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, -1.0f, 0.0f });
 
-	// Bottom face
-	m_Data.m_Vertices[20] = { { -w, -h, -d }, { 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } };
-	m_Data.m_Vertices[21] = { {  w, -h, -d }, { 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } };
-	m_Data.m_Vertices[22] = { {  w, -h,  d }, { 1.0f, 0.0f }, { 0.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } };
-	m_Data.m_Vertices[23] = { { -w, -h,  d }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } };
+	// Fill in the right face vertex data.
+	v[20] = Vertex({ +w, -h, -d }, { 0.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f });
+	v[21] = Vertex({ +w, +h, -d }, { 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f });
+	v[22] = Vertex({ +w, +h, +d }, { 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f });
+	v[23] = Vertex({ +w, -h, +d }, { 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f });
 
 	for (auto i = 0u, j = 0u; i < kTotalIndexCount; i += 6, ++j)
 	{
@@ -129,6 +127,55 @@ void BvGeometryGenerator::GenerateGeoSphere(f32 radius, u32 numSubDivisions)
 
 		vertex.m_Tangent = Float3(-radius * su * sv, 0.0f, radius * cu * sv);
 		vertex.m_Bitangent = Float3(radius * cu * cv, radius * su * cv, -radius * sv);
+	}
+}
+
+
+void BvGeometryGenerator::GenerateGrid(f32 xSize, f32 zSize, u32 xDiv, u32 zDiv)
+{
+	Float3 normal{ 0.0f, 1.0f, 0.0f };
+	Float3 tangent{ 1.0f, 0.0f, 0.0f };
+	Float3 bitangent{ 0.0f, 0.0f, -1.0f };
+
+	f32 xStep = xSize / f32(i32(xDiv));
+	f32 zStep = zSize / f32(i32(zDiv));
+
+	f32 xHalf = xSize * 0.5f;
+	f32 zHalf = zSize * 0.5f;
+
+	u32 xLine = xDiv + 1;
+	u32 zLine = zDiv + 1;
+	auto& v = m_Data.m_Vertices;
+	v.Resize(xLine * zLine);
+	for (auto z = 0; z < zLine; ++z)
+	{
+		f32 z0 = -zHalf + z * zStep;
+		u32 baseIndex = xLine * z;
+
+		for (auto x = 0; x < xLine; ++x)
+		{
+			f32 x0 = -xHalf + x * xStep;
+
+			v[baseIndex + x] = { { x0, 0.0, z0 }, { x / f32(i32(xDiv)), z / f32(i32(zDiv)) }, normal, tangent, bitangent };
+		}
+	}
+
+	auto& indices = m_Data.m_Indices;
+	indices.Resize(xDiv * zDiv * 6);
+	for (auto z = 0, i = 0; z < zDiv; ++z)
+	{
+		u32 baseIndex0 = xLine * z;
+		u32 baseIndex1 = xLine * (z + 1);
+		for (auto x = 0; x < xDiv; ++x)
+		{
+			indices[i++] = baseIndex0 + x;
+			indices[i++] = baseIndex0 + x + 1;
+			indices[i++] = baseIndex1 + x + 1;
+
+			indices[i++] = baseIndex1 + x + 1;
+			indices[i++] = baseIndex1 + x;
+			indices[i++] = baseIndex0 + x;
+		}
 	}
 }
 
