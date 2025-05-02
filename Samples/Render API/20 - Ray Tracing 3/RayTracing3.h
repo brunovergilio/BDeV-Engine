@@ -50,7 +50,7 @@ private:
 		Float44 viewInv;
 		Float44 projInv;
 	} *m_pRayData = nullptr;
-	TLASBuildInstanceDesc m_CubeInstance{};
+	TLASInstanceDesc m_CubeInstance{};
 
 	BvRCRef<IBvBuffer> m_UBHitData;
 	BvRCRef<IBvBufferView> m_UBViewHitData;

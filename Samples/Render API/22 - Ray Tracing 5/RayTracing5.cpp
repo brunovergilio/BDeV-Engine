@@ -726,6 +726,7 @@ void RayTracing5::CreateResources()
 
 void RayTracing5::CreateBLAS()
 {
+	BvRCRef<IBvAccelerationStructure> blas[2];
 	{
 		BLASGeometryDesc geomDesc;
 		geomDesc.m_Type = RayTracingGeometryType::kTriangles;
@@ -739,10 +740,10 @@ void RayTracing5::CreateBLAS()
 
 		RayTracingAccelerationStructureDesc blasDesc;
 		blasDesc.m_Type = RayTracingAccelerationStructureType::kBottomLevel;
-		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace;
+		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace | RayTracingAccelerationStructureFlags::kAllowCompaction;
 		blasDesc.m_BLAS.m_GeometryCount = 1;
 		blasDesc.m_BLAS.m_pGeometries = &geomDesc;
-		m_BLAS[0] = m_Device->CreateAccelerationStructure(blasDesc);
+		blas[0] = m_Device->CreateAccelerationStructure(blasDesc);
 	}
 
 	{
@@ -758,13 +759,13 @@ void RayTracing5::CreateBLAS()
 
 		RayTracingAccelerationStructureDesc blasDesc;
 		blasDesc.m_Type = RayTracingAccelerationStructureType::kBottomLevel;
-		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace;
+		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace | RayTracingAccelerationStructureFlags::kAllowCompaction;
 		blasDesc.m_BLAS.m_GeometryCount = 1;
 		blasDesc.m_BLAS.m_pGeometries = &geomDesc;
-		m_BLAS[1] = m_Device->CreateAccelerationStructure(blasDesc);
+		blas[1] = m_Device->CreateAccelerationStructure(blasDesc);
 	}
 
-	u64 sizes[] = { m_BLAS[0]->GetBuildSizes().m_Build, m_BLAS[1]->GetBuildSizes().m_Build };
+	u64 sizes[] = { blas[0]->GetBuildSizes().m_Build, blas[1]->GetBuildSizes().m_Build };
 
 	BufferDesc bufferDesc;
 	bufferDesc.m_Size = sizes[0] + sizes[1];
@@ -787,22 +788,65 @@ void RayTracing5::CreateBLAS()
 	blasBuildGeomDescs[1].m_Triangle.m_IndexOffset = sizeof(u32) * 36;
 
 	BLASBuildDesc blasBuildDescs[2];
-	blasBuildDescs[0].m_pBLAS = m_BLAS[0];
+	blasBuildDescs[0].m_pBLAS = blas[0];
 	blasBuildDescs[0].m_pScratchBuffer = scratchBlas;
 	blasBuildDescs[0].m_GeometryCount = 1;
 	blasBuildDescs[0].m_pGeometries = &blasBuildGeomDescs[0];
 
-	blasBuildDescs[1].m_pBLAS = m_BLAS[1];
+	blasBuildDescs[1].m_pBLAS = blas[1];
 	blasBuildDescs[1].m_pScratchBuffer = scratchBlas;
 	blasBuildDescs[1].m_ScratchBufferOffset = sizes[0];
 	blasBuildDescs[1].m_GeometryCount = 1;
 	blasBuildDescs[1].m_pGeometries = &blasBuildGeomDescs[1];
 
+	BufferDesc bfd;
+	bfd.m_Size = sizeof(u64) * 2;
+	bfd.m_CreateFlags = BufferCreateFlags::kCreateMapped;
+	bfd.m_MemoryType = MemoryType::kReadBack;
+	BvRCRef<IBvBuffer> compactBuffer = m_Device->CreateBuffer(bfd);
+
+	ASPostBuildDesc postBuild;
+	postBuild.m_pDstBuffer = compactBuffer;
+
 	m_Context->NewCommandList();
-	m_Context->BuildBLAS(blasBuildDescs[0]);
-	m_Context->BuildBLAS(blasBuildDescs[1]);
+	m_Context->BuildBLAS(blasBuildDescs[0], &postBuild);
+	postBuild.m_DstBufferOffset = 8;
+	m_Context->BuildBLAS(blasBuildDescs[1], &postBuild);
 	m_Context->Execute();
 	m_Context->WaitForGPU();
+
+	u64 compactedSizes[2]{};
+	auto pValues = compactBuffer->GetMappedDataAsT<u64>();
+	compactedSizes[0] = pValues[0];
+	compactedSizes[1] = pValues[1];
+
+	BvConsole::Print("Size Diff: %llu | %llu\n", blas[0]->GetSize(), compactedSizes[0]);
+	BvConsole::Print("Size Diff: %llu | %llu\n", blas[1]->GetSize(), compactedSizes[1]);
+
+	{
+		auto blasDesc = blas[0]->GetDesc();
+		blasDesc.m_CompactedSize = compactedSizes[0];
+		m_BLAS[0] = m_Device->CreateAccelerationStructure(blasDesc);
+
+		blasDesc = blas[1]->GetDesc();
+		blasDesc.m_CompactedSize = compactedSizes[1];
+		m_BLAS[1] = m_Device->CreateAccelerationStructure(blasDesc);
+
+		m_Context->NewCommandList();
+
+		AccelerationStructureCopyDesc copy;
+		copy.m_CopyMode = AccelerationStructureCopyMode::kCompact;
+		copy.m_pSrc = blas[0];
+		copy.m_pDst = m_BLAS[0];
+		m_Context->CopyBLAS(copy);
+		
+		copy.m_pSrc = blas[1];
+		copy.m_pDst = m_BLAS[1];
+		m_Context->CopyBLAS(copy);
+
+		m_Context->Execute();
+		m_Context->WaitForGPU();
+	}
 }
 
 

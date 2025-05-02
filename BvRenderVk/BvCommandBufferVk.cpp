@@ -1016,9 +1016,9 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
-		else if (pBarriers[i].m_pBuffer || pBarriers[i].m_pAS)
+		else if (pBarriers[i].m_pBuffer)
 		{
-			auto buffer = pBarriers[i].m_pBuffer ? TO_VK(pBarriers[i].m_pBuffer)->GetHandle() : TO_VK(pBarriers[i].m_pAS)->GetBuffer()->GetHandle();
+			auto buffer = TO_VK(pBarriers[i].m_pBuffer)->GetHandle();
 			auto& barrier = m_BufferBarriers.EmplaceBack(VkBufferMemoryBarrier2{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
 			barrier.buffer = buffer;
@@ -1206,7 +1206,7 @@ void BvCommandBufferVk::SetMarker(const char* pName, const BvColor& color)
 }
 
 
-void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc)
+void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
 {
 	if (desc.m_GeometryCount > desc.m_pBLAS->GetDesc().m_BLAS.m_GeometryCount)
 	{
@@ -1255,7 +1255,7 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc)
 	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
 	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 	buildInfo.flags = GetVkBuildAccelerationStructureFlags(pAS->GetDesc().m_Flags);
-	if (desc.m_Update)
+	if (desc.m_Update && (buildInfo.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
 	{
 		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
 		buildInfo.srcAccelerationStructure = pAS->GetHandle();
@@ -1275,10 +1275,32 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc)
 
 	m_ASGeometries.Clear();
 	m_ASRanges.Clear();
+
+	VkBufferMemoryBarrier2 barriers[2] = { { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 }, { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 } };
+	barriers[0].srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+	barriers[0].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+	barriers[0].srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+	barriers[0].dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+	barriers[0].buffer = TO_VK(pAS->GetBuffer())->GetHandle();
+	barriers[0].size = VK_WHOLE_SIZE;
+
+	barriers[1].srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+	barriers[1].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+	barriers[1].srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+	barriers[1].dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+	barriers[1].buffer = TO_VK(pPostBuildDesc->m_pDstBuffer)->GetHandle();
+	barriers[1].size = VK_WHOLE_SIZE;
+
+	ResourceBarrier(2, barriers, 0, nullptr, 0, nullptr);
+
+	if (pPostBuildDesc)
+	{
+		EmitASPostBuild(pAS, *pPostBuildDesc);
+	}
 }
 
 
-void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc)
+void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
 {
 	auto pAS = TO_VK(desc.m_pTLAS);
 	VkAccelerationStructureGeometryKHR& dstGeometry = m_ASGeometries.EmplaceBack(pAS->GetGeometries()[0]);
@@ -1287,7 +1309,7 @@ void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc)
 	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
 	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
 	buildInfo.flags = GetVkBuildAccelerationStructureFlags(pAS->GetDesc().m_Flags);
-	if (desc.m_Update)
+	if (desc.m_Update && (buildInfo.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
 	{
 		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
 		buildInfo.srcAccelerationStructure = pAS->GetHandle();
@@ -1310,6 +1332,57 @@ void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc)
 
 	m_ASGeometries.Clear();
 	m_ASRanges.Clear();
+
+	if (pPostBuildDesc)
+	{
+		EmitASPostBuild(pAS, *pPostBuildDesc);
+	}
+}
+
+
+void BvCommandBufferVk::EmitASPostBuild(IBvAccelerationStructure* pAS, const ASPostBuildDesc& postBuildDesc)
+{
+	auto pASVk = TO_VK(pAS);
+	if (postBuildDesc.m_Action == ASPostBuildAction::kWriteCompactedSize)
+	{
+		BV_ASSERT(pAS->GetDesc().m_CompactedSize == 0, "Acceleration Structure already compacted");
+
+		auto pASQueries = m_pFrameData->GetQueryAS();
+		auto query = pASQueries->Allocate(m_pFrameData->GetFrameIndex());
+		auto as = pASVk->GetHandle();
+
+		vkCmdWriteAccelerationStructuresPropertiesKHR(m_CommandBuffer, 1, &as, pASQueries->GetType(), query.m_Pool, query.m_Index);
+
+		constexpr VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
+		vkCmdCopyQueryPoolResults(m_CommandBuffer, query.m_Pool, query.m_Index, 1, TO_VK(postBuildDesc.m_pDstBuffer)->GetHandle(),
+			postBuildDesc.m_DstBufferOffset, sizeof(u64), flags);
+	}
+}
+
+
+void BvCommandBufferVk::CopyBLAS(const AccelerationStructureCopyDesc& copyDesc)
+{
+	BV_ASSERT(copyDesc.m_pSrc->GetDesc().m_Type == RayTracingAccelerationStructureType::kBottomLevel &&
+		copyDesc.m_pDst->GetDesc().m_Type == RayTracingAccelerationStructureType::kBottomLevel, "Acceleration structure(s) not bottom level");
+
+	VkCopyAccelerationStructureInfoKHR ci{ VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR };
+	ci.mode = GetVkCopyAccelerationStructureMode(copyDesc.m_CopyMode);
+	ci.src = TO_VK(copyDesc.m_pSrc)->GetHandle();
+	ci.dst = TO_VK(copyDesc.m_pDst)->GetHandle();
+	vkCmdCopyAccelerationStructureKHR(m_CommandBuffer, &ci);
+}
+
+
+void BvCommandBufferVk::CopyTLAS(const AccelerationStructureCopyDesc& copyDesc)
+{
+	BV_ASSERT(copyDesc.m_pSrc->GetDesc().m_Type == RayTracingAccelerationStructureType::kTopLevel &&
+		copyDesc.m_pDst->GetDesc().m_Type == RayTracingAccelerationStructureType::kTopLevel, "Acceleration structure(s) not top level");
+
+	VkCopyAccelerationStructureInfoKHR ci{ VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR };
+	ci.mode = GetVkCopyAccelerationStructureMode(copyDesc.m_CopyMode);
+	ci.src = TO_VK(copyDesc.m_pSrc)->GetHandle();
+	ci.dst = TO_VK(copyDesc.m_pDst)->GetHandle();
+	vkCmdCopyAccelerationStructureKHR(m_CommandBuffer, &ci);
 }
 
 

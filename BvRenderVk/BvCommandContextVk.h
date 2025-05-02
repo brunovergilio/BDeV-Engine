@@ -18,6 +18,7 @@ class BvQueryVk;
 class BvSwapChainVk;
 class BvGPUFenceVk;
 class BvQueryHeapManagerVk;
+class BvQueryASVk;
 class BvFramebufferManagerVk;
 
 
@@ -29,6 +30,7 @@ struct ContextDataVk
 	BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
 	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr;
 	BvFramebufferManagerVk* m_pFramebufferManager = nullptr;
+	BvQueryASVk* m_pASQueries = nullptr;
 };
 
 
@@ -43,7 +45,7 @@ public:
 	BvFrameDataVk& operator=(BvFrameDataVk&& rhs) noexcept;
 	~BvFrameDataVk();
 
-	void Reset();
+	void Reset(bool resetQueries = true);
 	BvCommandBufferVk* RequestCommandBuffer();
 	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless = false);
 	void UpdateSignalIndex(u64 value);
@@ -60,6 +62,7 @@ public:
 	BV_INLINE std::pair<u64, u64> GetSemaphoreValueIndex() const { return m_SignaValueIndex; }
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
 	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pContextData->m_pQueryHeapManager; }
+	BV_INLINE BvQueryASVk* GetQueryAS() const { return m_pContextData->m_pASQueries; }
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
@@ -169,8 +172,10 @@ public:
 	void EndEvent() override;
 	void SetMarker(const char* pName, const BvColor& color = BvColor::Black) override;
 
-	void BuildBLAS(const BLASBuildDesc& desc) override;
-	void BuildTLAS(const TLASBuildDesc& desc) override;
+	void BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr) override;
+	void BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr) override;
+	void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc) override;
+	void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc) override;
 	void DispatchRays(const DispatchRaysCommandArgs& args) override;
 	void DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
 		u32 width, u32 height, u32 depth) override;

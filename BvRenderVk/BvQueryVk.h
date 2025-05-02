@@ -99,6 +99,46 @@ private:
 };
 
 
+struct QueryVk
+{
+	VkQueryPool m_Pool;
+	u32 m_Index;
+};
+
+
+class BvQueryASVk
+{
+public:
+	BvQueryASVk() = default;
+	BvQueryASVk(BvQueryASVk&&) = default;
+	BvQueryASVk& operator=(BvQueryASVk&&) = default;
+	~BvQueryASVk();
+
+	BvQueryASVk(BvRenderDeviceVk* pDevice, u32 queryCount, u32 frameCount, VkQueryType queryType);
+
+	QueryVk Allocate(u32 frameIndex);
+	void Reset(u32 frameIndex);
+
+	BV_INLINE VkQueryType GetType() const { return m_QueryType; }
+
+private:
+	void Create();
+	void Destroy();
+
+	struct PoolData
+	{
+		VkQueryPool m_Pool = VK_NULL_HANDLE;
+		BvVector<u32> m_FrameAllocations;
+	};
+
+private:
+	BvRenderDeviceVk* m_pDevice = nullptr;
+	BvVector<PoolData> m_QueryPools;
+	u32 m_QueryCount = 0;
+	u32 m_FrameCount = 0;
+	VkQueryType m_QueryType = VK_QUERY_TYPE_MAX_ENUM;
+};
+
 
 class BvQueryHeapManagerVk
 {

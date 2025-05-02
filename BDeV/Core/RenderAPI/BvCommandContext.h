@@ -198,8 +198,10 @@ public:
 	virtual void EndEvent() = 0;
 	virtual void SetMarker(const char* pName, const BvColor& color = BvColor::Black) = 0;
 
-	virtual void BuildBLAS(const BLASBuildDesc& blasDesc) = 0;
-	virtual void BuildTLAS(const TLASBuildDesc& tlasDesc) = 0;
+	virtual void BuildBLAS(const BLASBuildDesc& blasDesc, const ASPostBuildDesc* pPostBuildDesc = nullptr) = 0;
+	virtual void BuildTLAS(const TLASBuildDesc& tlasDesc, const ASPostBuildDesc* pPostBuildDesc = nullptr) = 0;
+	virtual void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc) = 0;
+	virtual void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc) = 0;
 	virtual void DispatchRays(const DispatchRaysCommandArgs& args) = 0;
 	virtual void DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
 		u32 width, u32 height, u32 depth) = 0;

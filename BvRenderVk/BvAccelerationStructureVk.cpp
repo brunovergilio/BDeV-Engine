@@ -55,9 +55,11 @@ u32 BvAccelerationStructureVk::GetGeometryIndex(BvStringId id) const
 }
 
 
-void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances, u32 firstInstance = 0)
+void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASInstanceDesc* pInstances, u32 firstInstance)
 {
 	BV_ASSERT(m_Desc.m_Type == RayTracingAccelerationStructureType::kTopLevel, "Acceleration structure is not a top level one");
+	BV_ASSERT(m_Desc.m_CompactedSize == 0, "Acceleration structure can't be compact");
+
 	if (!pStagingBuffer)
 	{
 		if (!m_StagingBuffer)
@@ -72,10 +74,10 @@ void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer
 		pStagingBuffer = m_StagingBuffer;
 	}
 
-	auto pDst = reinterpret_cast<u8>(pStagingBuffer->Map()) + sizeof(VkAccelerationStructureInstanceKHR) * firstInstance;
+	auto pDst = reinterpret_cast<u8*>(pStagingBuffer->Map()) + sizeof(VkAccelerationStructureInstanceKHR) * firstInstance;
 	for (auto i = 0; i < instanceCount && i < m_PrimitiveCounts[0]; ++i)
 	{
-		const TLASBuildInstanceDesc& srcInstance = pInstances[i];
+		const TLASInstanceDesc& srcInstance = pInstances[i];
 		VkAccelerationStructureInstanceKHR& dstInstance = reinterpret_cast<VkAccelerationStructureInstanceKHR*>(pDst)[i];
 
 		dstInstance.accelerationStructureReference = TO_VK(srcInstance.m_pBLAS)->GetDeviceAddress();
@@ -95,97 +97,97 @@ IBvBuffer* BvAccelerationStructureVk::GetTopLevelStagingInstanceBuffer() const
 }
 
 
-//VkDeviceAddress BvAccelerationStructureVk::GetDeviceAddress() const
-//{
-//	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR, nullptr, m_Handle };
-//	return vkGetAccelerationStructureDeviceAddressKHR(m_pDevice->GetHandle(), &addressInfo);
-//}
-
-
 void BvAccelerationStructureVk::Create()
 {
+	VkAccelerationStructureBuildSizesInfoKHR sizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR, nullptr, m_Desc.m_CompactedSize, 0, 0 };
 	VkAccelerationStructureTypeKHR asType{};
-	if (m_Desc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
+
+	if (m_Desc.m_CompactedSize == 0)
 	{
-		asType = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-
-		m_Geometries.Resize(m_Desc.m_BLAS.m_GeometryCount, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
-		m_PrimitiveCounts.Resize(m_Geometries.Size());
-
-		for (auto i = 0u; i < m_Desc.m_BLAS.m_GeometryCount; ++i)
+		if (m_Desc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
 		{
-			if (m_Desc.m_BLAS.m_pGeometries[i].m_Type == RayTracingGeometryType::kTriangles)
+			asType = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+
+			m_Geometries.Resize(m_Desc.m_BLAS.m_GeometryCount, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
+			m_PrimitiveCounts.Resize(m_Geometries.Size());
+
+			for (auto i = 0u; i < m_Desc.m_BLAS.m_GeometryCount; ++i)
 			{
-				auto& srcGeometry = m_Desc.m_BLAS.m_pGeometries[i].m_Triangle;
+				if (m_Desc.m_BLAS.m_pGeometries[i].m_Type == RayTracingGeometryType::kTriangles)
+				{
+					auto& srcGeometry = m_Desc.m_BLAS.m_pGeometries[i].m_Triangle;
 
-				VkAccelerationStructureGeometryKHR& dstGeometry = m_Geometries[i];
-				//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-				//dstGeometry.pNext = nullptr;
-				dstGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-				dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_BLAS.m_pGeometries[i].m_Flags);
+					VkAccelerationStructureGeometryKHR& dstGeometry = m_Geometries[i];
+					//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+					//dstGeometry.pNext = nullptr;
+					dstGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+					dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_BLAS.m_pGeometries[i].m_Flags);
 
-				VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
-				triangle.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-				triangle.pNext = nullptr;
-				triangle.vertexFormat = GetVkFormat(srcGeometry.m_VertexFormat);
-				triangle.vertexStride = srcGeometry.m_VertexStride;
-				triangle.maxVertex = srcGeometry.m_VertexCount - 1;
-				triangle.indexType = GetVkIndexType(srcGeometry.m_IndexFormat);
+					VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
+					triangle.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+					triangle.pNext = nullptr;
+					triangle.vertexFormat = GetVkFormat(srcGeometry.m_VertexFormat);
+					triangle.vertexStride = srcGeometry.m_VertexStride;
+					triangle.maxVertex = srcGeometry.m_VertexCount - 1;
+					triangle.indexType = GetVkIndexType(srcGeometry.m_IndexFormat);
 
-				u32 primitiveCount = srcGeometry.m_IndexCount > 0 ? srcGeometry.m_IndexCount / 3 : srcGeometry.m_VertexCount / 3;
-				m_PrimitiveCounts[i] = primitiveCount;
-			}
-			else if (m_Desc.m_BLAS.m_pGeometries[i].m_Type == RayTracingGeometryType::kAABB)
-			{
-				auto& srcGeometry = m_Desc.m_BLAS.m_pGeometries[i].m_AABB;
+					u32 primitiveCount = srcGeometry.m_IndexCount > 0 ? srcGeometry.m_IndexCount / 3 : srcGeometry.m_VertexCount / 3;
+					m_PrimitiveCounts[i] = primitiveCount;
+				}
+				else if (m_Desc.m_BLAS.m_pGeometries[i].m_Type == RayTracingGeometryType::kAABB)
+				{
+					auto& srcGeometry = m_Desc.m_BLAS.m_pGeometries[i].m_AABB;
 
-				VkAccelerationStructureGeometryKHR& dstGeometry = m_Geometries[i];
-				//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-				//dstGeometry.pNext = nullptr;
-				dstGeometry.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
-				dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_BLAS.m_pGeometries[i].m_Flags);
+					VkAccelerationStructureGeometryKHR& dstGeometry = m_Geometries[i];
+					//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+					//dstGeometry.pNext = nullptr;
+					dstGeometry.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
+					dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_BLAS.m_pGeometries[i].m_Flags);
 
-				VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
-				aabb.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
-				aabb.pNext = nullptr;
-				aabb.stride = srcGeometry.m_Stride;
+					VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
+					aabb.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+					aabb.pNext = nullptr;
+					aabb.stride = srcGeometry.m_Stride;
 
-				m_PrimitiveCounts[i] = srcGeometry.m_Count;
+					m_PrimitiveCounts[i] = srcGeometry.m_Count;
+				}
 			}
 		}
+		else if (m_Desc.m_Type == RayTracingAccelerationStructureType::kTopLevel)
+		{
+			asType = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+
+			m_Geometries.Resize(1, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
+			m_PrimitiveCounts.Resize(1, m_Desc.m_TLAS.m_InstanceCount);
+
+			VkAccelerationStructureGeometryKHR& dstGeometry = m_Geometries.Back();
+			//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+			//dstGeometry.pNext = nullptr;
+			dstGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+			dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_TLAS.m_Flags);
+
+			VkAccelerationStructureGeometryInstancesDataKHR& instances = dstGeometry.geometry.instances;
+			instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+			instances.arrayOfPointers = VK_FALSE;
+		}
+
+		VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+		//buildInfo.pNext = nullptr;
+		buildInfo.type = asType;
+		buildInfo.flags = GetVkBuildAccelerationStructureFlags(m_Desc.m_Flags);
+		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+		buildInfo.geometryCount = u32(m_Geometries.Size());
+		buildInfo.pGeometries = m_Geometries.Data();
+
+		GetBuildSizes(buildInfo, m_PrimitiveCounts.Data(), sizeInfo);
+
+		m_ScratchSizes.m_Build = sizeInfo.buildScratchSize;
+		m_ScratchSizes.m_Update = sizeInfo.updateScratchSize;
 	}
-	else if (m_Desc.m_Type == RayTracingAccelerationStructureType::kTopLevel)
+	else
 	{
-		asType = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-
-		m_Geometries.Resize(1, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
-		m_PrimitiveCounts.Resize(1, m_Desc.m_TLAS.m_InstanceCount);
-
-		VkAccelerationStructureGeometryKHR &dstGeometry = m_Geometries.Back();
-		//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-		//dstGeometry.pNext = nullptr;
-		dstGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-		dstGeometry.flags = GetVkGeometryFlags(m_Desc.m_TLAS.m_Flags);
-
-		VkAccelerationStructureGeometryInstancesDataKHR& instances = dstGeometry.geometry.instances;
-		instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-		instances.arrayOfPointers = VK_FALSE;
+		m_Desc.m_Flags &= ~(RayTracingAccelerationStructureFlags::kAllowUpdate | RayTracingAccelerationStructureFlags::kAllowCompaction);
 	}
-
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
-	//buildInfo.pNext = nullptr;
-	buildInfo.type = asType;
-	buildInfo.flags = GetVkBuildAccelerationStructureFlags(m_Desc.m_Flags);
-	buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-	buildInfo.geometryCount = u32(m_Geometries.Size());
-	buildInfo.pGeometries = m_Geometries.Data();
-
-	VkAccelerationStructureBuildSizesInfoKHR sizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-
-	GetBuildSizes(buildInfo, m_PrimitiveCounts.Data(), sizeInfo);
-
-	m_ScratchSizes.m_Build = sizeInfo.buildScratchSize;
-	m_ScratchSizes.m_Update = sizeInfo.updateScratchSize;
 
 	BufferDesc bufferDesc;
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;

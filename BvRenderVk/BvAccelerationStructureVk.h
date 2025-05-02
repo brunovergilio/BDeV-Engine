@@ -26,7 +26,9 @@ public:
 
 	BV_INLINE const RayTracingAccelerationStructureDesc& GetDesc() const override { return m_Desc; }
 	u32 GetGeometryIndex(BvStringId id) const override;
-	void WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASBuildInstanceDesc* pInstances, u32 firstInstance = 0) override;
+	void WriteTopLevelInstances(IBvBuffer* pStagingBuffer, u32 instanceCount, const TLASInstanceDesc* pInstances, u32 firstInstance = 0) override;
+	BV_INLINE IBvBuffer* GetBuffer() const override { return m_Buffer; }
+	BV_INLINE u64 GetSize() const override { return m_Buffer->GetDesc().m_Size; }
 	BV_INLINE u64 GetTopLevelInstanceSize() const override { return sizeof(VkAccelerationStructureInstanceKHR); }
 	IBvBuffer* GetTopLevelStagingInstanceBuffer() const override;
 	BV_INLINE RayTracingAccelerationStructureScratchSize GetBuildSizes() const override { return m_ScratchSizes; }
@@ -34,9 +36,7 @@ public:
 	BV_INLINE BvVector<VkAccelerationStructureGeometryKHR>& GetGeometries() { return m_Geometries; }
 	BV_INLINE BvVector<u32>& GetPrimitiveCounts() { return m_PrimitiveCounts; }
 	BV_INLINE VkAccelerationStructureKHR GetHandle() const { return m_Handle; }
-	BV_INLINE BvBufferVk* GetBuffer() const { return m_Buffer; }
 	BV_INLINE VkDeviceAddress GetDeviceAddress() const { return m_DeviceAddress; }
-	BV_INLINE u64 GetRayTracingInstanceSize() const override { return m_Desc.m_TLAS.m_InstanceCount * sizeof(VkAccelerationStructureInstanceKHR); }
 	BV_INLINE bool IsValid() const { return m_Handle != VK_NULL_HANDLE; }
 
 	//BV_OBJECT_IMPL_INTERFACE(IBvAccelerationStructureVk, IBvAccelerationStructure, IBvRenderDeviceObject);

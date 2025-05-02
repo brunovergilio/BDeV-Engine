@@ -306,7 +306,7 @@ void RayTracing1::CreateResources()
 	buffDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	m_ScratchBuffer = m_Device->CreateBuffer(buffDesc);
 
-	TLASBuildInstanceDesc dummyInstance;
+	TLASInstanceDesc dummyInstance;
 	m_AS->WriteTopLevelInstances(1, &dummyInstance);
 	
 	auto pInstanceBuffer = m_AS->GetTopLevelStagingInstanceBuffer();

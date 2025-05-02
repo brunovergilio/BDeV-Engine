@@ -204,7 +204,8 @@ bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void
 
 	heapData.m_pBuffer->Invalidate(size, 0);
 
-	auto offset = m_QuerySize * queryData.m_QueryIndex;
+	auto frameOffset = m_QuerySize * m_QueryCount * frameIndex;
+	auto offset = frameOffset + m_QuerySize * queryData.m_QueryIndex;
 	auto pResultData = reinterpret_cast<u64*>(reinterpret_cast<u8*>(heapData.m_pBuffer->GetMappedData()) + offset);
 	
 	switch (m_QueryType)
@@ -256,22 +257,23 @@ bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void
 void BvQueryHeapVk::GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 queryIndex, VkBuffer& buffer, u64& offset, u64& stride, u32 poolIndex)
 {
 	auto& heapData = m_QueryHeapData[heapIndex];
+	auto frameOffset = m_QuerySize * m_QueryCount * frameIndex;
 	if (m_PSOFlags == 0)
 	{
 		stride = m_QuerySize;
-		offset = stride * queryIndex;
+		offset = frameOffset + stride * queryIndex;
 	}
 	else
 	{
 		if (poolIndex == 0)
 		{
 			stride = m_QuerySize - (heapData.m_Pool[1] != VK_NULL_HANDLE ? sizeof(u64) : 0);
-			offset = m_QuerySize * queryIndex;
+			offset = frameOffset + m_QuerySize * queryIndex;
 		}
 		else if (poolIndex == 1 && heapData.m_Pool)
 		{
 			stride = sizeof(u64);
-			offset = m_QuerySize * queryIndex + (m_QuerySize - sizeof(u64));
+			offset = frameOffset + m_QuerySize * queryIndex + (m_QuerySize - sizeof(u64));
 		}
 	}
 
@@ -383,4 +385,87 @@ void BvQueryHeapManagerVk::Reset(u32 frameIndex)
 	{
 		m_QueryHeaps[i].Reset(frameIndex);
 	}
+}
+
+
+BvQueryASVk::~BvQueryASVk()
+{
+	Destroy();
+}
+
+
+BvQueryASVk::BvQueryASVk(BvRenderDeviceVk* pDevice, u32 queryCount, u32 frameCount, VkQueryType queryType)
+	: m_pDevice(pDevice), m_QueryCount(queryCount), m_FrameCount(frameCount), m_QueryType(queryType)
+{
+}
+
+
+QueryVk BvQueryASVk::Allocate(u32 frameIndex)
+{
+	u32 index = kU32Max;
+	u32 poolIndex = 0;
+	u32 baseOffset = m_QueryCount * frameIndex;
+	for (auto& pool : m_QueryPools)
+	{
+		if (pool.m_FrameAllocations[frameIndex] < m_QueryCount)
+		{
+			index = baseOffset + pool.m_FrameAllocations[frameIndex]++;
+			break;
+		}
+
+		poolIndex++;
+	}
+
+	if (index == kU32Max)
+	{
+		Create();
+		auto& poolData = m_QueryPools.Back();
+		index = baseOffset + poolData.m_FrameAllocations[frameIndex]++;
+	}
+
+	return { m_QueryPools[poolIndex].m_Pool, index };
+}
+
+
+void BvQueryASVk::Reset(u32 frameIndex)
+{
+	for (auto& pool : m_QueryPools)
+	{
+		if (auto queriesToReset = pool.m_FrameAllocations[frameIndex])
+		{
+			vkResetQueryPool(m_pDevice->GetHandle(), pool.m_Pool, m_QueryCount * frameIndex, queriesToReset);
+		}
+	}
+}
+
+
+void BvQueryASVk::Create()
+{
+	VkQueryPoolCreateInfo qpCI{ VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+	qpCI.queryCount = m_QueryCount * m_FrameCount;
+	qpCI.queryType = m_QueryType;
+
+	VkQueryPool pool;
+	auto result = vkCreateQueryPool(m_pDevice->GetHandle(), &qpCI, nullptr, &pool);
+	if (result != VK_SUCCESS)
+	{
+		// TODO: Handle error
+		return;
+	}
+
+	vkResetQueryPool(m_pDevice->GetHandle(), pool, 0, m_QueryCount * m_FrameCount);
+
+	auto& poolData = m_QueryPools.EmplaceBack();
+	poolData.m_Pool = pool;
+	poolData.m_FrameAllocations.Resize(m_FrameCount, 0);
+}
+
+
+void BvQueryASVk::Destroy()
+{
+	for (auto pool: m_QueryPools)
+	{
+		vkDestroyQueryPool(m_pDevice->GetHandle(), pool.m_Pool, nullptr);
+	}
+	m_QueryPools.Clear();
 }

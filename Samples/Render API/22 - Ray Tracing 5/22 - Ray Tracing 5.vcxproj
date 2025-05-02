@@ -90,18 +90,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="RayTracing5.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="RayTracing5.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\..\BDeV\BDeV.vcxproj">
       <Project>{5abfc153-e6bd-4f67-bfa0-f123ca883b95}</Project>
     </ProjectReference>
     <ProjectReference Include="..\RenderAPISampleBase\RenderAPISampleBase.vcxproj">
       <Project>{1635b7f2-e8f2-434d-ae96-f65538ef9d7c}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="RayTracing5.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RayTracing5.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

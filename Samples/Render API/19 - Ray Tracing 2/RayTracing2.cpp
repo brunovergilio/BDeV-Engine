@@ -442,7 +442,7 @@ void RayTracing2::CreateTLAS()
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	BvRCRef<IBvBuffer> scratchTlas = m_Device->CreateBuffer(bufferDesc);
 
-	TLASBuildInstanceDesc tlasInstance;
+	TLASInstanceDesc tlasInstance;
 	tlasInstance.m_pBLAS = m_BLAS;
 	tlasInstance.m_Flags = RayTracingInstanceFlags::kTriangleCullDisable;
 	tlasInstance.m_InstanceMask = 0xFF;

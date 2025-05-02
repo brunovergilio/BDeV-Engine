@@ -166,11 +166,11 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 {
 	// =======================================
 	// Create a temporary window
-#ifdef BV_STATIC_LIB
 	auto hInstance = GetModuleHandle(nullptr);
-#else
-	auto hInstance = GetModuleHandle("BvRenderGl.dll");
-#endif
+//#ifdef BV_STATIC_LIB
+//#else
+//	auto hInstance = GetModuleHandle("BvRenderGl.dll");
+//#endif
 
 	WNDCLASS dummyClass;
 	memset(&dummyClass, 0, sizeof(WNDCLASS));

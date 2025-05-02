@@ -155,6 +155,17 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 
 	const auto& memoryType = m_pDevice->GetDeviceInfo()->m_DeviceMemoryProperties.memoryProperties.memoryTypes[vmaAI.memoryType];
 	m_NeedsFlush = ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0);
+	if (m_NeedsFlush)
+	{
+		if (m_BufferDesc.m_MemoryType == MemoryType::kReadBack)
+		{
+			m_BufferDesc.m_MemoryType = MemoryType::kReadBackNC;
+		}
+		else if (m_BufferDesc.m_MemoryType == MemoryType::kUpload)
+		{
+			m_BufferDesc.m_MemoryType = MemoryType::kUploadNC;
+		}
+	}
 
 	bool createMapped = EHasFlag(m_BufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped);
 	if (m_BufferDesc.m_MemoryType != MemoryType::kDevice && createMapped)

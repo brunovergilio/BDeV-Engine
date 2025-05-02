@@ -123,8 +123,11 @@ public:
 	void EndEvent();
 	void SetMarker(const char* pName, const BvColor& color);
 
-	void BuildBLAS(const BLASBuildDesc& desc);
-	void BuildTLAS(const TLASBuildDesc& desc);
+	void BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr);
+	void BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr);
+	void EmitASPostBuild(IBvAccelerationStructure* pAS, const ASPostBuildDesc& postBuildDesc);
+	void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc);
+	void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc);
 	void DispatchRays(const DispatchRaysCommandArgs& args);
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 

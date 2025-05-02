@@ -453,7 +453,8 @@ enum class ResourceState : u8
 	kPredication,
 	kShadingRate,
 	kASBuildRead,
-	kASBuildWrite
+	kASBuildWrite,
+	kASPostBuildBuffer,
 };
 
 
@@ -482,6 +483,7 @@ enum class ResourceAccess : u32
 	kAccelerationStructureRead	= BvBit(19),
 	kAccelerationStructureWrite	= BvBit(20),
 	kShaderBindingTableRead		= BvBit(21),
+	kAccelerationStructurePostBuildWrite = BvBit(22),
 	kAuto						= kU32Max
 };
 BV_USE_ENUM_CLASS_OPERATORS(ResourceAccess);
@@ -504,8 +506,6 @@ enum class PipelineStage : u32
 	kTransfer					= BvBit(11),
 	kHost						= BvBit(12),
 	kEnd						= BvBit(13),
-	kAllShaderStages			= kVertexShader | kTessHullOrControlShader | kTessDomainOrEvalShader
-		| kGeometryShader | kPixelOrFragmentShader | kComputeShader,
 	kShadingRate				= BvBit(14),
 	kPredication				= BvBit(15),
 	kMesh						= BvBit(16),
@@ -513,6 +513,8 @@ enum class PipelineStage : u32
 	kAccelerationStructureBuild	= BvBit(18),
 	kAccelerationStructureCopy	= BvBit(19),
 	kRayTracing					= BvBit(20),
+	kAllShaderStages			= kVertexShader | kTessHullOrControlShader | kTessDomainOrEvalShader
+		| kGeometryShader | kPixelOrFragmentShader | kComputeShader | kMesh | kAmplificationOrTask | kRayTracing,
 	kAuto						= kU32Max
 };
 BV_USE_ENUM_CLASS_OPERATORS(PipelineStage);
@@ -866,7 +868,6 @@ struct ResourceBarrierDesc
 
 	IBvTexture* m_pTexture = nullptr;
 	IBvBuffer* m_pBuffer = nullptr;
-	IBvAccelerationStructure* m_pAS = nullptr;
 
 	ResourceState m_SrcState = ResourceState::kCommon;
 	ResourceState m_DstState = ResourceState::kCommon;
@@ -1076,7 +1077,7 @@ enum class QueryType : u8
 	kOcclusion,
 	kOcclusionBinary,
 	kPipelineStatistics,
-	kMeshPipelineStatistics
+	kMeshPipelineStatistics,
 };
 constexpr u32 kQueryTypeCount = 5;
 
@@ -1508,6 +1509,20 @@ enum class RayTracingAccelerationStructureFlags : u8
 BV_USE_ENUM_CLASS_OPERATORS(RayTracingAccelerationStructureFlags);
 
 
+enum class ASPostBuildAction : u8
+{
+	kWriteCompactedSize,
+};
+
+
+struct ASPostBuildDesc
+{
+	ASPostBuildAction m_Action = ASPostBuildAction::kWriteCompactedSize;
+	IBvBuffer* m_pDstBuffer = nullptr;
+	u64 m_DstBufferOffset = 0;
+};
+
+
 struct BLASGeometryDesc
 {
 	struct TriangleDesc
@@ -1590,7 +1605,7 @@ struct TLASDesc
 };
 
 
-struct TLASBuildInstanceDesc
+struct TLASInstanceDesc
 {
 	Float34 m_Transform{ Float4(1.0f, 0.0f, 0.0f, 0.0f), Float4(0.0f, 1.0f, 0.0f, 0.0f), Float4(0.0f, 0.0f, 1.0f, 0.0f) };
 	u32 m_InstanceId = 0;
@@ -1613,6 +1628,21 @@ struct TLASBuildDesc
 };
 
 
+enum class AccelerationStructureCopyMode : u8
+{
+	kClone,
+	kCompact
+};
+
+
+struct AccelerationStructureCopyDesc
+{
+	IBvAccelerationStructure* m_pSrc = nullptr;
+	IBvAccelerationStructure* m_pDst = nullptr;
+	AccelerationStructureCopyMode m_CopyMode = AccelerationStructureCopyMode::kClone;
+};
+
+
 struct RayTracingAccelerationStructureScratchSize
 {
 	u64 m_Build = 0;
@@ -1624,6 +1654,7 @@ struct RayTracingAccelerationStructureDesc
 {
 	RayTracingAccelerationStructureType m_Type = RayTracingAccelerationStructureType::kUnknown;
 	RayTracingAccelerationStructureFlags m_Flags = RayTracingAccelerationStructureFlags::kNone;
+	u64 m_CompactedSize = 0;
 	union
 	{
 		BLASDesc m_BLAS{};

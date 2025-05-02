@@ -54,15 +54,20 @@ BvFrameDataVk::~BvFrameDataVk()
 }
 
 
-void BvFrameDataVk::Reset()
+void BvFrameDataVk::Reset(bool resetQueries)
 {
 	m_pFence->Wait(m_SignaValueIndex.first);
 
-	if (m_Queries.Size() > 0)
+	if (resetQueries)
 	{
-		m_pContextData->m_pQueryHeapManager->Reset(m_FrameIndex);
-		m_Queries.Clear();
-		m_UpdatedQueries = 0;
+		if (m_Queries.Size() > 0)
+		{
+			m_pContextData->m_pQueryHeapManager->Reset(m_FrameIndex);
+			m_Queries.Clear();
+			m_UpdatedQueries = 0;
+		}
+
+		m_pContextData->m_pASQueries->Reset(m_FrameIndex);
 	}
 
 	m_CommandPool.Reset();
@@ -199,6 +204,11 @@ BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount
 	m_pContextData = BV_NEW(ContextDataVk)();
 	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, querySizes, frameCount);
 	m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
+	if (queueFamilyType == CommandType::kGraphics)
+	{
+		m_pContextData->m_pASQueries = BV_NEW(BvQueryASVk)(pDevice, querySizes[0], frameCount, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR);
+	}
+
 	m_Frames.Reserve(frameCount);
 	for (auto i = 0; i < frameCount; ++i)
 	{
@@ -211,6 +221,7 @@ BvCommandContextVk::~BvCommandContextVk()
 {
 	BV_DELETE(m_pContextData->m_pFramebufferManager);
 	BV_DELETE(m_pContextData->m_pQueryHeapManager);
+	BV_DELETE(m_pContextData->m_pASQueries);
 	BV_DELETE(m_pContextData);
 }
 
@@ -309,7 +320,7 @@ void BvCommandContextVk::WaitForGPU()
 
 	m_Frames[m_ActiveFrameIndex].UpdateSignalValue();
 
-	m_Frames[m_ActiveFrameIndex].Reset();
+	m_Frames[m_ActiveFrameIndex].Reset(false);
 }
 
 
@@ -648,15 +659,27 @@ void BvCommandContextVk::SetMarker(const char* pName, const BvColor& color)
 }
 
 
-void BvCommandContextVk::BuildBLAS(const BLASBuildDesc& desc)
+void BvCommandContextVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
 {
-	m_pCurrCommandBuffer->BuildBLAS(desc);
+	m_pCurrCommandBuffer->BuildBLAS(desc, pPostBuildDesc);
 }
 
 
-void BvCommandContextVk::BuildTLAS(const TLASBuildDesc& desc)
+void BvCommandContextVk::BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
 {
-	m_pCurrCommandBuffer->BuildTLAS(desc);
+	m_pCurrCommandBuffer->BuildTLAS(desc, pPostBuildDesc);
+}
+
+
+void BvCommandContextVk::CopyBLAS(const AccelerationStructureCopyDesc& copyDesc)
+{
+	m_pCurrCommandBuffer->CopyBLAS(copyDesc);
+}
+
+
+void BvCommandContextVk::CopyTLAS(const AccelerationStructureCopyDesc& copyDesc)
+{
+	m_pCurrCommandBuffer->CopyTLAS(copyDesc);
 }
 
 
