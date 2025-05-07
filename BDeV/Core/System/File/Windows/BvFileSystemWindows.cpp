@@ -20,7 +20,7 @@ bool BvFileSystem::FileExists(const char * pFilename)
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
 		{
-			BV_ASSERT(error != 0, "Some other error happened");
+			BV_SYSTEM_ERROR();
 		}
 		return false;
 	}
@@ -41,9 +41,7 @@ bool BvFileSystem::DeleteFile(const char* const pFilename)
 
 	if (!result)
 	{
-		DWORD error = GetLastError();
-
-		// TO-DO: Handle error
+		BV_SYSTEM_ERROR();
 
 		return false;
 	}
@@ -67,7 +65,7 @@ bool BvFileSystem::DirectoryExists(const char * const pDirName)
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
 		{
-			BV_ASSERT(error != 0, "Some other error happened");
+			BV_SYSTEM_ERROR();
 		}
 		return false;
 	}
@@ -88,8 +86,7 @@ bool BvFileSystem::CreateDirectory(const char* const pDirName)
 
 	if (!result)
 	{
-		DWORD error = GetLastError();
-		// TODO: Handle error
+		BV_SYSTEM_ERROR();
 
 		return false;
 	}
@@ -107,7 +104,7 @@ namespace Internal
 			auto attributes = GetFileAttributesW(pDirName);
 			if (attributes == INVALID_FILE_ATTRIBUTES)
 			{
-				// TODO: Handle error
+				BV_SYSTEM_ERROR();
 				return false;
 			}
 			else if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
@@ -127,8 +124,7 @@ namespace Internal
 			hFind = FindFirstFileW(filePath.CStr(), &findData);
 			if (hFind == INVALID_HANDLE_VALUE)
 			{
-				DWORD error = GetLastError();
-				// TODO: Handle error
+				BV_SYSTEM_ERROR();
 				return false;
 			}
 
@@ -140,12 +136,16 @@ namespace Internal
 					filename.Insert(filePath, 0);
 					if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 					{
-						DeleteFileW(filename.CStr());
+						if (!DeleteFileW(filename.CStr()))
+						{
+							BV_SYSTEM_ERROR();
+							return false;
+						}
 					}
 					else
 					{
 						filename.Append(L"\\");
-						DeleteDirectoryInternal(filename.CStr(), recurse);
+						return DeleteDirectoryInternal(filename.CStr(), recurse);
 					}
 				}
 			} while (FindNextFileW(hFind, &findData) != FALSE);
@@ -153,20 +153,19 @@ namespace Internal
 			DWORD error = GetLastError();
 			if (error != ERROR_NO_MORE_FILES)
 			{
-				// TODO: Handle error
+				BV_SYSTEM_ERROR();
 				return false;
 			}
 			if (!FindClose(hFind))
 			{
-				// TODO: Handle error
+				BV_SYSTEM_ERROR();
 				return false;
 			}
 		}
 
 		if (!RemoveDirectoryW(pDirName))
 		{
-			DWORD error = GetLastError();
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 
 			return false;
 		}
@@ -200,16 +199,14 @@ u32 BvFileSystem::GetPhysicalSectorSize()
 
 		if (!GetCurrentDirectoryW(3, drivePath + 4))
 		{
-			DWORD error = GetLastError();
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 			return 0;
 		}
 
 		HANDLE hDevice = CreateFileW(drivePath, 0, 0, nullptr, OPEN_EXISTING, 0, nullptr);
 		if (hDevice == INVALID_HANDLE_VALUE)
 		{
-			DWORD error = GetLastError();
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 			return 0;
 		}
 
@@ -223,8 +220,7 @@ u32 BvFileSystem::GetPhysicalSectorSize()
 		if (!DeviceIoControl(hDevice, IOCTL_STORAGE_QUERY_PROPERTY, &storageQuery, sizeof(STORAGE_PROPERTY_QUERY),
 			&diskAlignment, sizeof(STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR), &outsize, nullptr))
 		{
-			DWORD error = GetLastError();
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 			return 0;
 		}
 		CloseHandle(hDevice);

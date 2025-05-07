@@ -97,9 +97,10 @@ int main()
 	pFNGetShaderCompiler compilerFn = renderToolsLib.GetProcAddressT<pFNGetShaderCompiler>("CreateSPIRVCompiler");
 	g_pCompiler = compilerFn();
 
-	BvSharedLib renderVkLib("BvRenderVk.dll");
 	typedef IBvRenderEngine*(*pFNCreateRenderEngine)();
-	pFNCreateRenderEngine engineFn = renderVkLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
+	BvSharedLib renderVkLib("BvRenderVk.dll");
+	BvSharedLib renderDxLib("BvRenderD3D12.dll");
+	pFNCreateRenderEngine engineFn = renderDxLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
 
 	IBvRenderEngine* pEngine = engineFn();
 	IBvRenderDevice* pDevice = pEngine->CreateRenderDevice(BvRenderDeviceCreateDesc());
@@ -240,7 +241,7 @@ int main()
 		pGraphicsContext->SetGraphicsPipeline(pPSO);
 		pGraphicsContext->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
 		pGraphicsContext->SetScissor({ 0, 0, width, height });
-		pGraphicsContext->SetVertexBufferView(pVBView);
+		pGraphicsContext->SetVertexBufferView(VertexBufferView{ pVB, 0, sizeof(PosColorVertex) });
 		pGraphicsContext->SetConstantBuffer(pUBView, 0, 0, 0);
 		pGraphicsContext->Draw(3);
 		pGraphicsContext->EndQuery(pQuery);

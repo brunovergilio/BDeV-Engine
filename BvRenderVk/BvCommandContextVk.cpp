@@ -266,6 +266,18 @@ void BvCommandContextVk::Execute(IBvGPUFence* pFence, u64 value)
 }
 
 
+void BvCommandContextVk::ExecuteAndWait()
+{
+	Execute();
+
+	m_Queue.WaitIdle();
+
+	m_Frames[m_ActiveFrameIndex].UpdateSignalValue();
+
+	m_Frames[m_ActiveFrameIndex].Reset(false);
+}
+
+
 void BvCommandContextVk::Wait(IBvCommandContext* pCommandContext, u64 value)
 {
 	// Add a wait semaphore and its value
@@ -311,16 +323,6 @@ void BvCommandContextVk::FlushFrame()
 	{
 		pSwapChain->AcquireImage();
 	}
-}
-
-
-void BvCommandContextVk::WaitForGPU()
-{
-	m_Queue.WaitIdle();
-
-	m_Frames[m_ActiveFrameIndex].UpdateSignalValue();
-
-	m_Frames[m_ActiveFrameIndex].Reset(false);
 }
 
 

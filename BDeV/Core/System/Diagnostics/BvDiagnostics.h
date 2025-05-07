@@ -7,8 +7,6 @@
 
 class BvConsole
 {
-	static void ConsoleHelper();
-
 public:
 	// Default white text and black background printf
 	static void Print(const char* pFormat, ...);
@@ -30,38 +28,53 @@ public:
 };
 
 
+class BvError
+{
+public:
+	BvError() = default;
+
+	i32 GetCode() const;
+	const char* GetMessage() const;
+};
+
+
 namespace Internal
 {
-	// This class should only be called by macros
+	// ===============================================
+	// These classes should only be called by macros
+	// ===============================================
+
+
 	class BvAssert
 	{
 	public:
 		BvAssert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
 	};
 
-	// This class should only be called by macros
+	class BvSTDError
+	{
+	public:
+		BvSTDError();
+	};
+
+	class BvSystemError
+	{
+	public:
+		BvSystemError();
+	};
+
+	class BvCustomError
+	{
+	public:
+		BvCustomError(u32 errorCode, const char* pFormat, ...);
+	};
+
 	class BvFatalError
 	{
 	public:
 		BvFatalError(const BvSourceInfo& sourceInfo, const char* pFormat, ...);
 	};
 }
-
-
-class BvError
-{
-	BV_NOCOPYMOVE(BvError);
-
-public:
-	BvError();
-
-	void FromSTD();
-	void FromSystem();
-	void MakeCustom(u32 errorCode, const char* pFormat, ...);
-
-	i32 GetErrorCode() const;
-	const char* GetErrorMessage() const;
-};
 
 
 #if BV_DEBUG
@@ -93,6 +106,15 @@ public:
 
 #endif // #if BV_DEBUG
 
+
+// Used for generating STD error information
+#define BV_STD_ERROR() Internal::BvSTDError();
+
+// Used for generating OS error information
+#define BV_SYSTEM_ERROR() Internal::BvSystemError();
+
+// Used for generating custom error information
+#define BV_ERROR(errorCode, msg, ...) Internal::BvCustomError(errorCode, msg __VA_OPT__(,) __VA_ARGS__);
 
 // Throws an error with a custom message and exits the application
 #define BV_FATAL_ERROR(msg, ...) do											\

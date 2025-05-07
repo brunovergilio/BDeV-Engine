@@ -47,11 +47,13 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IncludePath>$(SolutionDir);$(ProjectDir)Third Party;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IncludePath>$(SolutionDir);$(ProjectDir)Third Party;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -59,7 +61,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External/glew/include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
@@ -78,7 +81,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;BVRENDERGL_EXPORTS;_WINDOWS;_USRDLL;BV_PLUGIN_DLL_EXPORT;BV_DLL_EXPORT;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External/glew/include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
@@ -92,8 +96,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\External\glew\include\GL\glew.h" />
-    <ClInclude Include="..\External\glew\include\GL\wglew.h" />
     <ClInclude Include="BvBufferGl.h" />
     <ClInclude Include="BvBufferViewGl.h" />
     <ClInclude Include="BvCommandBufferGl.h" />
@@ -118,6 +120,8 @@
     <ClInclude Include="BvTextureViewGl.h" />
     <ClInclude Include="BvTypeConversionsGl.h" />
     <ClInclude Include="BvVertexArrayObjectGl.h" />
+    <ClInclude Include="Third Party\GL\glew.h" />
+    <ClInclude Include="Third Party\GL\wglew.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BDeV\BDeV.vcxproj">
@@ -125,7 +129,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\External\glew\src\glew.c" />
     <ClCompile Include="BvBufferGl.cpp" />
     <ClCompile Include="BvBufferViewGl.cpp" />
     <ClCompile Include="BvCommandBufferGl.cpp" />
@@ -147,6 +150,9 @@
     <ClCompile Include="BvTextureViewGl.cpp" />
     <ClCompile Include="BvTypeConversionsGl.cpp" />
     <ClCompile Include="BvVertexArrayObjectGl.cpp" />
+    <ClCompile Include="Third Party\GL\glew.c" />
+    <ClCompile Include="Third Party\GL\glewinfo.c" />
+    <ClCompile Include="Third Party\GL\visualinfo.c" />
     <ClCompile Include="Windows\BvContextGlWindows.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

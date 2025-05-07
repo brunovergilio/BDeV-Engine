@@ -43,8 +43,13 @@ bool BvSharedLib::Open(const char* pFilename)
 	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 	BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
 	m_hLib = LoadLibraryW(pFilenameW);
+	if (!m_hLib)
+	{
+		BV_SYSTEM_ERROR();
+		return false;
+	}
 
-	return m_hLib != nullptr;
+	return true;
 }
 
 

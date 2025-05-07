@@ -30,6 +30,15 @@ namespace Internal
 	{
 		return WriteFile(data.m_hFile, data.m_pBuffer, bytesToWrite, nullptr, &data);
 	}
+
+	void ReleaseAsyncData(AsyncFileData*& pFileData)
+	{
+		if (pFileData)
+		{
+			BV_DELETE(pFileData);
+			pFileData = nullptr;
+		}
+	}
 }
 
 
@@ -57,7 +66,7 @@ AsyncFileRequest& AsyncFileRequest::operator=(AsyncFileRequest&& rhs) noexcept
 
 AsyncFileRequest::~AsyncFileRequest()
 {
-	Release();
+	Internal::ReleaseAsyncData(m_pIOData);
 }
 
 
@@ -104,7 +113,8 @@ u32 AsyncFileRequest::GetResult(bool wait)
 					auto error = GetLastError();
 					if (error != ERROR_IO_PENDING/* && error != ERROR_HANDLE_EOF*/)
 					{
-						// TODO: Handle Error
+						BV_SYSTEM_ERROR();
+
 						m_pIOData->m_IsDone = true;
 
 						done = true;
@@ -132,7 +142,7 @@ u32 AsyncFileRequest::GetResult(bool wait)
 			{
 				if (error != ERROR_HANDLE_EOF && error != ERROR_OPERATION_ABORTED)
 				{
-					// TODO: Handle error
+					BV_SYSTEM_ERROR();
 				}
 				m_pIOData->m_IsDone = true;
 			}
@@ -156,20 +166,17 @@ void AsyncFileRequest::Cancel()
 		auto error = GetLastError();
 		if (error != ERROR_NOT_FOUND && error != ERROR_OPERATION_ABORTED)
 		{
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
+			return;
 		}
 	}
 	GetResult();
 }
 
 
-void AsyncFileRequest::Release()
+bool AsyncFileRequest::IsValid() const
 {
-	if (m_pIOData)
-	{
-		BV_DELETE(m_pIOData);
-		m_pIOData = nullptr;
-	}
+	return m_pIOData != nullptr;
 }
 
 
@@ -247,7 +254,7 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 
 	if (m_hFile == INVALID_HANDLE_VALUE)
 	{
-		// TODO: Handle error
+		BV_SYSTEM_ERROR();
 		
 		return false;
 	}
@@ -279,8 +286,8 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, c
 		auto error = GetLastError();
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
-			request.Release();
-			// TODO: Handle Error
+			Internal::ReleaseAsyncData(request.m_pIOData);
+			BV_SYSTEM_ERROR();
 		}
 	}
 
@@ -311,8 +318,8 @@ AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 buffer
 		auto error = GetLastError();
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
-			request.Release();
-			// TODO: Handle Error
+			Internal::ReleaseAsyncData(request.m_pIOData);
+			BV_SYSTEM_ERROR();
 		}
 	}
 
@@ -324,14 +331,14 @@ u64 BvAsyncFile::GetSize() const
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
-	u64 fileSize;
+	i64 fileSize;
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
 	if (!status)
 	{
-		// TODO: Handle Error
+		BV_SYSTEM_ERROR();
 	}
 
-	return fileSize;
+	return u64(fileSize);
 }
 
 
@@ -352,22 +359,28 @@ void BvAsyncFile::Flush()
 	BOOL status = FlushFileBuffers(m_hFile);
 	if (!status)
 	{
-		// TODO: Handle Error
+		BV_SYSTEM_ERROR();
 	}
 }
 
 
-void BvAsyncFile::GetInfo(BvFileInfo& fileInfo)
+bool BvAsyncFile::GetInfo(BvFileInfo& fileInfo)
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
 	BY_HANDLE_FILE_INFORMATION bhfi;
-	GetFileInformationByHandle(m_hFile, &bhfi);
+	if (!GetFileInformationByHandle(m_hFile, &bhfi))
+	{
+		BV_SYSTEM_ERROR();
+		return false;
+	}
 
 	fileInfo.m_CreationTimestamp = *reinterpret_cast<u64*>(&bhfi.ftCreationTime);
 	fileInfo.m_LastAccessTimestamp = *reinterpret_cast<u64*>(&bhfi.ftLastAccessTime);
 	fileInfo.m_LastWriteTimestamp = *reinterpret_cast<u64*>(&bhfi.ftLastWriteTime);
 	fileInfo.m_FileSize = (static_cast<u64>(bhfi.nFileSizeHigh) << 32) | static_cast<u64>(bhfi.nFileSizeLow);
+
+	return true;
 }
 
 

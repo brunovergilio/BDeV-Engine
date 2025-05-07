@@ -1,7 +1,8 @@
 #include "BvRenderGL/BvContextGl.h"
-#include <GL/glew.h>
-#include <GL/wglew.h>
+#include "GL/glew.h"
+#include "GL/wglew.h"
 #include "BDeV/Core/System/Window/BvWindow.h"
+#include "BDeV/Core/Container/BvFixedVector.h"
 
 
 // Use discrete GPU by default.
@@ -54,36 +55,34 @@ void BvContextGl::SwapBuffers(i32 swapInterval)
 
 void BvContextGl::Create()
 {
-	int pixelFormatAttribs[] =
-	{
-		WGL_DRAW_TO_WINDOW_ARB,     GL_TRUE,
-		WGL_SUPPORT_OPENGL_ARB,     GL_TRUE,
-		WGL_DOUBLE_BUFFER_ARB,      GL_TRUE,
-		WGL_SAMPLE_BUFFERS_ARB,     GL_TRUE,
-		WGL_ACCELERATION_ARB,       WGL_FULL_ACCELERATION_ARB,
-		WGL_PIXEL_TYPE_ARB,         WGL_TYPE_RGBA_ARB,
-		WGL_COLOR_BITS_ARB,         24,
-		WGL_ALPHA_BITS_ARB,         8,
-		WGL_DEPTH_BITS_ARB,         24,
-		WGL_STENCIL_BITS_ARB,       8,
-		0,							0,
-		0
-	};
+	constexpr auto kMaxPixelFormatAttribs = 23; // Increase as needed
+	BvFixedVector<i32, kMaxPixelFormatAttribs> pixelFormatAttribs;
+	pixelFormatAttribs.EmplaceBack(WGL_DRAW_TO_WINDOW_ARB); pixelFormatAttribs.EmplaceBack(GL_TRUE);
+	pixelFormatAttribs.EmplaceBack(WGL_SUPPORT_OPENGL_ARB); pixelFormatAttribs.EmplaceBack(GL_TRUE);
+	pixelFormatAttribs.EmplaceBack(WGL_DOUBLE_BUFFER_ARB); pixelFormatAttribs.EmplaceBack(GL_TRUE);
+	pixelFormatAttribs.EmplaceBack(WGL_SAMPLE_BUFFERS_ARB); pixelFormatAttribs.EmplaceBack(GL_TRUE);
+	pixelFormatAttribs.EmplaceBack(WGL_ACCELERATION_ARB); pixelFormatAttribs.EmplaceBack(WGL_FULL_ACCELERATION_ARB);
+	pixelFormatAttribs.EmplaceBack(WGL_PIXEL_TYPE_ARB); pixelFormatAttribs.EmplaceBack(WGL_TYPE_RGBA_ARB);
+	pixelFormatAttribs.EmplaceBack(WGL_COLOR_BITS_ARB); pixelFormatAttribs.EmplaceBack(24);
+	pixelFormatAttribs.EmplaceBack(WGL_ALPHA_BITS_ARB); pixelFormatAttribs.EmplaceBack(8);
+	pixelFormatAttribs.EmplaceBack(WGL_DEPTH_BITS_ARB); pixelFormatAttribs.EmplaceBack(24);
+	pixelFormatAttribs.EmplaceBack(WGL_STENCIL_BITS_ARB); pixelFormatAttribs.EmplaceBack(8);
 
-	if (wglewIsSupported("WGL_EXT_framebuffer_sRGB"))
+	if (WGLEW_EXT_framebuffer_sRGB)
 	{
-		pixelFormatAttribs[20] = WGL_FRAMEBUFFER_SRGB_CAPABLE_EXT;
-		pixelFormatAttribs[21] = GL_TRUE;
+		pixelFormatAttribs.EmplaceBack(WGL_FRAMEBUFFER_SRGB_CAPABLE_EXT); pixelFormatAttribs.EmplaceBack(GL_TRUE);
 	}
 
-	if (wglewIsSupported("WGL_EXT_swap_control"))
+	pixelFormatAttribs.EmplaceBack(0);
+
+	if (WGLEW_EXT_swap_control)
 	{
 		m_SupportsVSync = true;
 	}
 
 	int pixelFormat{};
 	UINT numFormats{};
-	wglChoosePixelFormatARB(m_hDC, pixelFormatAttribs, 0, 1, &pixelFormat, &numFormats);
+	wglChoosePixelFormatARB(m_hDC, pixelFormatAttribs.Data(), 0, 1, &pixelFormat, &numFormats);
 	if (!numFormats)
 	{
 		BV_ERROR("Failed to choose the pixel format.\n");
@@ -102,27 +101,34 @@ void BvContextGl::Create()
 	auto majorVersion = 0;
 	auto minorVersion = 0;
 
-	std::pair<int, int> availableVersions[] = { { 4, 6 }, { 4, 5 } };
-	for (auto i = 0; i < 2 && m_hRC == nullptr; i++)
-	{
-		const auto& version = availableVersions[i];
-		majorVersion = version.first;
-		minorVersion = version.second;
-		// Setup attributes for a new OpenGL rendering context
-		int attribs[] =
-		{
-			WGL_CONTEXT_MAJOR_VERSION_ARB, majorVersion,
-			WGL_CONTEXT_MINOR_VERSION_ARB, minorVersion,
-			WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
-			WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-			0,
-		};
+	// Setup attributes for a new OpenGL rendering context
+	constexpr auto kMaxAttribs = 11; // Increase as needed
+	BvFixedVector<i32, kMaxAttribs> contextAttribs;
+	contextAttribs.EmplaceBack(WGL_CONTEXT_MAJOR_VERSION_ARB);	contextAttribs.EmplaceBack(majorVersion);
+	contextAttribs.EmplaceBack(WGL_CONTEXT_MINOR_VERSION_ARB);	contextAttribs.EmplaceBack(minorVersion);
+	contextAttribs.EmplaceBack(WGL_CONTEXT_FLAGS_ARB);	contextAttribs.EmplaceBack(WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB);
+	contextAttribs.EmplaceBack(WGL_CONTEXT_PROFILE_MASK_ARB);	contextAttribs.EmplaceBack(WGL_CONTEXT_CORE_PROFILE_BIT_ARB);
 
 #if (BV_DEBUG)
-		attribs[5] |= WGL_CONTEXT_DEBUG_BIT_ARB;
+	contextAttribs[5] |= WGL_CONTEXT_DEBUG_BIT_ARB;
 #endif
 
-		m_hRC = wglCreateContextAttribsARB(m_hDC, 0, attribs);
+	if (WGLEW_ARB_context_flush_control)
+	{
+		contextAttribs.EmplaceBack(WGL_CONTEXT_RELEASE_BEHAVIOR_ARB); contextAttribs.EmplaceBack(WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB);
+	}
+
+	contextAttribs.EmplaceBack(0);
+
+	std::pair<int, int> availableVersions[] = { { 4, 6 }, { 4, 5 }, { 4, 3 }, { 4, 0 } };
+	constexpr auto kVersionCount = ArraySize(availableVersions);
+	for (auto i = 0; i < 4 && m_hRC == nullptr; i++)
+	{
+		const auto& version = availableVersions[i];
+		contextAttribs[1] = version.first;
+		contextAttribs[3] = version.second;
+
+		m_hRC = wglCreateContextAttribsARB(m_hDC, 0, contextAttribs.Data());
 		if (!m_hRC)
 		{
 			switch (glGetError())
@@ -191,16 +197,14 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 
 	// =======================================
 	// Choose and set the pixel format
-	PIXELFORMATDESCRIPTOR pfd;
-	memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
-	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+	PIXELFORMATDESCRIPTOR pfd{ sizeof(PIXELFORMATDESCRIPTOR) };
 	pfd.nVersion = 1;
 	pfd.dwFlags = PFD_DOUBLEBUFFER | PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
 	pfd.iPixelType = PFD_TYPE_RGBA;
 	pfd.cColorBits = 24;
 	pfd.cAlphaBits = 8;
-	pfd.cDepthBits = 24;
-	pfd.cStencilBits = 8;
+	//pfd.cDepthBits = 24;
+	//pfd.cStencilBits = 8;
 	pfd.iLayerType = PFD_MAIN_PLANE;
 
 	auto pixelFormat = ChoosePixelFormat(hTempDC, &pfd);

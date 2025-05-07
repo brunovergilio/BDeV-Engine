@@ -287,6 +287,10 @@ bool BvRenderDeviceVk::SupportsQueryType(QueryType queryType, CommandType comman
 			return pProperties->timestampValidBits != 0;
 		}
 	}
+	else if (queryType == QueryType::kMeshPipelineStatistics)
+	{
+		return EHasFlag(m_DeviceCaps, RenderDeviceCapabilities::kMeshQuery) && commandType == CommandType::kGraphics;
+	}
 
 	return commandType == CommandType::kGraphics;
 }

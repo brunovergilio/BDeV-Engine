@@ -231,6 +231,5 @@ void BvBufferVk::CopyInitDataToGPU(const BufferInitData* pInitData)
 	auto pContext = static_cast<BvCommandContextVk*>(pInitData->m_pContext);
 	pContext->NewCommandList();
 	pContext->CopyBufferVk(&srcBuffer, this, copyRegion);
-	pContext->Execute();
-	pContext->WaitForGPU();
+	pContext->ExecuteAndWait();
 }

@@ -14,18 +14,18 @@ public:
 	friend class BvFileSystem;
 
 	BvFile();
-	BvFile(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
+	BvFile(const char* pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
 	BvFile(BvFile&& rhs) noexcept;
 	BvFile& operator=(BvFile&& rhs) noexcept;
 	~BvFile();
 
-	bool Open(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
+	bool Open(const char* pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
 
-	u32 Read(void* const pBuffer, const u32 bufferSize);
-	u32 Write(const void* const pBuffer, const u32 bufferSize);
+	bool Read(void* const pBuffer, u32 bufferSize, u32* pBytesProcessed = nullptr);
+	bool Write(const void* pBuffer, u32 bufferSize, u32* pBytesProcessed = nullptr);
 
-	template<typename Type> u32 ReadT(Type& value) { return Read(&value, sizeof(Type)); }
-	template<typename Type> u32 WriteT(const Type& value) { return Write(&value, sizeof(Type)); }
+	template<typename Type> bool ReadT(Type& value) { return Read(&value, sizeof(Type)); }
+	template<typename Type> bool WriteT(const Type& value) { return Write(&value, sizeof(Type)); }
 
 	BvFile& SkipBytes(const i64 offset);
 	BvFile& GoToStart();
@@ -36,7 +36,7 @@ public:
 
 	void Close();
 	void Flush();
-	void GetInfo(BvFileInfo& fileInfo);
+	bool GetInfo(BvFileInfo& fileInfo);
 	bool IsValid() const;
 
 	OSFileHandle GetHandle() const { return m_hFile; }

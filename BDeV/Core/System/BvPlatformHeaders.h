@@ -39,6 +39,10 @@
 #undef Yield
 #endif
 
+#ifdef GetMessage
+#undef GetMessage
+#endif
+
 using OSFileHandle = HANDLE;
 using OSThreadHandle = HANDLE;
 #if defined(BV_USE_ASM_FIBERS)

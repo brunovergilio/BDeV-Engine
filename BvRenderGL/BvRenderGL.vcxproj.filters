@@ -3,8 +3,6 @@
   <ItemGroup>
     <ClInclude Include="BvRenderEngineGl.h" />
     <ClInclude Include="BvContextGl.h" />
-    <ClInclude Include="..\External\glew\include\GL\glew.h" />
-    <ClInclude Include="..\External\glew\include\GL\wglew.h" />
     <ClInclude Include="BvCommonGl.h" />
     <ClInclude Include="BvRenderDeviceGl.h" />
     <ClInclude Include="BvSwapChainGl.h" />
@@ -27,11 +25,12 @@
     <ClInclude Include="BvFramebufferGl.h" />
     <ClInclude Include="BvVertexArrayObjectGl.h" />
     <ClInclude Include="BvRenderContextStateGl.h" />
+    <ClInclude Include="Third Party\GL\glew.h" />
+    <ClInclude Include="Third Party\GL\wglew.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvRenderEngineGl.cpp" />
     <ClCompile Include="Windows\BvContextGlWindows.cpp" />
-    <ClCompile Include="..\External\glew\src\glew.c" />
     <ClCompile Include="BvRenderDeviceGl.cpp" />
     <ClCompile Include="BvSwapChainGl.cpp" />
     <ClCompile Include="BvBufferGl.cpp" />
@@ -52,5 +51,8 @@
     <ClCompile Include="BvFramebufferGl.cpp" />
     <ClCompile Include="BvVertexArrayObjectGl.cpp" />
     <ClCompile Include="BvRenderContextStateGl.cpp" />
+    <ClCompile Include="Third Party\GL\glew.c" />
+    <ClCompile Include="Third Party\GL\glewinfo.c" />
+    <ClCompile Include="Third Party\GL\visualinfo.c" />
   </ItemGroup>
 </Project>

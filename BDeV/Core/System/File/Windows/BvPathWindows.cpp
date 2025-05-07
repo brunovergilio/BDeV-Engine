@@ -109,8 +109,7 @@ BvPath BvPath::FromCurrentDirectory()
 	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
 	if (!sizeNeeded)
 	{
-		DWORD error = GetLastError();
-		// TODO: Handle error
+		BV_SYSTEM_ERROR();
 
 		return BvPath();
 	}
@@ -121,8 +120,7 @@ BvPath BvPath::FromCurrentDirectory()
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
-			DWORD error = GetLastError();
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 
 			return BvPath();
 		}
@@ -141,8 +139,7 @@ BvPath BvPath::FromCurrentDrive()
 	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
 	if (!sizeNeeded)
 	{
-		DWORD error = GetLastError();
-		// TODO: Handle error
+		BV_SYSTEM_ERROR();
 
 		return BvPath();
 	}
@@ -153,8 +150,7 @@ BvPath BvPath::FromCurrentDrive()
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
-			DWORD error = GetLastError();
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 
 			return BvPath();
 		}
@@ -289,7 +285,7 @@ BvPath BvPath::GetAbsolutePath() const
 		sizeNeeded = GetFullPathNameW(pPathNameW, 0, nullptr, nullptr);
 		if (sizeNeeded == 0)
 		{
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 			return BvPath();
 		}
 
@@ -298,7 +294,7 @@ BvPath BvPath::GetAbsolutePath() const
 		GetFullPathNameW(pPathNameW, sizeNeeded, &fullPath[0], nullptr);
 		if (sizeNeeded == 0)
 		{
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 			return BvPath();
 		}
 		
@@ -547,7 +543,7 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND)
 		{
-			// TODO: Handle error
+			BV_SYSTEM_ERROR();
 		}
 		return;
 	}
@@ -575,13 +571,13 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 	DWORD error = GetLastError();
 	if (error != ERROR_NO_MORE_FILES)
 	{
-		// TODO: Handle error
+		BV_SYSTEM_ERROR();
 		return;
 	}
 
 	if (!FindClose(hFind))
 	{
-		// TODO: Handle error
+		BV_SYSTEM_ERROR();
 	}
 }
 

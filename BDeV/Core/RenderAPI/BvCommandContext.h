@@ -47,10 +47,10 @@ public:
 	virtual BvGPUOp Execute() = 0;
 	virtual BvGPUOp Execute(u64 value) = 0;
 	virtual void Execute(IBvGPUFence* pFence, u64 value) = 0;
+	virtual void ExecuteAndWait() = 0;
 	virtual void Wait(IBvCommandContext* pCommandContext, u64 value) = 0;
 	virtual void NewCommandList() = 0;
 	virtual void FlushFrame() = 0;
-	virtual void WaitForGPU() = 0;
 
 	virtual void BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets) = 0;
 	virtual void NextSubpass() = 0;

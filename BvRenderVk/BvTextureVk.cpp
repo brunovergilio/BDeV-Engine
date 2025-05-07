@@ -231,8 +231,7 @@ void BvTextureVk::CopyInitDataToGPUAndTransitionState(const TextureInitData* pIn
 		pContext->ResourceBarrier(1, &barrier);
 	}
 
-	pContext->Execute();
-	pContext->WaitForGPU();
+	pContext->ExecuteAndWait();
 }
 
 

@@ -228,7 +228,7 @@ void BvThread::Destroy()
 
 u32 CALLBACK ThreadEntryPoint(void* pData)
 {
-	IBvTask* pDelegate = reinterpret_cast<IBvTask *>(pData);
+	IBvTask* pDelegate = reinterpret_cast<IBvTask*>(pData);
 	pDelegate->Run();
 
 	_endthreadex(0);

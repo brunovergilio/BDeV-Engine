@@ -93,10 +93,10 @@ public:
 	BvGPUOp Execute() override;
 	BvGPUOp Execute(u64 value) override;
 	void Execute(IBvGPUFence* pFence, u64 value) override;
+	void ExecuteAndWait() override;
 	void Wait(IBvCommandContext* pCommandContext, u64 value) override;
 	void NewCommandList() override;
 	void FlushFrame() override;
-	void WaitForGPU() override;
 
 	void BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets) override;
 	void NextSubpass() override;

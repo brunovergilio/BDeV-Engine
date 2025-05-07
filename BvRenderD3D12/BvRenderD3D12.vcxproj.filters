@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="BvRenderD3D12.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BvCommonD3D12.h" />
+    <ClInclude Include="BvBufferD3D12.h" />
+    <ClInclude Include="BvGPUFenceD3D12.h" />
+    <ClInclude Include="BvRenderDeviceD3D12.h" />
+    <ClInclude Include="BvRenderEngineD3D12.h" />
+    <ClInclude Include="BvTypeConversionsD3D12.h" />
+    <ClInclude Include="Third Party\D3D12MemAlloc.h" />
+    <ClInclude Include="BvTextureD3D12.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BvCommonD3D12.cpp" />
+    <ClCompile Include="BvBufferD3D12.cpp" />
+    <ClCompile Include="BvGPUFenceD3D12.cpp" />
+    <ClCompile Include="BvRenderDeviceD3D12.cpp" />
+    <ClCompile Include="BvRenderEngineD3D12.cpp" />
+    <ClCompile Include="BvTypeConversionsD3D12.cpp" />
+    <ClCompile Include="Third Party\D3D12MemAlloc.cpp" />
+    <ClCompile Include="BvTextureD3D12.cpp" />
+  </ItemGroup>
+</Project>

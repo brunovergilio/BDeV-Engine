@@ -7,8 +7,6 @@
 class BvRenderEngineVkHelper
 {
 public:
-	static BvRenderEngineVk* s_pEngine;
-
 	static BvRenderEngineVk* Create()
 	{
 		static bool initialized = false;
@@ -34,6 +32,9 @@ public:
 	{
 		BV_DELETE(s_pEngine);
 	}
+
+private:
+	static BvRenderEngineVk* s_pEngine;
 };
 BvRenderEngineVk* BvRenderEngineVkHelper::s_pEngine = nullptr;
 

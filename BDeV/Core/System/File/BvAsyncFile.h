@@ -14,9 +14,6 @@
 //Asynchronous I/O Libraries	Built - in async API	libaio or POSIX AIO(aio_*)	POSIX AIO(aio_*)
 
 
-struct AsyncFileData;
-
-
 class AsyncFileRequest
 {
 public:
@@ -30,12 +27,10 @@ public:
 	bool IsComplete();
 	u32 GetResult(bool wait = true);
 	void Cancel();
+	bool IsValid() const;
 
 private:
-	void Release();
-
-private:
-	AsyncFileData* m_pIOData = nullptr;
+	struct AsyncFileData* m_pIOData = nullptr;
 };
 
 
@@ -66,7 +61,7 @@ public:
 
 	void Close();
 	void Flush();
-	void GetInfo(BvFileInfo& fileInfo);
+	bool GetInfo(BvFileInfo& fileInfo);
 	bool IsValid() const;
 
 	OSFileHandle GetHandle() const { return m_hFile; }
