@@ -8,6 +8,7 @@
 #include "BvCommandContextVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvGPUFenceVk.h"
+#include "BDeV/Core/System/Window/BvMonitor.h"
 
 
 BV_VK_DEVICE_RES_DEF(BvSwapChainVk)
@@ -118,6 +119,28 @@ void BvSwapChainVk::Present(bool vSync)
 }
 
 
+void BvSwapChainVk::SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor)
+{
+	if (!pMonitor)
+	{
+		pMonitor = m_pWindow->GetWindowDesc().m_pMonitor;
+	}
+
+	if (m_SwapChainDesc.m_WindowMode == mode)
+	{
+		if (mode == SwapChainMode::kWindowed || m_pWindow->GetWindowDesc().m_pMonitor == pMonitor)
+		{
+			return;
+		}
+	}
+
+	m_pCommandQueue->WaitIdle();
+	m_SwapChainDesc.m_WindowMode = mode;
+	m_pWindow->SetFullscreen(mode != SwapChainMode::kWindowed, pMonitor);
+	Create();
+}
+
+
 void BvSwapChainVk::SetCurrentFence(BvGPUFenceVk* pFence, u64 value)
 {
 	m_Fences[m_CurrImageIndex] = FenceData{ pFence, value };
@@ -132,6 +155,12 @@ bool BvSwapChainVk::Create()
 	}
 
 	auto device = m_pDevice->GetHandle();
+	if (m_Swapchain != VK_NULL_HANDLE && m_FullscreenAcquired)
+	{
+		vkReleaseFullScreenExclusiveModeEXT(device, m_Swapchain);
+		m_FullscreenAcquired = false;
+	}
+
 	auto physicalDevice = m_pDevice->GetPhysicalDeviceHandle();
 
 	VkBool32 presentationSupported = VK_FALSE;
@@ -239,8 +268,25 @@ bool BvSwapChainVk::Create()
 	default: m_SwapChainDesc.m_Format = Format::kUnknown; break;
 	}
 
+	bool supportsTrueFullscreen = m_pDevice->GetDeviceInfo()->m_ExtendedSurfaceCaps.fullScreenExclusiveCaps.fullScreenExclusiveSupported;
+	if (!supportsTrueFullscreen && m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen)
+	{
+		m_SwapChainDesc.m_WindowMode = SwapChainMode::kBorderlessFullscreen;
+	}
+
+	VkSurfaceFullScreenExclusiveInfoEXT surfaceFS{ VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
+	surfaceFS.fullScreenExclusive = GetVkFullScreenExclusiveEXTMode(m_SwapChainDesc.m_WindowMode);
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	VkSurfaceFullScreenExclusiveWin32InfoEXT surfaceFSWin32{ VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT };
+	if (supportsTrueFullscreen)
+	{
+		surfaceFS.pNext = &surfaceFSWin32;
+		surfaceFSWin32.hmonitor = BvMonitor::FromWindow(m_pWindow)->GetHandle();
+	}
+#endif
+
 	// Get physical device surface properties and formats
-	VkSurfaceCapabilitiesKHR surfCaps;
+	VkSurfaceCapabilitiesKHR surfCaps{};
 	result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &surfCaps);
 	BvCheckErrorReturnVk(result, false);
 
@@ -257,26 +303,33 @@ bool BvSwapChainVk::Create()
 	u32 width = m_pWindow->GetWidth();
 	u32 height = m_pWindow->GetHeight();
 	VkExtent2D swapchainExtent = {};
-	// If width (and height) equals the special value 0xFFFFFFFF, the size of the surface will be set by the swapchain
-	if (surfCaps.currentExtent.width == u32(-1))
+	if (m_SwapChainDesc.m_WindowMode == SwapChainMode::kWindowed)
 	{
-		// If the surface size is undefined, the size is set to
-		// the size of the images requested.
-		swapchainExtent.width = width;
-		swapchainExtent.height = height;
-	}
-	else
-	{
-		// If the surface size is defined, the swap chain size must match
-		swapchainExtent = surfCaps.currentExtent;
-
-		// Sometimes when restoring from a minimized state, the swap chain won't pick up
-		// the latest changes from the window, so force it here
-		if (swapchainExtent.width == 0 || swapchainExtent.height == 0)
+		// If width (and height) equals the special value 0xFFFFFFFF, the size of the surface will be set by the swapchain
+		if (surfCaps.currentExtent.width == u32(-1))
 		{
+			// If the surface size is undefined, the size is set to
+			// the size of the images requested.
 			swapchainExtent.width = width;
 			swapchainExtent.height = height;
 		}
+		else
+		{
+			// If the surface size is defined, the swap chain size must match
+			swapchainExtent = surfCaps.currentExtent;
+
+			// Sometimes when restoring from a minimized state, the swap chain won't pick up
+			// the latest changes from the window, so force it here
+			if (swapchainExtent.width == 0 || swapchainExtent.height == 0)
+			{
+				swapchainExtent.width = width;
+				swapchainExtent.height = height;
+			}
+		}
+	}
+	else
+	{
+		swapchainExtent = surfCaps.maxImageExtent;
 	}
 
 	// Select a present mode for the swapchain
@@ -351,7 +404,7 @@ bool BvSwapChainVk::Create()
 
 	VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
 	swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapchainCreateInfo.pNext = nullptr;
+	swapchainCreateInfo.pNext = supportsTrueFullscreen ? &surfaceFS : nullptr;
 	swapchainCreateInfo.surface = m_Surface;
 	swapchainCreateInfo.minImageCount = m_SwapChainDesc.m_SwapChainImageCount;
 	swapchainCreateInfo.imageFormat = format;
@@ -428,6 +481,13 @@ bool BvSwapChainVk::Create()
 
 	CreateSynchronizationResources();
 
+	if (m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen)
+	{
+		vkAcquireFullScreenExclusiveModeEXT(device, m_Swapchain);
+		m_FullscreenAcquired = true;
+	}
+
+	m_IsReady = false;
 	AcquireImage();
 
 	return true;

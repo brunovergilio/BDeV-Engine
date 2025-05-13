@@ -44,7 +44,6 @@ namespace Internal
 	// These classes should only be called by macros
 	// ===============================================
 
-
 	class BvAssert
 	{
 	public:

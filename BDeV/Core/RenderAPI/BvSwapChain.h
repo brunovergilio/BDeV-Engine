@@ -9,6 +9,7 @@
 class IBvTextureView;
 class BvSemaphore;
 class BvWindow;
+class BvMonitor;
 
 
 //BV_OBJECT_DEFINE_ID(IBvSwapChain, "239e8b95-158a-4313-8f79-f68369441372");
@@ -23,6 +24,7 @@ public:
 	virtual IBvTextureView* GetCurrentTextureView() const = 0;
 	virtual BvWindow* GetWindow() const = 0;
 	virtual const SwapChainDesc& GetDesc() const = 0;
+	virtual void SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor = nullptr) = 0;
 
 protected:
 	IBvSwapChain() {}

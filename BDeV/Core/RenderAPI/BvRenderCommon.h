@@ -47,7 +47,8 @@ enum RenderDeviceCapabilities : u32
 	kMeshQuery						= BvBit(12),
 	kRayTracing						= BvBit(13),
 	kRayQuery						= BvBit(14),
-	kMultiView						= BvBit(15)
+	kMultiView						= BvBit(15),
+	kTrueFullScreen					= BvBit(16)
 };
 BV_USE_ENUM_CLASS_OPERATORS(RenderDeviceCapabilities);
 
@@ -573,12 +574,21 @@ struct Offset3D
 };
 
 
+enum class SwapChainMode : u8
+{
+	kWindowed,
+	kBorderlessFullscreen,
+	kFullscreen
+};
+
+
 struct SwapChainDesc
 {
 	u32 m_SwapChainImageCount = 3;
 	Format m_Format = Format::kUnknown;
 	bool m_VSync = false;
 	bool m_PreferHDR = false;
+	SwapChainMode m_WindowMode = SwapChainMode::kWindowed;
 };
 
 

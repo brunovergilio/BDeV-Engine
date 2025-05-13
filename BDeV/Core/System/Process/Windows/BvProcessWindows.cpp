@@ -13,56 +13,51 @@ const BvSystemInfo& BvSystem::GetSystemInfo()
 {
 	static BvSystemInfo s_SystemInfo = []()
 	{
+		SYSTEM_INFO osInfo;
+		::GetSystemInfo(&osInfo);
+
 		BvSystemInfo systemInfo{};
+		systemInfo.m_PageSize = osInfo.dwPageSize;
+		systemInfo.m_LargePageSize = (u32)GetLargePageMinimum();
 
 		u8* pBufferData = nullptr;
 		PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
 		DWORD bufferSize = 0;
 		DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
-		if (result == FALSE)
+		if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 		{
-			if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+			pBufferData = BV_NEW_ARRAY(u8, bufferSize);
+			pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
+			result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
+			if (result == TRUE)
 			{
-				pBufferData = BV_NEW_ARRAY(u8, bufferSize);
-				pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
-				result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
-				if (result == FALSE)
+				auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+
+				for (auto i = 0u; i < count; i++)
 				{
-					BV_DELETE_ARRAY(pBufferData);
-					return systemInfo;
+					if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationProcessorCore)
+					{
+						systemInfo.m_NumCores++;
+
+						// A hyperthreaded core supplies more than one logical processor.
+						systemInfo.m_NumLogicalProcessors += std::popcount(pBuffer[i].ProcessorMask);
+					}
+					else if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationCache)
+					{
+						if (pBuffer->Cache.Level == 1) { systemInfo.m_L1CacheCount++; }
+						else if (pBuffer->Cache.Level == 2) { systemInfo.m_L2CacheCount++; }
+						else if (pBuffer->Cache.Level == 3) { systemInfo.m_L3CacheCount++; }
+					}
 				}
 			}
-			else
-			{
-				return systemInfo;
-			}
+
+			BV_DELETE_ARRAY(pBufferData);
 		}
 
-		auto count = bufferSize / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-
-		for (auto i = 0u; i < count; i++)
+		if (systemInfo.m_NumLogicalProcessors == 0)
 		{
-			if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationProcessorCore)
-			{
-				systemInfo.m_NumCores++;
-
-				// A hyperthreaded core supplies more than one logical processor.
-				systemInfo.m_NumLogicalProcessors += std::popcount(pBuffer[i].ProcessorMask);
-			}
-			else if (pBuffer[i].Relationship == LOGICAL_PROCESSOR_RELATIONSHIP::RelationCache)
-			{
-				if (pBuffer->Cache.Level == 1) { systemInfo.m_L1CacheCount++; }
-				else if (pBuffer->Cache.Level == 2) { systemInfo.m_L2CacheCount++; }
-				else if (pBuffer->Cache.Level == 3) { systemInfo.m_L3CacheCount++; }
-			}
+			systemInfo.m_NumLogicalProcessors = systemInfo.m_NumCores = osInfo.dwNumberOfProcessors;
 		}
-
-		BV_DELETE_ARRAY(pBufferData);
-
-		SYSTEM_INFO osInfo;
-		::GetSystemInfo(&osInfo);
-		systemInfo.m_PageSize = osInfo.dwPageSize;
-		systemInfo.m_LargePageSize = (u32)GetLargePageMinimum();
 
 		return systemInfo;
 	}();
@@ -93,13 +88,34 @@ public:
 		BV_LOADPROC(SymGetSymFromAddr64);
 		BV_LOADPROC(SymGetLineFromAddr64);
 
-		PFnSymInitialize(GetCurrentProcess(), nullptr, TRUE);
-		PFnSymSetOptions(SYMOPT_LOAD_LINES);
+		if (!(PFnSymInitialize
+			&& PFnSymCleanup
+			&& PFnSymSetOptions
+			&& PFnStackWalk64
+			&& PFnSymFunctionTableAccess64
+			&& PFnSymGetModuleBase64
+			&& PFnSymGetSymFromAddr64
+			&& PFnSymGetLineFromAddr64))
+		{
+			m_SymLib.Close();
+			return;
+		}
+
+		if (PFnSymInitialize(GetCurrentProcess(), nullptr, TRUE))
+		{
+			PFnSymSetOptions(SYMOPT_LOAD_LINES);
+			m_IsValid = true;
+		}
 	}
 	~StackTraceHandler()
 	{
-		PFnSymCleanup(GetCurrentProcess());
+		if (m_IsValid)
+		{
+			PFnSymCleanup(GetCurrentProcess());
+		}
 	}
+
+	BV_INLINE bool IsValid() const { return m_IsValid; }
 
 	BOOL(*PFnSymInitialize)(HANDLE, PCSTR, BOOL);
 	BOOL(*PFnSymCleanup)(HANDLE);
@@ -113,12 +129,17 @@ public:
 
 private:
 	BvSharedLib m_SymLib;
+	bool m_IsValid = false;
 };
 
 
-void BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u32 numFramesToRecord)
+bool BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip, const u32 numFramesToRecord)
 {
 	static StackTraceHandler s_StackTraceHandler;
+	if (!s_StackTraceHandler.IsValid())
+	{
+		return false;
+	}
 
 	stackTrace.frames.Reserve(numFramesToRecord);
 
@@ -149,8 +170,6 @@ void BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip
 
 	HANDLE process = GetCurrentProcess();
 
-	// Since we don't care about this function, we do an initial StackWalk64 call
-	// and ditch the first result
 	BOOL result = TRUE;
 	for (auto i = 0u; i < numFramesToSkip; i++)
 	{
@@ -164,7 +183,7 @@ void BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip
 
 	if (!result)
 	{
-		return;
+		return false;
 	}
 
 	for (auto i = 0u; i < numFramesToRecord; i++)
@@ -212,6 +231,8 @@ void BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip
 			currFrame.m_Line = line.LineNumber;
 		}
 	}
+
+	return true;
 }
 
 #undef BV_LOADPROC

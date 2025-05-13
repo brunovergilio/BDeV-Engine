@@ -29,6 +29,7 @@ public:
 	BV_INLINE const BvVector<BvGPUInfo>& GetGPUs() const override { return m_GPUs; }
 	BV_INLINE VkInstance GetHandle() const { return m_Instance; }
 	BV_INLINE bool HasDebugUtils() const { return m_HasDebugUtils; }
+	BV_INLINE bool HasSurface2Caps() const { return m_HasSurface2Caps; }
 
 	//BV_OBJECT_IMPL_INTERFACE(IBvRenderEngineVk, IBvRenderEngine);
 
@@ -49,6 +50,7 @@ private:
 	BvVector<std::pair<VkPhysicalDevice, BvRenderDeviceVk*>> m_Devices;
 	BvDebugReportVk* m_pDebugReport = nullptr;
 	bool m_HasDebugUtils = false;
+	bool m_HasSurface2Caps = false;
 };
 
 

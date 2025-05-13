@@ -921,3 +921,16 @@ VkCopyAccelerationStructureModeKHR GetVkCopyAccelerationStructureMode(Accelerati
 
 	return VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
 }
+
+
+VkFullScreenExclusiveEXT GetVkFullScreenExclusiveEXTMode(SwapChainMode mode)
+{
+	switch (mode)
+	{
+	case SwapChainMode::kBorderlessFullscreen: return VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+	case SwapChainMode::kFullscreen: return VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT;
+	case SwapChainMode::kWindowed: return VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+	}
+	
+	return VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+}

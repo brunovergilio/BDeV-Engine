@@ -437,6 +437,7 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
 	};
 
+	m_pDeviceInfo->m_ExtendedSurfaceCaps.hasSurface2Caps = m_pEngine->HasSurface2Caps();
 	auto deviceCaps = SetupDeviceInfo(m_PhysicalDevice, *m_pDeviceInfo);
 
 	// ===========================================================
@@ -658,6 +659,8 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 	bool deviceAddress = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 	bool predication = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
 	bool depthClipEnable = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
+	bool trueFullScreen = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
+		&& deviceInfo.m_ExtendedSurfaceCaps.hasSurface2Caps;
 
 	deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -771,6 +774,11 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
 	}
+	
+	if (trueFullScreen)
+	{
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
+	}
 
 	*pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties;
 	pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties.pNext;
@@ -844,6 +852,10 @@ RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDevi
 	if (deviceInfo.m_DeviceFeatures1_1.multiview)
 	{
 		caps |= RenderDeviceCapabilities::kMultiView;
+	}
+	if (trueFullScreen)
+	{
+		caps |= RenderDeviceCapabilities::kTrueFullScreen;
 	}
 
 	// =================================

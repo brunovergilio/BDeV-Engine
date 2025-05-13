@@ -63,6 +63,15 @@ struct BvDeviceInfoVk
 		VkPhysicalDeviceMultiviewProperties multiviewProperties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES };
 	} m_ExtendedProperties;
 
+	struct
+	{
+		bool hasSurface2Caps = false;
+		VkSurfaceCapabilitiesFullScreenExclusiveEXT fullScreenExclusiveCaps{ VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT };
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+		VkSurfaceFullScreenExclusiveWin32InfoEXT fullScreenExclusiveInfoWin32{ VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT };
+#endif
+	} m_ExtendedSurfaceCaps;
+
 	BvVector<VkExtensionProperties> m_SupportedExtensions;
 	BvVector<const char*> m_EnabledExtensions;
 

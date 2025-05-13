@@ -36,7 +36,7 @@ struct BvStackTrace
 namespace BvSystem
 {
 	const BvSystemInfo& GetSystemInfo();
-	void GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip = 1, const u32 numFramesToRecord = 3);
+	bool GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip = 1, const u32 numFramesToRecord = 3);
 };
 
 

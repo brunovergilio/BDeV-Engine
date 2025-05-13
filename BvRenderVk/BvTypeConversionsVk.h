@@ -58,3 +58,4 @@ VkGeometryTypeKHR GetVkGeometryType(RayTracingGeometryType type);
 VkGeometryFlagsKHR GetVkGeometryFlags(RayTracingGeometryFlags flags);
 VkGeometryInstanceFlagsKHR GetVkGeometryInstanceFlags(RayTracingInstanceFlags flags);
 VkCopyAccelerationStructureModeKHR GetVkCopyAccelerationStructureMode(AccelerationStructureCopyMode mode);
+VkFullScreenExclusiveEXT GetVkFullScreenExclusiveEXTMode(SwapChainMode mode);

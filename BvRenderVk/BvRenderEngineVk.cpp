@@ -152,6 +152,7 @@ void BvRenderEngineVk::Create()
 		{ VK_KHR_WIN32_SURFACE_EXTENSION_NAME, true },
 	#endif
 		{ VK_EXT_DEBUG_UTILS_EXTENSION_NAME, false },
+		{ VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, false }
 	};
 
 	constexpr const BvExtensionLayerVk kLayers[] =
@@ -254,6 +255,11 @@ void BvRenderEngineVk::Create()
 #if BV_DEBUG
 		m_pDebugReport = BV_NEW(BvDebugReportVk)(m_Instance);
 #endif
+	}
+
+	if (IsInstanceExtensionSupported(supportedExtensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME))
+	{
+		m_HasSurface2Caps = true;
 	}
 }
 

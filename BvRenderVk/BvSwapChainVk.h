@@ -28,6 +28,7 @@ public:
 
 	void AcquireImage();
 	void Present(bool vSync) override;
+	void SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor = nullptr) override;
 	void SetCurrentFence(BvGPUFenceVk* pFence, u64 value);
 
 	BV_INLINE IBvTextureView* GetCurrentTextureView() const override { return GetTextureView(GetCurrentImageIndex()); }
@@ -79,6 +80,7 @@ private:
 
 	// Make sure only one image has been acquired per presentation / frame
 	bool m_IsReady = false;
+	bool m_FullscreenAcquired = false;
 };
 
 

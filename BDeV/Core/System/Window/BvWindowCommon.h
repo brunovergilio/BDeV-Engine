@@ -7,7 +7,6 @@
 enum class WindowMode : u8
 {
 	kWindowed,
-	kWindowedFullscreen,
 	kFullscreen
 };
 
@@ -31,7 +30,7 @@ enum class WindowActivationType : u8
 
 struct WindowDesc
 {
-	const char* m_Name = nullptr;
+	const char* m_pText = nullptr;
 	u32 m_Width = 800;
 	u32 m_Height = 640;
 	i32 m_X = 0;
@@ -45,42 +44,7 @@ struct WindowDesc
 	bool m_HasBorder = true;
 	bool m_IsVisible = true;
 	//bool m_HasTransparency = true;
-	WindowMode m_WindowMode = WindowMode::kWindowed;
+	bool m_Fullscreen = false;
 	WindowState m_WindowState = WindowState::kDefault;
-};
-
-
-enum class WindowEventType : u8
-{
-	kActivate,
-	kSizeMoveBegin,
-	kResize,
-	kMove,
-	kSizeMoveEnd,
-	kShow,
-	kHide,
-	kGotFocus,
-	kLostFocus,
-	kClose,
-};
-
-
-struct WindowEventData
-{
-	WindowEventType type;
-	union
-	{
-		struct
-		{
-			u32 width;
-			u32 height;
-			WindowState state;
-		} resizeData;
-		struct
-		{
-			i32 x;
-			i32 y;
-		} moveData;
-		bool active;
-	};
+	class BvMonitor* m_pMonitor = nullptr;
 };
