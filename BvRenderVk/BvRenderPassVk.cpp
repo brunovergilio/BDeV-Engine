@@ -124,10 +124,11 @@ void BvRenderPassVk::Create()
 	SetupAttachments(attachments);
 
 	BvVector<VkSubpassDescription2> subpasses;
+	BvVector<u32> correlationMasks;
 	BvVector<VkAttachmentReference2> attachmentReferences;
 	BvVector<VkFragmentShadingRateAttachmentInfoKHR> shadingRateRefs;
 	BvVector<VkSubpassDescriptionDepthStencilResolve> depthStencilResolves;
-	SetupSubpasses(subpasses, attachmentReferences, depthStencilResolves, shadingRateRefs);
+	SetupSubpasses(subpasses, attachmentReferences, depthStencilResolves, shadingRateRefs, correlationMasks);
 
 	BvVector<VkSubpassDependency2> dependencies;
 	BvVector<VkMemoryBarrier2> barriers;
@@ -141,6 +142,11 @@ void BvRenderPassVk::Create()
 	createInfo.pSubpasses = subpasses.Data();
 	createInfo.dependencyCount = (u32)dependencies.Size();
 	createInfo.pDependencies = dependencies.Data();
+	if (correlationMasks.Size() > 0)
+	{
+		createInfo.correlatedViewMaskCount = correlationMasks.Size();
+		createInfo.pCorrelatedViewMasks = correlationMasks.Data();
+	}
 
 	auto result = vkCreateRenderPass2(m_pDevice->GetHandle(), &createInfo, nullptr, &m_RenderPass);
 }
@@ -189,11 +195,14 @@ void BvRenderPassVk::SetupAttachments(BvVector<VkAttachmentDescription2>& attach
 void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 	BvVector<VkAttachmentReference2>& attachmentRefs,
 	BvVector<VkSubpassDescriptionDepthStencilResolve>& depthStencilResolves,
-	BvVector<VkFragmentShadingRateAttachmentInfoKHR>& shadingRateRefs)
+	BvVector<VkFragmentShadingRateAttachmentInfoKHR>& shadingRateRefs,
+	BvVector<u32>& correlationMasks)
 {
 	subpasses.Resize(m_RenderPassDesc.m_SubpassCount, VkSubpassDescription2{ VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2 });
 	attachmentRefs.Reserve(m_RenderPassDesc.m_SubpassCount * m_RenderPassDesc.m_AttachmentCount);
+
 	u32 srRefCount = 0;
+	bool usesMultiview = false;
 	for (auto i = 0; i < m_RenderPassDesc.m_SubpassCount; ++i)
 	{
 		auto& subpass = m_RenderPassDesc.m_pSubpasses[i];
@@ -201,8 +210,17 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 		{
 			++srRefCount;
 		}
+
+		if (subpass.m_MultiviewCount > 1)
+		{
+			usesMultiview = true;
+		}
 	}
 	shadingRateRefs.Reserve(srRefCount);
+	if (usesMultiview)
+	{
+		correlationMasks.Resize(m_RenderPassDesc.m_SubpassCount);
+	}
 
 	for (auto i = 0u; i < m_RenderPassDesc.m_SubpassCount; ++i)
 	{
@@ -311,6 +329,12 @@ void BvRenderPassVk::SetupSubpasses(BvVector<VkSubpassDescription2>& subpasses,
 
 			*pNext = &shadingRateRef;
 			pNext = &shadingRateRef.pNext;
+		}
+
+		if (subpass.m_MultiviewCount > 1)
+		{
+			subpassVk.viewMask = (1 << subpass.m_MultiviewCount) - 1;
+			correlationMasks[i] = subpass.m_MultiviewCorrelationMask;
 		}
 	}
 }

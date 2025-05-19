@@ -53,7 +53,7 @@ public:
 	void NextSubpass();
 	void EndRenderPass();
 
-	void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets);
+	void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets, u32 multiviewCount = 0);
 
 	void SetViewports(u32 viewportCount, const Viewport* pViewports);
 	void SetScissors(u32 scissorCount, const Rect* pScissors);
@@ -111,7 +111,8 @@ public:
 	void CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
 
 	void ResourceBarrier(u32 bufferBarrierCount, const VkBufferMemoryBarrier2* pBufferBarriers,
-		u32 imageBarrierCount, const VkImageMemoryBarrier2* pImageBarriers, u32 memoryBarrierCount, const VkMemoryBarrier2* pMemoryBarriers);
+		u32 imageBarrierCount, const VkImageMemoryBarrier2* pImageBarriers, u32 memoryBarrierCount, const VkMemoryBarrier2* pMemoryBarriers,
+		VkDependencyFlags dependencyFlags = 0);
 	void ResourceBarrier(u32 barrierCount, const ResourceBarrierDesc* pBarriers);
 
 	void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp);

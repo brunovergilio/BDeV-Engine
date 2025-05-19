@@ -24,14 +24,8 @@
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
-bool IsPhysicalDeviceExtensionSupported(const BvVector<VkExtensionProperties>& supportedExtensions, const char* pExtensionName);
-RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& gpu);
-u32 GetQueueFamilyIndex(const BvVector<VkQueueFamilyProperties2>& queueFamilyProperties, VkQueueFlags queueFlags, bool& isAsync);
-bool QueueSupportsPresent(VkPhysicalDevice physicalDevice, u32 index);
-
-
-BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, VkPhysicalDevice physicalDevice, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
-	: m_pEngine(pEngine), m_PhysicalDevice(physicalDevice), m_pDeviceInfo(BV_NEW(BvDeviceInfoVk)()), m_GPUInfo(gpuInfo), m_Index(index)
+BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, VkPhysicalDevice physicalDevice, BvDeviceInfoVk* pDeviceInfo, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
+	: m_pEngine(pEngine), m_PhysicalDevice(physicalDevice), m_pDeviceInfo(pDeviceInfo), m_GPUInfo(gpuInfo), m_Index(index)
 {
 	Create(deviceDesc);
 }
@@ -171,50 +165,50 @@ IBvShaderBindingTable* BvRenderDeviceVk::CreateShaderBindingTableImpl(const Shad
 }
 
 
-IBvCommandContext* BvRenderDeviceVk::GetGraphicsContextImpl(u32 index)
+IBvCommandContext* BvRenderDeviceVk::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc)
 {
-	if (index >= m_GraphicsContexts.Size())
+	BvCommandContextVk* pContext = nullptr;
+	u32 contextGroupIndex = kU32Max;
+	// If we have a specific, valid context group index, choose that
+	if (commandContextDesc.m_ContextGroupIndex < m_Contexts.Size())
 	{
+		contextGroupIndex = commandContextDesc.m_ContextGroupIndex;
+	}
+	// Otherwise, we look for a command queue based on its type
+	else if (commandContextDesc.m_CommandType != CommandType::kNone)
+	{
+		for (auto i = 0; i < m_GPUInfo.m_ContextGroups.Size(); ++i)
+		{
+			// Some contexts may not be used or already have used all its available slots
+			if (m_Contexts[i].Size() == m_Contexts[i].Capacity())
+			{
+				continue;
+			}
+
+			// We need either a dedicated command context of a given type or a non-dedicated
+			// (if the user doesn't mind) context that supports the requested type
+			auto& contextGroup = m_GPUInfo.m_ContextGroups[i];
+			if (contextGroup.m_DedicatedCommandType == commandContextDesc.m_CommandType
+				|| (!commandContextDesc.m_RequireDedicated && contextGroup.SupportsCommandType(commandContextDesc.m_CommandType)))
+			{
+				contextGroupIndex = i;
+				break;
+			}
+		}
+	}
+	else
+	{
+		BV_ASSERT(false, "Invalid command context creation parameters");
 		return nullptr;
 	}
 
-	auto& pContext = m_GraphicsContexts[index];
-	if (!pContext)
+	if (contextGroupIndex < m_Contexts.Size())
 	{
-		pContext = CreateResource<BvCommandContextVk>(this, 3, CommandType::kGraphics, m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueFamilyIndex, index);
-	}
-	return pContext;
-}
-
-
-IBvCommandContext* BvRenderDeviceVk::GetComputeContextImpl(u32 index)
-{
-	if (index >= m_ComputeContexts.Size())
-	{
-		return nullptr;
+		auto& commandContextGroup = m_Contexts[contextGroupIndex];
+		pContext = CreateResource<BvCommandContextVk>(this, 3, contextGroupIndex, commandContextGroup.Size());
+		commandContextGroup.EmplaceBack(pContext);
 	}
 
-	auto& pContext = m_ComputeContexts[index];
-	if (!pContext)
-	{
-		pContext = CreateResource<BvCommandContextVk>(this, 3, CommandType::kCompute, m_pDeviceInfo->m_ComputeQueueInfo.m_QueueFamilyIndex, index);
-	}
-	return pContext;
-}
-
-
-IBvCommandContext* BvRenderDeviceVk::GetTransferContextImpl(u32 index)
-{
-	if (index >= m_TransferContexts.Size())
-	{
-		return nullptr;
-	}
-
-	auto& pContext = m_TransferContexts[index];
-	if (!pContext)
-	{
-		pContext = CreateResource<BvCommandContextVk>(this, 3, CommandType::kTransfer, m_pDeviceInfo->m_TransferQueueInfo.m_QueueFamilyIndex, index);
-	}
 	return pContext;
 }
 
@@ -251,48 +245,6 @@ u64 BvRenderDeviceVk::GetDynamicBufferElementSize(BufferUsage usageFlags, u64 el
 	}
 	
 	return RoundToNearestPowerOf2(elementStride, alignment);
-}
-
-
-bool BvRenderDeviceVk::SupportsQueryType(QueryType queryType, CommandType commandType) const
-{
-	if (queryType == QueryType::kTimestamp)
-	{
-		if (m_pDeviceInfo->m_DeviceProperties.properties.limits.timestampPeriod == 0)
-		{
-			return false;
-		}
-
-		if (m_pDeviceInfo->m_DeviceProperties.properties.limits.timestampComputeAndGraphics
-			&& (commandType == CommandType::kGraphics || commandType == CommandType::kCompute))
-		{
-			return true;
-		}
-		else
-		{
-			const VkQueueFamilyProperties* pProperties = nullptr;
-			switch (commandType)
-			{
-			case CommandType::kGraphics:
-				pProperties = &m_pDeviceInfo->m_QueueFamilyProperties[m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueFamilyIndex].queueFamilyProperties;
-				break;
-			case CommandType::kCompute:
-				pProperties = &m_pDeviceInfo->m_QueueFamilyProperties[m_pDeviceInfo->m_ComputeQueueInfo.m_QueueFamilyIndex].queueFamilyProperties;
-				break;
-			case CommandType::kTransfer:
-				pProperties = &m_pDeviceInfo->m_QueueFamilyProperties[m_pDeviceInfo->m_TransferQueueInfo.m_QueueFamilyIndex].queueFamilyProperties;
-				break;
-			}
-
-			return pProperties->timestampValidBits != 0;
-		}
-	}
-	else if (queryType == QueryType::kMeshPipelineStatistics)
-	{
-		return EHasFlag(m_DeviceCaps, RenderDeviceCapabilities::kMeshQuery) && commandType == CommandType::kGraphics;
-	}
-
-	return commandType == CommandType::kGraphics;
 }
 
 
@@ -397,7 +349,7 @@ FormatFeatures BvRenderDeviceVk::GetFormatFeatures(Format format) const
 	}
 
 	auto bufferFeatures = formatProperties.formatProperties.bufferFeatures;
-	if (bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
+	if (bufferFeatures & VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT)
 	{
 		formatFeatures |= FormatFeatures::kVertexBuffer;
 	}
@@ -418,12 +370,9 @@ FormatFeatures BvRenderDeviceVk::GetFormatFeatures(Format format) const
 
 void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc)
 {
-	BV_ASSERT(deviceCreateDesc.m_GraphicsQueueCount + deviceCreateDesc.m_ComputeQueueCount + deviceCreateDesc.m_TransferQueueCount > 0, "No device queues");
+	BV_ASSERT(deviceCreateDesc.m_ContextGroups.Size() > 0, "No device queues");
 
 	constexpr u32 kMaxQueueCount = 16;
-	BV_ASSERT(deviceCreateDesc.m_GraphicsQueueCount <= kMaxQueueCount, "Graphics queue count greater than limit");
-	BV_ASSERT(deviceCreateDesc.m_ComputeQueueCount <= kMaxQueueCount, "Compute queue count greater than limit");
-	BV_ASSERT(deviceCreateDesc.m_TransferQueueCount <= kMaxQueueCount, "Transfer queue count greater than limit");
 
 	constexpr float queuePriorities[kMaxQueueCount] =
 	{
@@ -437,40 +386,22 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 		//1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
 	};
 
-	m_pDeviceInfo->m_ExtendedSurfaceCaps.hasSurface2Caps = m_pEngine->HasSurface2Caps();
-	auto deviceCaps = SetupDeviceInfo(m_PhysicalDevice, *m_pDeviceInfo);
-
 	// ===========================================================
 	// Prepare Device Queues and create the logical device
-	constexpr auto kMaxQueueTypes = 3;
-	BvFixedVector<VkDeviceQueueCreateInfo, kMaxQueueTypes> queueInfos;
-
-	VkDeviceQueueCreateInfo queueCreateInfo{};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.pQueuePriorities = queuePriorities;
-	if (deviceCreateDesc.m_GraphicsQueueCount > 0 && m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueCount > 0)
+	BvFixedVector<VkDeviceQueueCreateInfo, kMaxContextGroupCount> queueInfos(deviceCreateDesc.m_ContextGroups.Size(), { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO });
+	for (auto i = 0; i < queueInfos.Size(); ++i)
 	{
-		queueCreateInfo.queueFamilyIndex = m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueFamilyIndex;
-		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_GraphicsQueueCount, m_pDeviceInfo->m_GraphicsQueueInfo.m_QueueCount);
-		queueInfos.PushBack(queueCreateInfo);
+		auto& queueCreateInfo = queueInfos[i];
+		queueCreateInfo.pQueuePriorities = queuePriorities;
 
-		m_GraphicsContexts.Resize(queueCreateInfo.queueCount);
-	}
-	if (deviceCreateDesc.m_ComputeQueueCount > 0 && m_pDeviceInfo->m_ComputeQueueInfo.m_QueueCount > 0)
-	{
-		queueCreateInfo.queueFamilyIndex = m_pDeviceInfo->m_ComputeQueueInfo.m_QueueFamilyIndex;
-		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_ComputeQueueCount, m_pDeviceInfo->m_ComputeQueueInfo.m_QueueCount);
-		queueInfos.PushBack(queueCreateInfo);
+		auto familyIndex = deviceCreateDesc.m_ContextGroups[i].m_GroupIndex;
+		auto& familyProps = m_pDeviceInfo->m_QueueFamilyProperties[familyIndex].queueFamilyProperties;
+		BV_ASSERT_ONCE(deviceCreateDesc.m_ContextGroups[i].m_ContextCount <= familyProps.queueCount,
+			"Using more context than what is available - truncating to maximum allowed");
+		queueCreateInfo.queueFamilyIndex = familyIndex;
+		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_ContextGroups[i].m_ContextCount, familyProps.queueCount);
 
-		m_ComputeContexts.Resize(queueCreateInfo.queueCount);
-	}
-	if (deviceCreateDesc.m_TransferQueueCount > 0 && m_pDeviceInfo->m_TransferQueueInfo.m_QueueCount > 0)
-	{
-		queueCreateInfo.queueFamilyIndex = m_pDeviceInfo->m_TransferQueueInfo.m_QueueFamilyIndex;
-		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_TransferQueueCount, m_pDeviceInfo->m_TransferQueueInfo.m_QueueCount);
-		queueInfos.PushBack(queueCreateInfo);
-
-		m_TransferContexts.Resize(queueCreateInfo.queueCount);
+		m_Contexts[familyIndex].Reserve(queueCreateInfo.queueCount);
 	}
 
 	VkDeviceCreateInfo deviceCreateInfo{ VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
@@ -494,8 +425,6 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	SetupSupportedDisplayFormats();
 
 	CreateVMA();
-
-	m_DeviceCaps = deviceCaps;
 }
 
 
@@ -513,9 +442,6 @@ void BvRenderDeviceVk::Destroy()
 
 		DestroyVMA();
 		
-		BV_DELETE(m_pDeviceInfo);
-		m_pDeviceInfo = nullptr;
-
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
 		
@@ -542,7 +468,7 @@ void BvRenderDeviceVk::CreateVMA()
 	{
 		vmaACI.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 	}
-	if (IsPhysicalDeviceExtensionSupported(m_pDeviceInfo->m_SupportedExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
+	if (m_pDeviceInfo->m_EnabledExtensions.Contains(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
 	{
 		vmaACI.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 	}
@@ -591,370 +517,4 @@ void BvRenderDeviceVk::CreateVMA()
 void BvRenderDeviceVk::DestroyVMA()
 {
 	vmaDestroyAllocator(m_VMA);
-}
-
-
-bool IsPhysicalDeviceExtensionSupported(const BvVector<VkExtensionProperties>& supportedExtensions, const char* pExtensionName)
-{
-	for (auto& physicalDeviceExtension : supportedExtensions)
-	{
-		if (!strcmp(pExtensionName, physicalDeviceExtension.extensionName))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-
-RenderDeviceCapabilities SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo)
-{
-	RenderDeviceCapabilities caps = RenderDeviceCapabilities::kNone;
-
-	// =================================
-	// Get / Store supported extensions
-	u32 extensionCount = 0;
-	auto result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
-	if (result != VK_SUCCESS)
-	{
-		return caps;
-	}
-
-	deviceInfo.m_SupportedExtensions.Resize(extensionCount);
-	result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, deviceInfo.m_SupportedExtensions.Data());
-	if (result != VK_SUCCESS)
-	{
-		return caps;
-	}
-
-	bool swapChain = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME); // Also needs VK_KHR_SURFACE_EXTENSION_NAME
-	if (!swapChain)
-	{
-		return caps;
-	}
-
-	deviceInfo.m_DeviceProperties.pNext = &deviceInfo.m_DeviceProperties1_1;
-	deviceInfo.m_DeviceProperties1_1.pNext = &deviceInfo.m_DeviceProperties1_2;
-	deviceInfo.m_DeviceProperties1_2.pNext = &deviceInfo.m_DeviceProperties1_3;
-
-	deviceInfo.m_DeviceFeatures.pNext = &deviceInfo.m_DeviceFeatures1_1;
-	deviceInfo.m_DeviceFeatures1_1.pNext = &deviceInfo.m_DeviceFeatures1_2;
-	deviceInfo.m_DeviceFeatures1_2.pNext = &deviceInfo.m_DeviceFeatures1_3;
-
-	void** pNextProperty = &deviceInfo.m_DeviceProperties1_3.pNext;
-	void** pNextFeature = &deviceInfo.m_DeviceFeatures1_3.pNext;
-	void** pNextMemoryProperty = &deviceInfo.m_DeviceMemoryProperties.pNext;
-
-	bool vertexAttributeDivisor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
-	bool fragmentShading = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-	bool meshShader = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MESH_SHADER_EXTENSION_NAME);
-	bool accelerationStructure = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-	bool rayTracingPipeline = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-	bool rayQuery = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_QUERY_EXTENSION_NAME);
-	bool conservativeRasterization = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
-	bool customBorderColor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
-	bool memoryBudget = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-	bool deferredHostOperations = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-	bool deviceAddress = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-	bool predication = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
-	bool depthClipEnable = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
-	bool trueFullScreen = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
-		&& deviceInfo.m_ExtendedSurfaceCaps.hasSurface2Caps;
-
-	deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-	if (vertexAttributeDivisor)
-	{
-		*pNextFeature = &deviceInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures;
-		pNextFeature = &deviceInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures.pNext;
-
-		*pNextProperty = &deviceInfo.m_ExtendedProperties.vertexAttributeDivisorProperties;
-		pNextProperty = &deviceInfo.m_ExtendedProperties.vertexAttributeDivisorProperties.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
-	}
-
-	if (fragmentShading)
-	{
-		*pNextFeature = &deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures;
-		pNextFeature = &deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures.pNext;
-		*pNextProperty = &deviceInfo.m_ExtendedProperties.fragmentShadingRateProps;
-		pNextProperty = &deviceInfo.m_ExtendedProperties.fragmentShadingRateProps.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-	}
-
-	if (meshShader)
-	{
-		*pNextFeature = &deviceInfo.m_ExtendedFeatures.meshShaderFeatures;
-		pNextFeature = &deviceInfo.m_ExtendedFeatures.meshShaderFeatures.pNext;
-
-		*pNextProperty = &deviceInfo.m_ExtendedProperties.meshShaderProps;
-		pNextProperty = &deviceInfo.m_ExtendedProperties.meshShaderProps.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MESH_SHADER_EXTENSION_NAME);
-	}
-
-	if (accelerationStructure && deferredHostOperations && deviceAddress)
-	{
-		*pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures;
-		pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures.pNext;
-
-		*pNextProperty = &deviceInfo.m_ExtendedProperties.accelerationStructureProps;
-		pNextProperty = &deviceInfo.m_ExtendedProperties.accelerationStructureProps.pNext;
-		
-		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-		
-		if (rayTracingPipeline)
-		{
-
-			*pNextFeature = &deviceInfo.m_ExtendedFeatures.rayTracingPipelineFeatures;
-			pNextFeature = &deviceInfo.m_ExtendedFeatures.rayTracingPipelineFeatures.pNext;
-
-			*pNextProperty = &deviceInfo.m_ExtendedProperties.rayTracingPipelineProps;
-			pNextProperty = &deviceInfo.m_ExtendedProperties.rayTracingPipelineProps.pNext;
-
-			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-		}
-
-		if (rayQuery)
-		{
-			*pNextFeature = &deviceInfo.m_ExtendedFeatures.rayQueryFeatures;
-			pNextFeature = &deviceInfo.m_ExtendedFeatures.rayQueryFeatures.pNext;
-
-			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-		}
-	}
-
-	if (conservativeRasterization)
-	{
-		*pNextProperty = &deviceInfo.m_ExtendedProperties.convervativeRasterizationProps;
-		pNextProperty = &deviceInfo.m_ExtendedProperties.convervativeRasterizationProps.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
-	}
-
-	if (customBorderColor)
-	{
-		*pNextFeature = &deviceInfo.m_ExtendedFeatures.customBorderColorFeatures;
-		pNextFeature = &deviceInfo.m_ExtendedFeatures.customBorderColorFeatures.pNext;
-
-		*pNextProperty = &deviceInfo.m_ExtendedProperties.customBorderColorProps;
-		pNextProperty = &deviceInfo.m_ExtendedProperties.customBorderColorProps.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
-	}
-
-	if (memoryBudget)
-	{
-		*pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties;
-		pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-	}
-
-	if (deferredHostOperations)
-	{
-		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-	}
-
-	if (predication)
-	{
-		*pNextFeature = &deviceInfo.m_ExtendedFeatures.conditionalRenderingFeatures;
-		pNextFeature = &deviceInfo.m_ExtendedFeatures.conditionalRenderingFeatures.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
-	}
-
-	if (depthClipEnable)
-	{
-		*pNextFeature = &deviceInfo.m_ExtendedFeatures.depthClibEnableFeature;
-		pNextFeature = &deviceInfo.m_ExtendedFeatures.depthClibEnableFeature.pNext;
-
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
-	}
-	
-	if (trueFullScreen)
-	{
-		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
-	}
-
-	*pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties;
-	pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties.pNext;
-
-	// =================================
-	// Store features / properties / memory properties
-	vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceInfo.m_DeviceFeatures);
-	vkGetPhysicalDeviceProperties2(physicalDevice, &deviceInfo.m_DeviceProperties);
-	vkGetPhysicalDeviceMemoryProperties2(physicalDevice, &deviceInfo.m_DeviceMemoryProperties);
-
-	if (deviceInfo.m_DeviceFeatures.features.fillModeNonSolid)
-	{
-		caps |= RenderDeviceCapabilities::kWireframe;
-	}
-	if (deviceInfo.m_DeviceFeatures.features.geometryShader)
-	{
-		caps |= RenderDeviceCapabilities::kGeometryShader;
-	}
-	if (deviceInfo.m_DeviceFeatures.features.tessellationShader)
-	{
-		caps |= RenderDeviceCapabilities::kTesselationShader;
-	}
-	if (deviceInfo.m_DeviceFeatures.features.depthBounds)
-	{
-		caps |= RenderDeviceCapabilities::kDepthBoundsTest;
-	}
-	if (deviceInfo.m_DeviceProperties.properties.limits.timestampComputeAndGraphics)
-	{
-		caps |= RenderDeviceCapabilities::kTimestampQueries;
-	}
-	if (deviceInfo.m_DeviceFeatures.features.multiDrawIndirect)
-	{
-		caps |= RenderDeviceCapabilities::kIndirectDrawCount;
-	}
-	if (deviceInfo.m_DeviceFeatures1_2.samplerFilterMinmax)
-	{
-		caps |= RenderDeviceCapabilities::kSamplerMinMaxReduction;
-	}
-	if (customBorderColor)
-	{
-		caps |= RenderDeviceCapabilities::kCustomBorderColor;
-	}
-	if (predication)
-	{
-		caps |= RenderDeviceCapabilities::kPredication;
-	}
-	if (conservativeRasterization)
-	{
-		caps |= RenderDeviceCapabilities::kConservativeRasterization;
-	}
-	if (fragmentShading)
-	{
-		caps |= RenderDeviceCapabilities::kShadingRate;
-	}
-	if (meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.taskShader)
-	{
-		caps |= RenderDeviceCapabilities::kMeshShader;
-		if (deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries)
-		{
-			caps |= RenderDeviceCapabilities::kMeshQuery;
-		}
-	}
-	if (rayTracingPipeline)
-	{
-		caps |= RenderDeviceCapabilities::kRayTracing;
-	}
-	if (rayQuery)
-	{
-		caps |= RenderDeviceCapabilities::kRayQuery;
-	}
-	if (deviceInfo.m_DeviceFeatures1_1.multiview)
-	{
-		caps |= RenderDeviceCapabilities::kMultiView;
-	}
-	if (trueFullScreen)
-	{
-		caps |= RenderDeviceCapabilities::kTrueFullScreen;
-	}
-
-	// =================================
-	// Get the queue families
-	u32 queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, nullptr);
-
-	deviceInfo.m_QueueFamilyProperties.Resize(queueFamilyCount, VkQueueFamilyProperties2{ VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
-	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, deviceInfo.m_QueueFamilyProperties.Data());
-
-	bool isAsync;
-	u32 queueIndex;
-	if ((queueIndex = GetQueueFamilyIndex(deviceInfo.m_QueueFamilyProperties, VK_QUEUE_GRAPHICS_BIT, isAsync)) != kU32Max)
-	{
-		deviceInfo.m_GraphicsQueueInfo.m_QueueFamilyIndex = queueIndex;
-		deviceInfo.m_GraphicsQueueInfo.m_QueueCount = deviceInfo.m_QueueFamilyProperties[queueIndex].queueFamilyProperties.queueCount;
-		deviceInfo.m_GraphicsQueueInfo.m_SupportsPresent = QueueSupportsPresent(physicalDevice, queueIndex);
-	}
-	if ((queueIndex = GetQueueFamilyIndex(deviceInfo.m_QueueFamilyProperties, VK_QUEUE_COMPUTE_BIT, isAsync)) != kU32Max && isAsync)
-	{
-		deviceInfo.m_ComputeQueueInfo.m_QueueFamilyIndex = queueIndex;
-		deviceInfo.m_ComputeQueueInfo.m_QueueCount = deviceInfo.m_QueueFamilyProperties[queueIndex].queueFamilyProperties.queueCount;
-		deviceInfo.m_ComputeQueueInfo.m_SupportsPresent = QueueSupportsPresent(physicalDevice, queueIndex);
-	}
-	if ((queueIndex = GetQueueFamilyIndex(deviceInfo.m_QueueFamilyProperties, VK_QUEUE_TRANSFER_BIT, isAsync)) != kU32Max && isAsync)
-	{
-		deviceInfo.m_TransferQueueInfo.m_QueueFamilyIndex = queueIndex;
-		deviceInfo.m_TransferQueueInfo.m_QueueCount = deviceInfo.m_QueueFamilyProperties[queueIndex].queueFamilyProperties.queueCount;
-		deviceInfo.m_TransferQueueInfo.m_SupportsPresent = QueueSupportsPresent(physicalDevice, queueIndex);
-	}
-
-	return caps;
-}
-
-
-u32 GetQueueFamilyIndex(const BvVector<VkQueueFamilyProperties2>& queueFamilyProperties, VkQueueFlags queueFlags, bool& isAsync)
-{
-	u32 index = kU32Max;
-
-	isAsync = false;
-
-	// Dedicated queue for compute
-	// Try to find a queue family index that supports compute but not graphics
-	if (queueFlags & VK_QUEUE_COMPUTE_BIT)
-	{
-		for (u32 i = 0; i < static_cast<u32>(queueFamilyProperties.Size()); i++)
-		{
-			if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags)
-				&& ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
-			{
-				index = i;
-				isAsync = true;
-				break;
-			}
-		}
-	}
-
-	// Dedicated queue for transfer
-	// Try to find a queue family index that supports transfer but not graphics and compute
-	else if (queueFlags & VK_QUEUE_TRANSFER_BIT)
-	{
-		for (u32 i = 0; i < static_cast<u32>(queueFamilyProperties.Size()); i++)
-		{
-			if ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags)
-				&& ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0)
-				&& ((queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-			{
-				index = i;
-				isAsync = true;
-				break;
-			}
-		}
-	}
-
-	if (index == kU32Max)
-	{
-		// For other queue types or if no separate compute or transfer queue is present, return the first one to support the requested flags
-		for (u32 i = 0; i < static_cast<u32>(queueFamilyProperties.Size()); i++)
-		{
-			if (queueFamilyProperties[i].queueFamilyProperties.queueFlags & queueFlags)
-			{
-				index = i;
-				break;
-			}
-		}
-	}
-
-	return index;
-}
-
-
-bool QueueSupportsPresent(VkPhysicalDevice physicalDevice, u32 index)
-{
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-	if (vkGetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice, index))
-	{
-		return true;
-	}
-#endif
-
-	return false;
 }

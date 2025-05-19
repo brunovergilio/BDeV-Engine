@@ -1,7 +1,4 @@
 #include "BDeV/BDeV.h"
-#include "BvRenderVk/BvRenderEngineVk.h"
-#include "BvRenderVk/BvRenderDeviceVk.h"
-#include "BvRenderVk/BvSwapChainVk.h"
 
 
 static const char* pVSShader =

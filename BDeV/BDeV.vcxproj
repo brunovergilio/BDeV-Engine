@@ -138,7 +138,6 @@
     <ClInclude Include="Core\RenderAPI\BvColor.h" />
     <ClInclude Include="Core\RenderAPI\BvCommandContext.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderCommon.h" />
-    <ClInclude Include="Core\RenderAPI\BvGPUInfo.h" />
     <ClInclude Include="Core\RenderAPI\BvPipelineState.h" />
     <ClInclude Include="Core\RenderAPI\BvQuery.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderAPIUtils.h" />

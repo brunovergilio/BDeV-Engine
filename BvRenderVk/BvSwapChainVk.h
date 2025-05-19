@@ -50,6 +50,7 @@ private:
 	void CreateSurface();
 	void DestroySurface();
 	void Resize();
+	void SetTrueFullscreen(bool value);
 	void CreateSynchronizationResources();
 	void DestroySynchronizationResources();
 

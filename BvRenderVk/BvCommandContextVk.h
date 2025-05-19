@@ -87,8 +87,11 @@ class BvCommandContextVk final : public IBvCommandContext, public IBvResourceVk
 	BV_VK_DEVICE_RES_DECL;
 
 public:
-	BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex);
+	BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, u32 queueFamilyIndex, u32 queueIndex);
 	~BvCommandContextVk();
+
+	BV_INLINE u32 GetGroupIndex() const override { return m_ContextGroupIndex; }
+	BV_INLINE u32 GetIndex() const override { return m_ContextIndex; }
 
 	BvGPUOp Execute() override;
 	BvGPUOp Execute(u64 value) override;
@@ -102,7 +105,7 @@ public:
 	void NextSubpass() override;
 	void EndRenderPass() override;
 
-	void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets) override;
+	void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets, u32 multiviewCount = 0) override;
 
 	void SetViewports(u32 viewportCount, const Viewport* pViewports) override;
 	void SetScissors(u32 scissorCount, const Rect* pScissors) override;
@@ -165,6 +168,7 @@ public:
 
 	void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp) override;
 
+	bool SupportsQueryType(QueryType queryType) const override;
 	void BeginQuery(IBvQuery* pQuery) override;
 	void EndQuery(IBvQuery* pQuery) override;
 
@@ -205,6 +209,8 @@ private:
 	BvFrameDataVk* m_pCurrFrame = nullptr;
 	ContextDataVk* m_pContextData;
 	u32 m_ActiveFrameIndex = 0;
+	u32 m_ContextGroupIndex = 0;
+	u32 m_ContextIndex = 0;
 };
 
 

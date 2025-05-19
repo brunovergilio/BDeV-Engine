@@ -110,7 +110,68 @@ BvWindow::~BvWindow()
 
 void BvWindow::ChangeWindow(const WindowDesc& windowDesc)
 {
-	ChangeWindowInternal(windowDesc);
+	auto [style, exStyle] = GetWindowStyles(windowDesc);
+
+	i32 x = windowDesc.m_X, y = windowDesc.m_Y, width = windowDesc.m_Width, height = windowDesc.m_Height;
+	if (windowDesc.m_Fullscreen)
+	{
+		if (!m_WindowDesc.m_Fullscreen)
+		{
+			::GetWindowPlacement(m_hWnd, &m_PreFullscreenPosition);
+		}
+
+		BvMonitor* pMonitor = windowDesc.m_pMonitor ? windowDesc.m_pMonitor : BvMonitor::FromPoint(windowDesc.m_X, windowDesc.m_Y);
+		BV_ASSERT(pMonitor != nullptr, "Monitor can't be nullptr");
+		auto& monitorArea = pMonitor->GetFullscreenArea();
+		x = monitorArea.m_Left;
+		y = monitorArea.m_Top;
+		width = monitorArea.m_Right - monitorArea.m_Left;
+		height = monitorArea.m_Bottom - monitorArea.m_Top;
+	}
+	else
+	{
+		AdjustWindow(m_hWnd, windowDesc, x, y, width, height);
+	}
+
+	m_WindowDesc = windowDesc;
+
+	::SetWindowLongPtrW(m_hWnd, GWL_STYLE, style);
+	::SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, exStyle);
+	::SetWindowPos(m_hWnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_FRAMECHANGED);
+
+	if (windowDesc.m_pText)
+	{
+		SetText(windowDesc.m_pText);
+	}
+
+	// Always reset system menu to default if menu options may have changed
+	::GetSystemMenu(m_hWnd, TRUE); // TRUE restores original system menu
+
+	// Re-apply modifications after reset
+	HMENU hSysMenu = ::GetSystemMenu(m_hWnd, FALSE);
+
+	if (!m_WindowDesc.m_HasBorder)
+	{
+		::DeleteMenu(hSysMenu, SC_CLOSE, MF_BYCOMMAND);
+	}
+	else if (!m_WindowDesc.m_CanClose)
+	{
+		::EnableMenuItem(hSysMenu, SC_CLOSE, MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
+	}
+	else
+	{
+		::EnableMenuItem(hSysMenu, SC_CLOSE, MF_BYCOMMAND | MF_ENABLED);
+	}
+	::DrawMenuBar(m_hWnd);
+
+	if (m_WindowDesc.m_IsVisible)
+	{
+		// Force a show/update
+		m_IsVisible = false;
+		m_FirstTimeShow = false;
+
+		Show();
+	}
 }
 
 
@@ -188,7 +249,7 @@ void BvWindow::SetFullscreen(bool value, BvMonitor* pMonitor)
 		newWindowDesc.m_Height = m_PreFullscreenPosition.rcNormalPosition.bottom - m_PreFullscreenPosition.rcNormalPosition.top - (rect.bottom - rect.top);
 	}
 
-	ChangeWindowInternal(newWindowDesc);
+	ChangeWindow(newWindowDesc);
 }
 
 
@@ -283,12 +344,10 @@ void BvWindow::Flash()
 
 void BvWindow::SetText(const char* pText)
 {
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, nullptr, 0);
-		wchar_t* pTextW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, pTextW, sizeNeeded);
-		SetWindowTextW(m_hWnd, pTextW);
-	}
+	auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, nullptr, 0);
+	wchar_t* pTextW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, pTextW, sizeNeeded);
+	SetWindowTextW(m_hWnd, pTextW);
 }
 
 
@@ -333,56 +392,6 @@ void BvWindow::OnPosChanged(i32 x, i32 y)
 void BvWindow::OnClose()
 {
 	m_IsClosed = true;
-}
-
-
-void BvWindow::ChangeWindowInternal(const WindowDesc& windowDesc, bool adjustClientRect)
-{
-	auto [style, exStyle] = GetWindowStyles(windowDesc);
-
-	i32 x = windowDesc.m_X, y = windowDesc.m_Y, width = windowDesc.m_Width, height = windowDesc.m_Height;
-	if (windowDesc.m_Fullscreen)
-	{
-		if (!m_WindowDesc.m_Fullscreen)
-		{
-			::GetWindowPlacement(m_hWnd, &m_PreFullscreenPosition);
-		}
-
-		BvMonitor* pMonitor = windowDesc.m_pMonitor ? windowDesc.m_pMonitor : BvMonitor::FromPoint(windowDesc.m_X, windowDesc.m_Y);
-		BV_ASSERT(pMonitor != nullptr, "Monitor can't be nullptr");
-		auto& monitorArea = pMonitor->GetFullscreenArea();
-		x = monitorArea.m_Left;
-		y = monitorArea.m_Top;
-		width = monitorArea.m_Right - monitorArea.m_Left;
-		height = monitorArea.m_Bottom - monitorArea.m_Top;
-	}
-	else
-	{
-		if (adjustClientRect)
-		{
-			AdjustWindow(m_hWnd, windowDesc, x, y, width, height);
-		}
-	}
-
-	m_WindowDesc = windowDesc;
-
-	::SetWindowLongPtrW(m_hWnd, GWL_STYLE, style);
-	::SetWindowLongPtrW(m_hWnd, GWL_EXSTYLE, exStyle);
-	::SetWindowPos(m_hWnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_FRAMECHANGED);
-
-	if (!windowDesc.m_Fullscreen && windowDesc.m_HasBorder && windowDesc.m_pText)
-	{
-		SetText(windowDesc.m_pText);
-	}
-
-	if (m_WindowDesc.m_IsVisible)
-	{
-		// Force a show/update
-		m_IsVisible = false;
-		m_FirstTimeShow = false;
-
-		Show();
-	}
 }
 
 
@@ -452,25 +461,31 @@ void BvWindow::Create()
 
 	m_IsClosed = false;
 
-	if (m_WindowDesc.m_HasBorder && !m_WindowDesc.m_CanClose)
-	{
-		EnableMenuItem(GetSystemMenu(m_hWnd, FALSE), SC_CLOSE, MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
-	}
-
-	if (m_WindowDesc.m_IsVisible)
-	{
-		Show();
-	}
+	::GetSystemMenu(m_hWnd, TRUE);
+	HMENU hSysMenu = ::GetSystemMenu(m_hWnd, FALSE);
 
 	if (!m_WindowDesc.m_HasBorder)
 	{
-		DeleteMenu(GetSystemMenu(m_hWnd, false), SC_CLOSE, MF_BYCOMMAND);
-
+		::DeleteMenu(hSysMenu, SC_CLOSE, MF_BYCOMMAND);
 		//const DWMNCRENDERINGPOLICY RenderingPolicy = DWMNCRP_DISABLED;
 		//DwmSetWindowAttribute(m_hWnd, DWMWA_NCRENDERING_POLICY, &RenderingPolicy, sizeof(RenderingPolicy));
 
 		//const BOOL bEnableNCPaint = false;
 		//DwmSetWindowAttribute(m_hWnd, DWMWA_ALLOW_NCPAINT, &bEnableNCPaint, sizeof(bEnableNCPaint));
+	}
+	else if (!m_WindowDesc.m_CanClose)
+	{
+		::EnableMenuItem(hSysMenu, SC_CLOSE, MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
+	}
+	else
+	{
+		::EnableMenuItem(hSysMenu, SC_CLOSE, MF_BYCOMMAND | MF_ENABLED);
+	}
+	::DrawMenuBar(m_hWnd);
+
+	if (m_WindowDesc.m_IsVisible)
+	{
+		Show();
 	}
 }
 

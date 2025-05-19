@@ -77,7 +77,7 @@ void BvBufferD3D12::Create(const BufferInitData* pInitData)
 	auto pAllocator = m_pDevice->GetAllocator();
 	auto pDevice = m_pDevice->GetHandle();
 	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = pDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
-	auto hr = pAllocator->AllocateMemory(&allocationDesc, &allocationInfo, &m_Allocation);
+	hr = pAllocator->AllocateMemory(&allocationDesc, &allocationInfo, &m_Allocation);
 	if (FAILED(hr))
 	{
 		// TODO: Handle error

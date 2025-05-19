@@ -193,8 +193,8 @@ void BvFrameDataVk::UpdateQueryData()
 BV_VK_DEVICE_RES_DEF(BvCommandContextVk)
 
 
-BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex)
-	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyType, queueFamilyIndex, queueIndex)
+BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, u32 queueFamilyIndex, u32 queueIndex)
+	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyIndex, queueIndex), m_ContextGroupIndex(queueFamilyIndex), m_ContextIndex(queueIndex)
 {
 	u32 querySizes[kQueryTypeCount];
 	for (auto& querySize : querySizes)
@@ -203,9 +203,9 @@ BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount
 	}
 	m_pContextData = BV_NEW(ContextDataVk)();
 	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, querySizes, frameCount);
-	m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
-	if (queueFamilyType == CommandType::kGraphics)
+	if (pDevice->GetGPUInfo().m_ContextGroups[queueFamilyIndex].SupportsCommandType(CommandType::kGraphics))
 	{
+		m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
 		m_pContextData->m_pASQueries = BV_NEW(BvQueryASVk)(pDevice, querySizes[0], frameCount, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR);
 	}
 
@@ -344,9 +344,9 @@ void BvCommandContextVk::EndRenderPass()
 }
 
 
-void BvCommandContextVk::SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets)
+void BvCommandContextVk::SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets, u32 multiviewCount)
 {
-	m_pCurrCommandBuffer->SetRenderTargets(renderTargetCount, pRenderTargets);
+	m_pCurrCommandBuffer->SetRenderTargets(renderTargetCount, pRenderTargets, multiviewCount);
 }
 
 
@@ -628,6 +628,37 @@ void BvCommandContextVk::ResourceBarrier(u32 barrierCount, const ResourceBarrier
 void BvCommandContextVk::SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp)
 {
 	m_pCurrCommandBuffer->SetPredication(pBuffer, offset, predicationOp);
+}
+
+
+bool BvCommandContextVk::SupportsQueryType(QueryType queryType) const
+{
+	auto pDeviceInfo = m_pDevice->GetDeviceInfo();
+	auto& contextGroup = m_pDevice->GetGPUInfo().m_ContextGroups[m_ContextGroupIndex];
+	if (queryType == QueryType::kTimestamp)
+	{
+		if (pDeviceInfo->m_DeviceProperties.properties.limits.timestampPeriod == 0)
+		{
+			return false;
+		}
+
+		if (pDeviceInfo->m_DeviceProperties.properties.limits.timestampComputeAndGraphics
+			&& (contextGroup.SupportsCommandType(CommandType::kGraphics) || contextGroup.SupportsCommandType(CommandType::kCompute)))
+		{
+			return true;
+		}
+		else
+		{
+			auto& props = pDeviceInfo->m_QueueFamilyProperties[m_ContextGroupIndex].queueFamilyProperties;
+			return props.timestampValidBits != 0;
+		}
+	}
+	else if (queryType == QueryType::kMeshPipelineStatistics)
+	{
+		return EHasFlag(m_pDevice->GetGPUInfo().m_DeviceCaps, RenderDeviceCapabilities::kMeshQuery) && contextGroup.SupportsCommandType(CommandType::kGraphics);
+	}
+
+	return contextGroup.SupportsCommandType(CommandType::kGraphics);
 }
 
 

@@ -26,7 +26,7 @@
 
 
 BvCommandBufferVk::BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
-	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetEngine()->HasDebugUtils())
+	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetDeviceInfo()->m_HasDebugUtils)
 {
 }
 
@@ -145,7 +145,7 @@ void BvCommandBufferVk::EndRenderPass()
 }
 
 
-void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets)
+void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets, u32 multiviewCount)
 {
 	ResetRenderTargets();
 
@@ -371,6 +371,10 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		{
 			renderingInfo.pStencilAttachment = &stencilAttachment;
 		}
+	}
+	if (multiviewCount > 1)
+	{
+		renderingInfo.viewMask = (1 << multiviewCount) - 1;
 	}
 
 	vkCmdBeginRendering(m_CommandBuffer, &renderingInfo);
@@ -982,11 +986,13 @@ void BvCommandBufferVk::CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBu
 
 
 void BvCommandBufferVk::ResourceBarrier(u32 bufferBarrierCount, const VkBufferMemoryBarrier2* pBufferBarriers,
-	u32 imageBarrierCount, const VkImageMemoryBarrier2* pImageBarriers, u32 memoryBarrierCount, const VkMemoryBarrier2* pMemoryBarriers)
+	u32 imageBarrierCount, const VkImageMemoryBarrier2* pImageBarriers, u32 memoryBarrierCount, const VkMemoryBarrier2* pMemoryBarriers,
+	VkDependencyFlags dependencyFlags)
 {
 	ResetRenderTargets();
 
 	VkDependencyInfo di{ VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+	di.dependencyFlags = dependencyFlags;
 	di.bufferMemoryBarrierCount = bufferBarrierCount;
 	di.pBufferMemoryBarriers = pBufferBarriers;
 	di.imageMemoryBarrierCount = imageBarrierCount;
@@ -1000,6 +1006,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 bufferBarrierCount, const VkBufferMe
 
 void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierDesc* pBarriers)
 {
+	VkDependencyFlags dependencyFlags = 0;
 	for (auto i = 0u; i < barrierCount; i++)
 	{
 		if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kMemory)
@@ -1008,11 +1015,11 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			//barrier.pNext = nullptr;
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-
 			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+
+			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
+				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
@@ -1024,19 +1031,32 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.buffer = buffer;
 			barrier.size = VK_WHOLE_SIZE;
 			//barrier.offset = 0;
-		
+
+			if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kStateTransition)
+			{
+				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			}
+			else
+			{
+				auto pSrcContext = TO_VK(pBarriers[i].m_pSrcContext);
+				auto pDstContext = TO_VK(pBarriers[i].m_pDstContext);
+				BV_ASSERT(pSrcContext != pDstContext, "Command Types must be different for transition acquire/release");
+				barrier.srcQueueFamilyIndex = pSrcContext->GetGroupIndex();
+				barrier.dstQueueFamilyIndex = pDstContext->GetGroupIndex();
+
+				dependencyFlags |= VK_DEPENDENCY_QUEUE_FAMILY_OWNERSHIP_TRANSFER_USE_ALL_STAGES_BIT_KHR;
+			}
+
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-		
 			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+
+			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
+				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
-		
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		}
 		else if (pBarriers[i].m_pTexture)
 		{
@@ -1049,21 +1069,34 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.subresourceRange.baseArrayLayer = pBarriers[i].m_Subresource.firstLayer;
 			barrier.subresourceRange.layerCount = pBarriers[i].m_Subresource.layerCount;
 
+			if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kStateTransition)
+			{
+				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			}
+			else
+			{
+				auto pSrcContext = TO_VK(pBarriers[i].m_pSrcContext);
+				auto pDstContext = TO_VK(pBarriers[i].m_pDstContext);
+				BV_ASSERT(pSrcContext != pDstContext, "Command Types must be different for transition acquire/release");
+				barrier.srcQueueFamilyIndex = pSrcContext->GetGroupIndex();
+				barrier.dstQueueFamilyIndex = pDstContext->GetGroupIndex();
+
+				dependencyFlags |= VK_DEPENDENCY_QUEUE_FAMILY_OWNERSHIP_TRANSFER_USE_ALL_STAGES_BIT_KHR;
+			}
+
 			barrier.oldLayout = GetVkImageLayout(pBarriers[i].m_SrcState);
 			barrier.newLayout = GetVkImageLayout(pBarriers[i].m_DstState);
 
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-
 			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+
+			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
+				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
-
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		}
 	}
 
@@ -1071,7 +1104,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 	{
 		ResourceBarrier(static_cast<u32>(m_BufferBarriers.Size()), m_BufferBarriers.Data(),
 			static_cast<u32>(m_ImageBarriers.Size()), m_ImageBarriers.Data(),
-			static_cast<u32>(m_MemoryBarriers.Size()), m_MemoryBarriers.Data());
+			static_cast<u32>(m_MemoryBarriers.Size()), m_MemoryBarriers.Data(), dependencyFlags);
 	}
 
 	m_MemoryBarriers.Clear();

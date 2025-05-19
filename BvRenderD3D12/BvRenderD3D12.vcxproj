@@ -93,6 +93,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BvBufferD3D12.h" />
+    <ClInclude Include="BvBufferViewD3D12.h" />
     <ClInclude Include="BvCommonD3D12.h" />
     <ClInclude Include="BvGPUFenceD3D12.h" />
     <ClInclude Include="BvRenderDeviceD3D12.h" />
@@ -103,6 +104,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvBufferD3D12.cpp" />
+    <ClCompile Include="BvBufferViewD3D12.cpp" />
     <ClCompile Include="BvCommonD3D12.cpp" />
     <ClCompile Include="BvGPUFenceD3D12.cpp" />
     <ClCompile Include="BvRenderDeviceD3D12.cpp" />

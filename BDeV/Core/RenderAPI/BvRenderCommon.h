@@ -5,6 +5,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Container/BvStringId.h"
 #include "BDeV/Core/Math/BvMath.h"
+#include "BDeV/Core/Container/BvFixedVector.h"
 #include <algorithm>
 
 
@@ -21,12 +22,34 @@ class IBvShaderCompiler;
 class IBvRenderPass;
 
 
+constexpr u32 kMaxDevices = 4;
 constexpr u32 kMaxRenderTargets = 8;
 constexpr u32 kMaxRenderTargetsWithDepth = kMaxRenderTargets + 1;
 constexpr u32 kMaxShaderStages = 5;
 constexpr u32 kMaxVertexAttributes = 16;
 constexpr u32 kMaxVertexBindings = 16;
 constexpr u32 kMaxVertexBuffers = 16;
+constexpr u32 kMaxContextGroupCount = 8;
+
+
+enum class GPUType : u8
+{
+	kUnknown,
+	kDiscrete,
+	kIntegrated
+};
+
+
+enum class GPUVendor : u8
+{
+	kUnknown,
+	kAMD,
+	kImgTec,
+	kNvidia,
+	kARM,
+	kQualcomm,
+	kIntel,
+};
 
 
 enum RenderDeviceCapabilities : u32
@@ -48,16 +71,48 @@ enum RenderDeviceCapabilities : u32
 	kRayTracing						= BvBit(13),
 	kRayQuery						= BvBit(14),
 	kMultiView						= BvBit(15),
-	kTrueFullScreen					= BvBit(16)
+	kTrueFullScreen					= BvBit(16),
 };
 BV_USE_ENUM_CLASS_OPERATORS(RenderDeviceCapabilities);
 
 
 enum class CommandType : u8
 {
+	kNone,
 	kGraphics,
 	kCompute,
 	kTransfer,
+	kVideoDecode,
+	kVideoEncode
+};
+
+
+struct ContextGroup
+{
+	u32 m_GroupIndex;
+	u32 m_MaxContextCount;
+	CommandType m_DedicatedCommandType;
+	BvFixedVector<CommandType, 5> m_SupportedCommandTypes;
+
+	bool SupportsCommandType(CommandType commandType) const { return m_SupportedCommandTypes.Contains(commandType); }
+};
+
+
+struct BvGPUInfo
+{
+	static constexpr u32 kMaxDeviceNameSize = 256;
+
+	char m_DeviceName[kMaxDeviceNameSize];
+	u32 m_DeviceId;
+	u32 m_VendorId;
+	u64 m_DeviceMemory;
+	u32 m_GraphicsContextCount;
+	u32 m_ComputeContextCount;
+	u32 m_TransferContextCount;
+	BvFixedVector<ContextGroup, kMaxContextGroupCount> m_ContextGroups;
+	GPUType m_Type;
+	GPUVendor m_Vendor;
+	RenderDeviceCapabilities m_DeviceCaps;
 };
 
 
@@ -884,13 +939,12 @@ struct ResourceBarrierDesc
 
 	Type m_Type = Type::kStateTransition;
 
-	// These fields can be used for more detailed barriers (in Vulkan)
-	CommandType m_SrcQueue = CommandType::kGraphics;
-	CommandType m_DstQueue = CommandType::kGraphics;
+	IBvCommandContext* m_pSrcContext = nullptr;
+	IBvCommandContext* m_pDstContext = nullptr;
 
+	// These fields can be used for more detailed barriers (in Vulkan)
 	ResourceAccess m_SrcAccess = ResourceAccess::kAuto;
 	ResourceAccess m_DstAccess = ResourceAccess::kAuto;
-
 	PipelineStage m_SrcPipelineStage = PipelineStage::kAuto;
 	PipelineStage m_DstPipelineStage = PipelineStage::kAuto;
 
@@ -1426,6 +1480,8 @@ struct GraphicsPipelineStateDesc
 	u32							m_SampleCount = 1;
 	u32							m_SampleMask = kMax<u32>;
 	u32							m_SubpassIndex = 0;
+	bool						m_EnableMultiview = false;
+	u32							m_MultiviewCount = 0;
 };
 
 
@@ -1749,4 +1805,18 @@ struct DispatchRaysCommandArgs
 	u32 m_Width = 0;
 	u32 m_Height = 0;
 	u32 m_Depth = 0;
+};
+
+
+struct CommandContextDesc
+{
+	constexpr CommandContextDesc() = default;
+	constexpr CommandContextDesc(CommandType commandType, bool requireDedicated = true)
+		: m_CommandType(commandType), m_RequireDedicated(requireDedicated)	{}
+	constexpr CommandContextDesc(u32 contextGroupIndex)
+		: m_ContextGroupIndex(contextGroupIndex) {}
+
+	u32 m_ContextGroupIndex = kU32Max;
+	CommandType m_CommandType = CommandType::kNone;
+	bool m_RequireDedicated = false;
 };

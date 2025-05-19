@@ -12,6 +12,7 @@
     <ClInclude Include="BvTypeConversionsD3D12.h" />
     <ClInclude Include="Third Party\D3D12MemAlloc.h" />
     <ClInclude Include="BvTextureD3D12.h" />
+    <ClInclude Include="BvBufferViewD3D12.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvCommonD3D12.cpp" />
@@ -22,5 +23,6 @@
     <ClCompile Include="BvTypeConversionsD3D12.cpp" />
     <ClCompile Include="Third Party\D3D12MemAlloc.cpp" />
     <ClCompile Include="BvTextureD3D12.cpp" />
+    <ClCompile Include="BvBufferViewD3D12.cpp" />
   </ItemGroup>
 </Project>

@@ -34,12 +34,12 @@ public:
 	bool IsVisible() const;
 	bool HasFocus() const;
 
-	std::pair<u32, u32> GetSize() const { return std::make_pair(m_WindowDesc.m_Width, m_WindowDesc.m_Height); }
-	std::pair<i32, i32> GetPosition() const { return std::make_pair(m_WindowDesc.m_X, m_WindowDesc.m_Y); }
-	i32 GetX() const { return m_WindowDesc.m_X; }
-	i32 GetY() const { return m_WindowDesc.m_Y; }
-	u32 GetWidth() const { return m_WindowDesc.m_Width; }
-	u32 GetHeight() const { return m_WindowDesc.m_Height; }
+	BV_INLINE std::pair<u32, u32> GetSize() const { return std::make_pair(m_WindowDesc.m_Width, m_WindowDesc.m_Height); }
+	BV_INLINE std::pair<i32, i32> GetPosition() const { return std::make_pair(m_WindowDesc.m_X, m_WindowDesc.m_Y); }
+	BV_INLINE i32 GetX() const { return m_WindowDesc.m_X; }
+	BV_INLINE i32 GetY() const { return m_WindowDesc.m_Y; }
+	BV_INLINE u32 GetWidth() const { return m_WindowDesc.m_Width; }
+	BV_INLINE u32 GetHeight() const { return m_WindowDesc.m_Height; }
 	BV_INLINE bool IsFullScreen() const { return m_WindowDesc.m_Fullscreen; }
 	BV_INLINE const WindowDesc& GetWindowDesc() const { return m_WindowDesc; }
 
@@ -50,7 +50,6 @@ private:
 	void OnSizeChanged(u32 width, u32 height);
 	void OnPosChanged(i32 x, i32 y);
 	void OnClose();
-	void ChangeWindowInternal(const WindowDesc& windowDesc, bool adjustClientRect = true);
 
 	void Create();
 	void Destroy();

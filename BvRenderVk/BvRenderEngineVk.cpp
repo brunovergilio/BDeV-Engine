@@ -41,8 +41,9 @@ BvRenderEngineVk* BvRenderEngineVkHelper::s_pEngine = nullptr;
 
 bool IsInstanceExtensionSupported(const BvVector<VkExtensionProperties>& extensions, const char* pExtension);
 bool IsInstanceLayerSupported(const BvVector<VkLayerProperties>& layers, const char* pLayer);
+bool IsPhysicalDeviceExtensionSupported(const BvVector<VkExtensionProperties>& supportedExtensions, const char* pExtensionName);
 bool IsDeviceSuitable(VkPhysicalDevice gpu);
-void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo);
+void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo, BvGPUInfo& gpuInfo);
 
 
 IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc)
@@ -55,7 +56,7 @@ IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCr
 		gpuIndex = 0;
 		for (auto i = 0; i < m_GPUs.Size(); ++i)
 		{
-			if (m_GPUs[i].m_Type == GPUType::kDiscrete)
+			if (m_GPUs[i]->m_Type == GPUType::kDiscrete)
 			{
 				gpuIndex = i;
 				break;
@@ -63,11 +64,11 @@ IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCr
 		}
 	}
 
-	auto& pDevice = m_Devices[gpuIndex].second;
+	auto& pDevice = m_Devices[gpuIndex]->m_pDevice;
 	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
 	if (!pDevice)
 	{
-		pDevice = BV_NEW(BvRenderDeviceVk)(this, m_Devices[gpuIndex].first, gpuIndex, m_GPUs[gpuIndex], descVk);
+		pDevice = BV_NEW(BvRenderDeviceVk)(this, m_Devices[gpuIndex]->m_PhysicalDevice, m_Devices[gpuIndex]->m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], descVk);
 		if (!pDevice->IsValid())
 		{
 			pDevice->Release();
@@ -81,7 +82,7 @@ IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCr
 
 void BvRenderEngineVk::OnDeviceDestroyed(u32 index)
 {
-	m_Devices[index] = { VK_NULL_HANDLE, nullptr };
+	m_Devices[index]->m_pDevice = nullptr;
 }
 
 
@@ -240,26 +241,29 @@ void BvRenderEngineVk::Create()
 		return;
 	}
 
+	bool hasSurface2Caps = IsInstanceExtensionSupported(supportedExtensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+	bool hasDebugUtils = IsInstanceExtensionSupported(supportedExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+	BV_ASSERT(physicalDevices.Size() <= kMaxDevices, "Increase kMaxDevices count");
+
 	m_GPUs.Resize(physicalDevices.Size(), {});
 	m_Devices.Resize(physicalDevices.Size());
 	for (auto i = 0; i < m_GPUs.Size(); ++i)
 	{
-		SetupGPUInfo(physicalDevices[i], m_GPUs[i]);
-		m_Devices[i].first = physicalDevices[i];
+		m_GPUs[i] = BV_NEW(BvGPUInfo)({});
+		auto& pDeviceData = m_Devices[i] = BV_NEW(DeviceData)();
+		pDeviceData->m_PhysicalDevice = physicalDevices[i];
+		pDeviceData->m_pDeviceInfo = BV_NEW(BvDeviceInfoVk)();
+		pDeviceData->m_pDeviceInfo->m_ExtendedSurfaceCaps.hasSurface2Caps = hasSurface2Caps;
+		pDeviceData->m_pDeviceInfo->m_HasDebugUtils = hasDebugUtils;
+		SetupDeviceInfo(physicalDevices[i], *pDeviceData->m_pDeviceInfo, *m_GPUs[i]);
 	}
 
-	if (IsInstanceExtensionSupported(supportedExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
+	if (hasDebugUtils)
 	{
-		m_HasDebugUtils = true;
-
 #if BV_DEBUG
 		m_pDebugReport = BV_NEW(BvDebugReportVk)(m_Instance);
 #endif
-	}
-
-	if (IsInstanceExtensionSupported(supportedExtensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME))
-	{
-		m_HasSurface2Caps = true;
 	}
 }
 
@@ -268,13 +272,21 @@ void BvRenderEngineVk::Destroy()
 {
 	if (m_Instance)
 	{
-		for (auto& devicePair : m_Devices)
+		for (auto pDeviceData : m_Devices)
 		{
-			auto pDevice = devicePair.second;
+			auto pDevice = pDeviceData->m_pDevice;
 			if (pDevice)
 			{
 				static_cast<IBvResourceVk*>(pDevice)->Destroy();
 			}
+
+			BV_DELETE(pDeviceData->m_pDeviceInfo);
+			BV_DELETE(pDeviceData);
+		}
+
+		for (auto pGPU : m_GPUs)
+		{
+			BV_DELETE(pGPU);
 		}
 
 		if (m_pDebugReport)
@@ -324,6 +336,20 @@ bool IsInstanceLayerSupported(const BvVector<VkLayerProperties>& layers, const c
 }
 
 
+bool IsPhysicalDeviceExtensionSupported(const BvVector<VkExtensionProperties>& supportedExtensions, const char* pExtensionName)
+{
+	for (auto& physicalDeviceExtension : supportedExtensions)
+	{
+		if (!strcmp(pExtensionName, physicalDeviceExtension.extensionName))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 bool IsDeviceSuitable(VkPhysicalDevice gpu)
 {
 	VkPhysicalDeviceVulkan13Features deviceFeatures1_3{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
@@ -338,46 +364,340 @@ bool IsDeviceSuitable(VkPhysicalDevice gpu)
 }
 
 
-void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo)
+void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo, BvGPUInfo& gpuInfo)
 {
-	VkPhysicalDeviceProperties2 deviceProperties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-	VkPhysicalDeviceMemoryProperties2 deviceMemoryProperties{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
-	vkGetPhysicalDeviceProperties2(gpu, &deviceProperties);
-	vkGetPhysicalDeviceMemoryProperties2(gpu, &deviceMemoryProperties);
+	RenderDeviceCapabilities caps = RenderDeviceCapabilities::kNone;
 
-	strcpy(gpuInfo.m_DeviceName, deviceProperties.properties.deviceName);
-	gpuInfo.m_DeviceId = deviceProperties.properties.deviceID;
-	gpuInfo.m_VendorId = deviceProperties.properties.vendorID;
+	// =================================
+	// Get / Store supported extensions
+	u32 extensionCount = 0;
+	auto result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to setup device info");
 
-	for (u32 i = 0; i < deviceMemoryProperties.memoryProperties.memoryTypeCount; i++)
+	deviceInfo.m_SupportedExtensions.Resize(extensionCount);
+	result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, deviceInfo.m_SupportedExtensions.Data());
+	BV_ASSERT(result == VK_SUCCESS, "Failed to setup device info");
+
+	bool swapChain = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME); // Also needs VK_KHR_SURFACE_EXTENSION_NAME
+	BV_ASSERT(result == VK_SUCCESS, "No swap chain extension");
+
+	deviceInfo.m_DeviceProperties.pNext = &deviceInfo.m_DeviceProperties1_1;
+	deviceInfo.m_DeviceProperties1_1.pNext = &deviceInfo.m_DeviceProperties1_2;
+	deviceInfo.m_DeviceProperties1_2.pNext = &deviceInfo.m_DeviceProperties1_3;
+
+	deviceInfo.m_DeviceFeatures.pNext = &deviceInfo.m_DeviceFeatures1_1;
+	deviceInfo.m_DeviceFeatures1_1.pNext = &deviceInfo.m_DeviceFeatures1_2;
+	deviceInfo.m_DeviceFeatures1_2.pNext = &deviceInfo.m_DeviceFeatures1_3;
+
+	void** pNextProperty = &deviceInfo.m_DeviceProperties1_3.pNext;
+	void** pNextFeature = &deviceInfo.m_DeviceFeatures1_3.pNext;
+	void** pNextMemoryProperty = &deviceInfo.m_DeviceMemoryProperties.pNext;
+
+	bool vertexAttributeDivisor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
+	bool fragmentShading = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+	bool meshShader = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MESH_SHADER_EXTENSION_NAME);
+	bool accelerationStructure = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+	bool rayTracingPipeline = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+	bool rayQuery = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_QUERY_EXTENSION_NAME);
+	bool conservativeRasterization = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+	bool customBorderColor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
+	bool memoryBudget = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+	bool deferredHostOperations = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+	bool deviceAddress = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+	bool predication = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
+	bool depthClipEnable = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
+	bool trueFullScreen = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
+		&& deviceInfo.m_ExtendedSurfaceCaps.hasSurface2Caps;
+
+	deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+	if (vertexAttributeDivisor)
 	{
-		if (deviceMemoryProperties.memoryProperties.memoryTypes[i].propertyFlags & VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures.pNext;
+
+		*pNextProperty = &deviceInfo.m_ExtendedProperties.vertexAttributeDivisorProperties;
+		pNextProperty = &deviceInfo.m_ExtendedProperties.vertexAttributeDivisorProperties.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
+	}
+
+	if (fragmentShading)
+	{
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures.pNext;
+		*pNextProperty = &deviceInfo.m_ExtendedProperties.fragmentShadingRateProps;
+		pNextProperty = &deviceInfo.m_ExtendedProperties.fragmentShadingRateProps.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+	}
+
+	if (meshShader)
+	{
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.meshShaderFeatures;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.meshShaderFeatures.pNext;
+
+		*pNextProperty = &deviceInfo.m_ExtendedProperties.meshShaderProps;
+		pNextProperty = &deviceInfo.m_ExtendedProperties.meshShaderProps.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+	}
+
+	if (accelerationStructure && deferredHostOperations && deviceAddress)
+	{
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures.pNext;
+
+		*pNextProperty = &deviceInfo.m_ExtendedProperties.accelerationStructureProps;
+		pNextProperty = &deviceInfo.m_ExtendedProperties.accelerationStructureProps.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+
+		if (rayTracingPipeline)
 		{
-			gpuInfo.m_DeviceMemory += deviceMemoryProperties.memoryProperties.memoryHeaps[deviceMemoryProperties.memoryProperties.memoryTypes[i].heapIndex].size;
+
+			*pNextFeature = &deviceInfo.m_ExtendedFeatures.rayTracingPipelineFeatures;
+			pNextFeature = &deviceInfo.m_ExtendedFeatures.rayTracingPipelineFeatures.pNext;
+
+			*pNextProperty = &deviceInfo.m_ExtendedProperties.rayTracingPipelineProps;
+			pNextProperty = &deviceInfo.m_ExtendedProperties.rayTracingPipelineProps.pNext;
+
+			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+		}
+
+		if (rayQuery)
+		{
+			*pNextFeature = &deviceInfo.m_ExtendedFeatures.rayQueryFeatures;
+			pNextFeature = &deviceInfo.m_ExtendedFeatures.rayQueryFeatures.pNext;
+
+			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+		}
+	}
+
+	if (conservativeRasterization)
+	{
+		*pNextProperty = &deviceInfo.m_ExtendedProperties.convervativeRasterizationProps;
+		pNextProperty = &deviceInfo.m_ExtendedProperties.convervativeRasterizationProps.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+	}
+
+	if (customBorderColor)
+	{
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.customBorderColorFeatures;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.customBorderColorFeatures.pNext;
+
+		*pNextProperty = &deviceInfo.m_ExtendedProperties.customBorderColorProps;
+		pNextProperty = &deviceInfo.m_ExtendedProperties.customBorderColorProps.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
+	}
+
+	if (memoryBudget)
+	{
+		*pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties;
+		pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+	}
+
+	if (deferredHostOperations)
+	{
+		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+	}
+
+	if (predication)
+	{
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.conditionalRenderingFeatures;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.conditionalRenderingFeatures.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
+	}
+
+	if (depthClipEnable)
+	{
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.depthClibEnableFeature;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.depthClibEnableFeature.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
+	}
+
+	if (trueFullScreen)
+	{
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
+	}
+
+	*pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties;
+	pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties.pNext;
+
+	// =================================
+	// Store features / properties / memory properties
+	vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceInfo.m_DeviceFeatures);
+	vkGetPhysicalDeviceProperties2(physicalDevice, &deviceInfo.m_DeviceProperties);
+	vkGetPhysicalDeviceMemoryProperties2(physicalDevice, &deviceInfo.m_DeviceMemoryProperties);
+
+	if (deviceInfo.m_DeviceFeatures.features.fillModeNonSolid)
+	{
+		caps |= RenderDeviceCapabilities::kWireframe;
+	}
+	if (deviceInfo.m_DeviceFeatures.features.geometryShader)
+	{
+		caps |= RenderDeviceCapabilities::kGeometryShader;
+	}
+	if (deviceInfo.m_DeviceFeatures.features.tessellationShader)
+	{
+		caps |= RenderDeviceCapabilities::kTesselationShader;
+	}
+	if (deviceInfo.m_DeviceFeatures.features.depthBounds)
+	{
+		caps |= RenderDeviceCapabilities::kDepthBoundsTest;
+	}
+	if (deviceInfo.m_DeviceProperties.properties.limits.timestampComputeAndGraphics)
+	{
+		caps |= RenderDeviceCapabilities::kTimestampQueries;
+	}
+	if (deviceInfo.m_DeviceFeatures.features.multiDrawIndirect)
+	{
+		caps |= RenderDeviceCapabilities::kIndirectDrawCount;
+	}
+	if (deviceInfo.m_DeviceFeatures1_2.samplerFilterMinmax)
+	{
+		caps |= RenderDeviceCapabilities::kSamplerMinMaxReduction;
+	}
+	if (customBorderColor)
+	{
+		caps |= RenderDeviceCapabilities::kCustomBorderColor;
+	}
+	if (predication)
+	{
+		caps |= RenderDeviceCapabilities::kPredication;
+	}
+	if (conservativeRasterization)
+	{
+		caps |= RenderDeviceCapabilities::kConservativeRasterization;
+	}
+	if (fragmentShading)
+	{
+		caps |= RenderDeviceCapabilities::kShadingRate;
+	}
+	if (meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.taskShader)
+	{
+		caps |= RenderDeviceCapabilities::kMeshShader;
+		if (deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries)
+		{
+			caps |= RenderDeviceCapabilities::kMeshQuery;
+		}
+	}
+	if (rayTracingPipeline)
+	{
+		caps |= RenderDeviceCapabilities::kRayTracing;
+	}
+	if (rayQuery)
+	{
+		caps |= RenderDeviceCapabilities::kRayQuery;
+	}
+	if (deviceInfo.m_DeviceFeatures1_1.multiview)
+	{
+		caps |= RenderDeviceCapabilities::kMultiView;
+	}
+	if (trueFullScreen)
+	{
+		caps |= RenderDeviceCapabilities::kTrueFullScreen;
+	}
+
+	strcpy(gpuInfo.m_DeviceName, deviceInfo.m_DeviceProperties.properties.deviceName);
+	gpuInfo.m_DeviceId = deviceInfo.m_DeviceProperties.properties.deviceID;
+	gpuInfo.m_VendorId = deviceInfo.m_DeviceProperties.properties.vendorID;
+
+	for (u32 i = 0; i < deviceInfo.m_DeviceMemoryProperties.memoryProperties.memoryHeapCount; i++)
+	{
+		if (deviceInfo.m_DeviceMemoryProperties.memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+		{
+			gpuInfo.m_DeviceMemory += deviceInfo.m_DeviceMemoryProperties.memoryProperties.memoryHeaps[i].size;
 		}
 	}
 
 	u32 queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties2(gpu, &queueFamilyCount, nullptr);
+	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, nullptr);
+	deviceInfo.m_QueueFamilyProperties.Resize(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, deviceInfo.m_QueueFamilyProperties.Data());
 
-	BvVector<VkQueueFamilyProperties2> queueFamilyProperties(queueFamilyCount, VkQueueFamilyProperties2{ VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
-	vkGetPhysicalDeviceQueueFamilyProperties2(gpu, &queueFamilyCount, queueFamilyProperties.Data());
+	auto hasFlagFn = [](VkQueueFlags queueFlags, VkQueueFlagBits flag)
+		{
+			return (queueFlags & flag);
+		};
 
-	for (auto i = 0; i < queueFamilyProperties.Size(); ++i)
+	deviceInfo.m_QueueFamilyIndices.Reserve(deviceInfo.m_QueueFamilyProperties.Size());
+	for (auto i = 0; i < deviceInfo.m_QueueFamilyProperties.Size(); ++i)
 	{
-		if (queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		auto& props = deviceInfo.m_QueueFamilyProperties[i].queueFamilyProperties;
+		if (props.queueFlags == 0 || props.queueCount == 0)
 		{
-			gpuInfo.m_GraphicsContextCount += queueFamilyProperties[i].queueFamilyProperties.queueCount;
+			continue;
 		}
-		else if (queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT)
+		deviceInfo.m_QueueFamilyIndices.EmplaceBack(i);
+
+		bool hasGraphics = hasFlagFn(props.queueFlags, VK_QUEUE_GRAPHICS_BIT);
+		bool hasCompute = hasFlagFn(props.queueFlags, VK_QUEUE_COMPUTE_BIT);
+		bool hasTransfer = hasFlagFn(props.queueFlags, VK_QUEUE_TRANSFER_BIT);
+		bool hasVideoDecode = hasFlagFn(props.queueFlags, VK_QUEUE_VIDEO_DECODE_BIT_KHR);
+		bool hasVideoEncode = hasFlagFn(props.queueFlags, VK_QUEUE_VIDEO_ENCODE_BIT_KHR);
+
+		auto& contextGroup = gpuInfo.m_ContextGroups.EmplaceBack(ContextGroup{});
+		contextGroup.m_GroupIndex = i;
+		contextGroup.m_MaxContextCount = props.queueCount;
+		if (hasGraphics)
 		{
-			gpuInfo.m_ComputeContextCount += queueFamilyProperties[i].queueFamilyProperties.queueCount;
+			gpuInfo.m_GraphicsContextCount += props.queueCount;
+			contextGroup.m_SupportedCommandTypes.EmplaceBack(CommandType::kGraphics);
 		}
-		else if (queueFamilyProperties[i].queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT)
+		if (hasCompute)
 		{
-			// TODO: Some transfer queues may support video encoding and decoding, so will need
-			// to add support for those in the future
-			gpuInfo.m_TransferContextCount += queueFamilyProperties[i].queueFamilyProperties.queueCount;
+			gpuInfo.m_ComputeContextCount += props.queueCount;
+			contextGroup.m_SupportedCommandTypes.EmplaceBack(CommandType::kCompute);
+		}
+		if (hasTransfer)
+		{
+			contextGroup.m_SupportedCommandTypes.EmplaceBack(CommandType::kTransfer);
+			gpuInfo.m_TransferContextCount += props.queueCount;
+		}
+		if (hasVideoDecode)
+		{
+			contextGroup.m_SupportedCommandTypes.EmplaceBack(CommandType::kVideoDecode);
+		}
+		if (hasVideoEncode)
+		{
+			contextGroup.m_SupportedCommandTypes.EmplaceBack(CommandType::kVideoEncode);
+		}
+
+		bool hasVideo = hasVideoDecode || hasVideoEncode;
+		// Mark queues that are dedicated
+		if (hasGraphics)
+		{
+			contextGroup.m_DedicatedCommandType = !hasVideo ? CommandType::kGraphics : CommandType::kNone;
+		}
+		else if (hasCompute)
+		{
+			contextGroup.m_DedicatedCommandType = !hasVideo ? CommandType::kCompute : CommandType::kNone;
+		}
+		else if (hasVideo)
+		{
+			if (!hasVideoEncode)
+			{
+				contextGroup.m_DedicatedCommandType = CommandType::kVideoDecode;
+			}
+			else if (!hasVideoDecode)
+			{
+				contextGroup.m_DedicatedCommandType = CommandType::kVideoEncode;
+			}
+			else
+			{
+				contextGroup.m_DedicatedCommandType = CommandType::kNone;
+			}
+		}
+		else if (hasTransfer)
+		{
+			contextGroup.m_DedicatedCommandType = CommandType::kTransfer;
 		}
 	}
 
@@ -400,7 +720,7 @@ void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo)
 		gpuInfo.m_Vendor = GPUVendor::kIntel; break;
 	}
 
-	switch (deviceProperties.properties.deviceType)
+	switch (deviceInfo.m_DeviceProperties.properties.deviceType)
 	{
 	case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
 		gpuInfo.m_Type = GPUType::kDiscrete;
@@ -412,7 +732,9 @@ void SetupGPUInfo(VkPhysicalDevice gpu, BvGPUInfo& gpuInfo)
 		gpuInfo.m_Type = GPUType::kUnknown;
 		break;
 	}
-};
+
+	gpuInfo.m_DeviceCaps = caps;
+}
 
 
 namespace BvRenderVk

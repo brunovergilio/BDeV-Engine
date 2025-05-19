@@ -107,13 +107,13 @@ namespace Internal
 
 
 // Used for generating STD error information
-#define BV_STD_ERROR() Internal::BvSTDError();
+#define BV_STD_ERROR() do { Internal::BvSTDError(); } while (false)
 
 // Used for generating OS error information
-#define BV_SYSTEM_ERROR() Internal::BvSystemError();
+#define BV_SYSTEM_ERROR() do { Internal::BvSystemError(); } while (false)
 
 // Used for generating custom error information
-#define BV_ERROR(errorCode, msg, ...) Internal::BvCustomError(errorCode, msg __VA_OPT__(,) __VA_ARGS__);
+#define BV_ERROR(errorCode, msg, ...) do { Internal::BvCustomError(errorCode, msg __VA_OPT__(,) __VA_ARGS__); } while (false)
 
 // Throws an error with a custom message and exits the application
 #define BV_FATAL_ERROR(msg, ...) do											\

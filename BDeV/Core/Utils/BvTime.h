@@ -12,4 +12,6 @@ public:
 
 	static i64 GetCurrentUTCTimestampInMs();
 	static i64 GetCurrentUTCTimestampInUs();
+
+	static std::tm GetLocalTime();
 };

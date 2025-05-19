@@ -812,8 +812,7 @@ void RayTracing5::CreateBLAS()
 	m_Context->BuildBLAS(blasBuildDescs[0], &postBuild);
 	postBuild.m_DstBufferOffset = 8;
 	m_Context->BuildBLAS(blasBuildDescs[1], &postBuild);
-	m_Context->Execute();
-	m_Context->WaitForGPU();
+	m_Context->ExecuteAndWait();
 
 	u64 compactedSizes[2]{};
 	auto pValues = compactBuffer->GetMappedDataAsT<u64>();
@@ -844,8 +843,7 @@ void RayTracing5::CreateBLAS()
 		copy.m_pDst = m_BLAS[1];
 		m_Context->CopyBLAS(copy);
 
-		m_Context->Execute();
-		m_Context->WaitForGPU();
+		m_Context->ExecuteAndWait();
 	}
 }
 
@@ -893,8 +891,7 @@ void RayTracing5::CreateTLAS()
 
 	m_Context->NewCommandList();
 	m_Context->BuildTLAS(tlasBuilDesc);
-	m_Context->Execute();
-	m_Context->WaitForGPU();
+	m_Context->ExecuteAndWait();
 }
 
 

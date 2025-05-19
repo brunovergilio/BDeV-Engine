@@ -79,3 +79,16 @@ bool IsDepthOrStencilFormat(Format format)
 	VkImageAspectFlags flags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 	return (GetVkFormatMap(format).aspectFlags & flags) != 0;
 }
+
+
+bool QueueSupportsPresent(VkPhysicalDevice physicalDevice, u32 index)
+{
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	if (vkGetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice, index))
+	{
+		return true;
+	}
+#endif
+
+	return false;
+}

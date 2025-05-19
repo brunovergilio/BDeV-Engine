@@ -27,7 +27,9 @@ bool BvGPUFenceD3D12::Wait(u64 value, u64 timeout)
 	DWORD waitValue = timeoutInMs > u64(INFINITE) ? INFINITE : DWORD(timeoutInMs);
 
 	m_Fence->SetEventOnCompletion(value, m_Event);
-	WaitForSingleObject(m_Event, waitValue);
+	auto result = WaitForSingleObject(m_Event, waitValue);
+
+	return result == WAIT_OBJECT_0;
 }
 
 

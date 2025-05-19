@@ -423,8 +423,7 @@ void RayTracing2::CreateBLAS()
 
 	m_Context->NewCommandList();
 	m_Context->BuildBLAS(blasBuildDesc);
-	m_Context->Execute();
-	m_Context->WaitForGPU();
+	m_Context->ExecuteAndWait();
 }
 
 
@@ -458,8 +457,7 @@ void RayTracing2::CreateTLAS()
 
 	m_Context->NewCommandList();
 	m_Context->BuildTLAS(tlasBuilDesc);
-	m_Context->Execute();
-	m_Context->WaitForGPU();
+	m_Context->ExecuteAndWait();
 }
 
 

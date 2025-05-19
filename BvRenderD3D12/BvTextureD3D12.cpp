@@ -4,6 +4,9 @@
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
+BV_D3D12_DEVICE_RES_DEF(BvTextureD3D12);
+
+
 BvTextureD3D12::BvTextureD3D12(BvRenderDeviceD3D12* pDevice, const TextureDesc& textureDesc, const TextureInitData* pInitData)
 	: m_pDevice(pDevice), m_TextureDesc(textureDesc)
 {

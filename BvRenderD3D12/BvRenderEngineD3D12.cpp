@@ -3,6 +3,9 @@
 #include "BDeV/Core/Container/BvText.h"
 
 
+bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvGPUInfo& gpuInfo);
+
+
 class BvRenderEngineD3D12Helper
 {
 public:
@@ -48,7 +51,7 @@ IBvRenderDevice* BvRenderEngineD3D12::CreateRenderDeviceImpl(const BvRenderDevic
 		gpuIndex = 0;
 		for (auto i = 0; i < m_GPUs.Size(); ++i)
 		{
-			if (m_GPUs[i].m_Type == GPUType::kDiscrete)
+			if (m_GPUs[i]->m_Type == GPUType::kDiscrete)
 			{
 				gpuIndex = i;
 				break;
@@ -56,11 +59,12 @@ IBvRenderDevice* BvRenderEngineD3D12::CreateRenderDeviceImpl(const BvRenderDevic
 		}
 	}
 
-	auto& pDevice = m_Devices[gpuIndex].second;
+	auto& deviceData = *m_Devices[gpuIndex];
+	auto& pDevice = deviceData.m_pDevice;
 	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
 	if (!pDevice)
 	{
-		pDevice = BV_NEW(BvRenderDeviceD3D12)(this, m_Devices[gpuIndex].first.Get(), gpuIndex, m_GPUs[gpuIndex], descD3D12);
+		pDevice = BV_NEW(BvRenderDeviceD3D12)(this, deviceData.m_Adapter.Get(), deviceData.m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], descD3D12);
 		if (!pDevice->IsValid())
 		{
 			pDevice->Release();
@@ -116,7 +120,7 @@ void BvRenderEngineD3D12::Create()
 
 		if (adapterDesc.Flags == 0)
 		{
-			auto& gpuInfo = m_GPUs.EmplaceBack();
+			BvGPUInfo gpuInfo{};
 			BvTextUtilities::ConvertWideCharToUTF8Char(adapterDesc.Description, ArraySize(adapterDesc.Description),
 				gpuInfo.m_DeviceName, ArraySize(gpuInfo.m_DeviceName));
 			gpuInfo.m_DeviceMemory = adapterDesc.DedicatedVideoMemory;
@@ -137,8 +141,10 @@ void BvRenderEngineD3D12::Create()
 			case 0x10DE:
 				gpuInfo.m_Vendor = GPUVendor::kNvidia; break;
 			case 0x13B5:
+				gpuInfo.m_Type = GPUType::kIntegrated;
 				gpuInfo.m_Vendor = GPUVendor::kARM; break;
 			case 0x5143:
+				gpuInfo.m_Type = GPUType::kIntegrated;
 				gpuInfo.m_Vendor = GPUVendor::kQualcomm; break;
 			case 0x163C:
 			case 0x8086:
@@ -147,8 +153,17 @@ void BvRenderEngineD3D12::Create()
 				gpuInfo.m_Vendor = GPUVendor::kIntel; break;
 			}
 
-			auto& device = m_Devices.EmplaceBack();
-			device.first = adapter;
+			BvDeviceInfoD3D12 deviceInfo{};
+			if (SetupDeviceInfo(adapter.Get(), deviceInfo, gpuInfo))
+			{
+				auto pDeviceData = m_Devices.EmplaceBack(BV_NEW(DeviceData)());
+				pDeviceData->m_Adapter = adapter;
+				pDeviceData->m_pDeviceInfo = BV_NEW(BvDeviceInfoD3D12)();
+				*pDeviceData->m_pDeviceInfo = deviceInfo;
+
+				auto pGPUInfo = m_GPUs.EmplaceBack(BV_NEW(BvGPUInfo)());
+				*pGPUInfo = gpuInfo;
+			}
 		}
 	}
 }
@@ -158,9 +173,9 @@ void BvRenderEngineD3D12::Destroy()
 {
 	if (m_Factory)
 	{
-		for (auto& devicePair : m_Devices)
+		for (auto pDeviceData : m_Devices)
 		{
-			auto pDevice = devicePair.second;
+			auto pDevice = pDeviceData->m_pDevice;
 			if (pDevice)
 			{
 				BV_ASSERT(false, "NOT IMPLEMENTED");
@@ -176,6 +191,149 @@ void BvRenderEngineD3D12::Destroy()
 void BvRenderEngineD3D12::SelfDestroy()
 {
 	BvRenderEngineD3D12Helper::Destroy();
+}
+
+
+bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvGPUInfo& gpuInfo)
+{
+	D3D_FEATURE_LEVEL levels[] =
+	{
+		D3D_FEATURE_LEVEL_12_2,
+		D3D_FEATURE_LEVEL_12_1,
+		D3D_FEATURE_LEVEL_12_0,
+		D3D_FEATURE_LEVEL_11_1,
+		D3D_FEATURE_LEVEL_11_0
+	};
+
+	D3D_FEATURE_LEVEL availableFeatureLevel = D3D_FEATURE_LEVEL_11_0;
+	// Create a temporary device so we can query its capabilities
+	ComPtr<ID3D12Device> device;
+	for (auto i = 0; i < ArraySize(levels); ++i)
+	{
+		if (SUCCEEDED(D3D12CreateDevice(pAdapter, levels[i], IID_PPV_ARGS(&device))))
+		{
+			availableFeatureLevel = levels[i];
+			break;
+		}
+	}
+
+	if (!device)
+	{
+		return false;
+	}
+
+	deviceInfo.m_FeatureLevel = availableFeatureLevel;
+#define GET_FEATURE_OPTIONS(option) device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS##option, &deviceInfo.m_Options##option, sizeof(deviceInfo.m_Options##option))
+	GET_FEATURE_OPTIONS();
+	GET_FEATURE_OPTIONS(1);
+	GET_FEATURE_OPTIONS(2);
+	GET_FEATURE_OPTIONS(3);
+	GET_FEATURE_OPTIONS(4);
+	GET_FEATURE_OPTIONS(5);
+	GET_FEATURE_OPTIONS(6);
+	GET_FEATURE_OPTIONS(7);
+	GET_FEATURE_OPTIONS(8);
+	GET_FEATURE_OPTIONS(9);
+	GET_FEATURE_OPTIONS(10);
+	GET_FEATURE_OPTIONS(11);
+	GET_FEATURE_OPTIONS(12);
+	GET_FEATURE_OPTIONS(13);
+#undef GET_FEATURE_OPTIONS
+
+	gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kWireframe | RenderDeviceCapabilities::kGeometryShader | RenderDeviceCapabilities::kTesselationShader
+		| RenderDeviceCapabilities::kTimestampQueries | RenderDeviceCapabilities::kIndirectDrawCount
+		| RenderDeviceCapabilities::kCustomBorderColor | RenderDeviceCapabilities::kPredication | RenderDeviceCapabilities::kTrueFullScreen;
+	if (deviceInfo.m_Options2.DepthBoundsTestSupported)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kDepthBoundsTest;
+	}
+	if (deviceInfo.m_Options.TiledResourcesTier >= D3D12_TILED_RESOURCES_TIER_2)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kSamplerMinMaxReduction;
+	}
+	if (deviceInfo.m_Options.ConservativeRasterizationTier != D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kConservativeRasterization;
+	}
+	if (deviceInfo.m_Options6.VariableShadingRateTier != D3D12_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kShadingRate;
+	}
+	if (deviceInfo.m_Options7.MeshShaderTier != D3D12_MESH_SHADER_TIER_NOT_SUPPORTED)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kMeshShader;
+	}
+	if (deviceInfo.m_Options9.MeshShaderPipelineStatsSupported)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kMeshQuery;
+	}
+	if (deviceInfo.m_Options5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kRayTracing | RenderDeviceCapabilities::kRayQuery;
+	}
+
+	{
+		auto& graphics = gpuInfo.m_ContextGroups.EmplaceBack();
+		graphics.m_CommandTypes.EmplaceBack(CommandType::kGraphics);
+		graphics.m_CommandTypes.EmplaceBack(CommandType::kCompute);
+		graphics.m_CommandTypes.EmplaceBack(CommandType::kTransfer);
+		graphics.m_Dedicated = true;
+		graphics.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
+		graphics.m_MaxContextCount = 16;
+		graphics.m_MainCommandType = CommandType::kGraphics;
+
+		auto& compute = gpuInfo.m_ContextGroups.EmplaceBack();
+		compute.m_CommandTypes.EmplaceBack(CommandType::kCompute);
+		compute.m_CommandTypes.EmplaceBack(CommandType::kTransfer);
+		compute.m_Dedicated = true;
+		compute.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
+		compute.m_MaxContextCount = 16;
+		compute.m_MainCommandType = CommandType::kCompute;
+
+		auto& transfer = gpuInfo.m_ContextGroups.EmplaceBack();
+		transfer.m_CommandTypes.EmplaceBack(CommandType::kTransfer);
+		transfer.m_Dedicated = true;
+		transfer.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
+		transfer.m_MaxContextCount = 16;
+		transfer.m_MainCommandType = CommandType::kTransfer;
+	}
+
+	// Check for video queues - this probably doesn't mean I have video support, although it should
+	{
+		ComPtr<ID3D12VideoDevice> videoDevice;
+		if (SUCCEEDED(device.As(&videoDevice)))
+		{
+			ComPtr<ID3D12CommandQueue> queue;
+			D3D12_COMMAND_QUEUE_DESC queueDesc{};
+			queueDesc.Type = D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE;
+			auto hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queue));
+			if (SUCCEEDED(hr))
+			{
+				auto& videoDecode = gpuInfo.m_ContextGroups.EmplaceBack();
+				videoDecode.m_CommandTypes.EmplaceBack(CommandType::kVideoDecode);
+				videoDecode.m_Dedicated = true;
+				videoDecode.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
+				videoDecode.m_MaxContextCount = 16;
+				videoDecode.m_MainCommandType = CommandType::kVideoDecode;
+				queue = nullptr;
+			}
+
+			queueDesc.Type = D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
+			hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queue));
+			if (SUCCEEDED(hr))
+			{
+				auto& videoEncode = gpuInfo.m_ContextGroups.EmplaceBack();
+				videoEncode.m_CommandTypes.EmplaceBack(CommandType::kVideoEncode);
+				videoEncode.m_Dedicated = true;
+				videoEncode.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
+				videoEncode.m_MaxContextCount = 16;
+				videoEncode.m_MainCommandType = CommandType::kVideoEncode;
+				queue = nullptr;
+			}
+		}
+	}
+
+	return true;
 }
 
 

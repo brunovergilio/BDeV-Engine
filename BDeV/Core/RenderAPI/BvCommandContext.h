@@ -44,6 +44,9 @@ class IBvCommandContext : public BvRCObj
 	BV_NOCOPYMOVE(IBvCommandContext);
 
 public:
+	virtual u32 GetGroupIndex() const = 0;
+	virtual u32 GetIndex() const = 0;
+
 	virtual BvGPUOp Execute() = 0;
 	virtual BvGPUOp Execute(u64 value) = 0;
 	virtual void Execute(IBvGPUFence* pFence, u64 value) = 0;
@@ -56,10 +59,10 @@ public:
 	virtual void NextSubpass() = 0;
 	virtual void EndRenderPass() = 0;
 
-	virtual void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets) = 0;
-	BV_INLINE void SetRenderTarget(const RenderTargetDesc& renderTarget)
+	virtual void SetRenderTargets(u32 renderTargetCount, const RenderTargetDesc* pRenderTargets, u32 multiviewCount = 0) = 0;
+	BV_INLINE void SetRenderTarget(const RenderTargetDesc& renderTarget, u32 multiviewCount = 0)
 	{
-		SetRenderTargets(1, &renderTarget);
+		SetRenderTargets(1, &renderTarget, multiviewCount);
 	}
 
 	virtual void SetViewports(u32 viewportCount, const Viewport* pViewports) = 0;
@@ -191,6 +194,7 @@ public:
 
 	virtual void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp) = 0;
 
+	virtual bool SupportsQueryType(QueryType queryType) const = 0;
 	virtual void BeginQuery(IBvQuery* pQuery) = 0;
 	virtual void EndQuery(IBvQuery* pQuery) = 0;
 

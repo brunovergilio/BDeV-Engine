@@ -13,7 +13,6 @@
 #include "BDeV/Core/Math/BvMath.h"
 
 #include "BDeV/Core/RenderAPI/BvRenderEngine.h"
-#include "BDeV/Core/RenderAPI/BvGPUInfo.h"
 #include "BDeV/Core/RenderAPI/BvRenderDevice.h"
 #include "BDeV/Core/RenderAPI/BvSwapChain.h"
 #include "BDeV/Core/RenderAPI/BvBuffer.h"

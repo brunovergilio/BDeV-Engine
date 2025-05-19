@@ -206,6 +206,11 @@ void BvGraphicsPipelineStateVk::Create()
 		pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
 		pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
 		pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
+		if (m_PipelineStateDesc.m_EnableMultiview)
+		{
+			BV_ASSERT(m_PipelineStateDesc.m_MultiviewCount > 1, "Multiview must be greater than 1 if enabled");
+			pipelineRenderingCI.viewMask = (1 << m_PipelineStateDesc.m_MultiviewCount) - 1;
+		}
 	}
 
 	auto attachmentCount = rtvFormats.Size();

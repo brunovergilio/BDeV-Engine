@@ -121,14 +121,15 @@ void BvSwapChainVk::Present(bool vSync)
 
 void BvSwapChainVk::SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor)
 {
+	auto pCurrMonitor = m_pWindow->GetWindowDesc().m_pMonitor;
 	if (!pMonitor)
 	{
-		pMonitor = m_pWindow->GetWindowDesc().m_pMonitor;
+		pMonitor = pCurrMonitor;
 	}
 
 	if (m_SwapChainDesc.m_WindowMode == mode)
 	{
-		if (mode == SwapChainMode::kWindowed || m_pWindow->GetWindowDesc().m_pMonitor == pMonitor)
+		if (mode == SwapChainMode::kWindowed || pMonitor == pCurrMonitor)
 		{
 			return;
 		}
@@ -136,6 +137,8 @@ void BvSwapChainVk::SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor)
 
 	m_pCommandQueue->WaitIdle();
 	m_SwapChainDesc.m_WindowMode = mode;
+	SetTrueFullscreen(false);
+
 	m_pWindow->SetFullscreen(mode != SwapChainMode::kWindowed, pMonitor);
 	Create();
 }
@@ -155,16 +158,10 @@ bool BvSwapChainVk::Create()
 	}
 
 	auto device = m_pDevice->GetHandle();
-	if (m_Swapchain != VK_NULL_HANDLE && m_FullscreenAcquired)
-	{
-		vkReleaseFullScreenExclusiveModeEXT(device, m_Swapchain);
-		m_FullscreenAcquired = false;
-	}
-
 	auto physicalDevice = m_pDevice->GetPhysicalDeviceHandle();
 
 	VkBool32 presentationSupported = VK_FALSE;
-	u32 queueFamilyIndex = m_pCommandQueue->GetFamilyIndex();
+	u32 queueFamilyIndex = m_pCommandContext->GetGroupIndex();
 	auto result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, m_Surface, &presentationSupported);
 	BvCheckErrorReturnVk(result, false);
 	if (!presentationSupported)
@@ -414,8 +411,7 @@ bool BvSwapChainVk::Create()
 	swapchainCreateInfo.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
 	swapchainCreateInfo.imageArrayLayers = 1;
 
-	swapchainCreateInfo.imageSharingMode = queueFamilyIndex == m_pDevice->GetDeviceInfo()->m_GraphicsQueueInfo.m_QueueFamilyIndex ?
-		VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
+	swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	swapchainCreateInfo.queueFamilyIndexCount = 0;
 	swapchainCreateInfo.pQueueFamilyIndices = nullptr;
 
@@ -466,6 +462,13 @@ bool BvSwapChainVk::Create()
 	m_SwapChainTextureViews.Resize(imageCount);
 	BvVector<VkImage> swapChainImages(imageCount);
 	result = vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, swapChainImages.Data());
+	if (result != VK_SUCCESS && m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen)
+	{
+		m_SwapChainDesc.m_WindowMode = SwapChainMode::kBorderlessFullscreen;
+		swapchainCreateInfo.pNext = nullptr;
+
+		result = vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, swapChainImages.Data());
+	}
 	BvCheckErrorReturnVk(result, false);
 
 	TextureViewDesc textureViewDesc;
@@ -483,8 +486,7 @@ bool BvSwapChainVk::Create()
 
 	if (m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen)
 	{
-		vkAcquireFullScreenExclusiveModeEXT(device, m_Swapchain);
-		m_FullscreenAcquired = true;
+		SetTrueFullscreen(true);
 	}
 
 	m_IsReady = false;
@@ -542,7 +544,30 @@ void BvSwapChainVk::Resize()
 		return;
 	}
 
+	SetTrueFullscreen(false);
 	Create();
+}
+
+
+void BvSwapChainVk::SetTrueFullscreen(bool value)
+{
+	auto device = m_pDevice->GetHandle();
+	if (value)
+	{
+		if (!m_FullscreenAcquired)
+		{
+			vkAcquireFullScreenExclusiveModeEXT(device, m_Swapchain);
+			m_FullscreenAcquired = true;
+		}
+	}
+	else
+	{
+		if (m_FullscreenAcquired)
+		{
+			vkReleaseFullScreenExclusiveModeEXT(device, m_Swapchain);
+			m_FullscreenAcquired = false;
+		}
+	}
 }
 
 

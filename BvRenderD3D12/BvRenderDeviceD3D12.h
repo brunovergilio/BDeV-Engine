@@ -23,25 +23,6 @@ class BvAccelerationStructureD3D12;
 class BvShaderBindingTableD3D12;
 
 
-struct BvDeviceInfoD3D12
-{
-	D3D12_FEATURE_DATA_D3D12_OPTIONS m_Options{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS1 m_Options1{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS2 m_Options2{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS3 m_Options3{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS4 m_Options4{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS5 m_Options5{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS6 m_Options6{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS7 m_Options7{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS8 m_Options8{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS9 m_Options9{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS10 m_Options10{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS11 m_Options11{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS12 m_Options12{};
-	D3D12_FEATURE_DATA_D3D12_OPTIONS13 m_Options13{};
-};
-
-
 struct BvRenderDeviceCreateDescD3D12 : BvRenderDeviceCreateDesc
 {
 };
@@ -50,7 +31,7 @@ struct BvRenderDeviceCreateDescD3D12 : BvRenderDeviceCreateDesc
 class BvRenderDeviceD3D12 final : public IBvRenderDevice, public IBvResourceD3D12
 {
 public:
-	BvRenderDeviceD3D12(BvRenderEngineD3D12* pEngine, IDXGIAdapter1* pAdapter, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescD3D12& deviceDesc);
+	BvRenderDeviceD3D12(BvRenderEngineD3D12* pEngine, IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12* pDeviceInfo, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescD3D12& deviceDesc);
 	~BvRenderDeviceD3D12();
 
 	IBvSwapChain* CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext) override;
@@ -113,7 +94,6 @@ private:
 	void CreateAllocator();
 	void DestroyAllocator();
 	void SetupSupportedDisplayFormats();
-	void SetupDeviceInfo();
 	void CreateCommandSignatures();
 
 private:

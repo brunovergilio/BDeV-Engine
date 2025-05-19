@@ -55,6 +55,8 @@ struct SubpassDesc
 	const AttachmentRef* m_pResolveAttachments = nullptr;
 	const AttachmentRef* m_pDepthStencilResolveAttachment = nullptr;
 	const ShadingRateAttachmentRef* m_pShadingRateAttachment = nullptr;
+	u32 m_MultiviewCount = 0;
+	u32 m_MultiviewCorrelationMask = 0;
 
 	constexpr bool operator==(const SubpassDesc& rhs) const
 	{
@@ -119,6 +121,11 @@ struct SubpassDesc
 			{
 				return false;
 			}
+		}
+
+		if (m_MultiviewCount != rhs.m_MultiviewCount || m_MultiviewCorrelationMask != rhs.m_MultiviewCorrelationMask)
+		{
+			return false;
 		}
 
 		return true;

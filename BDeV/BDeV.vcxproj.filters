@@ -17,7 +17,6 @@
     <ClInclude Include="Core\RenderAPI\BvBuffer.h" />
     <ClInclude Include="Core\RenderAPI\BvBufferView.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderCommon.h" />
-    <ClInclude Include="Core\RenderAPI\BvGPUInfo.h" />
     <ClInclude Include="Core\RenderAPI\BvPipelineState.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderDevice.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderEngine.h" />

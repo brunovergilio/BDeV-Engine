@@ -71,7 +71,7 @@ void BvRenderDeviceVk::SetupSupportedDisplayFormats()
 			}
 		}
 
-		if (m_pDeviceInfo->m_ExtendedSurfaceCaps.hasSurface2Caps)
+		if (m_pDeviceInfo->m_ExtendedSurfaceCaps.hasSurface2Caps && EHasFlag(m_GPUInfo.m_DeviceCaps, RenderDeviceCapabilities::kTrueFullScreen))
 		{
 			auto& fullscreenCaps = m_pDeviceInfo->m_ExtendedSurfaceCaps.fullScreenExclusiveCaps;
 			auto& fullscreenInfoWin32 = m_pDeviceInfo->m_ExtendedSurfaceCaps.fullScreenExclusiveInfoWin32;
@@ -95,10 +95,7 @@ void BvRenderDeviceVk::SetupSupportedDisplayFormats()
 				}
 			}
 
-			if (anyMonitorSupportsFullscreen)
-			{
-				m_DeviceCaps |= ~RenderDeviceCapabilities::kTrueFullScreen;
-			}
+			BV_ASSERT(anyMonitorSupportsFullscreen, "True Fullscreen marked as available but no monitors support it");
 		}
 	} while (0);
 

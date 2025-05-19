@@ -2,7 +2,6 @@
 
 
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/RenderAPI/BvGPUInfo.h"
 #include "BvSwapChain.h"
 #include "BvRenderPass.h"
 #include "BvShaderResource.h"
@@ -43,19 +42,15 @@ public:
 	template<typename T = IBvGPUFence> BV_INLINE BvRCRaw<T> CreateFence(u64 value) { return static_cast<T*>(CreateFenceImpl(value)); }
 	template<typename T = IBvAccelerationStructure> BV_INLINE BvRCRaw<T> CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc) { return static_cast<T*>(CreateAccelerationStructureImpl(asDesc)); }
 	template<typename T = IBvShaderBindingTable> BV_INLINE BvRCRaw<T> CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) { return static_cast<T*>(CreateShaderBindingTableImpl(sbtDesc, pContext)); }
-	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetGraphicsContext(u32 index = 0) { return static_cast<T*>(GetGraphicsContextImpl(index)); }
-	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetComputeContext(u32 index = 0) { return static_cast<T*>(GetComputeContextImpl(index)); }
-	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> GetTransferContext(u32 index = 0) { return static_cast<T*>(GetTransferContextImpl(index)); }
+	template<typename T = IBvCommandContext> BV_INLINE BvRCRaw<T> CreateCommandContext(const CommandContextDesc& commandContextDesc) { return static_cast<T*>(CreateCommandContextImpl(commandContextDesc)); }
 
 	virtual void WaitIdle() const = 0;
 
 	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr) const = 0;
 	virtual u64 GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const = 0;
 
-	virtual bool SupportsQueryType(QueryType queryType, CommandType commandType) const = 0;
 	virtual FormatFeatures GetFormatFeatures(Format format) const = 0;
 
-	virtual RenderDeviceCapabilities GetDeviceCaps() const = 0;
 	virtual const BvGPUInfo& GetGPUInfo() const = 0;
 	virtual const BvVector<Format>& GetSupportedDisplayFormats() const = 0;
 
@@ -79,7 +74,5 @@ protected:
 	virtual IBvGPUFence* CreateFenceImpl(u64 value) = 0;
 	virtual IBvAccelerationStructure* CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc) = 0;
 	virtual IBvShaderBindingTable* CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) = 0;
-	virtual IBvCommandContext* GetGraphicsContextImpl(u32 index = 0) = 0;
-	virtual IBvCommandContext* GetComputeContextImpl(u32 index = 0) = 0;
-	virtual IBvCommandContext* GetTransferContextImpl(u32 index = 0) = 0;
+	virtual IBvCommandContext* CreateCommandContextImpl(const CommandContextDesc& commandContextDesc) = 0;
 };

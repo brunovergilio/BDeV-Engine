@@ -20,8 +20,34 @@ void SampleBase::Initialize()
 	auto pFnTextureLoader = m_ToolsLib.GetProcAddressT<TextureLoaderFnType>("CreateDDSTextureLoader");
 	m_TextureLoader = BvRCRaw(pFnTextureLoader());
 
+	{
+		u32 index = 0;
+		auto& gpus = m_pEngine->GetGPUs();
+		for (auto i = 0; i < gpus.Size(); ++i)
+		{
+			auto& gpu = *gpus[i];
+			if (gpu.m_Type == GPUType::kDiscrete)
+			{
+				index = i;
+				break;
+			}
+		}
+		auto& gpu = *gpus[index];
+		for (auto i = 0; i < gpu.m_ContextGroups.Size(); ++i)
+		{
+			if (gpu.m_ContextGroups[i].SupportsCommandType(CommandType::kGraphics))
+			{
+				auto& group = m_RenderDeviceDesc.m_ContextGroups.EmplaceBack();
+				group.m_ContextCount = 1;
+				group.m_GroupIndex = i;
+				break;
+			}
+		}
+	}
+
 	m_Device = m_pEngine->CreateRenderDevice(m_RenderDeviceDesc);
-	m_Context = m_Device->GetGraphicsContext(0);
+	CommandContextDesc ccd(CommandType::kGraphics, false);
+	m_Context = m_Device->CreateCommandContext(ccd);
 
 	WindowDesc windowDesc;
 	windowDesc.m_X += 100;

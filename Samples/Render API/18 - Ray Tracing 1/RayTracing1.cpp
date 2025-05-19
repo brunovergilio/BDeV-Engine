@@ -317,8 +317,7 @@ void RayTracing1::CreateResources()
 	build.m_pScratchBuffer = m_ScratchBuffer;
 	m_Context->NewCommandList();
 	m_Context->BuildTLAS(build);
-	m_Context->Execute();
-	m_Context->WaitForGPU();
+	m_Context->ExecuteAndWait();
 
 	ShaderBindingTableDesc sbtDesc;
 	sbtDesc.m_pPSO = m_RayPSO;

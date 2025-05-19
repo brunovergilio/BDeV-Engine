@@ -10,10 +10,10 @@ BvCommandQueueVk::BvCommandQueueVk()
 }
 
 
-BvCommandQueueVk::BvCommandQueueVk(VkDevice device, CommandType queueFamilyType, u32 queueFamilyIndex, u32 queueIndex)
-	: m_Device(device), m_QueueFamilyIndex(queueFamilyIndex), m_QueueIndex(queueIndex)
+BvCommandQueueVk::BvCommandQueueVk(VkDevice device, u32 queueFamilyIndex, u32 queueIndex)
+	: m_Device(device)
 {
-	vkGetDeviceQueue(m_Device, m_QueueFamilyIndex, m_QueueIndex, &m_Queue);
+	vkGetDeviceQueue(m_Device, queueFamilyIndex, queueIndex, &m_Queue);
 }
 
 
@@ -26,8 +26,6 @@ BvCommandQueueVk::BvCommandQueueVk(BvCommandQueueVk&& rhs) noexcept
 BvCommandQueueVk& BvCommandQueueVk::operator=(BvCommandQueueVk&& rhs) noexcept
 {
 	m_Device = rhs.m_Device;
-	m_QueueFamilyIndex = rhs.m_QueueFamilyIndex;
-	m_QueueIndex = rhs.m_QueueIndex;
 	m_Queue = rhs.m_Queue;
 
 	return *this;

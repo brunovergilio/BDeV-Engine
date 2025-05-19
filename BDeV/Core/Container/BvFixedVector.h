@@ -92,6 +92,8 @@ public:
 	Iterator Emplace(ConstIterator position, Args&&... args);
 	template <class... Args>
 	Type& EmplaceBack(Args&&... args);
+	size_t Find(const Type& value) const;
+	bool Contains(const Type& value) const;
 
 private:
 	Type m_pData[N]{};
@@ -685,4 +687,25 @@ inline Type& BvFixedVector<Type, N>::EmplaceBack(Args && ...args)
 	new (&m_pData[m_Size++]) Type(std::forward<Args>(args)...);
 
 	return m_pData[m_Size - 1];
+}
+
+
+template<typename Type, size_t N>
+size_t BvFixedVector<Type, N>::Find(const Type& value) const
+{
+	for (auto i = 0; i < m_Size; i++)
+	{
+		if (value == m_pData[i])
+		{
+			return i;
+		}
+	}
+
+	return kU64Max;
+}
+
+template<typename Type, size_t N>
+inline bool BvFixedVector<Type, N>::Contains(const Type& value) const
+{
+	return Find(value) != kU64Max;
 }

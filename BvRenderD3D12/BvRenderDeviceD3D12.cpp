@@ -2,8 +2,8 @@
 #include "BvTypeConversionsD3D12.h"
 
 
-BvRenderDeviceD3D12::BvRenderDeviceD3D12(BvRenderEngineD3D12* pEngine, IDXGIAdapter1* pAdapter, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescD3D12& deviceDesc)
-	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_Index(index), m_pAdapter(pAdapter)
+BvRenderDeviceD3D12::BvRenderDeviceD3D12(BvRenderEngineD3D12* pEngine, IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12* pDeviceInfo, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescD3D12& deviceDesc)
+	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_Index(index), m_pAdapter(pAdapter), m_pDeviceInfo(pDeviceInfo)
 {
 	Create(deviceDesc);
 }
@@ -263,13 +263,8 @@ void BvRenderDeviceD3D12::Create(const BvRenderDeviceCreateDescD3D12& deviceCrea
 		D3D_FEATURE_LEVEL_11_0
 	};
 
-	for (auto i = 0; i < ArraySize(levels); ++i)
-	{
-		if (SUCCEEDED(D3D12CreateDevice(m_pAdapter, levels[i], IID_PPV_ARGS(&m_Device))))
-		{
-			break;
-		}
-	}
+	auto hr = D3D12CreateDevice(m_pAdapter, m_pDeviceInfo->m_FeatureLevel, IID_PPV_ARGS(&m_Device));
+	BV_ASSERT(SUCCEEDED(hr), "Device creation failed");
 
 	if (!m_Device)
 	{
@@ -281,7 +276,6 @@ void BvRenderDeviceD3D12::Create(const BvRenderDeviceCreateDescD3D12& deviceCrea
 	m_ComputeContexts.Resize(std::min(deviceCreateDesc.m_ComputeQueueCount, kMaxContextsPerType));
 	m_TransferContexts.Resize(std::min(deviceCreateDesc.m_TransferQueueCount, kMaxContextsPerType));
 
-	SetupDeviceInfo();
 	SetupSupportedDisplayFormats();
 	CreateCommandSignatures();
 }
@@ -291,8 +285,6 @@ void BvRenderDeviceD3D12::Destroy()
 {
 	if (m_Device)
 	{
-		BV_DELETE(m_pDeviceInfo);
-
 		m_Device = nullptr;
 	}
 }
@@ -342,61 +334,6 @@ void BvRenderDeviceD3D12::SetupSupportedDisplayFormats()
 	TEST_DXGI_FORMAT(DXGI_FORMAT_V408);
 
 #undef TEST_DXGI_FORMAT
-}
-
-
-void BvRenderDeviceD3D12::SetupDeviceInfo()
-{
-	m_pDeviceInfo = BV_NEW(BvDeviceInfoD3D12)();
-
-#define GET_FEATURE_OPTIONS(option) m_Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS##option, &m_pDeviceInfo->m_Options##option, sizeof(m_pDeviceInfo->m_Options##option))
-	GET_FEATURE_OPTIONS();
-	GET_FEATURE_OPTIONS(1);
-	GET_FEATURE_OPTIONS(2);
-	GET_FEATURE_OPTIONS(3);
-	GET_FEATURE_OPTIONS(4);
-	GET_FEATURE_OPTIONS(5);
-	GET_FEATURE_OPTIONS(6);
-	GET_FEATURE_OPTIONS(7);
-	GET_FEATURE_OPTIONS(8);
-	GET_FEATURE_OPTIONS(9);
-	GET_FEATURE_OPTIONS(10);
-	GET_FEATURE_OPTIONS(11);
-	GET_FEATURE_OPTIONS(12);
-	GET_FEATURE_OPTIONS(13);
-#undef GET_FEATURE_OPTIONS
-
-	m_DeviceCaps |= RenderDeviceCapabilities::kWireframe | RenderDeviceCapabilities::kGeometryShader | RenderDeviceCapabilities::kTesselationShader
-		| RenderDeviceCapabilities::kTimestampQueries | RenderDeviceCapabilities::kIndirectDrawCount
-		| RenderDeviceCapabilities::kCustomBorderColor | RenderDeviceCapabilities::kPredication;
-	if (m_pDeviceInfo->m_Options2.DepthBoundsTestSupported)
-	{
-		m_DeviceCaps |= RenderDeviceCapabilities::kDepthBoundsTest;
-	}
-	if (m_pDeviceInfo->m_Options.TiledResourcesTier >= D3D12_TILED_RESOURCES_TIER_2)
-	{
-		m_DeviceCaps |= RenderDeviceCapabilities::kSamplerMinMaxReduction;
-	}
-	if (m_pDeviceInfo->m_Options.ConservativeRasterizationTier != D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED)
-	{
-		m_DeviceCaps |= RenderDeviceCapabilities::kConservativeRasterization;
-	}
-	if (m_pDeviceInfo->m_Options6.VariableShadingRateTier != D3D12_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED)
-	{
-		m_DeviceCaps |= RenderDeviceCapabilities::kShadingRate;
-	}
-	if (m_pDeviceInfo->m_Options7.MeshShaderTier != D3D12_MESH_SHADER_TIER_NOT_SUPPORTED)
-	{
-		m_DeviceCaps |= RenderDeviceCapabilities::kMeshShader;
-	}
-	if (m_pDeviceInfo->m_Options9.MeshShaderPipelineStatsSupported)
-	{
-		m_DeviceCaps |= RenderDeviceCapabilities::kMeshQuery;
-	}
-	if (m_pDeviceInfo->m_Options5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
-	{
-		m_DeviceCaps |= RenderDeviceCapabilities::kRayTracing | RenderDeviceCapabilities::kRayQuery;
-	}
 }
 
 
