@@ -4,7 +4,7 @@
 #include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
-#include <BDeV/Core/Container/BvText.h>
+#include <BDeV/Core/Utils/BvText.h>
 #include <DbgHelp.h>
 #include <bit>
 
@@ -20,14 +20,17 @@ const BvSystemInfo& BvSystem::GetSystemInfo()
 		systemInfo.m_PageSize = osInfo.dwPageSize;
 		systemInfo.m_LargePageSize = (u32)GetLargePageMinimum();
 
-		u8* pBufferData = nullptr;
-		PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = nullptr;
+		//u8* pBufferData = nullptr;
 		DWORD bufferSize = 0;
-		DWORD result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
+		DWORD result = GetLogicalProcessorInformation(nullptr, &bufferSize);
 		if (result == FALSE && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 		{
-			pBufferData = BV_NEW_ARRAY(u8, bufferSize);
-			pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
+			//pBufferData = BV_NEW_ARRAY(u8, bufferSize);
+			//pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(pBufferData);
+			constexpr u32 kMaxProcessorDataSize = 4_kb;
+			BV_ASSERT(bufferSize <= kMaxProcessorDataSize, "Increase stack buffer size");
+			u8 processorData[kMaxProcessorDataSize];
+			PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(processorData);
 			result = GetLogicalProcessorInformation(pBuffer, &bufferSize);
 			if (result == TRUE)
 			{
@@ -50,8 +53,12 @@ const BvSystemInfo& BvSystem::GetSystemInfo()
 					}
 				}
 			}
+			else
+			{
+				BV_WIN_FATAL();
+			}
 
-			BV_DELETE_ARRAY(pBufferData);
+			//BV_DELETE_ARRAY(pBufferData);
 		}
 
 		if (systemInfo.m_NumLogicalProcessors == 0)
@@ -238,7 +245,7 @@ bool BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip
 #undef BV_LOADPROC
 #undef BV_CALLPROC
 
-#pragma warning( pop )
+#pragma warning(pop)
 
 
 void BvCPU::Yield()

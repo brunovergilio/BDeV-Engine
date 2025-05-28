@@ -98,10 +98,11 @@
 	#pragma warning(disable:26812)	// unscoped enum
 	#pragma warning(disable:4251)	// object needs to have dll-interface to be used by clients of specific class
 	#pragma warning(disable:4996)	// function or variable unsafe
-	#pragma warning(disable:26495)	// Variable 'variable' is uninitialized. Always initialize a member variable (type.6).
+	#pragma warning(disable:26495)	// Variable 'variable' is uninitialized. Always initialize a member variable (type.6)
 	//#pragma warning(disable:4477)	// format string 'string' requires an argument of type 'type', but variadic argument number has type 'type'
 	#pragma warning(disable:6255)	// _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead
 	#pragma warning(disable:4828)	// The file contains a character starting at offset 'offset' that is illegal in the current source character set (codepage 'cp')
+	#pragma warning(disable:26110)	// Caller failing to hold lock 'lock' before calling function 'func'
 
 	#define BV_API
 

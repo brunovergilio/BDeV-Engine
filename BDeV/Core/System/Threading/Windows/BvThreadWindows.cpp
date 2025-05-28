@@ -1,7 +1,7 @@
 #include "BDeV/Core/System/Threading/BvThread.h"
 #include "BDeV/Core/System/Threading/BvFiber.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include <utility>
 #include <process.h>
@@ -92,11 +92,11 @@ void BvThread::SetName(const char* pThreadName) const
 		wchar_t* pThreadNameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
 		BvTextUtilities::ConvertUTF8CharToWideChar(pThreadName, 0, pThreadNameW, sizeNeeded);
 		hr = SetThreadDescription(m_hThread, pThreadNameW);
-	}
 
-	if (FAILED(hr))
-	{
-		// TODO: Handle error
+		if (FAILED(hr))
+		{
+			BV_WIN_ERROR(hr);
+		}
 	}
 #else
 	constexpr DWORD kMSVCException = 0x406D1388;
@@ -205,6 +205,10 @@ void BvThread::Create(const CreateInfo& createInfo)
 	m_IsRunning = !createInfo.m_CreateSuspended;
 	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, m_pTask,
 		m_IsRunning ? 0u : CREATE_SUSPENDED, reinterpret_cast<u32*>(&m_ThreadId)));
+	if (m_hThread == kNullOSThreadHandle)
+	{
+		BV_WIN_FATAL();
+	}
 	if (createInfo.m_Priority != Priority::kAuto)
 	{
 		SetPriority(createInfo.m_Priority);
@@ -222,6 +226,7 @@ void BvThread::Destroy()
 	{
 		CloseHandle(m_hThread);
 		BV_DELETE_ARRAY((u8*)m_pTask);
+		m_hThread = nullptr;
 	}
 }
 

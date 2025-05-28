@@ -151,9 +151,47 @@ thread_local int a = 0;
 BvFiber* pFb = nullptr;
 BvFiber* pFb2 = nullptr;
 
+BvAdaptiveMutex am;
+BvMutex mm;
 
 int main()
 {
+	int f = 10;
+
+	int dummy = 0;
+	auto testWith = [&](auto& mutexImpl, i32 threadCount, const char* label)
+		{
+			auto start = BvTime::GetCurrentTimestampInMs();
+			srand(time(nullptr));
+			BvVector<BvThread> threads;
+			for (int i = 0; i < threadCount; ++i)
+			{
+				threads.EmplaceBack([&]() {
+					//for (int j = 0; j < 1000; ++j)
+					{
+						BvScopedLock lock(mutexImpl);
+						BvThread::Sleep(rand() % 300);
+						//for (int k = 0; k < 10000; ++k)
+						//{
+						//	dummy++;
+						//}
+					}
+
+					});
+			}
+			for (auto& t : threads) t.Wait();
+
+			auto end = BvTime::GetCurrentTimestampInMs();
+			std::cout << label << ": "
+				<< end - start
+				<< " ms\n" << std::endl;
+		};
+
+	testWith(mm, 8, "BvMutex");
+	testWith(am, 8, "BvAdaptiveMutex");
+
+	printf("lock calls / requests: %u / %u", am.GetLockCalls(), am.GetLockRequests());
+	return 0;
 	//BvFiber& mfb = BvThread::ConvertToFiber();
 
 	//BvSignal s;
@@ -186,5 +224,5 @@ int main()
 
 	//mfb.Switch(fb);
 
-	return 0;
+	//return 0;
 }

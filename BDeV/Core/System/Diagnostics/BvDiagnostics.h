@@ -5,75 +5,28 @@
 #include "BDeV/Core/RenderAPI/BvColor.h"
 
 
-class BvConsole
+namespace Console
 {
-public:
 	// Default white text and black background printf
-	static void Print(const char* pFormat, ...);
+	void Print(const char* pFormat, ...);
 	// Custom color text and black background printf
-	static void Print(const BvColorI& textColor, const char* pFormat, ...);
+	void Print(const BvColorI& textColor, const char* pFormat, ...);
 	// Custom color text and custom color background printf
-	static void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
+	void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
 };
 
 
-class BvDebug
+namespace Debug
 {
-public:
 	// Same as printf but to the debug window (if one exists)
-	static void Print(const char* pFormat, ...);
+	void Print(const char* pFormat, ...);
 
-	// To force code breaks when debugging
-	static void Break();
+	// To force code breaks when debugging (should be used with macros)
+	void Break();
+
+	// Asserts a condition (should be used with macros)
+	void Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
 };
-
-
-class BvError
-{
-public:
-	BvError() = default;
-
-	i32 GetCode() const;
-	const char* GetMessage() const;
-};
-
-
-namespace Internal
-{
-	// ===============================================
-	// These classes should only be called by macros
-	// ===============================================
-
-	class BvAssert
-	{
-	public:
-		BvAssert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
-	};
-
-	class BvSTDError
-	{
-	public:
-		BvSTDError();
-	};
-
-	class BvSystemError
-	{
-	public:
-		BvSystemError();
-	};
-
-	class BvCustomError
-	{
-	public:
-		BvCustomError(u32 errorCode, const char* pFormat, ...);
-	};
-
-	class BvFatalError
-	{
-	public:
-		BvFatalError(const BvSourceInfo& sourceInfo, const char* pFormat, ...);
-	};
-}
 
 
 #if BV_DEBUG
@@ -83,7 +36,7 @@ namespace Internal
 {																					\
 	if (!(cond))																	\
 	{																				\
-		Internal::BvAssert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+		Debug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
 	}																				\
 } while (false)
 
@@ -93,7 +46,7 @@ namespace Internal
 	static bool doAssert = true;													\
 	if (doAssert && !(cond))														\
 	{																				\
-		Internal::BvAssert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+		Debug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
 		doAssert = false;															\
 	}																				\
 } while (false)
@@ -106,17 +59,167 @@ namespace Internal
 #endif // #if BV_DEBUG
 
 
-// Used for generating STD error information
-#define BV_STD_ERROR() do { Internal::BvSTDError(); } while (false)
+struct BvLogInfo
+{
+	const BvSourceInfo& m_SourceInfo;
+	const char* m_pMessage;
+	const char* m_pChannel;
+	u32 m_Level;
+	u32 m_Verbosity;
+};
 
-// Used for generating OS error information
-#define BV_SYSTEM_ERROR() do { Internal::BvSystemError(); } while (false)
 
-// Used for generating custom error information
-#define BV_ERROR(errorCode, msg, ...) do { Internal::BvCustomError(errorCode, msg __VA_OPT__(,) __VA_ARGS__); } while (false)
+class IBvLogger
+{
+public:
+	virtual ~IBvLogger() {}
+	virtual void Log(const BvLogInfo& logInfo) = 0;
 
-// Throws an error with a custom message and exits the application
-#define BV_FATAL_ERROR(msg, ...) do											\
-{																			\
-	Internal::BvFatalError(BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);	\
+	friend class BvLoggerManager;
+
+private:
+	BV_INLINE IBvLogger* GetNext() { return m_pNext; }
+	BV_INLINE IBvLogger* GetPrev() { return m_pPrev; }
+	BV_INLINE void SetNext(IBvLogger* pLogger) { m_pNext = pLogger; }
+	BV_INLINE void SetPrev(IBvLogger* pLogger) { m_pPrev = pLogger; }
+
+private:
+	IBvLogger* m_pNext = nullptr;
+	IBvLogger* m_pPrev = nullptr;
+};
+
+
+template<typename MessageType, typename FilterType, typename FormatterType, typename OutputType>
+class BvLogger final : public IBvLogger
+{
+public:
+	BvLogger() {}
+	BvLogger(const FilterType& filter, const FormatterType& formatter, const OutputType& output) noexcept
+		: m_Filter(filter), m_Formatter(formatter), m_Output(output) {}
+	BvLogger(BvLogger&& rhs) noexcept
+	{
+		*this = std::move(rhs);
+	}
+	BvLogger& operator=(BvLogger&& rhs)
+	{
+		if (this != &rhs)
+		{
+			m_Filter = std::move(rhs.m_Filter);
+			m_Formatter = std::move(rhs.m_Formatter);
+			m_Output = std::move(rhs.m_Output);
+		}
+
+		return *this;
+	}
+
+	void Log(const BvLogInfo& logInfo) override
+	{
+		if (m_Filter.Filter(logInfo))
+		{
+			m_Formatter.Format(logInfo, m_Buffer);
+			m_Output.Write(m_Buffer);
+		}
+	}
+
+private:
+	MessageType m_Buffer;
+	FilterType m_Filter;
+	FormatterType m_Formatter;
+	OutputType m_Output;
+};
+
+
+class BvNoLogFilter
+{
+public:
+	BvNoLogFilter() {}
+	BvNoLogFilter(BvNoLogFilter&& rhs) noexcept = default;
+	BvNoLogFilter& operator=(BvNoLogFilter&& rhs) noexcept = default;
+
+	BV_INLINE bool Filter(const BvLogInfo& logInfo) const { return true; }
+};
+
+
+template<typename MessageType>
+class BvNoLogFormatter
+{
+public:
+	BvNoLogFormatter() {}
+	BvNoLogFormatter(BvNoLogFormatter&& rhs) noexcept = default;
+	BvNoLogFormatter& operator=(BvNoLogFormatter&& rhs) noexcept = default;
+
+	BV_INLINE void Format(const BvLogInfo& logInfo, MessageType& message) const {}
+};
+
+
+template<typename MessageType>
+class BvNoLogOutput
+{
+public:
+	BvNoLogOutput() {}
+	BvNoLogOutput(BvNoLogOutput&& rhs) noexcept = default;
+	BvNoLogOutput& operator=(BvNoLogOutput&& rhs) noexcept = default;
+
+	BV_INLINE void Write(const MessageType& message) {}
+};
+
+
+class BvLoggerManager
+{
+public:
+	BvLoggerManager() = default;
+	~BvLoggerManager() = default;
+
+	void RegisterLogger(IBvLogger* pLogger);
+	void UnregisterLogger(IBvLogger* pLogger);
+	void Dispatch(const BvLogInfo& logInfo);
+
+private:
+	IBvLogger* m_pLoggerList = nullptr;
+};
+
+
+namespace Logging
+{
+	// This method sets the current logger manager to be used (not thread-safe). Since the engine project is only built
+	// as a static library, for dll projects that use it, consider having an exported method in the other project to
+	// allow setting the logger manager instead of calling this function directly from inside the dll, as it
+	// will have another instance of the underlying static variables.
+	void SetLoggerManager(BvLoggerManager* pLoggerManager);
+
+	// Used by macros to dispatch information to multiple loggers
+	void Dispatch(const char* pChannel, u32 level, u32 verbosity, const BvSourceInfo& sourceInfo, const char* pMessage, ...);
+}
+
+
+#define BV_LOG(channel, level, verbosity, message, ...) do												\
+{																										\
+	Logging::Dispatch(channel, level, verbosity, BV_SOURCE_INFO, message __VA_OPT__(, ) __VA_ARGS__);	\
 } while (false)
+
+
+namespace Internal
+{
+	void ReportFatalError(const char* pMessage);
+
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	const char* GetWindowsErrorMessage(u32 errorCode = kU32Max);
+#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+}
+
+
+#define BV_TRACE(channel, message, ...) BV_LOG(channel, 0, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_INFO(channel, message, ...) BV_LOG(channel, 1, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_WARNING(channel, message, ...) BV_LOG(channel, 2, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_ERROR(channel, message, ...) BV_LOG(channel, 3, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_FATAL(channel, message, ...) do						\
+{																\
+	BV_LOG(channel, 4, 0, message __VA_OPT__(, ) __VA_ARGS__);	\
+	Internal::ReportFatalError(message);						\
+} while (false)
+
+
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#define BV_WIN_ERROR(errorCode) BV_ERROR("System", Internal::GetWindowsErrorMessage(errorCode))
+#define BV_WIN_FATAL(errorCode) BV_FATAL("System", Internal::GetWindowsErrorMessage(errorCode))
+#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)

@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/File/BvFile.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 
 
@@ -69,7 +69,7 @@ bool BvFile::Open(const char* pFilename, BvFileAccessMode mode, BvFileAction act
 
 	if (m_hFile == INVALID_HANDLE_VALUE)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 		return false;
 	}
 
@@ -77,7 +77,7 @@ bool BvFile::Open(const char* pFilename, BvFileAccessMode mode, BvFileAction act
 }
 
 
-bool BvFile::Read(void* const pBuffer, u32 bufferSize, u32* pBytesProcessed)
+bool BvFile::Read(void* pBuffer, u32 bufferSize, u32* pBytesProcessed)
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	BV_ASSERT(pBuffer != nullptr, "Null buffer");
@@ -90,7 +90,7 @@ bool BvFile::Read(void* const pBuffer, u32 bufferSize, u32* pBytesProcessed)
 		u32 bytesRead = 0;
 		if (!ReadFile(m_hFile, pMem + totalBytesRead, bufferSize - totalBytesRead, reinterpret_cast<LPDWORD>(&bytesRead), nullptr))
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 			return false;
 		}
 
@@ -124,7 +124,7 @@ bool BvFile::Write(const void* pBuffer, u32 bufferSize, u32* pBytesProcessed)
 		u32 bytesWritten = 0;
 		if (!WriteFile(m_hFile, pMem + totalBytesWritten, bufferSize - totalBytesWritten, reinterpret_cast<LPDWORD>(&bytesWritten), nullptr))
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 			return false;
 		}
 
@@ -145,7 +145,7 @@ bool BvFile::Write(const void* pBuffer, u32 bufferSize, u32* pBytesProcessed)
 }
 
 
-BvFile& BvFile::SkipBytes(const i64 offset)
+BvFile& BvFile::SkipBytes(i64 offset)
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	LARGE_INTEGER seekOffset; seekOffset.QuadPart = offset;
@@ -193,7 +193,7 @@ u64 BvFile::GetSize() const
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
 	if (!status)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 	}
 
 	return u64(fileSize);
@@ -217,7 +217,7 @@ void BvFile::Flush()
 	BOOL status = FlushFileBuffers(m_hFile);
 	if (!status)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 	}
 }
 
@@ -229,7 +229,7 @@ bool BvFile::GetInfo(BvFileInfo& fileInfo)
 	BY_HANDLE_FILE_INFORMATION bhfi;
 	if (!GetFileInformationByHandle(m_hFile, &bhfi))
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 		return false;
 	}
 

@@ -36,9 +36,27 @@ public:
 	bool TryLock();
 	void Unlock();
 
+#if (BV_DEBUG)
+	BV_INLINE u32 GetLockRequests() const { return m_LockRequests; }
+	BV_INLINE u32 GetLockCalls() const { return m_LockCalls; }
+#else
+	BV_INLINE u32 GetLockRequests() const { return 0; }
+	BV_INLINE u32 GetLockCalls() const { return 0; }
+#endif
+
 private:
 	std::mutex m_Lock;
 	std::atomic<u32> m_SpinCount;
+
+#if (BV_DEBUG)
+	BV_INLINE void DebugIncLockRequest() { m_LockRequests.fetch_add(1, std::memory_order_relaxed); }
+	BV_INLINE void DebugIncLockCall() { m_LockCalls.fetch_add(1, std::memory_order_relaxed); }
+	std::atomic<u32> m_LockRequests;
+	std::atomic<u32> m_LockCalls;
+#else
+	BV_INLINE void DebugIncLockRequest() {}
+	BV_INLINE void DebugIncLockCall() {}
+#endif
 };
 
 

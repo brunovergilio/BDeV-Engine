@@ -51,11 +51,11 @@ public:
 	bool Open(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite,
 		BvFileAction action = BvFileAction::kOpenOrCreate, BvAsyncFileFlags asyncFlags = BvAsyncFileFlags::kNone);
 
-	AsyncFileRequest Read(void* const pBuffer, const u32 bufferSize, const u64 position = 0);
-	AsyncFileRequest Write(const void* const pBuffer, const u32 bufferSize, const u64 position = 0);
+	AsyncFileRequest Read(void* pBuffer, u32 bufferSize, u64 position = 0);
+	AsyncFileRequest Write(const void* pBuffer, u32 bufferSize, u64 position = 0);
 
-	template<typename Type> AsyncFileRequest ReadT(Type& value, const u64 position = 0) { return Read(&value, sizeof(Type), position); }
-	template<typename Type> AsyncFileRequest WriteT(const Type& value, const u64 position = 0) { return Write(&value, sizeof(Type), position); }
+	template<typename Type> AsyncFileRequest ReadT(Type& value, u64 position = 0) { return Read(&value, sizeof(Type), position); }
+	template<typename Type> AsyncFileRequest WriteT(const Type& value, u64 position = 0) { return Write(&value, sizeof(Type), position); }
 
 	u64 GetSize() const;
 

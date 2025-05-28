@@ -34,7 +34,7 @@ namespace Internal
 	{
 		MemType mem{ BvMemory::Allocate(sizeof(Type), alignof(Type), 0)};
 
-		BvConsole::Print(BvColorI::BrightBlue, "New called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, sizeof(Type),
+		Console::Print(BvColorI::BrightBlue, "New called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, sizeof(Type),
 			sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		return mem.pAsVoidPtr;
@@ -45,7 +45,7 @@ namespace Internal
 	{
 		BvMemory::Free(pObj);
 
-		BvConsole::Print(BvColorI::BrightCyan, "Delete called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		Console::Print(BvColorI::BrightCyan, "Delete called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 	}
 
 	template<typename Type>
@@ -70,7 +70,7 @@ namespace Internal
 			}
 		}
 
-		BvConsole::Print(BvColorI::BrightBlue, "New[] called for %llu elements - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", count, pMem, sizeof(Type),
+		Console::Print(BvColorI::BrightBlue, "New[] called for %llu elements - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", count, pMem, sizeof(Type),
 			sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		// Return the pointer to the first element
@@ -86,7 +86,7 @@ namespace Internal
 
 		size_t count = *mem.pAsSizeTPtr;
 
-		BvConsole::Print(BvColorI::BrightCyan, "Delete[] called for %llu elements - 0x%p\nFunction: %s, File: %s (%d)\n\n", count, pObjs, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		Console::Print(BvColorI::BrightCyan, "Delete[] called for %llu elements - 0x%p\nFunction: %s, File: %s (%d)\n\n", count, pObjs, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		// Only call the dtor if needed
 		if constexpr (!IsPodV<Type>)
@@ -106,7 +106,7 @@ namespace Internal
 	{
 		MemType mem{ BvMemory::Allocate(size, alignment, 0) };
 
-		BvConsole::Print(BvColorI::BrightBlue, "Alloc called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, size,
+		Console::Print(BvColorI::BrightBlue, "Alloc called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, size,
 			sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		return mem.pAsVoidPtr;
@@ -116,7 +116,7 @@ namespace Internal
 	{
 		BvMemory::Free(pObj);
 
-		BvConsole::Print(BvColorI::BrightCyan, "Free called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		Console::Print(BvColorI::BrightCyan, "Free called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 	}
 
 	template<typename Type, class Allocator>

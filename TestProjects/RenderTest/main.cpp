@@ -112,7 +112,9 @@ int main()
 
 	SwapChainDesc swapChainDesc;
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
-	IBvCommandContext* pGraphicsContext = pDevice->GetGraphicsContext(0);
+	CommandContextDesc ccd;
+	ccd.m_ContextGroupIndex = 0;
+	IBvCommandContext* pGraphicsContext = pDevice->CreateCommandContext(ccd);
 	//BvObjectHandle<BvSwapChainVk> scvk;
 	//pDevice->CreateSwapChainVk(pWindow, swapChainDesc, pGraphicsContext, &scvk);
 

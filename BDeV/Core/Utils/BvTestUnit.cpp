@@ -13,11 +13,11 @@ namespace Internal
 	{
 		if (m_TestUnits.Empty())
 		{
-			BvDebug::Print("Unit testing was requested but there are no tests:\n\n");
+			Debug::Print("Unit testing was requested but there are no tests:\n\n");
 			return;
 		}
 
-		BvDebug::Print("Running test units...\n\n");
+		Debug::Print("Running test units...\n\n");
 		for (auto&& pTestUnit : m_TestUnits)
 		{
 			// This queues up all tests in the unit
@@ -36,23 +36,23 @@ namespace Internal
 			}
 		}
 
-		BvDebug::Print("Successful tests:\n");
+		Debug::Print("Successful tests:\n");
 		for (auto&& testUnit : m_SuccessfulTests)
 		{
-			BvDebug::Print("\tUnit: %s\n", testUnit.first);
+			Debug::Print("\tUnit: %s\n", testUnit.first);
 			for (auto&& test : testUnit.second)
 			{
-				BvDebug::Print("\t\t%s\n", test->pName);
+				Debug::Print("\t\t%s\n", test->pName);
 			}
 		}
 
-		BvDebug::Print("\nFailed tests:\n");
+		Debug::Print("\nFailed tests:\n");
 		for (auto&& testUnit : m_FailedTests)
 		{
-			BvDebug::Print("\tUnit: %s\n", testUnit.first);
+			Debug::Print("\tUnit: %s\n", testUnit.first);
 			for (auto&& test : testUnit.second)
 			{
-				BvDebug::Print("\t\t%s\n", test->pName);
+				Debug::Print("\t\t%s\n", test->pName);
 			}
 		}
 	}

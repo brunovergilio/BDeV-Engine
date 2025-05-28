@@ -2,7 +2,6 @@
 
 
 #include "BDeV/Core/BvCore.h"
-#include "BDeV/Core/Container/BvString.h"
 
 
 // Notes to self:

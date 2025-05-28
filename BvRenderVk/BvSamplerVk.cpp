@@ -76,12 +76,7 @@ void BvSamplerVk::Create()
 	VkSamplerCustomBorderColorCreateInfoEXT customBorderColorCI{ VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
 	if (usesCustomBorderColor && supportsBorderColor)
 	{
-		// TODO: Maybe use gpuInfo.m_ExtendedProperties.customBorderColorProps.maxCustomBorderColorSamplers
-		// and track number of samplers using it
-		customBorderColorCI.customBorderColor.float32[0] = m_SamplerDesc.m_BorderColor[0];
-		customBorderColorCI.customBorderColor.float32[1] = m_SamplerDesc.m_BorderColor[1];
-		customBorderColorCI.customBorderColor.float32[2] = m_SamplerDesc.m_BorderColor[2];
-		customBorderColorCI.customBorderColor.float32[3] = m_SamplerDesc.m_BorderColor[3];
+		memcpy(customBorderColorCI.customBorderColor.float32, m_SamplerDesc.m_BorderColor, sizeof(m_SamplerDesc.m_BorderColor));
 		//customBorderColorCI.format = VK_FORMAT_UNDEFINED;
 		
 		samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;

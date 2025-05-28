@@ -1,6 +1,8 @@
 #include "BDeV/Core/System/Library/BvSharedLib.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
+#include <utility>
 
 
 BvSharedLib::BvSharedLib()
@@ -45,7 +47,7 @@ bool BvSharedLib::Open(const char* pFilename)
 	m_hLib = LoadLibraryW(pFilenameW);
 	if (!m_hLib)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 		return false;
 	}
 

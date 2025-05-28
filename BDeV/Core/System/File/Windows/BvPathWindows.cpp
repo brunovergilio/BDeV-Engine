@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/File/BvPath.h"
 #include "BDeV/Core/System/File/BvFileCommon.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <algorithm>
@@ -109,7 +109,7 @@ BvPath BvPath::FromCurrentDirectory()
 	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
 	if (!sizeNeeded)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 
 		return BvPath();
 	}
@@ -120,7 +120,7 @@ BvPath BvPath::FromCurrentDirectory()
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 
 			return BvPath();
 		}
@@ -139,7 +139,7 @@ BvPath BvPath::FromCurrentDrive()
 	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
 	if (!sizeNeeded)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 
 		return BvPath();
 	}
@@ -150,7 +150,7 @@ BvPath BvPath::FromCurrentDrive()
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 
 			return BvPath();
 		}
@@ -285,7 +285,7 @@ BvPath BvPath::GetAbsolutePath() const
 		sizeNeeded = GetFullPathNameW(pPathNameW, 0, nullptr, nullptr);
 		if (sizeNeeded == 0)
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 			return BvPath();
 		}
 
@@ -294,7 +294,7 @@ BvPath BvPath::GetAbsolutePath() const
 		GetFullPathNameW(pPathNameW, sizeNeeded, &fullPath[0], nullptr);
 		if (sizeNeeded == 0)
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 			return BvPath();
 		}
 		
@@ -543,7 +543,7 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND)
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_FATAL();
 		}
 		return;
 	}
@@ -571,13 +571,13 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 	DWORD error = GetLastError();
 	if (error != ERROR_NO_MORE_FILES)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_FATAL();
 		return;
 	}
 
 	if (!FindClose(hFind))
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_FATAL();
 	}
 }
 

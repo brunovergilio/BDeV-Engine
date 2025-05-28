@@ -1,5 +1,5 @@
 #include "BDeV/Core/System/File/BvFileSystem.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <winioctl.h>
@@ -20,7 +20,7 @@ bool BvFileSystem::FileExists(const char * pFilename)
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 		}
 		return false;
 	}
@@ -41,7 +41,7 @@ bool BvFileSystem::DeleteFile(const char* const pFilename)
 
 	if (!result)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 
 		return false;
 	}
@@ -65,7 +65,7 @@ bool BvFileSystem::DirectoryExists(const char * const pDirName)
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 		}
 		return false;
 	}
@@ -86,7 +86,7 @@ bool BvFileSystem::CreateDirectory(const char* const pDirName)
 
 	if (!result)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 
 		return false;
 	}
@@ -104,7 +104,7 @@ namespace Internal
 			auto attributes = GetFileAttributesW(pDirName);
 			if (attributes == INVALID_FILE_ATTRIBUTES)
 			{
-				BV_SYSTEM_ERROR();
+				BV_WIN_ERROR();
 				return false;
 			}
 			else if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
@@ -124,7 +124,7 @@ namespace Internal
 			hFind = FindFirstFileW(filePath.CStr(), &findData);
 			if (hFind == INVALID_HANDLE_VALUE)
 			{
-				BV_SYSTEM_ERROR();
+				BV_WIN_ERROR();
 				return false;
 			}
 
@@ -138,7 +138,7 @@ namespace Internal
 					{
 						if (!DeleteFileW(filename.CStr()))
 						{
-							BV_SYSTEM_ERROR();
+							BV_WIN_ERROR();
 							return false;
 						}
 					}
@@ -153,19 +153,19 @@ namespace Internal
 			DWORD error = GetLastError();
 			if (error != ERROR_NO_MORE_FILES)
 			{
-				BV_SYSTEM_ERROR();
+				BV_WIN_ERROR();
 				return false;
 			}
 			if (!FindClose(hFind))
 			{
-				BV_SYSTEM_ERROR();
+				BV_WIN_ERROR();
 				return false;
 			}
 		}
 
 		if (!RemoveDirectoryW(pDirName))
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 
 			return false;
 		}
@@ -199,14 +199,14 @@ u32 BvFileSystem::GetPhysicalSectorSize()
 
 		if (!GetCurrentDirectoryW(3, drivePath + 4))
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 			return 0;
 		}
 
 		HANDLE hDevice = CreateFileW(drivePath, 0, 0, nullptr, OPEN_EXISTING, 0, nullptr);
 		if (hDevice == INVALID_HANDLE_VALUE)
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 			return 0;
 		}
 
@@ -220,7 +220,7 @@ u32 BvFileSystem::GetPhysicalSectorSize()
 		if (!DeviceIoControl(hDevice, IOCTL_STORAGE_QUERY_PROPERTY, &storageQuery, sizeof(STORAGE_PROPERTY_QUERY),
 			&diskAlignment, sizeof(STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR), &outsize, nullptr))
 		{
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 			return 0;
 		}
 		CloseHandle(hDevice);

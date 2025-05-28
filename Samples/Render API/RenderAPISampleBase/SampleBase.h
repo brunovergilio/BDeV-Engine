@@ -28,6 +28,7 @@ public:
 	virtual void OnRender() = 0;
 	virtual void OnShutdown() = 0;
 
+	virtual void CreateDeviceAndContext();
 	virtual void OnInitializeUI();
 	virtual void OnUpdateUI();
 	virtual void OnRenderUI();

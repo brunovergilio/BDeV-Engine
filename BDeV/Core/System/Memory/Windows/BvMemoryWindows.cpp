@@ -9,7 +9,7 @@ void* BvVirtualMemory::Reserve(size_t size)
 	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS);
 	if (!pMem)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_FATAL();
 	}
 
 	return pMem;
@@ -20,7 +20,7 @@ bool BvVirtualMemory::Commit(void* pAddress, size_t size)
 {
 	if (!VirtualAlloc(pAddress, size, MEM_COMMIT, PAGE_READWRITE))
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_FATAL();
 		return false;
 	}
 
@@ -33,7 +33,7 @@ void* BvVirtualMemory::ReserveAndCommit(size_t size, bool useLargePage)
 	auto pMem = VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT | (useLargePage ? MEM_LARGE_PAGES : 0), PAGE_READWRITE);
 	if (!pMem)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_FATAL();
 	}
 
 	return pMem;
@@ -49,7 +49,7 @@ bool BvVirtualMemory::Decommit(void* pAddress, size_t size)
 	// So, the code is good : -) msdn
 	if (!VirtualFree(pAddress, size, MEM_DECOMMIT))
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_FATAL();
 		return false;
 	}
 
@@ -62,7 +62,7 @@ bool BvVirtualMemory::Release(void* pAddress)
 {
 	if (!VirtualFree(pAddress, 0, MEM_RELEASE))
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_FATAL();
 		return false;
 	}
 

@@ -567,7 +567,10 @@ void BvStringT<CharT, MemoryArenaType>::Format(const CharT* format, ...)
 	{
 		va_list args;
 		va_start(args, format);
-		size = vsnprintf(nullptr, 0, format, args) + 1;
+		va_list argsCopy;
+		va_copy(argsCopy, args);
+		size = vsnprintf(nullptr, 0, format, argsCopy) + 1;
+		va_end(argsCopy);
 		va_end(args);
 
 		if (size == 1)

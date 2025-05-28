@@ -26,6 +26,11 @@ size_t ConvertASCIIToCharT(const char* pSrc, size_t srcCharCount, CharT* pDst, s
 		pDst[i] = CharT(pSrc[i]);
 	}
 
+	if (maxChars && pDst)
+	{
+		pDst[maxChars - 1] = CharT(0);
+	}
+
 	return maxChars;
 };
 
@@ -56,6 +61,11 @@ size_t ConvertCharTToASCII(const CharT* pSrc, size_t srcCharCount, char* pDst, s
 			return i;
 		}
 		pDst[i] = char(pSrc[i]);
+	}
+
+	if (maxChars && pDst)
+	{
+		pDst[maxChars - 1] = char(0);
 	}
 
 	return maxChars;
@@ -236,6 +246,11 @@ size_t ConvertUTF8ToUTFT(const UTF8CharT* pSrc, size_t srcCharCount, CharT* pDst
 		}
 	}
 
+	if (byteCount && pDst)
+	{
+		pDst[byteCount - 1] = CharT(0);
+	}
+
 	return byteCount;
 }
 
@@ -396,6 +411,11 @@ size_t ConvertUTF16ToUTFT(const UTF16CharT* pSrc, size_t srcCharCount, CharT* pD
 		}
 	}
 
+	if (byteCount && pDst)
+	{
+		pDst[byteCount - 1] = CharT(0);
+	}
+
 	return byteCount;
 }
 
@@ -526,6 +546,11 @@ size_t ConvertUTF32ToUTFT(const UTF32CharT* pSrc, size_t srcCharCount, CharT* pD
 				return byteCount;
 			}
 		}
+	}
+
+	if (byteCount && pDst)
+	{
+		pDst[byteCount - 1] = CharT(0);
 	}
 
 	return byteCount;

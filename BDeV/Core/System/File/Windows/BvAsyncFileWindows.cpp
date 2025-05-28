@@ -2,7 +2,7 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/Threading/BvSync.h"
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 
@@ -12,9 +12,9 @@ struct AsyncFileData : OVERLAPPED
 	HANDLE m_hFile;
 	void* m_pBuffer;
 	u32 m_TotalBytesRequested;
-	u32 m_TotalBytesProcessed;
+	std::atomic<u32> m_TotalBytesProcessed;
 	bool m_IsReadOp;
-	bool m_IsDone;
+	std::atomic<bool> m_IsDone;
 };
 
 
@@ -113,7 +113,7 @@ u32 AsyncFileRequest::GetResult(bool wait)
 					auto error = GetLastError();
 					if (error != ERROR_IO_PENDING/* && error != ERROR_HANDLE_EOF*/)
 					{
-						BV_SYSTEM_ERROR();
+						BV_WIN_ERROR();
 
 						m_pIOData->m_IsDone = true;
 
@@ -142,7 +142,7 @@ u32 AsyncFileRequest::GetResult(bool wait)
 			{
 				if (error != ERROR_HANDLE_EOF && error != ERROR_OPERATION_ABORTED)
 				{
-					BV_SYSTEM_ERROR();
+					BV_WIN_ERROR();
 				}
 				m_pIOData->m_IsDone = true;
 			}
@@ -166,7 +166,7 @@ void AsyncFileRequest::Cancel()
 		auto error = GetLastError();
 		if (error != ERROR_NOT_FOUND && error != ERROR_OPERATION_ABORTED)
 		{
-			BV_SYSTEM_ERROR();
+			m_pIOData->m_IsDone = true;
 			return;
 		}
 	}
@@ -254,7 +254,7 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 
 	if (m_hFile == INVALID_HANDLE_VALUE)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 		
 		return false;
 	}
@@ -263,7 +263,7 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 }
 
 
-AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, const u64 position)
+AsyncFileRequest BvAsyncFile::Read(void* pBuffer, u32 bufferSize, u64 position)
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	BV_ASSERT(pBuffer != nullptr, "Null buffer");
@@ -287,7 +287,7 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, c
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
 			Internal::ReleaseAsyncData(request.m_pIOData);
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 		}
 	}
 
@@ -295,7 +295,7 @@ AsyncFileRequest BvAsyncFile::Read(void * const pBuffer, const u32 bufferSize, c
 }
 
 
-AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 bufferSize, const u64 position)
+AsyncFileRequest BvAsyncFile::Write(const void* pBuffer, u32 bufferSize, u64 position)
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	BV_ASSERT(pBuffer != nullptr, "Null buffer");
@@ -319,7 +319,7 @@ AsyncFileRequest BvAsyncFile::Write(const void * const pBuffer, const u32 buffer
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
 			Internal::ReleaseAsyncData(request.m_pIOData);
-			BV_SYSTEM_ERROR();
+			BV_WIN_ERROR();
 		}
 	}
 
@@ -335,7 +335,7 @@ u64 BvAsyncFile::GetSize() const
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
 	if (!status)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 	}
 
 	return u64(fileSize);
@@ -359,7 +359,7 @@ void BvAsyncFile::Flush()
 	BOOL status = FlushFileBuffers(m_hFile);
 	if (!status)
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 	}
 }
 
@@ -371,7 +371,7 @@ bool BvAsyncFile::GetInfo(BvFileInfo& fileInfo)
 	BY_HANDLE_FILE_INFORMATION bhfi;
 	if (!GetFileInformationByHandle(m_hFile, &bhfi))
 	{
-		BV_SYSTEM_ERROR();
+		BV_WIN_ERROR();
 		return false;
 	}
 

@@ -1,5 +1,6 @@
 #include "BDeV/Core/System/Threading/BvSync.h"
 #include "BDeV/Core/System/Process/BvProcess.h"
+#include <algorithm>
 
 
 BvMutex::BvMutex()
@@ -44,34 +45,62 @@ BvAdaptiveMutex::~BvAdaptiveMutex()
 }
 
 
+//void BvAdaptiveMutex::Lock()
+//{
+//	constexpr u32 kMinSpinLimit = 8;
+//	constexpr u32 kMaxSpinLimit = 512;
+//	constexpr u32 kSpintCountBeforeYield = kMaxSpinLimit >> 2;
+//
+//	u32 currSpinCount{};
+//	const u32 lastSpinCount = m_SpinCount.load(std::memory_order::acquire);
+//	const u32 maxSpinCount = std::min(lastSpinCount << 1, kMaxSpinLimit);
+//	while (!m_Lock.try_lock())
+//	{
+//		if (currSpinCount++ > maxSpinCount)
+//		{
+//			m_Lock.lock();
+//			break;
+//		}
+//
+//		if (currSpinCount > kSpintCountBeforeYield)
+//		{
+//			BvCPU::Yield();
+//		}
+//	}
+//
+//	// Adaptive smoothing
+//	// Dynamically adjust smoothing rate: faster when spinning longer
+//	const i32 alphaShift = 4 - i32(currSpinCount > lastSpinCount); // ~1/8 or 1/16
+//	const i32 delta = static_cast<i32>(currSpinCount) - static_cast<i32>(lastSpinCount);
+//	BV_ASSERT(i32(lastSpinCount) >= (delta >> alphaShift), "must be greater");
+//	const u32 newSpinCount = u32(i32(lastSpinCount) + (delta >> alphaShift));
+//
+//	m_SpinCount.store(std::clamp(newSpinCount, kMinSpinLimit, kMaxSpinLimit), std::memory_order::release);
+//}
+
+
 void BvAdaptiveMutex::Lock()
 {
-	constexpr u32 kMinSpinLimit = 4;
-	constexpr u32 kMaxSpinLimit = 256;
+	constexpr u32 kMinSpinLimit = 16;
+	constexpr u32 kMaxSpinLimit = 512;
 
+	//const u32 lastSpinCount = m_SpinCount.load(std::memory_order_acquire);
+	const u32 maxSpinCount = std::min(m_SpinCount << 1, kMaxSpinLimit);
 	u32 currSpinCount{};
-	u32 lastSpinCount = m_SpinCount.load(std::memory_order::acquire);
-	u32 maxSpinCount = std::min(lastSpinCount << 1, kMaxSpinLimit);
+
+	DebugIncLockRequest();
 	while (!m_Lock.try_lock())
 	{
 		if (currSpinCount++ > maxSpinCount)
 		{
-			if (!m_Lock.try_lock())
-			{
-				m_Lock.lock();
-			}
+			DebugIncLockCall();
+			m_Lock.lock();
 			break;
 		}
 	}
 
-	if (currSpinCount <= kMinSpinLimit)
-	{
-		m_SpinCount.store(std::max(kMinSpinLimit, (lastSpinCount + currSpinCount) >> 1), std::memory_order::release);
-	}
-	else
-	{
-		m_SpinCount.store((lastSpinCount + currSpinCount) >> 1, std::memory_order::release);
-	}
+	//m_SpinCount.store((m_SpinCount.load(std::memory_order_relaxed) + currSpinCount) >> 1, std::memory_order::release);
+	m_SpinCount = std::clamp((m_SpinCount + currSpinCount) >> 1, kMinSpinLimit, kMaxSpinLimit);
 }
 
 

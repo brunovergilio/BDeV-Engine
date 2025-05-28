@@ -1,9 +1,14 @@
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 #include <cstdio>
 #include <intrin.h>
+#include <utility>
+#include <comdef.h>
+
+
+constexpr u32 kMaxMessageSize = 2_kb;
 
 
 class BvConsoleHelper
@@ -54,265 +59,143 @@ void ConsoleHelper()
 }
 
 
-void BvConsole::Print(const char* pFormat, ...)
+namespace Console
 {
-	ConsoleHelper();
-	va_list argList;
-	va_start(argList, pFormat);
-	auto charsWritten = vprintf(pFormat, argList);
-	va_end(argList);
-}
-
-
-void BvConsole::Print(const BvColorI& textColor, const char* pFormat, ...)
-{
-	ConsoleHelper();
-	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
-	va_list argList;
-	va_start(argList, pFormat);
-	auto charsWritten = vprintf(pFormat, argList);
-	va_end(argList);
-	printf("\033[0m");
-}
-
-
-void BvConsole::Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
-{
-	ConsoleHelper();
-	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
-	printf("\033[48;2;%d;%d;%dm", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
-	va_list argList;
-	va_start(argList, pFormat);
-	auto charsWritten = vprintf(pFormat, argList);
-	va_end(argList);
-	printf("\033[0m");
-}
-
-
-class BvBufferHelper
-{
-public:
-	BvBufferHelper()
+	void Print(const char* pFormat, ...)
 	{
+		ConsoleHelper();
+		va_list argList;
+		va_start(argList, pFormat);
+		vprintf(pFormat, argList);
+		va_end(argList);
 	}
 
-	~BvBufferHelper()
+
+	void Print(const BvColorI& textColor, const char* pFormat, ...)
 	{
-		if (m_pBuffer)
+		ConsoleHelper();
+		printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+		va_list argList;
+		va_start(argList, pFormat);
+		vprintf(pFormat, argList);
+		va_end(argList);
+		printf("\033[0m");
+	}
+
+
+	void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
+	{
+		ConsoleHelper();
+		printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+		printf("\033[48;2;%d;%d;%dm", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
+		va_list argList;
+		va_start(argList, pFormat);
+		vprintf(pFormat, argList);
+		va_end(argList);
+		printf("\033[0m");
+	}
+}
+
+
+char* GetMessageBuffer()
+{
+	static thread_local char errorMessage[kMaxMessageSize]{};
+	return errorMessage;
+}
+
+
+namespace Debug
+{
+	void Print(const char* pFormat, ...)
+	{
+		auto pErrorMessage = GetMessageBuffer();
+		va_list args;
+		va_start(args, pFormat);
+		u32 charsWritten = std::min(u32(vsnprintf(pErrorMessage, kMaxMessageSize, pFormat, args)) + 1, kMaxMessageSize);
+		va_end(args);
+
+		wchar_t errorMessageW[kMaxMessageSize];
+		BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
+		OutputDebugStringW(errorMessageW);
+	}
+
+
+	void Break()
+	{
+	#if BV_DEBUG
+		__debugbreak();
+	#endif
+	}
+
+
+	void Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...)
+	{
+	#if BV_DEBUG
+		auto pErrorMessage = GetMessageBuffer();
+		va_list args;
+		va_start(args, pFormat);
+		auto charsWritten = std::min(u32(vsnprintf(pErrorMessage, kMaxMessageSize, pFormat, args)), kMaxMessageSize - 1);
+		va_end(args);
+
+		if (u32 remaining = kMaxMessageSize - (1 + charsWritten))
 		{
-			BV_FREE(m_pBuffer);
-		}
-	}
-
-	void* GetBuffer(size_t sizeNeeded, size_t alignment = kDefaultAlignmentSize)
-	{
-		constexpr size_t kMinBufferSize = 1_kb;
-		sizeNeeded = RoundToNearestPowerOf2(std::max(sizeNeeded, kMinBufferSize), kMinBufferSize);
-		if (sizeNeeded > m_BufferSize)
-		{
-			if (m_pBuffer)
-			{
-				BV_FREE(m_pBuffer);
-			}
-			m_pBuffer = BV_ALLOC(sizeNeeded, alignment);
-			m_BufferSize = sizeNeeded;
+			charsWritten += std::min(u32(snprintf(pErrorMessage + charsWritten, remaining,
+				"\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line)) + 1, remaining);
 		}
 
-		return m_pBuffer;
-	}
+		wchar_t errorMessageW[kMaxMessageSize];
+		BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
 
-	BV_INLINE void* GetBuffer()
-	{
-		return m_pBuffer;
-	}
-
-private:
-	void* m_pBuffer = nullptr;
-	size_t m_BufferSize = 0;
-};
-
-
-BV_INLINE BvBufferHelper& GetMessageBuffer()
-{
-	static thread_local BvBufferHelper bufferHelper;
-	return bufferHelper;
-}
-
-
-struct BvErrorData
-{
-	i32 m_ErrorCode;
-	BvBufferHelper m_ErrorMessage;
-};
-
-
-BV_INLINE BvErrorData& GetErrorData()
-{
-	static thread_local BvErrorData errorData;
-	return errorData;
-}
-
-
-void BvDebug::Print(const char* pFormat, ...)
-{
-#if BV_DEBUG
-	va_list args1;
-	va_list args2;
-	va_start(args1, pFormat);
-	va_copy(args2, args1);
-	auto charsWritten = vsnprintf(nullptr, 0, pFormat, args1);
-	va_end(args1);
-
-	size_t utf8Size = RoundToNearestPowerOf2(charsWritten + 1, 2);
-	size_t utf16Size = utf8Size * 2;
-	void* pMem = GetMessageBuffer().GetBuffer(utf8Size + utf16Size);
-	char* pErrorMessage = (char*)pMem + utf16Size;
-
-	vsnprintf(pErrorMessage, utf8Size, pFormat, args2);
-	va_end(args2);
-
-	wchar_t* pErrorMessageW = (wchar_t*)pMem;
-	BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, utf8Size, pErrorMessageW, utf16Size);
-	OutputDebugStringW(pErrorMessageW);
-#endif
-}
-
-
-void BvDebug::Break()
-{
-	__debugbreak();
-}
-
-
-namespace Internal
-{
-	BvAssert::BvAssert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...)
-	{
-#if BV_DEBUG
-		va_list args1;
-		va_list args2;
-		va_start(args1, pFormat);
-		va_copy(args2, args1);
-		auto errorCharsNeeded = vsnprintf(nullptr, 0, pFormat, args1);
-		auto sourceInfoCharsNeeded = snprintf(nullptr, 0, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
-		va_end(args1);
-
-		size_t utf8Size = errorCharsNeeded + sourceInfoCharsNeeded + 1;
-		size_t utf16Size = utf8Size * 2;
-		void* pMem = GetMessageBuffer().GetBuffer(utf8Size + utf16Size);
-		char* pErrorMessage = (char*)pMem + utf16Size;
-
-		vsnprintf(pErrorMessage, errorCharsNeeded + 1, pFormat, args2);
-		va_end(args2);
-
-		snprintf(pErrorMessage + errorCharsNeeded, sourceInfoCharsNeeded + 1, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
-
-		wchar_t* pErrorMessageW = (wchar_t*)pMem;
-		BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, utf8Size, pErrorMessageW, utf16Size);
-
-		auto result = MessageBoxW(nullptr, pErrorMessageW, L"BDeV Assertion Error", MB_ABORTRETRYIGNORE | MB_ICONERROR);
+		auto result = MessageBoxW(nullptr, errorMessageW, L"BDeV Assertion Error", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 		if (result == IDABORT)
 		{
 			exit(kI32Max);
 		}
 		else if (result == IDRETRY)
 		{
-			BvDebug::Break();
+			Break();
 			return;
 		}
 		else if (result == IDIGNORE)
 		{
 			return;
 		}
-#endif
+	#endif
 	}
+}
 
-	BvSTDError::BvSTDError()
+
+namespace Internal
+{
+	void ReportFatalError(const char* pMessage)
 	{
-		auto& errorData = GetErrorData();
-		errorData.m_ErrorCode = errno;
-		if (auto pError = strerror(errorData.m_ErrorCode))
-		{
-			auto sizeNeeded = strlen(pError) + 1;
-			char* pErrorMessage = (char*)errorData.m_ErrorMessage.GetBuffer(sizeNeeded);
-			strcpy(pErrorMessage, pError);
-		}
-	}
+		wchar_t errorMessageW[kMaxMessageSize]{};
+		BvTextUtilities::ConvertUTF8CharToWideChar(pMessage, 0, errorMessageW, kMaxMessageSize);
 
-
-	BvSystemError::BvSystemError()
-	{
-		auto& errorData = GetErrorData();
-		errorData.m_ErrorCode = i32(GetLastError());
-
-		wchar_t* pErrorMessageW = nullptr;
-		// We need UTF-8 encoding, but Windows only offers UTF-16, so we convert it back to UTF-8
-		if (u32 bytesWritten = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER, nullptr,
-			errorData.m_ErrorCode, 0, (LPWSTR)&pErrorMessageW, 0, nullptr))
-		{
-			auto sizeNeeded = BvTextUtilities::ConvertWideCharToUTF8Char(pErrorMessageW, bytesWritten + 1, nullptr, 0);
-			char* pErrorMessage = (char*)errorData.m_ErrorMessage.GetBuffer(sizeNeeded);
-			BvTextUtilities::ConvertWideCharToUTF8Char(pErrorMessageW, bytesWritten + 1, pErrorMessage, sizeNeeded);
-			LocalFree(pErrorMessageW);
-		}
-	}
-
-
-	BvCustomError::BvCustomError(u32 errorCode, const char* pFormat, ...)
-	{
-		auto& errorData = GetErrorData();
-		errorData.m_ErrorCode = errorCode;
-
-		va_list args1;
-		va_list args2;
-		va_start(args1, pFormat);
-		va_copy(args2, args1);
-		auto charsWritten = vsnprintf(nullptr, 0, pFormat, args1);
-		va_end(args1);
-
-		size_t sizeNeeded = charsWritten + 1;
-		char* pErrorMessage = (char*)errorData.m_ErrorMessage.GetBuffer(sizeNeeded);
-		vsnprintf(pErrorMessage, sizeNeeded, pFormat, args2);
-		va_end(args2);
-	}
-
-	BvFatalError::BvFatalError(const BvSourceInfo& sourceInfo, const char* pFormat, ...)
-	{
-		va_list args1;
-		va_list args2;
-		va_start(args1, pFormat);
-		va_copy(args2, args1);
-		auto errorCharsNeeded = vsnprintf(nullptr, 0, pFormat, args1);
-		auto sourceInfoCharsNeeded = snprintf(nullptr, 0, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
-		va_end(args1);
-
-		size_t utf8Size = errorCharsNeeded + sourceInfoCharsNeeded + 1;
-		size_t utf16Size = utf8Size * 2;
-		void* pMem = GetMessageBuffer().GetBuffer(utf8Size + utf16Size);
-		char* pErrorMessage = (char*)pMem + utf16Size;
-		wchar_t* pErrorMessageW = (wchar_t*)pMem;
-
-		vsnprintf(pErrorMessage, errorCharsNeeded + 1, pFormat, args2);
-		va_end(args2);
-
-		snprintf(pErrorMessage + errorCharsNeeded, sourceInfoCharsNeeded + 1, "\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
-
-		BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, utf8Size, pErrorMessageW, utf16Size);
-
-		MessageBoxW(nullptr, pErrorMessageW, L"BDeV Error", MB_OK | MB_ICONERROR);
-
+		MessageBoxW(nullptr, errorMessageW, L"Fatal error", MB_OK);
 		exit(kI32Max);
 	}
-}
 
+	const char* GetWindowsErrorMessage(u32 errorCode)
+	{
+		if (errorCode == kU32Max)
+		{
+			errorCode = GetLastError();
+		}
+		char* pErrorMessage = GetMessageBuffer();
+		wchar_t* pErrorMessageW = nullptr;
+		u32 charsWritten = snprintf(pErrorMessage, kMaxMessageSize, "Win32 Error [%u]", errorCode);
 
-i32 BvError::GetCode() const
-{
-	return GetErrorData().m_ErrorCode;
-}
+		// We need UTF-8 encoding, but Windows only offers UTF-16, so we convert it back to UTF-8
+		if (u32 errorMessageLength = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER, nullptr,
+			errorCode, 0, (LPWSTR)&pErrorMessageW, 0, nullptr))
+		{
+			charsWritten += snprintf(pErrorMessage + charsWritten, kMaxMessageSize - charsWritten, " - ");
+			BvTextUtilities::ConvertWideCharToUTF8Char(pErrorMessageW, errorMessageLength + 1,
+				pErrorMessage + charsWritten, kMaxMessageSize - charsWritten);
+			LocalFree(pErrorMessageW);
+		}
 
-
-const char* BvError::GetMessage() const
-{
-	return (const char*)GetErrorData().m_ErrorMessage.GetBuffer();
+		return pErrorMessage;
+	}
 }

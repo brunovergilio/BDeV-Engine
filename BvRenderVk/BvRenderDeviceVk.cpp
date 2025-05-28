@@ -186,7 +186,7 @@ IBvCommandContext* BvRenderDeviceVk::CreateCommandContextImpl(const CommandConte
 			}
 
 			// We need either a dedicated command context of a given type or a non-dedicated
-			// (if the user doesn't mind) context that supports the requested type
+			// (if not required) context that supports the requested command type
 			auto& contextGroup = m_GPUInfo.m_ContextGroups[i];
 			if (contextGroup.m_DedicatedCommandType == commandContextDesc.m_CommandType
 				|| (!commandContextDesc.m_RequireDedicated && contextGroup.SupportsCommandType(commandContextDesc.m_CommandType)))

@@ -8,7 +8,6 @@
 #include "BDeV/Core/Container/BvRobinSet.h"
 #include "BDeV/Core/Container/BvString.h"
 #include "BDeV/Core/Container/BvStringId.h"
-#include "BDeV/Core/Container/BvText.h"
 
 #include "BDeV/Core/Math/BvMath.h"
 
@@ -75,3 +74,4 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Utils/BvUUID.h"
 #include "BDeV/Core/Utils/BvObject.h"
+#include "BDeV/Core/Utils/BvText.h"
