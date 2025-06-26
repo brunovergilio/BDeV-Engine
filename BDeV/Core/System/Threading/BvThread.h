@@ -28,10 +28,12 @@ public:
 
 	struct CreateInfo
 	{
-		u64 m_AffinityMask; // Bitmask determining which cores this thread can run on (0 = all logical processors)
+		const char* m_pName; // Name for the thread
 		u32 m_StackSize; // Stack size in bytes for the thread (0 = let system decide)
 		Priority m_Priority; // Priority this thread will have
 		bool m_CreateSuspended; // Create the thread but don't run it right away
+		u32 m_LogicalProcessorIndexCount; // How many processors to set affinity for
+		const u32* m_pLogicalProcessorIndices; // Which processors to set affinity for
 	};
 
 	BvThread();
@@ -54,8 +56,8 @@ public:
 
 	void Start();
 	void Wait();
-	void SetAffinityMask(u64 affinityMask) const;
-	void LockToCore(u32 coreIndex) const;
+	void SetAffinity(u32 logicalProcessorIndex) const;
+	void SetAffinity(u32 logicalProcessorIndexCount, const u32* logicalProcessorIndices) const;
 	void SetName(const char* pThreadName) const;
 	void SetPriority(Priority priority) const;
 

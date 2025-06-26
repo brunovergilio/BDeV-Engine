@@ -39,10 +39,7 @@ void BvBufferViewVk::Create()
 	bufferViewCreateInfo.range = m_BufferViewDesc.m_ElementCount * m_BufferViewDesc.m_Stride;
 
 	auto result = vkCreateBufferView(m_pDevice->GetHandle(), &bufferViewCreateInfo, nullptr, &m_View);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-	}
+	BV_ASSERT(result == VK_SUCCESS, "Failed to create buffer view");
 }
 
 

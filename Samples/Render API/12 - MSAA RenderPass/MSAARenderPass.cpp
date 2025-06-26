@@ -226,7 +226,7 @@ void MSAARenderPass::CreateBuffers()
 	gen.GenerateBox();
 	auto& data = gen.GetData();
 	BvVector<Vertex> vertices(data.m_Vertices.Size());
-	BvPCG rand;
+	BvRandom32 rand;
 
 	for (auto i = 0u; i < vertices.Size(); ++i)
 	{

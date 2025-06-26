@@ -92,10 +92,7 @@ void BvSamplerVk::Create()
 	}
 
 	auto result = vkCreateSampler(m_pDevice->GetHandle(), &samplerCreateInfo, nullptr, &m_Sampler);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-	}
+	BV_ASSERT(result == VK_SUCCESS, "Failed to create sampler");
 }
 
 

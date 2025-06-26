@@ -1309,6 +1309,7 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDe
 	m_ASGeometries.Clear();
 	m_ASRanges.Clear();
 
+	u32 barrierCount = 1;
 	VkBufferMemoryBarrier2 barriers[2] = { { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 }, { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 } };
 	barriers[0].srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
 	barriers[0].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
@@ -1317,14 +1318,18 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDe
 	barriers[0].buffer = TO_VK(pAS->GetBuffer())->GetHandle();
 	barriers[0].size = VK_WHOLE_SIZE;
 
-	barriers[1].srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-	barriers[1].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-	barriers[1].srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-	barriers[1].dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-	barriers[1].buffer = TO_VK(pPostBuildDesc->m_pDstBuffer)->GetHandle();
-	barriers[1].size = VK_WHOLE_SIZE;
+	if (pPostBuildDesc && pPostBuildDesc->m_pDstBuffer)
+	{
+		barrierCount++;
+		barriers[1].srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+		barriers[1].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+		barriers[1].srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+		barriers[1].dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+		barriers[1].buffer = TO_VK(pPostBuildDesc->m_pDstBuffer)->GetHandle();
+		barriers[1].size = VK_WHOLE_SIZE;
+	}
 
-	ResourceBarrier(2, barriers, 0, nullptr, 0, nullptr);
+	ResourceBarrier(barrierCount, barriers, 0, nullptr, 0, nullptr);
 
 	if (pPostBuildDesc)
 	{

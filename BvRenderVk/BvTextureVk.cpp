@@ -77,11 +77,7 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	auto device = m_pDevice->GetHandle();
 
 	auto result = vkCreateImage(device, &imageCreateInfo, nullptr, &m_Image);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return;
-	}
+	BV_ASSERT(result == VK_SUCCESS, "Failed to create image");
 
 	auto vma = m_pDevice->GetAllocator();
 	VmaAllocationCreateInfo vmaACI = {};
@@ -91,9 +87,9 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	VmaAllocationInfo vmaAI;
 	VmaAllocation vmaA;
 	result = vmaAllocateMemoryForImage(vma, m_Image, &vmaACI, &vmaA, &vmaAI);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to allocate memory for image");
 	if (result != VK_SUCCESS)
 	{
-		BvDebugVkResult(result);
 		vkDestroyImage(device, m_Image, nullptr);
 		return;
 	}
@@ -101,9 +97,9 @@ void BvTextureVk::Create(const TextureInitData* pInitData)
 	result = vkBindImageMemory(device, m_Image, vmaAI.deviceMemory, vmaAI.offset);
 	if (result != VK_SUCCESS)
 	{
-		BvDebugVkResult(result);
 		vkDestroyImage(device, m_Image, nullptr);
 		vmaFreeMemory(vma, m_VMAAllocation);
+		return;
 	}
 	m_VMAAllocation = vmaA;
 

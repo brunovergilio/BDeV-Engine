@@ -1,6 +1,5 @@
 #include "BDeV/Core/System/File/BvFileSystem.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <winioctl.h>
 

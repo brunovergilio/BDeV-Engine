@@ -1,7 +1,6 @@
 #include "BDeV/Core/System/File/BvFile.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 
 
 BvFile::BvFile()

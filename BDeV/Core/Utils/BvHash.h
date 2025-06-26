@@ -134,13 +134,3 @@ namespace Internal
 
 #define ConstexprFNV1a64(pBytes) BV_SUPRESS_HASH_WARNING Internal::ConstexprFNV1a64Helper<u64, std::char_traits<char>::length(pBytes), 0>(pBytes, 14695981039346656037ull, 1099511628211ull)
 #define ConstexprMurmurHash64A(pBytes) Internal::ConstexprMurmurHash64AHelper(pBytes, std::char_traits<char>::length(pBytes), 0)
-
-
-template<typename Type>
-struct BvHash
-{
-	size_t operator()(const Type& value) const
-	{
-		return MurmurHash64A(&value, sizeof(Type));
-	}
-};

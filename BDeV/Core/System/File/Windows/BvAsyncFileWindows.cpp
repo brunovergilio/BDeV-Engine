@@ -3,180 +3,85 @@
 #include "BDeV/Core/System/Threading/BvSync.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 
 
-struct AsyncFileData : OVERLAPPED
+BvAsyncFileRequest::BvAsyncFileRequest()
 {
-	HANDLE m_hFile;
-	void* m_pBuffer;
-	u32 m_TotalBytesRequested;
-	std::atomic<u32> m_TotalBytesProcessed;
-	bool m_IsReadOp;
-	std::atomic<bool> m_IsDone;
-};
+	m_AsyncFileData.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	IsDone(true);
+}
 
 
-namespace Internal
+BvAsyncFileRequest::~BvAsyncFileRequest()
 {
-	BOOL ReadAsync(AsyncFileData& data, u32 bytesToRead)
+	CloseHandle(m_AsyncFileData.hEvent);
+}
+
+
+bool BvAsyncFileRequest::IsDone()
+{
+	return m_AsyncFileData.m_IsDone.load(std::memory_order::acquire) || WaitForSingleObject(m_AsyncFileData.hEvent, 0) == WAIT_OBJECT_0;
+}
+
+
+u32 BvAsyncFileRequest::GetResult(bool wait)
+{
+	if (m_AsyncFileData.m_IsDone.load(std::memory_order::acquire))
 	{
-		return ReadFile(data.m_hFile, data.m_pBuffer, bytesToRead, nullptr, &data);
+		return m_AsyncFileData.m_TotalBytesProcessed.load(std::memory_order::relaxed);
 	}
 
-
-	BOOL WriteAsync(AsyncFileData& data, u32 bytesToWrite)
+	DWORD waitResult = WaitForSingleObject(m_AsyncFileData.hEvent, wait ? INFINITE : 0);
+	if (waitResult == WAIT_OBJECT_0)
 	{
-		return WriteFile(data.m_hFile, data.m_pBuffer, bytesToWrite, nullptr, &data);
-	}
-
-	void ReleaseAsyncData(AsyncFileData*& pFileData)
-	{
-		if (pFileData)
+		bool exp = false;
+		if (m_AsyncFileData.m_Flag.compare_exchange_strong(exp, true, std::memory_order::acquire))
 		{
-			BV_DELETE(pFileData);
-			pFileData = nullptr;
+			DWORD bytesTransferred = 0;
+			BOOL result = GetOverlappedResult(m_AsyncFileData.m_hFile, &m_AsyncFileData, &bytesTransferred, FALSE);
+			m_AsyncFileData.m_TotalBytesProcessed.store(result * bytesTransferred, std::memory_order::relaxed);
+			IsDone(true);
 		}
+
+		return m_AsyncFileData.m_TotalBytesProcessed.load(std::memory_order::relaxed);
 	}
-}
-
-
-AsyncFileRequest::AsyncFileRequest()
-{
-}
-
-
-AsyncFileRequest::AsyncFileRequest(AsyncFileRequest&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-AsyncFileRequest& AsyncFileRequest::operator=(AsyncFileRequest&& rhs) noexcept
-{
-	if (this != &rhs)
+	else
 	{
-		std::swap(m_pIOData, rhs.m_pIOData);
-	}
-
-	return *this;
-}
-
-
-AsyncFileRequest::~AsyncFileRequest()
-{
-	Internal::ReleaseAsyncData(m_pIOData);
-}
-
-
-bool AsyncFileRequest::IsComplete()
-{
-	if (!m_pIOData)
-	{
-		return true;
-	}
-
-	GetResult(false);
-
-	return m_pIOData->m_IsDone;
-}
-
-
-u32 AsyncFileRequest::GetResult(bool wait)
-{
-	if (!m_pIOData)
-	{
+		// Operation is still pending
 		return 0;
 	}
-	else if (m_pIOData->m_IsDone)
-	{
-		return m_pIOData->m_TotalBytesProcessed;
-	}
-
-	DWORD result = 0;
-	bool done = false;
-	do
-	{
-		if (GetOverlappedResult(m_pIOData->m_hFile, m_pIOData, &result, wait))
-		{
-			m_pIOData->m_TotalBytesProcessed += result;
-			if (m_pIOData->m_TotalBytesProcessed < m_pIOData->m_TotalBytesRequested)
-			{
-				// Issue another operation for the remaining bytes
-				m_pIOData->Pointer = reinterpret_cast<PVOID>(u64(m_pIOData->Pointer) + result);
-
-				BOOL status = m_pIOData->m_IsReadOp ? Internal::ReadAsync(*m_pIOData, m_pIOData->m_TotalBytesRequested - m_pIOData->m_TotalBytesProcessed)
-					: Internal::WriteAsync(*m_pIOData, m_pIOData->m_TotalBytesRequested - m_pIOData->m_TotalBytesProcessed);
-				if (!status)
-				{
-					auto error = GetLastError();
-					if (error != ERROR_IO_PENDING/* && error != ERROR_HANDLE_EOF*/)
-					{
-						BV_WIN_ERROR();
-
-						m_pIOData->m_IsDone = true;
-
-						done = true;
-					}
-					else
-					{
-						done = !wait;
-					}
-				}
-				else
-				{
-					done = false;
-				}
-			}
-			else
-			{
-				m_pIOData->m_IsDone = true;
-				done = true;
-			}
-		}
-		else
-		{
-			auto error = GetLastError();
-			if (error != ERROR_IO_INCOMPLETE)
-			{
-				if (error != ERROR_HANDLE_EOF && error != ERROR_OPERATION_ABORTED)
-				{
-					BV_WIN_ERROR();
-				}
-				m_pIOData->m_IsDone = true;
-			}
-			done = true;
-		}
-	} while (!done);
-
-	return m_pIOData->m_TotalBytesProcessed;
 }
 
 
-void AsyncFileRequest::Cancel()
+void BvAsyncFileRequest::Cancel()
 {
-	if (!m_pIOData)
+	if (!IsDone())
 	{
-		return;
+		CancelIoEx(m_AsyncFileData.m_hFile, &m_AsyncFileData);
 	}
-
-	if (!CancelIoEx(m_pIOData->m_hFile, m_pIOData))
-	{
-		auto error = GetLastError();
-		if (error != ERROR_NOT_FOUND && error != ERROR_OPERATION_ABORTED)
-		{
-			m_pIOData->m_IsDone = true;
-			return;
-		}
-	}
-	GetResult();
 }
 
 
-bool AsyncFileRequest::IsValid() const
+void BvAsyncFileRequest::IsDone(bool done)
 {
-	return m_pIOData != nullptr;
+	m_AsyncFileData.m_IsDone.store(done, std::memory_order::release);
+}
+
+
+void BvAsyncFileRequest::Reset(HANDLE hFile, u64 position)
+{
+	auto hEvent = m_AsyncFileData.hEvent;
+	// We use sizeof(OVERLAPPED) intentionally here
+	ZeroMemory(&m_AsyncFileData, sizeof(OVERLAPPED));
+	m_AsyncFileData.hEvent = hEvent;
+
+	m_AsyncFileData.m_hFile = hFile;
+	m_AsyncFileData.Pointer = reinterpret_cast<PVOID>(position);
+	m_AsyncFileData.m_TotalBytesProcessed.store(0, std::memory_order::relaxed);
+	m_AsyncFileData.m_Flag.store(false, std::memory_order::release);
+	IsDone(false);
+	ResetEvent(m_AsyncFileData.hEvent);
 }
 
 
@@ -263,67 +168,51 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 }
 
 
-AsyncFileRequest BvAsyncFile::Read(void* pBuffer, u32 bufferSize, u64 position)
+bool BvAsyncFile::Read(BvAsyncFileRequest& request, void* pBuffer, u32 bufferSize, u64 position)
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	BV_ASSERT(pBuffer != nullptr, "Null buffer");
 	BV_ASSERT(bufferSize > 0, "Invalid buffer size");
+	BV_ASSERT(request.IsDone(), "Operation is still in use");
 
-	AsyncFileRequest request;
-	request.m_pIOData = BV_NEW(AsyncFileData);
-	ZeroMemory(request.m_pIOData, sizeof(AsyncFileData));
-	request.m_pIOData->m_hFile = m_hFile;
-	request.m_pIOData->Pointer = reinterpret_cast<void*>(position);
-	request.m_pIOData->m_pBuffer = pBuffer;
-	request.m_pIOData->m_TotalBytesRequested = bufferSize;
-	//request.m_pIOData->m_TotalBytesProcessed = 0;
-	request.m_pIOData->m_IsReadOp = true;
-	//request.m_pIOData->m_IsDone = false;
+	request.Reset(m_hFile, position);
 
-	BOOL status = Internal::ReadAsync(*request.m_pIOData, bufferSize);
+	BOOL status = ReadFile(m_hFile, pBuffer, bufferSize, nullptr, &request.m_AsyncFileData);
 	if (!status)
 	{
 		auto error = GetLastError();
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
-			Internal::ReleaseAsyncData(request.m_pIOData);
 			BV_WIN_ERROR();
+			return false;
 		}
 	}
 
-	return request;
+	return true;
 }
 
 
-AsyncFileRequest BvAsyncFile::Write(const void* pBuffer, u32 bufferSize, u64 position)
+bool BvAsyncFile::Write(BvAsyncFileRequest& request, const void* pBuffer, u32 bufferSize, u64 position)
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 	BV_ASSERT(pBuffer != nullptr, "Null buffer");
 	BV_ASSERT(bufferSize > 0, "Invalid buffer size");
+	BV_ASSERT(request.IsDone(), "Operation is still in use");
 
-	AsyncFileRequest request;
-	request.m_pIOData = BV_NEW(AsyncFileData);
-	ZeroMemory(request.m_pIOData, sizeof(AsyncFileData));
-	request.m_pIOData->m_hFile = m_hFile;
-	request.m_pIOData->Pointer = reinterpret_cast<void*>(position);
-	request.m_pIOData->m_pBuffer = const_cast<void* const>(pBuffer);
-	request.m_pIOData->m_TotalBytesRequested = bufferSize;
-	//request.m_pIOData->m_TotalBytesProcessed = 0;
-	//request.m_pIOData->m_IsReadOp = false;
-	//request.m_pIOData->m_IsDone = false;
+	request.Reset(m_hFile, position);
 
-	BOOL status = Internal::WriteAsync(*request.m_pIOData, bufferSize);
+	BOOL status = WriteFile(m_hFile, pBuffer, bufferSize, nullptr, &request.m_AsyncFileData);
 	if (!status)
 	{
 		auto error = GetLastError();
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
-			Internal::ReleaseAsyncData(request.m_pIOData);
 			BV_WIN_ERROR();
+			return false;
 		}
 	}
 
-	return request;
+	return true;
 }
 
 
@@ -331,7 +220,7 @@ u64 BvAsyncFile::GetSize() const
 {
 	BV_ASSERT(m_hFile != INVALID_HANDLE_VALUE, "Invalid file handle");
 
-	i64 fileSize;
+	i64 fileSize = 0;
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
 	if (!status)
 	{

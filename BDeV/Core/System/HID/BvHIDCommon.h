@@ -6,7 +6,7 @@
 
 
 // Kept the same as virtual key codes for simplicity
-// TODO: Maybe use HID codes instead
+// TODO: Use different values per platform
 enum class BvKey : u8
 {
 	kNone				=	0  ,	// None

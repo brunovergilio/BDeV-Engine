@@ -59,41 +59,38 @@ void ConsoleHelper()
 }
 
 
-namespace Console
+void BvConsole::Print(const char* pFormat, ...)
 {
-	void Print(const char* pFormat, ...)
-	{
-		ConsoleHelper();
-		va_list argList;
-		va_start(argList, pFormat);
-		vprintf(pFormat, argList);
-		va_end(argList);
-	}
+	ConsoleHelper();
+	va_list argList;
+	va_start(argList, pFormat);
+	vprintf(pFormat, argList);
+	va_end(argList);
+}
 
 
-	void Print(const BvColorI& textColor, const char* pFormat, ...)
-	{
-		ConsoleHelper();
-		printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
-		va_list argList;
-		va_start(argList, pFormat);
-		vprintf(pFormat, argList);
-		va_end(argList);
-		printf("\033[0m");
-	}
+void BvConsole::Print(const BvColorI& textColor, const char* pFormat, ...)
+{
+	ConsoleHelper();
+	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+	va_list argList;
+	va_start(argList, pFormat);
+	vprintf(pFormat, argList);
+	va_end(argList);
+	printf("\033[0m");
+}
 
 
-	void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
-	{
-		ConsoleHelper();
-		printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
-		printf("\033[48;2;%d;%d;%dm", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
-		va_list argList;
-		va_start(argList, pFormat);
-		vprintf(pFormat, argList);
-		va_end(argList);
-		printf("\033[0m");
-	}
+void BvConsole::Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
+{
+	ConsoleHelper();
+	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+	printf("\033[48;2;%d;%d;%dm", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
+	va_list argList;
+	va_start(argList, pFormat);
+	vprintf(pFormat, argList);
+	va_end(argList);
+	printf("\033[0m");
 }
 
 
@@ -104,64 +101,61 @@ char* GetMessageBuffer()
 }
 
 
-namespace Debug
+void BvDebug::Print(const char* pFormat, ...)
 {
-	void Print(const char* pFormat, ...)
-	{
-		auto pErrorMessage = GetMessageBuffer();
-		va_list args;
-		va_start(args, pFormat);
-		u32 charsWritten = std::min(u32(vsnprintf(pErrorMessage, kMaxMessageSize, pFormat, args)) + 1, kMaxMessageSize);
-		va_end(args);
+	auto pErrorMessage = GetMessageBuffer();
+	va_list args;
+	va_start(args, pFormat);
+	u32 charsWritten = std::min(u32(vsnprintf(pErrorMessage, kMaxMessageSize, pFormat, args)) + 1, kMaxMessageSize);
+	va_end(args);
 
-		wchar_t errorMessageW[kMaxMessageSize];
-		BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
-		OutputDebugStringW(errorMessageW);
+	wchar_t errorMessageW[kMaxMessageSize];
+	BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
+	OutputDebugStringW(errorMessageW);
+}
+
+
+void BvDebug::Break()
+{
+#if BV_DEBUG
+	__debugbreak();
+#endif
+}
+
+
+void BvDebug::Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...)
+{
+#if BV_DEBUG
+	auto pErrorMessage = GetMessageBuffer();
+	va_list args;
+	va_start(args, pFormat);
+	auto charsWritten = std::min(u32(vsnprintf(pErrorMessage, kMaxMessageSize, pFormat, args)), kMaxMessageSize - 1);
+	va_end(args);
+
+	if (u32 remaining = kMaxMessageSize - (1 + charsWritten))
+	{
+		charsWritten += std::min(u32(snprintf(pErrorMessage + charsWritten, remaining,
+			"\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line)) + 1, remaining);
 	}
 
+	wchar_t errorMessageW[kMaxMessageSize];
+	BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
 
-	void Break()
+	auto result = MessageBoxW(nullptr, errorMessageW, L"BDeV Assertion Error", MB_ABORTRETRYIGNORE | MB_ICONERROR);
+	if (result == IDABORT)
 	{
-	#if BV_DEBUG
-		__debugbreak();
-	#endif
+		exit(kI32Max);
 	}
-
-
-	void Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...)
+	else if (result == IDRETRY)
 	{
-	#if BV_DEBUG
-		auto pErrorMessage = GetMessageBuffer();
-		va_list args;
-		va_start(args, pFormat);
-		auto charsWritten = std::min(u32(vsnprintf(pErrorMessage, kMaxMessageSize, pFormat, args)), kMaxMessageSize - 1);
-		va_end(args);
-
-		if (u32 remaining = kMaxMessageSize - (1 + charsWritten))
-		{
-			charsWritten += std::min(u32(snprintf(pErrorMessage + charsWritten, remaining,
-				"\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line)) + 1, remaining);
-		}
-
-		wchar_t errorMessageW[kMaxMessageSize];
-		BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
-
-		auto result = MessageBoxW(nullptr, errorMessageW, L"BDeV Assertion Error", MB_ABORTRETRYIGNORE | MB_ICONERROR);
-		if (result == IDABORT)
-		{
-			exit(kI32Max);
-		}
-		else if (result == IDRETRY)
-		{
-			Break();
-			return;
-		}
-		else if (result == IDIGNORE)
-		{
-			return;
-		}
-	#endif
+		Break();
+		return;
 	}
+	else if (result == IDIGNORE)
+	{
+		return;
+	}
+#endif
 }
 
 

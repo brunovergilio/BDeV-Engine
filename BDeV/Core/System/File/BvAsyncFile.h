@@ -5,7 +5,9 @@
 // using aligned sector-sized blocks for read/write operations
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/System/File/BvFileCommon.h"
-#include "BDeV/Core/System/BvPlatformHeaders.h"
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#include "BDeV/Core/System/File/Windows/BvAsyncFileWindows.h"
+#endif
 
 
 //Feature						Windows					Linux						macOS
@@ -14,33 +16,11 @@
 //Asynchronous I/O Libraries	Built - in async API	libaio or POSIX AIO(aio_*)	POSIX AIO(aio_*)
 
 
-class AsyncFileRequest
-{
-public:
-	friend class BvAsyncFile;
-
-	AsyncFileRequest();
-	AsyncFileRequest(AsyncFileRequest&& rhs) noexcept;
-	AsyncFileRequest& operator=(AsyncFileRequest&& rhs) noexcept;
-	~AsyncFileRequest();
-
-	bool IsComplete();
-	u32 GetResult(bool wait = true);
-	void Cancel();
-	bool IsValid() const;
-
-private:
-	struct AsyncFileData* m_pIOData = nullptr;
-};
-
-
 class BvAsyncFile
 {
 	BV_NOCOPY(BvAsyncFile);
 
 public:
-	friend class BvFileSystem;
-
 	BvAsyncFile();
 	BvAsyncFile(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite,
 		BvFileAction action = BvFileAction::kOpenOrCreate, BvAsyncFileFlags asyncFlags = BvAsyncFileFlags::kNone);
@@ -51,11 +31,11 @@ public:
 	bool Open(const char* const pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite,
 		BvFileAction action = BvFileAction::kOpenOrCreate, BvAsyncFileFlags asyncFlags = BvAsyncFileFlags::kNone);
 
-	AsyncFileRequest Read(void* pBuffer, u32 bufferSize, u64 position = 0);
-	AsyncFileRequest Write(const void* pBuffer, u32 bufferSize, u64 position = 0);
+	bool Read(BvAsyncFileRequest& request, void* pBuffer, u32 bufferSize, u64 position = 0);
+	bool Write(BvAsyncFileRequest& request, const void* pBuffer, u32 bufferSize, u64 position = 0);
 
-	template<typename Type> AsyncFileRequest ReadT(Type& value, u64 position = 0) { return Read(&value, sizeof(Type), position); }
-	template<typename Type> AsyncFileRequest WriteT(const Type& value, u64 position = 0) { return Write(&value, sizeof(Type), position); }
+	template<typename Type> bool ReadT(BvAsyncFileRequest& request, Type& value, u64 position = 0) { return Read(request, &value, sizeof(Type), position); }
+	template<typename Type> bool WriteT(BvAsyncFileRequest& request, const Type& value, u64 position = 0) { return Write(request, &value, sizeof(Type), position); }
 
 	u64 GetSize() const;
 

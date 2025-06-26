@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include <tuple>
 
 
@@ -131,5 +132,153 @@ public:
 	}
 
 private:
+	alignas(16) u8 m_Data[TaskSize]{};
+};
+
+
+template<size_t TaskSize>
+class BvTask
+{
+	using TaskFn = void(*)(void*);
+	using DtorFn = void(*)(void*);
+	using CopyFn = void(*)(void*, const void*);
+	using MoveFn = void(*)(void*, void*);
+
+public:
+	BvTask() = default;
+
+	~BvTask()
+	{
+		Reset();
+	}
+
+	template<typename Fn, typename = std::enable_if_t<!std::is_same_v<std::decay_t<Fn>, BvTask>>>
+	explicit BvTask(Fn&& fn)
+	{
+		Set(std::forward<Fn>(fn));
+	}
+
+	BvTask(const BvTask& other)
+	{
+		if (other.m_Copy)
+		{
+			other.m_Copy(m_Data, other.m_Data);
+			m_Func = other.m_Func;
+			m_Dtor = other.m_Dtor;
+			m_Copy = other.m_Copy;
+			m_Move = other.m_Move;
+		}
+	}
+
+	BvTask(BvTask&& other) noexcept
+	{
+		if (other.m_Move)
+		{
+			other.m_Move(m_Data, other.m_Data);
+			m_Func = other.m_Func;
+			m_Dtor = other.m_Dtor;
+			m_Copy = other.m_Copy;
+			m_Move = other.m_Move;
+
+			other.Reset();
+		}
+	}
+
+	BvTask& operator=(const BvTask& other)
+	{
+		if (this != &other)
+		{
+			Reset();
+			if (other.m_Copy)
+			{
+				other.m_Copy(m_Data, other.m_Data);
+				m_Func = other.m_Func;
+				m_Dtor = other.m_Dtor;
+				m_Copy = other.m_Copy;
+				m_Move = other.m_Move;
+			}
+		}
+		return *this;
+	}
+
+	BvTask& operator=(BvTask&& other) noexcept
+	{
+		if (this != &other)
+		{
+			Reset();
+			if (other.m_Move)
+			{
+				other.m_Move(m_Data, other.m_Data);
+				m_Func = other.m_Func;
+				m_Dtor = other.m_Dtor;
+				m_Copy = other.m_Copy;
+				m_Move = other.m_Move;
+
+				other.Reset();
+			}
+		}
+		return *this;
+	}
+
+	template<typename Fn>
+	void Set(Fn&& fn)
+	{
+		using FnType = std::decay_t<Fn>;
+
+		static_assert(sizeof(FnType) <= TaskSize, "Function object is too big, use a bigger task size");
+
+		Reset();
+
+		new(m_Data) FnType(std::forward<Fn>(fn));
+		m_Func = [](void* data)
+			{
+				(*reinterpret_cast<FnType*>(data))();
+			};
+
+		m_Dtor = [](void* data)
+			{
+				reinterpret_cast<FnType*>(data)->~FnType();
+			};
+
+		m_Copy = [](void* dst, const void* src)
+			{
+				new(dst) FnType(*reinterpret_cast<const FnType*>(src));
+			};
+
+		m_Move = [](void* dst, void* src)
+			{
+				new(dst) FnType(std::move(*reinterpret_cast<FnType*>(src)));
+			};
+	}
+
+	void Reset()
+	{
+		if (m_Dtor)
+		{
+			m_Dtor(m_Data);
+		}
+
+		m_Func = nullptr;
+		m_Dtor = nullptr;
+		m_Copy = nullptr;
+		m_Move = nullptr;
+	}
+
+	void operator()()
+	{
+		BV_ASSERT(m_Func != nullptr, "Task needs a function");
+		m_Func(m_Data);
+	}
+
+	explicit operator bool() const
+	{
+		return m_Func != nullptr;
+	}
+
+private:
 	u8 m_Data[TaskSize]{};
+	TaskFn m_Func = nullptr;
+	DtorFn m_Dtor = nullptr;
+	CopyFn m_Copy = nullptr;
+	MoveFn m_Move = nullptr;
 };

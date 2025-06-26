@@ -368,13 +368,13 @@ void BvStringT<CharT, MemoryArenaType>::SetAllocator(MemoryArenaType* pAllocator
 
 	if (m_Capacity > 0)
 	{
-		CharT* pNewStr = pAllocator ? BV_MNEW_ARRAY(*pAllocator, CharT, m_Capacity) : BV_NEW_ARRAY(CharT, m_Capacity);
+		CharT* pNewStr = reinterpret_cast<CharT*>(pAllocator ? BV_MALLOC(*pAllocator, sizeof(CharT) * m_Capacity, alignof(CharT)) : BV_ALLOC(sizeof(CharT) * m_Capacity, alignof(CharT)));
 		if (m_Size > 0)
 		{
 			std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
 			pNewStr[m_Size] = CharT();
 		}
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pStr) : BV_DELETE_ARRAY(m_pStr);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pStr) : BV_FREE(m_pStr);
 		m_pStr = pNewStr;
 	}
 
@@ -1119,7 +1119,7 @@ inline void BvStringT<CharT, MemoryArenaType>::Grow(u32 size)
 		return;
 	}
 
-	CharT* pNewStr = m_pAllocator ? BV_MNEW_ARRAY(*m_pAllocator, CharT, size + 1) : BV_NEW_ARRAY(CharT, size + 1);
+	CharT* pNewStr = reinterpret_cast<CharT*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, sizeof(CharT) * (size + 1), alignof(CharT)) : BV_ALLOC(sizeof(CharT) * (size + 1), alignof(CharT)));
 	if (m_Size > 0)
 	{
 		std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
@@ -1128,7 +1128,7 @@ inline void BvStringT<CharT, MemoryArenaType>::Grow(u32 size)
 	m_Capacity = size + 1;
 	if (m_pStr)
 	{
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pStr) : BV_DELETE_ARRAY(m_pStr);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pStr) : BV_FREE(m_pStr);
 	}
 	m_pStr = pNewStr;
 }
@@ -1139,7 +1139,7 @@ inline void BvStringT<CharT, MemoryArenaType>::Destroy()
 {
 	if (m_pStr)
 	{
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pStr) : BV_DELETE_ARRAY(m_pStr);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pStr) : BV_FREE(m_pStr);
 		m_pStr = nullptr;
 	}
 

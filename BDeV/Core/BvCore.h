@@ -24,6 +24,10 @@
 
 #if defined(_MSC_VER)
 	#define BV_COMPILER BV_COMPILER_MSVC
+#else
+#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#error "Currently only MSVC compiler is supported for Windows"
+#endif
 #endif
 
 
@@ -103,6 +107,10 @@
 	#pragma warning(disable:6255)	// _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead
 	#pragma warning(disable:4828)	// The file contains a character starting at offset 'offset' that is illegal in the current source character set (codepage 'cp')
 	#pragma warning(disable:26110)	// Caller failing to hold lock 'lock' before calling function 'func'
+	#pragma warning(disable:6387)	// Could be 0
+	#pragma warning(disable:6386)	// Buffer overrun
+	#pragma warning(disable:6385)	// Reading invalid data
+	#pragma warning(disable:4828)
 
 	#define BV_API
 
@@ -135,6 +143,7 @@ using u64	= std::uint64_t;
 
 using f32	= float;
 using f64	= double;
+
 
 union MemType
 {

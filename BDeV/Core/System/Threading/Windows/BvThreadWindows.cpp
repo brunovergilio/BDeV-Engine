@@ -1,10 +1,11 @@
 #include "BDeV/Core/System/Threading/BvThread.h"
 #include "BDeV/Core/System/Threading/BvFiber.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include <utility>
 #include <process.h>
+#include <algorithm>
 
 
 u32 CALLBACK ThreadEntryPoint(void* pData);
@@ -65,21 +66,101 @@ void BvThread::Wait()
 }
 
 
-void BvThread::SetAffinityMask(u64 affinityMask) const
+void BvThread::SetAffinity(u32 logicalProcessorIndex) const
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
-	BV_ASSERT(affinityMask != 0, "Affinity mask must have at least one bit set");
 
-	SetThreadAffinityMask(m_hThread, static_cast<DWORD_PTR>(affinityMask));
+	WORD groupCount = GetActiveProcessorGroupCount();
+	if (groupCount <= 1)
+	{
+		BV_ASSERT(logicalProcessorIndex < 64, "This implementation supports only up to 64 cores");
+
+		SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(logicalProcessorIndex));
+	}
+	else
+	{
+		// Find which group the logicalProcessorIndex falls into
+		for (WORD group = 0; group < groupCount; ++group)
+		{
+			DWORD groupSize = GetActiveProcessorCount(group);
+			if (logicalProcessorIndex < groupSize)
+			{
+				GROUP_AFFINITY affinity{};
+				affinity.Group = group;
+				affinity.Mask = 1ull << logicalProcessorIndex;
+
+				BOOL result = SetThreadGroupAffinity(m_hThread, &affinity, nullptr);
+				BV_ASSERT(result != 0, "Failed to set thread group affinity");
+				
+				break;
+			}
+			logicalProcessorIndex -= groupSize;
+		}
+	}
 }
 
 
-void BvThread::LockToCore(u32 coreIndex) const
+void BvThread::SetAffinity(u32 logicalProcessorIndexCount, const u32* pLogicalProcessorIndices) const
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
-	BV_ASSERT(coreIndex < 64, "This implementation supports only up to 64 cores");
 
-	SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(coreIndex));
+	WORD groupCount = GetActiveProcessorGroupCount();
+	if (groupCount <= 1)
+	{
+		DWORD_PTR affinityMask = 0;
+		for (auto i = 0; i < logicalProcessorIndexCount; ++i)
+		{
+			affinityMask |= 1ull << pLogicalProcessorIndices[i];
+		}
+
+		SetThreadAffinityMask(m_hThread, affinityMask);
+	}
+	else
+	{
+		WORD selectedGroup = kU16Max;
+		KAFFINITY affinityMask = 0;
+
+		u32 groupEndIndex = 0;
+		for (WORD group = 0; group < groupCount; ++group)
+		{
+			DWORD groupSize = GetActiveProcessorCount(group);
+			u32 groupStartIndex = groupEndIndex;
+			groupEndIndex = groupStartIndex + groupSize;
+
+			GROUP_AFFINITY groupAffinity{};
+			for (auto i = 0; i < logicalProcessorIndexCount; ++i)
+			{
+				u32 index = pLogicalProcessorIndices[i];
+				if (index >= groupStartIndex && index < groupEndIndex)
+				{
+					if (selectedGroup == kU16Max)
+					{
+						selectedGroup = group;
+					}
+					else
+					{
+						BV_ASSERT(selectedGroup == group, "All processor indices must belong to the same group");
+					}
+
+					affinityMask |= 1ull << (index - groupStartIndex);
+				}
+			}
+
+			if (selectedGroup != kU16Max)
+			{
+				break;
+			}
+		}
+
+		BV_ASSERT(selectedGroup != kU16Max, "No valid group found for provided indices");
+
+		GROUP_AFFINITY groupAffinity{};
+		groupAffinity.Group = selectedGroup;
+		groupAffinity.Mask = affinityMask;
+
+		BOOL result = SetThreadGroupAffinity(m_hThread, &groupAffinity, nullptr);
+		BV_ASSERT(result != 0, "Failed to set thread group affinity");
+	}
 }
 
 
@@ -213,9 +294,13 @@ void BvThread::Create(const CreateInfo& createInfo)
 	{
 		SetPriority(createInfo.m_Priority);
 	}
-	if (createInfo.m_AffinityMask != 0)
+	if (createInfo.m_LogicalProcessorIndexCount > 0)
 	{
-		SetAffinityMask(createInfo.m_AffinityMask);
+		SetAffinity(createInfo.m_LogicalProcessorIndexCount, createInfo.m_pLogicalProcessorIndices);
+	}
+	if (createInfo.m_pName)
+	{
+		SetName(createInfo.m_pName);
 	}
 }
 

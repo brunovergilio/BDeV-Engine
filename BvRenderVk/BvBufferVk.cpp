@@ -27,11 +27,7 @@ void* const BvBufferVk::Map(const u64 size, const u64 offset)
 	{
 		auto vma = m_pDevice->GetAllocator();
 		auto result = vmaMapMemory(vma, m_VMAAllocation, &m_pMapped);
-		if (result != VK_SUCCESS)
-		{
-			BvDebugVkResult(result);
-			return nullptr;
-		}
+		BV_ASSERT(result == VK_SUCCESS, "Failed to map buffer memory");
 	}
 
 	return m_pMapped;
@@ -67,11 +63,7 @@ void BvBufferVk::Flush(const u64 size, const u64 offset) const
 	mappedRange.offset = vmaAI.offset + offset;
 	mappedRange.size = size;
 	auto result = vkFlushMappedMemoryRanges(m_pDevice->GetHandle(), 1, &mappedRange);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return;
-	}
+	BV_ASSERT(result == VK_SUCCESS, "Failed to flush buffer memory");
 }
 
 
@@ -92,11 +84,7 @@ void BvBufferVk::Invalidate(const u64 size, const u64 offset) const
 	mappedRange.offset = vmaAI.offset + offset;
 	mappedRange.size = size;
 	auto result = vkInvalidateMappedMemoryRanges(m_pDevice->GetHandle(), 1, &mappedRange);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return;
-	}
+	BV_ASSERT(result == VK_SUCCESS, "Failed to invalidate buffer memory");
 }
 
 
@@ -117,9 +105,9 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 
 	auto device = m_pDevice->GetHandle();
 	auto result = vkCreateBuffer(device, &bufferCreateInfo, nullptr, &m_Buffer);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to create buffer");
 	if (result != VK_SUCCESS)
 	{
-		BvDebugVkResult(result);
 		return;
 	}
 
@@ -131,17 +119,17 @@ void BvBufferVk::Create(const BufferInitData* pInitData)
 	VmaAllocationInfo vmaAI;
 	VmaAllocation vmaA;
 	result = vmaAllocateMemoryForBuffer(vma, m_Buffer, &vmaACI, &vmaA, &vmaAI);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to allocate memory for buffer");
 	if (result != VK_SUCCESS)
 	{
-		BvDebugVkResult(result);
 		vkDestroyBuffer(device, m_Buffer, nullptr);
 		return;
 	}
 
 	result = vkBindBufferMemory(device, m_Buffer, vmaAI.deviceMemory, vmaAI.offset);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to bind memory for buffer");
 	if (result != VK_SUCCESS)
 	{
-		BvDebugVkResult(result);
 		vmaFreeMemory(vma, vmaA);
 		return;
 	}

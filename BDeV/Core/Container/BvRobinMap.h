@@ -213,8 +213,8 @@ inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::SetAllocato
 
 	if (m_Capacity > 0)
 	{
-		KeyValue* pNewData = pAllocator ? BV_MNEW_ARRAY(*pAllocator, KeyValue, m_Capacity) : BV_NEW_ARRAY(KeyValue, m_Capacity);
-		size_t* pNewHashes = pAllocator ? BV_MNEW_ARRAY(*pAllocator, size_t, m_Capacity) : BV_NEW_ARRAY(size_t, m_Capacity);
+		KeyValue* pNewData = reinterpret_cast<KeyValue*>(pAllocator ? BV_MALLOC(*pAllocator, sizeof(KeyValue) * m_Capacity, alignof(KeyValue)) : BV_ALLOC(sizeof(KeyValue) * m_Capacity, alignof(KeyValue)));
+		size_t* pNewHashes = reinterpret_cast<size_t*>(pAllocator ? BV_MALLOC(*pAllocator, sizeof(size_t) * m_Capacity, alignof(size_t)) : BV_ALLOC(sizeof(size_t) * m_Capacity, alignof(size_t)));
 		memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 		if (m_Size > 0)
 		{
@@ -230,8 +230,8 @@ inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::SetAllocato
 			}
 		}
 		Clear();
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pHashes) : BV_DELETE_ARRAY(m_pHashes);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pHashes) : BV_FREE(m_pHashes);
 
 		m_pData = pNewData;
 		m_pHashes = pNewHashes;
@@ -252,8 +252,8 @@ inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::ResizeAndRe
 	auto oldCapacity = m_Capacity;
 	m_Capacity = size;
 
-	KeyValue* pNewData = m_pAllocator ? BV_MNEW_ARRAY(*m_pAllocator, KeyValue, m_Capacity) : BV_NEW_ARRAY(KeyValue, m_Capacity);
-	size_t* pNewHashes = m_pAllocator ? BV_MNEW_ARRAY(*m_pAllocator, size_t, m_Capacity) : BV_NEW_ARRAY(size_t, m_Capacity);
+	KeyValue* pNewData = reinterpret_cast<KeyValue*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, sizeof(KeyValue) * m_Capacity, alignof(KeyValue)) : BV_ALLOC(sizeof(KeyValue) * m_Capacity, alignof(KeyValue)));
+	size_t* pNewHashes = reinterpret_cast<size_t*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, sizeof(size_t) * m_Capacity, alignof(size_t)) : BV_ALLOC(sizeof(size_t) * m_Capacity, alignof(size_t)));
 	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 
 	for (size_t i = 0; i < oldCapacity; i++)
@@ -266,8 +266,8 @@ inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::ResizeAndRe
 
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pHashes) : BV_DELETE_ARRAY(m_pHashes);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pHashes) : BV_FREE(m_pHashes);
 	}
 
 	m_pData = pNewData;
@@ -601,8 +601,8 @@ void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Destroy()
 
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pData) : BV_DELETE_ARRAY(m_pData);
-		m_pAllocator ? BV_MDELETE_ARRAY(*m_pAllocator, m_pHashes) : BV_DELETE_ARRAY(m_pHashes);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
+		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pHashes) : BV_FREE(m_pHashes);
 		m_pData = nullptr;
 		m_pHashes = nullptr;
 	}

@@ -34,7 +34,7 @@ namespace Internal
 	{
 		MemType mem{ BvMemory::Allocate(sizeof(Type), alignof(Type), 0)};
 
-		Console::Print(BvColorI::BrightBlue, "New called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, sizeof(Type),
+		BvConsole::Print(BvColorI::BrightBlue, "New called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, sizeof(Type),
 			sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		return mem.pAsVoidPtr;
@@ -45,7 +45,7 @@ namespace Internal
 	{
 		BvMemory::Free(pObj);
 
-		Console::Print(BvColorI::BrightCyan, "Delete called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		BvConsole::Print(BvColorI::BrightCyan, "Delete called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 	}
 
 	template<typename Type>
@@ -70,7 +70,7 @@ namespace Internal
 			}
 		}
 
-		Console::Print(BvColorI::BrightBlue, "New[] called for %llu elements - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", count, pMem, sizeof(Type),
+		BvConsole::Print(BvColorI::BrightBlue, "New[] called for %llu elements - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", count, pMem, sizeof(Type),
 			sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		// Return the pointer to the first element
@@ -86,7 +86,7 @@ namespace Internal
 
 		size_t count = *mem.pAsSizeTPtr;
 
-		Console::Print(BvColorI::BrightCyan, "Delete[] called for %llu elements - 0x%p\nFunction: %s, File: %s (%d)\n\n", count, pObjs, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		BvConsole::Print(BvColorI::BrightCyan, "Delete[] called for %llu elements - 0x%p\nFunction: %s, File: %s (%d)\n\n", count, pObjs, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		// Only call the dtor if needed
 		if constexpr (!IsPodV<Type>)
@@ -106,7 +106,7 @@ namespace Internal
 	{
 		MemType mem{ BvMemory::Allocate(size, alignment, 0) };
 
-		Console::Print(BvColorI::BrightBlue, "Alloc called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, size,
+		BvConsole::Print(BvColorI::BrightBlue, "Alloc called - 0x%p (%llu bytes)\nFunction: %s, File: %s (%d)\n\n", mem.pAsVoidPtr, size,
 			sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 
 		return mem.pAsVoidPtr;
@@ -116,7 +116,7 @@ namespace Internal
 	{
 		BvMemory::Free(pObj);
 
-		Console::Print(BvColorI::BrightCyan, "Free called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+		BvConsole::Print(BvColorI::BrightCyan, "Free called - 0x%p\nFunction: %s, File: %s (%d)\n\n", pObj, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 	}
 
 	template<typename Type, class Allocator>
@@ -208,7 +208,7 @@ namespace Internal
 	{ \
 		using ObjType = std::remove_reference_t<decltype(*pObj)>; \
 		if constexpr (!std::is_trivially_destructible_v<ObjType>) { pObj->~ObjType(); } \
-		Internal::Delete(pObj, allocator, BV_SOURCE_INFO) \
+		Internal::Delete(pObj, allocator, BV_SOURCE_INFO); \
 	} \
 } while (0)
 // Allocate array of type
@@ -248,3 +248,43 @@ namespace Internal
 #define BV_ALLOC_SI(sourceInfo, size, alignment) Internal::Alloc(size, alignment, sourceInfo)
 // Free block of bytes
 #define BV_FREE(pObj) Internal::Free(pObj, BV_SOURCE_INFO)
+
+
+// Hybrid memory class that uses either stack- or heap-based memory depending on the size.
+// This can avoid stack overflows when doing large allocations as well as unnecessary
+// heap fragmentation when allocating very small values.
+template<size_t N = 128>
+class BvHybridMem final
+{
+	BV_NOCOPYMOVE(BvHybridMem);
+
+public:
+	BvHybridMem() {}
+	~BvHybridMem()
+	{
+		if (m_pHeapMem)
+		{
+			BV_FREE(m_pHeapMem);
+		}
+	}
+
+	void* operator()(size_t bytes, size_t alignment = kDefaultAlignmentSize)
+	{
+		if (bytes + alignment <= N)
+		{
+			return BvMemory::AlignMemory(m_StackMem, alignment);
+		}
+		else if (!m_pHeapMem)
+		{
+			m_pHeapMem = BV_ALLOC(bytes, alignment);
+			return m_pHeapMem;
+		}
+
+		BV_ASSERT(false, "Only call Alloc() once");
+
+		return nullptr;
+	}
+private:
+	u8 m_StackMem[N];
+	void* m_pHeapMem = nullptr;
+};

@@ -130,12 +130,12 @@ void BvSpinlock::Lock()
 {
 	for (;;)
 	{
-		if (!m_Lock.exchange(true, std::memory_order::memory_order_acquire))
+		if (!m_Lock.exchange(true, std::memory_order::acquire))
 		{
 			return;
 		}
 
-		while (m_Lock.load(std::memory_order::memory_order_relaxed))
+		while (m_Lock.load(std::memory_order::relaxed))
 		{
 			BvCPU::Yield();
 		}
@@ -145,63 +145,70 @@ void BvSpinlock::Lock()
 
 bool BvSpinlock::TryLock()
 {
-	return !m_Lock.load(std::memory_order::memory_order_relaxed) &&
-		!m_Lock.exchange(true, std::memory_order::memory_order_acquire);
+	return !m_Lock.load(std::memory_order::relaxed) &&
+		!m_Lock.exchange(true, std::memory_order::acquire);
 }
 
 
 void BvSpinlock::Unlock()
 {
-	m_Lock.store(false, std::memory_order::memory_order_release);
+	m_Lock.store(false, std::memory_order::release);
 }
 
 
-BvSignal::BvSignal()
+BvWaitEvent::BvWaitEvent()
 {
 }
 
 
-BvSignal::BvSignal(ResetType resetType, bool initiallySignaled)
+BvWaitEvent::BvWaitEvent(ResetType resetType, bool initiallySignaled)
 	: m_ResetType(resetType), m_Signaled(initiallySignaled)
 {
 }
 
 
-BvSignal::~BvSignal()
+BvWaitEvent::~BvWaitEvent()
 {
 }
 
 
-void BvSignal::SetResetType(ResetType resetType)
+void BvWaitEvent::SetResetType(ResetType resetType)
 {
 	m_ResetType = resetType;
 }
 
 
-void BvSignal::Set()
+void BvWaitEvent::Set()
 {
 	{
 		std::unique_lock<std::mutex> lock(m_Lock);
 		m_Signaled.store(true, std::memory_order::relaxed);
 	}
-	m_CV.notify_one();
+	if (m_ResetType == ResetType::kAuto)
+	{
+		m_CV.notify_one();
+	}
+	else
+	{
+		m_CV.notify_all();
+	}
 }
 
 
-void BvSignal::Reset()
+void BvWaitEvent::Reset()
 {
 	std::unique_lock<std::mutex> lock(m_Lock);
 	m_Signaled.store(false, std::memory_order::relaxed);
 }
 
 
-bool BvSignal::Wait(u32 timeout)
+bool BvWaitEvent::Wait(u32 timeout)
 {
-	auto ms = std::chrono::milliseconds(1);
 	std::unique_lock<std::mutex> lock(m_Lock);
+	// Loop to prevent spurious wake-ups
 	while (!m_Signaled.load(std::memory_order::relaxed))
 	{
-		auto status = m_CV.wait_for(lock, timeout * ms);
+		auto status = m_CV.wait_for(lock, std::chrono::milliseconds(timeout));
 		if (status == std::cv_status::timeout)
 		{
 			return false;
@@ -213,4 +220,63 @@ bool BvSignal::Wait(u32 timeout)
 	}
 
 	return true;
+}
+
+
+BvManualResetEvent::BvManualResetEvent(bool signaled)
+{
+	if (signaled)
+	{
+		m_Event.test_and_set(std::memory_order::relaxed);
+	}
+	else
+	{
+		m_Event.clear(std::memory_order::relaxed);
+	}
+}
+
+
+void BvManualResetEvent::Set()
+{
+	m_Event.test_and_set(std::memory_order::acq_rel);
+	m_Event.notify_all();
+}
+
+
+void BvManualResetEvent::Reset()
+{
+	m_Event.clear(std::memory_order::release);
+}
+
+
+void BvManualResetEvent::Wait()
+{
+	m_Event.wait(false, std::memory_order::acquire);
+}
+
+
+BvAutoResetEvent::BvAutoResetEvent(bool signaled)
+{
+	m_Event.store(i32(signaled), std::memory_order::relaxed);
+}
+
+
+void BvAutoResetEvent::Set()
+{
+	// Notify only in case it wasn't already set
+	if (m_Event.exchange(1, std::memory_order::release) == 0)
+	{
+		m_Event.notify_one();
+	}
+}
+
+
+void BvAutoResetEvent::Wait()
+{
+	i32 exp = 1;
+	while (!m_Event.compare_exchange_strong(exp, 0, std::memory_order::acquire, std::memory_order::acquire))
+	{
+		exp = 1;
+		m_Event.wait(0, std::memory_order::acquire);
+	}
 }

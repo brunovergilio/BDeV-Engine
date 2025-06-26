@@ -10,11 +10,16 @@ struct BvSystemInfo
 {
 	u32 m_NumCores;
 	u32 m_NumLogicalProcessors;
-	u32 m_L1CacheCount;
-	u32 m_L2CacheCount;
-	u32 m_L3CacheCount;
 	u32 m_PageSize;
 	u32 m_LargePageSize;
+
+	struct CoreInfo
+	{
+		u32 m_NumLogicalProcessors;
+		const u32* m_pLogicalProcessorIndices;
+		bool m_SMT;
+	};
+	const CoreInfo* m_pCoreInfos;
 };
 
 

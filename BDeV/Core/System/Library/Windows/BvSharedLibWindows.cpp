@@ -1,6 +1,5 @@
 #include "BDeV/Core/System/Library/BvSharedLib.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include <utility>
 

@@ -58,7 +58,7 @@ void BvSwapChainVk::AcquireImage()
 		}
 		else
 		{
-			BvDebugVkResult(result);
+			BV_ASSERT(result == VK_SUCCESS, "Failed to acquire a swap chain image");
 		}
 	}
 
@@ -111,7 +111,7 @@ void BvSwapChainVk::Present(bool vSync)
 		}
 		else
 		{
-			BvDebugVkResult(result);
+			BV_ASSERT(result == VK_SUCCESS, "Failed to present swap chain image");
 		}
 	}
 
@@ -163,7 +163,7 @@ bool BvSwapChainVk::Create()
 	VkBool32 presentationSupported = VK_FALSE;
 	u32 queueFamilyIndex = m_pCommandContext->GetGroupIndex();
 	auto result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, m_Surface, &presentationSupported);
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to check for surface support");
 	if (!presentationSupported)
 	{
 		return false;
@@ -172,11 +172,11 @@ bool BvSwapChainVk::Create()
 	// Get list of supported surface formats
 	u32 formatCount{};
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, nullptr);
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to retrieve surface formats");
 
 	BvVector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, surfaceFormats.Data());
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to retrieve surface formats");
 
 	// 
 	VkFormat requestedFormat = GetVkFormat(m_SwapChainDesc.m_Format);
@@ -285,17 +285,17 @@ bool BvSwapChainVk::Create()
 	// Get physical device surface properties and formats
 	VkSurfaceCapabilitiesKHR surfCaps{};
 	result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &surfCaps);
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to check for surface caps");
 
 	// Get available present modes
 	u32 presentModeCount;
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to retrieve surface present modes");
 	BV_ASSERT(presentModeCount > 0, "No present modes");
 
 	BvVector<VkPresentModeKHR> presentModes(presentModeCount);
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModes.Data());
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to retrieve surface present modes");
 
 	u32 width = m_pWindow->GetWidth();
 	u32 height = m_pWindow->GetHeight();
@@ -439,7 +439,7 @@ bool BvSwapChainVk::Create()
 	}
 
 	result = vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &m_Swapchain);
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to create a swap chain");
 
 	// If an existing swap chain is re-created, destroy the old swap chain
 	// This also cleans up all the presentable images
@@ -455,7 +455,7 @@ bool BvSwapChainVk::Create()
 
 	u32 imageCount = 0;
 	result = vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, nullptr);
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to retrieve swap chain images");
 
 	// Get the swap chain images
 	m_SwapChainTextures.Resize(imageCount);
@@ -469,7 +469,7 @@ bool BvSwapChainVk::Create()
 
 		result = vkGetSwapchainImagesKHR(device, m_Swapchain, &imageCount, swapChainImages.Data());
 	}
-	BvCheckErrorReturnVk(result, false);
+	BV_ASSERT(result == VK_SUCCESS, "Failed to retrieve swap chain images");
 
 	TextureViewDesc textureViewDesc;
 	textureViewDesc.m_Format = textureDesc.m_Format;

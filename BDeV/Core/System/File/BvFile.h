@@ -11,8 +11,6 @@ class BvFile
 	BV_NOCOPY(BvFile);
 
 public:
-	friend class BvFileSystem;
-
 	BvFile();
 	BvFile(const char* pFilename, BvFileAccessMode mode = BvFileAccessMode::kReadWrite, BvFileAction action = BvFileAction::kOpenOrCreate);
 	BvFile(BvFile&& rhs) noexcept;

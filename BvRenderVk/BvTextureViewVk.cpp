@@ -53,11 +53,7 @@ bool BvTextureViewVk::Create()
 	};
 
 	auto result = vkCreateImageView(m_pDevice->GetHandle(), &imageViewCreateInfo, nullptr, &m_View);
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return false;
-	}
+	BV_ASSERT(result == VK_SUCCESS, "Failed to create image view");
 
 	return true;
 }

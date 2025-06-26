@@ -1,4 +1,5 @@
 #include "BvDiagnostics.h"
+#include "BDeV/Core/Utils/BvTime.h"
 #include <stdarg.h>
 #include <utility>
 
@@ -101,7 +102,9 @@ namespace Logging
 				level = 0;
 			}
 
-			Console::Print(kDefaultColors[level], "[%s] [%s]: %s - Function: %s (%s [%d])\n", kDefaultLevels[level], pChannel, pMessage, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+			auto time = BvTime::GetLocalTime();
+
+			BvConsole::Print(kDefaultColors[level], "[%02d:%02d:%02d] - [%s] [%s]: %s - Function: %s (%s [%d])\n", time.tm_hour, time.tm_min, time.tm_sec, kDefaultLevels[level], pChannel, pMessage, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
 		}
 	}
 }

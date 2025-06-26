@@ -2,7 +2,6 @@
 #include "BDeV/Core/System/Application/BvApplication.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/Window/BvMonitor.h"
 //#include <dwmapi.h>
 

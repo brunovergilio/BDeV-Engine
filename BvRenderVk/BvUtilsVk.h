@@ -6,13 +6,6 @@
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 
 
-#define BvDebugVkResult(result) BvDebug::Print("==== Vulkan Error: %-56s | %s\n", VkResultToString(result), BV_FUNCTION)
-#define BvCheckErrorReturnVk(result, ret) if (result != VK_SUCCESS) \
-{																	\
-	BvDebugVkResult(result);										\
-	return ret;														\
-}
-
 const char * const VkResultToString(const VkResult result);
 bool IsDepthFormat(Format format);
 bool IsStencilFormat(Format format);

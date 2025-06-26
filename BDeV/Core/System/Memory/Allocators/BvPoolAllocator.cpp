@@ -46,6 +46,26 @@ BvPoolAllocator::~BvPoolAllocator()
 }
 
 
+void BvPoolAllocator::Set(void* pStart, void* pEnd, size_t elementSize, size_t alignment)
+{
+	BV_ASSERT(m_pFreeList == nullptr, "Memory already set");
+	m_pFreeList = BvMemory::AlignMemory(pStart, alignment);
+	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	MakeFreeList(m_pFreeList, pEnd, m_ElementSize);
+}
+
+
+void BvPoolAllocator::Set(size_t size, size_t elementSize, size_t alignment)
+{
+	BV_ASSERT(m_pFreeList == nullptr, "Memory already set");
+	m_pBaseAddress = BvMemory::Allocate(RoundToNearestPowerOf2(size, alignment), alignment);
+	m_pFreeList = m_pBaseAddress;
+	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	m_HasOwnMemory = true;
+	MakeFreeList(m_pFreeList, reinterpret_cast<char*>(m_pFreeList) + RoundToNearestPowerOf2(size, alignment), m_ElementSize);
+}
+
+
 void* BvPoolAllocator::Allocate(size_t, size_t, size_t)
 {
 	// If we're out of blocks, return nullptr

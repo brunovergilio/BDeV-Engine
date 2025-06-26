@@ -45,7 +45,6 @@
 #include "BDeV/Core/System/Library/BvSharedLib.h"
 
 #include "BDeV/Core/System/Memory/BvMemory.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/Memory/BvMemoryArena.h"
 
 #include "BDeV/Core/System/Memory/Allocators/BvHeapAllocator.h"

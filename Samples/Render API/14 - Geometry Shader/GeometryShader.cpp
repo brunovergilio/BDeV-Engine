@@ -205,6 +205,13 @@ void GeometryShader::OnShutdown()
 
 	m_PSO.Reset();
 	m_SRL.Reset();
+
+	m_Depth.Reset();
+	m_DepthView.Reset();
+	m_PSONormal.Reset();
+	m_SRLNormal.Reset();
+	m_UBNormal.Reset();
+	m_UBViewNormal.Reset();
 }
 
 
@@ -282,7 +289,7 @@ void GeometryShader::CreateBuffers()
 	gen.GenerateBox();
 	auto& data = gen.GetData();
 	BvVector<Vertex> vertices(data.m_Vertices.Size());
-	BvPCG rand;
+	BvRandom32 rand;
 
 	for (auto i = 0u; i < vertices.Size(); ++i)
 	{

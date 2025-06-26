@@ -1,7 +1,6 @@
 #include "BDeV/Core/System/File/BvPath.h"
 #include "BDeV/Core/System/File/BvFileCommon.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <algorithm>
 
@@ -126,7 +125,7 @@ BvPath BvPath::FromCurrentDirectory()
 		}
 
 		auto sizeNeededForUTF8 = BvTextUtilities::ConvertWideCharToUTF8Char(pFilenameW, sizeNeeded, nullptr, 0);
-		currentPath.m_Path.Resize(sizeNeededForUTF8 - 1);
+		currentPath.m_Path.Resize(sizeNeededForUTF8 - 1, ' ');
 		BvTextUtilities::ConvertWideCharToUTF8Char(pFilenameW, sizeNeeded, &currentPath.m_Path[0], sizeNeededForUTF8);
 	}
 

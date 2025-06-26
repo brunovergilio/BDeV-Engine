@@ -78,13 +78,14 @@ namespace Internal
 }
 
 
-class BvPCG
+// PCG
+class BvRandom32
 {
 public:
-	BvPCG()
+	BvRandom32()
 		: m_State(BvSplitMix64()()), m_Inc(0xDEADBEEF) {}
-	BV_DEFAULTCOPYMOVE(BvPCG);
-	BvPCG(u64 seed, u64 inc = 0xDEADBEEF)
+	BV_DEFAULTCOPYMOVE(BvRandom32);
+	BvRandom32(u64 seed, u64 inc = 0xDEADBEEF)
 		: m_State(seed), m_Inc(inc) {}
 
 	BV_INLINE u32 Next()
@@ -127,15 +128,16 @@ private:
 };
 
 
-class BvXoroshiro256SS
+// Xoroshiro256SS
+class BvRandom64
 {
 public:
-	BvXoroshiro256SS()
+	BvRandom64()
 	{
 		BvSplitMix64().Generate(m_State);
 	}
-	BV_DEFAULTCOPYMOVE(BvXoroshiro256SS);
-	BvXoroshiro256SS(u64 seed1, u64 seed2, u64 seed3, u64 seed4)
+	BV_DEFAULTCOPYMOVE(BvRandom64);
+	BvRandom64(u64 seed1, u64 seed2, u64 seed3, u64 seed4)
 		: m_State{ seed1, seed2, seed3, seed4 } {}
 
 	BV_INLINE u64 Next()

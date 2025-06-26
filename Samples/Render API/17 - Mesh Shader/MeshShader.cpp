@@ -349,7 +349,7 @@ void MeshShader::CreateBuffers()
 	BufferInitData data;
 	BufferViewDesc viewDesc;
 
-	BvPCG rand;
+	BvRandom32 rand;
 	BvVector<Float4> cubes(kCubeCount);
 	constexpr f32 kSpacing = 2.0f;
 	constexpr f32 kBaseScale = 1.0f;

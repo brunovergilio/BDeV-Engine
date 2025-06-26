@@ -204,8 +204,7 @@ bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void
 
 	heapData.m_pBuffer->Invalidate(size, 0);
 
-	auto frameOffset = m_QuerySize * m_QueryCount * frameIndex;
-	auto offset = frameOffset + m_QuerySize * queryData.m_QueryIndex;
+	auto offset = m_QuerySize * queryData.m_QueryIndex;
 	auto pResultData = reinterpret_cast<u64*>(reinterpret_cast<u8*>(heapData.m_pBuffer->GetMappedData()) + offset);
 	
 	switch (m_QueryType)
@@ -257,23 +256,24 @@ bool BvQueryHeapVk::GetResult(const QueryDataVk& queryData, u32 frameIndex, void
 void BvQueryHeapVk::GetBufferInformation(u32 heapIndex, u32 frameIndex, u32 queryIndex, VkBuffer& buffer, u64& offset, u64& stride, u32 poolIndex)
 {
 	auto& heapData = m_QueryHeapData[heapIndex];
-	auto frameOffset = m_QuerySize * m_QueryCount * frameIndex;
+	auto frameOffset = m_QuerySize * queryIndex;
 	if (m_PSOFlags == 0)
 	{
 		stride = m_QuerySize;
-		offset = frameOffset + stride * queryIndex;
+		offset = frameOffset;
 	}
 	else
 	{
 		if (poolIndex == 0)
 		{
 			stride = m_QuerySize - (heapData.m_Pool[1] != VK_NULL_HANDLE ? sizeof(u64) : 0);
-			offset = frameOffset + m_QuerySize * queryIndex;
+			offset = frameOffset;
 		}
-		else if (poolIndex == 1 && heapData.m_Pool)
+		else if (poolIndex == 1)
 		{
+			BV_ASSERT(heapData.m_Pool[1] != VK_NULL_HANDLE, "Invalid mesh pool");
 			stride = sizeof(u64);
-			offset = frameOffset + m_QuerySize * queryIndex + (m_QuerySize - sizeof(u64));
+			offset = frameOffset + (m_QuerySize - sizeof(u64));
 		}
 	}
 

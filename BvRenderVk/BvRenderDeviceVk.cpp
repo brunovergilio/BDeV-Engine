@@ -414,11 +414,6 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 	VkResult result = vkCreateDevice(m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
 	BV_ASSERT(result == VK_SUCCESS, "Couldn't create a logical device");
-	if (result != VK_SUCCESS)
-	{
-		BvDebugVkResult(result);
-		return;
-	}
 
 	volkLoadDevice(m_Device);
 

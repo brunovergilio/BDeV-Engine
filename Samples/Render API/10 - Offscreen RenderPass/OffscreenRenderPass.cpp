@@ -148,7 +148,7 @@ void OffscreenRenderPass::OnInitialize()
 
 void OffscreenRenderPass::OnInitializeUI()
 {
-	m_Overlay.SetupPipeline(Format::kUnknown, Format::kUnknown, m_RenderPass, 1);
+	m_Overlay.SetupPipeline(m_RenderPass, 1);
 }
 
 
@@ -349,7 +349,7 @@ void OffscreenRenderPass::CreateBuffers()
 	gen.GenerateBox();
 	auto& data = gen.GetData();
 	BvVector<Vertex> vertices(data.m_Vertices.Size());
-	BvPCG rand;
+	BvRandom32 rand;
 
 	for (auto i = 0u; i < vertices.Size(); ++i)
 	{

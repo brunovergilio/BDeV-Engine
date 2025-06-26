@@ -1,7 +1,6 @@
 #include "BDeV/Core/System/Window/BvMonitor.h"
 #include "BDeV/Core/System/Window/BvWindow.h"
 #include "BDeV/Core/Utils/BvText.h"
-#include "BDeV/Core/System/Memory/BvMemoryArea.h"
 
 
 BvMonitor::BvMonitor(OSMonitorHandle hMonitor)

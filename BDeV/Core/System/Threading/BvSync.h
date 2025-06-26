@@ -107,9 +107,9 @@ private:
 };
 
 
-class BvSignal
+class BvWaitEvent
 {
-	BV_NOCOPY(BvSignal);
+	BV_NOCOPYMOVE(BvWaitEvent);
 
 public:
 	enum class ResetType : u8
@@ -118,9 +118,9 @@ public:
 		kManual,
 	};
 
-	BvSignal();
-	explicit BvSignal(ResetType resetType, bool initiallySignaled = false);
-	~BvSignal();
+	BvWaitEvent();
+	explicit BvWaitEvent(ResetType resetType, bool initiallySignaled = false);
+	~BvWaitEvent();
 
 	void SetResetType(ResetType resetType);
 
@@ -133,4 +133,37 @@ private:
 	std::mutex m_Lock;
 	std::atomic<bool> m_Signaled;
 	ResetType m_ResetType = ResetType::kAuto;
+};
+
+
+class BvManualResetEvent
+{
+	BV_NOCOPYMOVE(BvManualResetEvent);
+
+public:
+	explicit BvManualResetEvent(bool signaled = false);
+	~BvManualResetEvent() = default;
+
+	void Set();
+	void Reset();
+	void Wait();
+
+private:
+	std::atomic_flag m_Event{};
+};
+
+
+class BvAutoResetEvent
+{
+	BV_NOCOPYMOVE(BvAutoResetEvent);
+
+public:
+	explicit BvAutoResetEvent(bool signaled = false);
+	~BvAutoResetEvent() = default;
+
+	void Set();
+	void Wait();
+
+private:
+	std::atomic<i32> m_Event{};
 };

@@ -5,27 +5,29 @@
 #include "BDeV/Core/RenderAPI/BvColor.h"
 
 
-namespace Console
+class BvConsole
 {
+public:
 	// Default white text and black background printf
-	void Print(const char* pFormat, ...);
+	static void Print(const char* pFormat, ...);
 	// Custom color text and black background printf
-	void Print(const BvColorI& textColor, const char* pFormat, ...);
+	static void Print(const BvColorI& textColor, const char* pFormat, ...);
 	// Custom color text and custom color background printf
-	void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
+	static void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
 };
 
 
-namespace Debug
+class BvDebug
 {
+public:
 	// Same as printf but to the debug window (if one exists)
-	void Print(const char* pFormat, ...);
+	static void Print(const char* pFormat, ...);
 
 	// To force code breaks when debugging (should be used with macros)
-	void Break();
+	static void Break();
 
 	// Asserts a condition (should be used with macros)
-	void Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
+	static void Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
 };
 
 
@@ -36,7 +38,7 @@ namespace Debug
 {																					\
 	if (!(cond))																	\
 	{																				\
-		Debug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
+		BvDebug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
 	}																				\
 } while (false)
 
@@ -46,7 +48,7 @@ namespace Debug
 	static bool doAssert = true;													\
 	if (doAssert && !(cond))														\
 	{																				\
-		Debug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
+		BvDebug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
 		doAssert = false;															\
 	}																				\
 } while (false)
@@ -117,7 +119,7 @@ public:
 		if (m_Filter.Filter(logInfo))
 		{
 			m_Formatter.Format(logInfo, m_Buffer);
-			m_Output.Write(m_Buffer);
+			m_Output.Write(logInfo, m_Buffer);
 		}
 	}
 
@@ -160,7 +162,7 @@ public:
 	BvNoLogOutput(BvNoLogOutput&& rhs) noexcept = default;
 	BvNoLogOutput& operator=(BvNoLogOutput&& rhs) noexcept = default;
 
-	BV_INLINE void Write(const MessageType& message) {}
+	BV_INLINE void Write(const BvLogInfo& logInfo, const MessageType& message) {}
 };
 
 
