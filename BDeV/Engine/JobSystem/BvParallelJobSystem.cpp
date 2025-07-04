@@ -2,6 +2,7 @@
 #include "BDeV/Core/System/Process/BvProcess.h"
 #include <bit>
 #include <BDeV/Core/Container/BvFixedVector.h>
+#include <BDeV/Core/Utils/BvTime.h>
 
 
 class alignas(kCacheLineSize) BvParallelJobSystemWorker
@@ -15,13 +16,14 @@ public:
 		kStalled = BvBit(2),
 	};
 
-	BvParallelJobSystemWorker(u32 jobListPoolSize, u32 coreIndex, const char* pName, BvParallelJobList::CategoryFlags category);
+	BvParallelJobSystemWorker(u32 jobListPoolSize, u32 coreIndex, const char* pName, BvParallelJobList::CategoryFlags categoryFlags);
 	~BvParallelJobSystemWorker();
 
 	void AddJobList(BvParallelJobList* pJobList);
-	static WorkerResult RunJobs(BvParallelJobList* pCurrJobList, bool runAll = false);
+	static WorkerResult RunJobs(JobSystemWorkerStats& stats, BvParallelJobList* pCurrJobList, bool runAll = false);
 	void Stop();
 	bool IsIdle();
+	BV_INLINE const JobSystemWorkerStats& GetStats() const { return m_Stats; }
 
 private:
 	void Process();
@@ -35,18 +37,19 @@ private:
 	//BvWaitEvent m_WorkSignal;
 	BvAutoResetEvent m_WorkSignal;
 	BvAdaptiveMutex m_Lock;
+	JobSystemWorkerStats m_Stats;
 	std::atomic<u32> m_LastJobListIndex;
 	std::atomic<u32> m_FirstJobListIndex;
 	std::atomic<bool> m_IsIdle;
 	std::atomic<bool> m_Active;
-	BvParallelJobList::CategoryFlags m_Category;
+	BvParallelJobList::CategoryFlags m_CategoryFlags;
 };
 
 BV_USE_ENUM_CLASS_OPERATORS(BvParallelJobSystemWorker::WorkerResult);
 
 
-BvParallelJobSystemWorker::BvParallelJobSystemWorker(u32 jobListPoolSize, u32 coreIndex, const char* pName, BvParallelJobList::CategoryFlags category)
-	: m_JobLists(std::bit_ceil(jobListPoolSize)), m_Category(category),
+BvParallelJobSystemWorker::BvParallelJobSystemWorker(u32 jobListPoolSize, u32 coreIndex, const char* pName, BvParallelJobList::CategoryFlags categoryFlags)
+	: m_JobLists(std::bit_ceil(jobListPoolSize)), m_CategoryFlags(categoryFlags),
 	m_Thread(BvThread([this, coreIndex, pName]()
 		{
 			m_Thread.SetAffinity(coreIndex);
@@ -56,17 +59,29 @@ BvParallelJobSystemWorker::BvParallelJobSystemWorker(u32 jobListPoolSize, u32 co
 			}
 			m_Active.store(true, std::memory_order::relaxed);
 
+			auto startTimeNs = BvTime::GetCurrentTimestampInUs();
+			auto prevActiveTimeStamp = startTimeNs;
+			auto currActiveTimeStamp = prevActiveTimeStamp;
+
 			while (m_Active.load(std::memory_order::acquire))
 			{
 				if (m_LastJobListIndex.load(std::memory_order::relaxed) - m_FirstJobListIndex.load(std::memory_order::relaxed) == 0)
 				{
 					m_IsIdle.store(true, std::memory_order::relaxed);
+					currActiveTimeStamp = BvTime::GetCurrentTimestampInUs();
+					m_Stats.m_ActiveTimeUs += currActiveTimeStamp - prevActiveTimeStamp;
 					m_WorkSignal.Wait();
+					prevActiveTimeStamp = BvTime::GetCurrentTimestampInUs();
 					m_IsIdle.store(false, std::memory_order::relaxed);
 				}
 
 				Process();
 			}
+			currActiveTimeStamp = BvTime::GetCurrentTimestampInUs();
+			m_Stats.m_ActiveTimeUs += currActiveTimeStamp - prevActiveTimeStamp;
+			auto endTimeNs = BvTime::GetCurrentTimestampInUs();
+
+			m_Stats.m_TotalRunningTimeUs = endTimeNs - startTimeNs;
 		}))
 {
 }
@@ -80,6 +95,11 @@ BvParallelJobSystemWorker::~BvParallelJobSystemWorker()
 // Called by the job system from multiple threads
 void BvParallelJobSystemWorker::AddJobList(BvParallelJobList* pJobList)
 {
+	if (!EHasAnyFlags(m_CategoryFlags, pJobList->GetCategoryFlags()))
+	{
+		return;
+	}
+
 	{
 		BvScopedLock lock(m_Lock);
 
@@ -102,7 +122,7 @@ void BvParallelJobSystemWorker::AddJobList(BvParallelJobList* pJobList)
 }
 
 
-BvParallelJobSystemWorker::WorkerResult BvParallelJobSystemWorker::RunJobs(BvParallelJobList* pCurrJobList, bool runAll)
+BvParallelJobSystemWorker::WorkerResult BvParallelJobSystemWorker::RunJobs(JobSystemWorkerStats& stats, BvParallelJobList* pCurrJobList, bool runAll)
 {
 	auto currJobListJobIndex = 0u;
 
@@ -175,7 +195,11 @@ BvParallelJobSystemWorker::WorkerResult BvParallelJobSystemWorker::RunJobs(BvPar
 			return result | WorkerResult::kStalled;
 		}
 
+		auto jobTime = BvTime::GetCurrentTimestampInUs();
 		pCurrJobList->m_pJobs[currJobListJobIndex].m_Job();
+		jobTime = BvTime::GetCurrentTimestampInUs() - jobTime;
+		stats.m_JobsRun++;
+		stats.m_TotalJobTimeUs += jobTime;
 
 		result |= WorkerResult::kInProgress;
 
@@ -271,7 +295,7 @@ void BvParallelJobSystemWorker::Process()
 			}
 		}
 
-		auto result = RunJobs(pJobLists[jobListIndex], priority == BvParallelJobList::Priority::kHigh);
+		auto result = RunJobs(m_Stats, pJobLists[jobListIndex], priority == BvParallelJobList::Priority::kHigh);
 		if (EHasFlag(result, WorkerResult::kDone))
 		{
 			// Remove the JobList from the pool
@@ -382,6 +406,7 @@ void BvParallelJobSystem::Shutdown()
 			m_pWorkers[i].Stop();
 			m_pWorkers[i].~BvParallelJobSystemWorker();
 		}
+		BV_MFREE(*m_pMemoryArena, m_pWorkers);
 
 		auto pAllocator = reinterpret_cast<BvGrowableHeapAllocator*>(m_pMemory);
 		BV_DELETE(pAllocator);
@@ -393,15 +418,17 @@ void BvParallelJobSystem::Shutdown()
 }
 
 
-BvParallelJobList* BvParallelJobSystem::AllocJobList(u32 maxJobs, u32 maxSyncs, BvParallelJobList::Priority priority, BvParallelJobList::CategoryFlags category)
+BvParallelJobList* BvParallelJobSystem::AllocJobList(u32 maxJobs, u32 maxSyncs, BvParallelJobList::Priority priority, BvParallelJobList::CategoryFlags categoryFlags)
 {
-	return BV_MNEW(*m_pMemoryArena, BvParallelJobList)(this, maxJobs, maxSyncs, priority, category);
+	BvParallelJobList::Job* pJobs = BV_MNEW_ARRAY(*m_pMemoryArena, BvParallelJobList::Job, maxJobs + maxSyncs);
+	return BV_MNEW(*m_pMemoryArena, BvParallelJobList)(this, pJobs, maxJobs + maxSyncs, priority, categoryFlags);
 }
 
 
 void BvParallelJobSystem::FreeJobList(BvParallelJobList*& pJobList)
 {
 	BV_MDELETE(*m_pMemoryArena, pJobList);
+	BV_MDELETE_ARRAY(*m_pMemoryArena, pJobList->m_pJobs);
 	pJobList = nullptr;
 }
 
@@ -417,7 +444,8 @@ void BvParallelJobSystem::Submit(BvParallelJobList* pJobList)
 	}
 	else
 	{
-		BvParallelJobSystemWorker::RunJobs(pJobList, true);
+		JobSystemWorkerStats dummy;
+		BvParallelJobSystemWorker::RunJobs(dummy, pJobList, true);
 	}
 }
 
@@ -431,6 +459,13 @@ void BvParallelJobSystem::Wait()
 			BvCPU::Yield();
 		}
 	}
+}
+
+
+const JobSystemWorkerStats& BvParallelJobSystem::GetStats(u32 workerThreadIndex) const
+{
+	BV_ASSERT(workerThreadIndex < m_WorkerCount, "Invalid worker thread index");
+	return m_pWorkers[workerThreadIndex].GetStats();
 }
 
 
@@ -514,8 +549,8 @@ void BvParallelJobList::Wait() const
 }
 
 
-BvParallelJobList::BvParallelJobList(BvParallelJobSystem* pJobSystem, u32 maxJobs, u32 maxSyncs, BvParallelJobList::Priority priority, BvParallelJobList::CategoryFlags category)
-	: m_pJobSystem(pJobSystem), m_Priority(priority), m_MaxJobCount(maxJobs + maxSyncs)
+BvParallelJobList::BvParallelJobList(BvParallelJobSystem* pJobSystem, BvParallelJobList::Job* pJobs, u32 maxJobCount, Priority priority, BvParallelJobList::CategoryFlags categoryFlags)
+	: m_pJobSystem(pJobSystem), m_pJobs(pJobs), m_Priority(priority), m_MaxJobCount(maxJobCount), m_CategoryFlags(categoryFlags)
 {
 }
 

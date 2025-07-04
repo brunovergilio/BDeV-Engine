@@ -155,10 +155,59 @@ BvFiber* pFb2 = nullptr;
 BvAdaptiveMutex am;
 BvMutex mm;
 
-
 int main()
 {
-	constexpr JobSystemDesc::WorkerThreadDesc k{};
+	JobSystemDesc jsDesc;
+	jsDesc.m_NumWorkerThreadDescs = 4;
+
+	BvParallelJobSystem js;
+	js.Initialize(jsDesc);
+	auto pJobList1 = js.AllocJobList(50, 2);
+	for (auto i = 0; i < 50; ++i)
+	{
+		pJobList1->AddJob([i]()
+			{
+				BvConsole::Print(BvColorI::BrightYellow, "JobList #1's Job %d on processor %u\n", i, GetCurrentProcessorNumber());
+				//BvRandom32 r;
+				//BvThread::Sleep(r.Next(50, 100));
+			});
+
+		if (i == 5 || i == 40)
+		{
+			pJobList1->AddSyncPoint();
+		}
+	}
+
+	auto pJobList2 = js.AllocJobList(20, 1);
+	for (auto i = 0; i < 20; ++i)
+	{
+		pJobList2->AddJob([i]()
+			{
+				BvConsole::Print(BvColorI::BrightMagenta, "JobList #2's Job %d on processor %u\n", i, GetCurrentProcessorNumber());
+				//BvRandom32 r;
+				//BvThread::Sleep(r.Next(50, 100));
+			});
+
+		if (i == 10)
+		{
+			pJobList2->AddJobListDependency(pJobList1);
+		}
+	}
+
+	pJobList1->Submit();
+	pJobList2->Submit();
+	js.Wait();
+
+	for (auto i = 0; i < jsDesc.m_NumWorkerThreadDescs; ++i)
+	{
+		auto& stats = js.GetStats(i);
+		BvConsole::Print("Worker %d -> ", i);
+		//BvConsole::Print("Running Time: %llu:\n", stats.m_TotalRunningTimeUs);
+		BvConsole::Print("Active Time [%llu ms] | ", stats.m_ActiveTimeUs);
+		BvConsole::Print("Job Time [%llu ms, %.2f%%] | ", stats.m_TotalJobTimeUs, 100.0 * double(stats.m_TotalJobTimeUs) / double(stats.m_ActiveTimeUs));
+		BvConsole::Print("Jobs Run: %u:\n", stats.m_JobsRun);
+	}
+	js.Shutdown();
 
 	return 0;
 	//BvFiber& mfb = BvThread::ConvertToFiber();

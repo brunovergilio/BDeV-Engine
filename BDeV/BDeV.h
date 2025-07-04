@@ -74,3 +74,4 @@
 #include "BDeV/Core/Utils/BvUUID.h"
 #include "BDeV/Core/Utils/BvObject.h"
 #include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvRandom.h"

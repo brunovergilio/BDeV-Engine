@@ -79,7 +79,7 @@ public:
 	BV_INLINE CategoryFlags GetCategoryFlags() const { return m_CategoryFlags; }
 
 private:
-	BvParallelJobList(BvParallelJobSystem* pJobSystem, u32 maxJobs, u32 maxSyncs, Priority priority, CategoryFlags category);
+	BvParallelJobList(BvParallelJobSystem* pJobSystem, Job* pJobs, u32 maxJobCount, Priority priority, CategoryFlags categoryFlags);
 	~BvParallelJobList();
 
 	Job& AddInternal();
@@ -120,6 +120,15 @@ struct JobSystemDesc
 };
 
 
+struct JobSystemWorkerStats
+{
+	u64 m_TotalRunningTimeUs = 0;
+	u64 m_ActiveTimeUs = 0;
+	u64 m_TotalJobTimeUs = 0;
+	u32 m_JobsRun = 0;
+};
+
+
 class BvParallelJobSystem
 {
 	BV_NOCOPYMOVE(BvParallelJobSystem);
@@ -136,6 +145,7 @@ public:
 	void FreeJobList(BvParallelJobList*& pJobList);
 	void Submit(BvParallelJobList* pJobList);
 	void Wait();
+	const JobSystemWorkerStats& GetStats(u32 workerThreadIndex) const;
 
 private:
 	BvParallelJobSystemWorker* m_pWorkers = nullptr;
