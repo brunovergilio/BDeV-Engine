@@ -39,14 +39,24 @@ public:
 	}
 
 private:
-	u64 m_Id{};
+	u64 m_Id;
 };
 
 
-constexpr u64 operator""_sid(const char* pStr, size_t length)
+constexpr BvStringId operator""_sid(const char* pStr, size_t length)
 {
 	return BvStringId(Internal::ConstexprMurmurHash64AHelper(pStr, length));
 }
+
+
+template<>
+struct std::hash<BvStringId>
+{
+	BV_INLINE u64 operator()(const BvStringId& id) const
+	{
+		return id;
+	}
+};
 
 
 #if BV_DEBUG

@@ -19,6 +19,28 @@
 #include "BvShaderBindingTable.h"
 
 
+struct BvBaseRenderDeviceTypes
+{
+	using IBvSwapChainPtr = BvRCRaw<IBvSwapChain>;
+	using IBvBufferPtr = BvRCRaw<IBvBuffer>;
+	using IBvBufferViewPtr = BvRCRaw<IBvBufferView>;
+	using IBvTexturePtr = BvRCRaw<IBvTexture>;
+	using IBvTextureViewPtr = BvRCRaw<IBvTextureView>;
+	using IBvSamplerPtr = BvRCRaw<IBvSampler>;
+	using IBvRenderPassPtr = BvRCRaw<IBvRenderPass>;
+	using IBvShaderResourceLayoutPtr = BvRCRaw<IBvShaderResourceLayout>;
+	using IBvShaderPtr = BvRCRaw<IBvShader>;
+	using IBvGraphicsPipelineStatePtr = BvRCRaw<IBvGraphicsPipelineState>;
+	using IBvComputePipelineStatePtr = BvRCRaw<IBvComputePipelineState>;
+	using IBvRayTracingPipelineStatePtr = BvRCRaw<IBvRayTracingPipelineState>;
+	using IBvQueryPtr = BvRCRaw<IBvQuery>;
+	using IBvGPUFencePtr = BvRCRaw<IBvGPUFence>;
+	using IBvAccelerationStructurePtr = BvRCRaw<IBvAccelerationStructure>;
+	using IBvShaderBindingTablePtr = BvRCRaw<IBvShaderBindingTable>;
+	using IBvCommandContextPtr = BvRCRaw<IBvCommandContext>;
+};
+
+
 //BV_OBJECT_DEFINE_ID(IBvRenderDevice, "31126d8a-8b56-489b-8b0c-0008de31a1d2");
 //BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderDevice);
 class IBvRenderDevice : public BvRCObj

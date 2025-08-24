@@ -1,6 +1,6 @@
 #include "BvRenderEngineD3D12.h"
 #include "BvRenderDeviceD3D12.h"
-#include "BDeV/Core/Container/BvText.h"
+#include "BDeV/Core/Utils/BvText.h"
 
 
 bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvGPUInfo& gpuInfo);
@@ -274,28 +274,25 @@ bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvG
 
 	{
 		auto& graphics = gpuInfo.m_ContextGroups.EmplaceBack();
-		graphics.m_CommandTypes.EmplaceBack(CommandType::kGraphics);
-		graphics.m_CommandTypes.EmplaceBack(CommandType::kCompute);
-		graphics.m_CommandTypes.EmplaceBack(CommandType::kTransfer);
-		graphics.m_Dedicated = true;
+		graphics.m_DedicatedCommandType = CommandType::kGraphics;
+		graphics.m_SupportedCommandTypes.EmplaceBack(CommandType::kGraphics);
+		graphics.m_SupportedCommandTypes.EmplaceBack(CommandType::kCompute);
+		graphics.m_SupportedCommandTypes.EmplaceBack(CommandType::kTransfer);
 		graphics.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
 		graphics.m_MaxContextCount = 16;
-		graphics.m_MainCommandType = CommandType::kGraphics;
 
 		auto& compute = gpuInfo.m_ContextGroups.EmplaceBack();
-		compute.m_CommandTypes.EmplaceBack(CommandType::kCompute);
-		compute.m_CommandTypes.EmplaceBack(CommandType::kTransfer);
-		compute.m_Dedicated = true;
+		compute.m_DedicatedCommandType = CommandType::kCompute;
+		compute.m_SupportedCommandTypes.EmplaceBack(CommandType::kCompute);
+		compute.m_SupportedCommandTypes.EmplaceBack(CommandType::kTransfer);
 		compute.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
 		compute.m_MaxContextCount = 16;
-		compute.m_MainCommandType = CommandType::kCompute;
 
 		auto& transfer = gpuInfo.m_ContextGroups.EmplaceBack();
-		transfer.m_CommandTypes.EmplaceBack(CommandType::kTransfer);
-		transfer.m_Dedicated = true;
+		transfer.m_DedicatedCommandType = CommandType::kTransfer;
+		transfer.m_SupportedCommandTypes.EmplaceBack(CommandType::kTransfer);
 		transfer.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
 		transfer.m_MaxContextCount = 16;
-		transfer.m_MainCommandType = CommandType::kTransfer;
 	}
 
 	// Check for video queues - this probably doesn't mean I have video support, although it should
@@ -310,11 +307,10 @@ bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvG
 			if (SUCCEEDED(hr))
 			{
 				auto& videoDecode = gpuInfo.m_ContextGroups.EmplaceBack();
-				videoDecode.m_CommandTypes.EmplaceBack(CommandType::kVideoDecode);
-				videoDecode.m_Dedicated = true;
+				videoDecode.m_DedicatedCommandType = CommandType::kVideoDecode;
+				videoDecode.m_SupportedCommandTypes.EmplaceBack(CommandType::kVideoDecode);
 				videoDecode.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
 				videoDecode.m_MaxContextCount = 16;
-				videoDecode.m_MainCommandType = CommandType::kVideoDecode;
 				queue = nullptr;
 			}
 
@@ -323,11 +319,10 @@ bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvG
 			if (SUCCEEDED(hr))
 			{
 				auto& videoEncode = gpuInfo.m_ContextGroups.EmplaceBack();
-				videoEncode.m_CommandTypes.EmplaceBack(CommandType::kVideoEncode);
-				videoEncode.m_Dedicated = true;
+				videoEncode.m_DedicatedCommandType = CommandType::kVideoEncode;
+				videoEncode.m_SupportedCommandTypes.EmplaceBack(CommandType::kVideoEncode);
 				videoEncode.m_GroupIndex = gpuInfo.m_ContextGroups.Size() - 1;
 				videoEncode.m_MaxContextCount = 16;
-				videoEncode.m_MainCommandType = CommandType::kVideoEncode;
 				queue = nullptr;
 			}
 		}

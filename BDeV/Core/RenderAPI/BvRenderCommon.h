@@ -26,7 +26,6 @@ constexpr u32 kMaxDevices = 4;
 constexpr u32 kMaxRenderTargets = 8;
 constexpr u32 kMaxRenderTargetsWithDepth = kMaxRenderTargets + 1;
 constexpr u32 kMaxShaderStages = 5;
-constexpr u32 kMaxVertexAttributes = 16;
 constexpr u32 kMaxVertexBindings = 16;
 constexpr u32 kMaxVertexBuffers = 16;
 constexpr u32 kMaxContextGroupCount = 8;
@@ -264,18 +263,18 @@ enum class Format : u8
 struct FormatInfo
 {
 	u8 m_BitsPerPixel;
-	u8 m_ElementCount;
-	u8 m_ElementSize;
-	u8 m_BlockWidth;
-	u8 m_BlockHeight;
-	u8 m_BlocksPerElement;
+	u8 m_ElementCount : 3;
+	u8 m_ElementSize : 5;
+	u8 m_BlockWidth : 3;
+	u8 m_BlockHeight : 3;
+	u8 m_BlocksPerElement : 5;
 	Format m_SRGBOrLinearVariant;
 	bool m_IsSRGBFormat : 1;
 	bool m_IsDepthStencil : 1;
 	bool m_IsCompressed : 1;
 	bool m_IsPacked : 1;
 	bool m_IsPlanar : 1;
-	u8 m_PlaneCount : 3;
+	u8 m_PlaneCount : 2;
 };
 
 
@@ -414,8 +413,8 @@ constexpr FormatInfo GetFormatInfo(Format format)
 		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
 		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
 		{ 16, 3, 1, 2, 2, 2, Format::kUnknown, false, false, false, false, true, 2 },// kP208
-		{ 16, 3, 1, 2, 2, 1, Format::kUnknown, false, false, false, false, true, 3 },// kV208
-		{ 24, 3, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, true, 4 },// kV408
+		{ 16, 3, 1, 2, 2, 1, Format::kUnknown, false, false, false, false, true, 0 },// kV208
+		{ 24, 3, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, true, 0 },// kV408
 	};
 
 	return kFormatInfos[static_cast<u32>(format)];
@@ -446,6 +445,7 @@ BV_USE_ENUM_CLASS_OPERATORS(FormatFeatures)
 
 enum class CompareOp : u8
 {
+	kNone,
 	kNever,
 	kLess,
 	kEqual,
@@ -1011,8 +1011,7 @@ struct SamplerDesc
 	AddressMode		m_AddressModeU = AddressMode::kWrap;
 	AddressMode		m_AddressModeV = AddressMode::kWrap;
 	AddressMode		m_AddressModeW = AddressMode::kWrap;
-	bool			m_CompareEnable = false;
-	CompareOp		m_CompareOp = CompareOp::kNever;
+	CompareOp		m_CompareOp = CompareOp::kNone;
 	ReductionMode	m_ReductionMode = ReductionMode::kStandard;
 	bool			m_AnisotropyEnable = false;
 	float			m_MaxAnisotropy = 1.0f;
@@ -1187,6 +1186,7 @@ enum class Topology : u8
 	kLineStrip,
 	kTriangleList,
 	kTriangleStrip,
+	kTriangleFan,
 	kLineListAdj,
 	kLineStripAdj,
 	kTriangleListAdj,
@@ -1408,10 +1408,9 @@ struct RasterizerStateDesc
 	FillMode m_FillMode = FillMode::kSolid;
 	CullMode m_CullMode = CullMode::kNone;
 	FrontFace m_FrontFace = FrontFace::kClockwise;
-	bool m_EnableDepthBias = false;
-	float m_DepthBias = 0.0f;
-	float m_DepthBiasClamp = 0.0f;
-	float m_DepthBiasSlope = 0.0f;
+	i32 m_DepthBias = 0;
+	f32 m_DepthBiasClamp = 0.0f;
+	f32 m_DepthBiasSlope = 0.0f;
 	bool m_EnableDepthClip = false;
 	bool m_EnableConservativeRasterization = false;
 };
@@ -1422,7 +1421,7 @@ struct StencilDesc
 	StencilOp m_StencilFailOp = StencilOp::kKeep;
 	StencilOp m_StencilDepthFailOp = StencilOp::kKeep;
 	StencilOp m_StencilPassOp = StencilOp::kKeep;
-	CompareOp m_StencilFunc = CompareOp::kNever;
+	CompareOp m_StencilFunc = CompareOp::kNone;
 };
 
 
@@ -1430,7 +1429,7 @@ struct DepthStencilDesc
 {
 	bool m_DepthTestEnable = false;
 	bool m_DepthWriteEnable = false;
-	CompareOp m_DepthOp = CompareOp::kNever;
+	CompareOp m_DepthOp = CompareOp::kNone;
 	bool m_StencilTestEnable = false;
 	u8 m_StencilReadMask = 0;
 	u8 m_StencilWriteMask = 0;
@@ -1480,8 +1479,7 @@ struct GraphicsPipelineStateDesc
 	u32							m_SampleCount = 1;
 	u32							m_SampleMask = kMax<u32>;
 	u32							m_SubpassIndex = 0;
-	bool						m_EnableMultiview = false;
-	u32							m_MultiviewCount = 0;
+	u32							m_MultiviewCount = 1;
 };
 
 

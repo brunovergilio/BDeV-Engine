@@ -111,20 +111,26 @@ IBvShaderBindingTable* BvRenderDeviceD3D12::CreateShaderBindingTableImpl(const S
 }
 
 
-IBvCommandContext* BvRenderDeviceD3D12::GetGraphicsContextImpl(u32 index /*= 0*/)
+IBvCommandContext* BvRenderDeviceD3D12::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc)
 {
-	return nullptr;
-}
+	D3D12_COMMAND_QUEUE_DESC cqd{};
+	if (commandContextDesc.m_CommandType != CommandType::kNone)
+	{
+		cqd.Type = GetD3D12CommandListType(commandContextDesc.m_CommandType);
+	}
+	else
+	{
+		BV_ASSERT(commandContextDesc.m_ContextGroupIndex < m_GPUInfo.m_ContextGroups.Size(), "Invalid context group index");
+		cqd.Type = GetD3D12CommandListType(m_GPUInfo.m_ContextGroups[commandContextDesc.m_ContextGroupIndex].m_DedicatedCommandType);
+	}
 
+	ComPtr<ID3D12CommandQueue> queue;
+	auto hr = m_Device->CreateCommandQueue(&cqd, IID_PPV_ARGS(&queue));
+	if (FAILED(hr))
+	{
+		// TODO: Handle error
+	}
 
-IBvCommandContext* BvRenderDeviceD3D12::GetComputeContextImpl(u32 index /*= 0*/)
-{
-	return nullptr;
-}
-
-
-IBvCommandContext* BvRenderDeviceD3D12::GetTransferContextImpl(u32 index /*= 0*/)
-{
 	return nullptr;
 }
 
@@ -157,28 +163,6 @@ u64 BvRenderDeviceD3D12::GetDynamicBufferElementSize(BufferUsage usageFlags, u64
 	}
 
 	return elementSize;
-}
-
-
-bool BvRenderDeviceD3D12::SupportsQueryType(QueryType queryType, CommandType commandType) const
-{
-	if (queryType == QueryType::kTimestamp)
-	{
-		if (commandType == CommandType::kGraphics || commandType == CommandType::kCompute)
-		{
-			return true;
-		}
-		else
-		{
-			return m_pDeviceInfo->m_Options3.CopyQueueTimestampQueriesSupported;
-		}
-	}
-	else if (queryType == QueryType::kMeshPipelineStatistics)
-	{
-		return m_pDeviceInfo->m_Options9.MeshShaderPipelineStatsSupported;
-	}
-
-	return commandType == CommandType::kGraphics;
 }
 
 
@@ -270,11 +254,6 @@ void BvRenderDeviceD3D12::Create(const BvRenderDeviceCreateDescD3D12& deviceCrea
 	{
 		return;
 	}
-
-	constexpr u32 kMaxContextsPerType = 16;
-	m_GraphicsContexts.Resize(std::min(deviceCreateDesc.m_GraphicsQueueCount, kMaxContextsPerType));
-	m_ComputeContexts.Resize(std::min(deviceCreateDesc.m_ComputeQueueCount, kMaxContextsPerType));
-	m_TransferContexts.Resize(std::min(deviceCreateDesc.m_TransferQueueCount, kMaxContextsPerType));
 
 	SetupSupportedDisplayFormats();
 	CreateCommandSignatures();

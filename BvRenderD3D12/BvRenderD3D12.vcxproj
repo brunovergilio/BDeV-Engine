@@ -96,8 +96,10 @@
     <ClInclude Include="BvBufferViewD3D12.h" />
     <ClInclude Include="BvCommonD3D12.h" />
     <ClInclude Include="BvGPUFenceD3D12.h" />
+    <ClInclude Include="BvPipelineStateD3D12.h" />
     <ClInclude Include="BvRenderDeviceD3D12.h" />
     <ClInclude Include="BvRenderEngineD3D12.h" />
+    <ClInclude Include="BvShaderResourceLayoutD3D12.h" />
     <ClInclude Include="BvTextureD3D12.h" />
     <ClInclude Include="BvTypeConversionsD3D12.h" />
     <ClInclude Include="Third Party\D3D12MemAlloc.h" />
@@ -107,8 +109,10 @@
     <ClCompile Include="BvBufferViewD3D12.cpp" />
     <ClCompile Include="BvCommonD3D12.cpp" />
     <ClCompile Include="BvGPUFenceD3D12.cpp" />
+    <ClCompile Include="BvPipelineStateD3D12.cpp" />
     <ClCompile Include="BvRenderDeviceD3D12.cpp" />
     <ClCompile Include="BvRenderEngineD3D12.cpp" />
+    <ClCompile Include="BvShaderResourceLayoutD3D12.cpp" />
     <ClCompile Include="BvTextureD3D12.cpp" />
     <ClCompile Include="BvTypeConversionsD3D12.cpp" />
     <ClCompile Include="Third Party\D3D12MemAlloc.cpp" />

@@ -21,8 +21,9 @@ using Microsoft::WRL::ComPtr;
 #endif
 
 
+#pragma warning(push, 0)
 #include "Third Party/D3D12MemAlloc.h"
-
+#pragma warning(pop)
 
 // Have to re-include this again because the CreateSemaphore macro
 // conflicts with the BvRenderEngine::CreateSemaphore function

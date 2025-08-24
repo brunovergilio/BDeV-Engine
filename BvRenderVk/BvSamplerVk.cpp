@@ -34,8 +34,11 @@ void BvSamplerVk::Create()
 	samplerCreateInfo.mipLodBias = m_SamplerDesc.m_MipLodBias;
 	samplerCreateInfo.anisotropyEnable = m_SamplerDesc.m_AnisotropyEnable;
 	samplerCreateInfo.maxAnisotropy = m_SamplerDesc.m_MaxAnisotropy;
-	samplerCreateInfo.compareEnable = VkBool32(m_SamplerDesc.m_CompareEnable);
-	samplerCreateInfo.compareOp = GetVkCompareOp(m_SamplerDesc.m_CompareOp);
+	if (m_SamplerDesc.m_CompareOp != CompareOp::kNone)
+	{
+		samplerCreateInfo.compareEnable = VK_TRUE;
+		samplerCreateInfo.compareOp = GetVkCompareOp(m_SamplerDesc.m_CompareOp);
+	}
 	samplerCreateInfo.minLod = m_SamplerDesc.m_MinLod;
 	samplerCreateInfo.maxLod = m_SamplerDesc.m_MaxLod;
 	//samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;

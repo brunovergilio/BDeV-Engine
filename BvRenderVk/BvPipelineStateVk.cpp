@@ -5,6 +5,7 @@
 #include "BvShaderResourceVk.h"
 #include "BvUtilsVk.h"
 #include "BvShaderResourceVk.h"
+#include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
 VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode);
@@ -132,18 +133,51 @@ void BvGraphicsPipelineStateVk::Create()
 	rasterizerCI.polygonMode = GetVkPolygonMode(m_PipelineStateDesc.m_RasterizerStateDesc.m_FillMode);
 	rasterizerCI.cullMode = GetVkCullModeFlags(m_PipelineStateDesc.m_RasterizerStateDesc.m_CullMode);
 	rasterizerCI.frontFace = GetVkFrontFace(m_PipelineStateDesc.m_RasterizerStateDesc.m_FrontFace);
-	rasterizerCI.depthBiasEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthBias;
-	rasterizerCI.depthBiasConstantFactor = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBias;
+	rasterizerCI.depthBiasEnable = (m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBias != 0 ||
+		m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBiasSlope != 0.0f) ? VK_TRUE : VK_FALSE;
+	rasterizerCI.depthBiasConstantFactor = f32(m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBias);
 	rasterizerCI.depthBiasClamp = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBiasClamp;
 	rasterizerCI.depthBiasSlopeFactor = m_PipelineStateDesc.m_RasterizerStateDesc.m_DepthBiasSlope;
 	rasterizerCI.depthClampEnable = m_PipelineStateDesc.m_RasterizerStateDesc.m_EnableDepthClip;
 	rasterizerCI.lineWidth = 1.0f;
+	const void** ppRasterNext = &rasterizerCI.pNext;
+
+	bool hasDepthBiasControl = m_pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME) != kU64Max;
+	VkDepthBiasRepresentationInfoEXT dbrI{ VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT };
+	if (hasDepthBiasControl)
+	{
+		dbrI.depthBiasExact = VK_TRUE;
+		*ppRasterNext = &dbrI;
+		ppRasterNext = &dbrI.pNext;
+	}
+	else
+	{
+		auto dsFormat = m_PipelineStateDesc.m_DepthStencilFormat;
+		if (dsFormat == Format::kUnknown && m_PipelineStateDesc.m_pRenderPass)
+		{
+			auto& rpDesc = m_PipelineStateDesc.m_pRenderPass->GetDesc();
+			for (auto i = 0; i < rpDesc.m_AttachmentCount; ++i)
+			{
+				auto fi = GetFormatInfo(rpDesc.m_pAttachments[i].m_Format);
+				if (fi.m_IsDepthStencil)
+				{
+					dsFormat = rpDesc.m_pAttachments[i].m_Format;
+					break;
+				}
+			}
+		}
+		if (dsFormat != Format::kUnknown)
+		{
+			rasterizerCI.depthBiasConstantFactor = Internal::GetDepthBiasD3DToVk(dsFormat, rasterizerCI.depthBiasConstantFactor);
+		}
+	}
 
 	VkPipelineRasterizationDepthClipStateCreateInfoEXT depthClip{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
 	if (m_pDevice->GetDeviceInfo()->m_ExtendedFeatures.depthClibEnableFeature.depthClipEnable)
 	{
 		depthClip.depthClipEnable = VK_TRUE;
-		rasterizerCI.pNext = &depthClip;
+		*ppRasterNext = &depthClip;
+		ppRasterNext = &depthClip.pNext;
 	}
 
 	VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
@@ -157,7 +191,7 @@ void BvGraphicsPipelineStateVk::Create()
 				VkConservativeRasterizationModeEXT::VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
 			conservativeRaster.extraPrimitiveOverestimationSize = conservativeRasterProps.maxExtraPrimitiveOverestimationSize;
 
-			rasterizerCI.pNext = &conservativeRaster;
+			*ppRasterNext = &conservativeRaster;
 		}
 	}
 
@@ -206,9 +240,8 @@ void BvGraphicsPipelineStateVk::Create()
 		pipelineRenderingCI.pColorAttachmentFormats = rtvFormats.Data();
 		pipelineRenderingCI.depthAttachmentFormat = GetVkFormat(m_PipelineStateDesc.m_DepthStencilFormat);
 		pipelineRenderingCI.stencilAttachmentFormat = pipelineRenderingCI.depthAttachmentFormat;
-		if (m_PipelineStateDesc.m_EnableMultiview)
+		if (m_PipelineStateDesc.m_MultiviewCount > 1)
 		{
-			BV_ASSERT(m_PipelineStateDesc.m_MultiviewCount > 1, "Multiview must be greater than 1 if enabled");
 			pipelineRenderingCI.viewMask = (1 << m_PipelineStateDesc.m_MultiviewCount) - 1;
 		}
 	}

@@ -1,4 +1,5 @@
 #include "BvTypeConversionsD3D12.h"
+#include <bit>
 
 
 D3D12_RESOURCE_FLAGS GetD3D12ResourceFlags(BufferUsage usage)
@@ -58,6 +59,9 @@ CD3DX12_RESOURCE_DESC GetD3D12ResourceDesc(const TextureDesc& textureDesc)
 	case TextureType::kTexture3D:
 		return CD3DX12_RESOURCE_DESC::Tex3D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.width, textureDesc.m_Size.height, textureDesc.m_Size.depth,
 			textureDesc.m_MipLevels, GetD3D12ResourceFlags(textureDesc.m_UsageFlags));
+	default:
+		return CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.width, textureDesc.m_Size.height, textureDesc.m_ArraySize,
+			textureDesc.m_MipLevels, textureDesc.m_SampleCount, 0, GetD3D12ResourceFlags(textureDesc.m_UsageFlags));
 	}
 }
 
@@ -104,5 +108,485 @@ D3D12_RESOURCE_STATES GetD3D12ResourceState(ResourceState resourceState)
 	case ResourceState::kASBuildRead:
 	case ResourceState::kASBuildWrite:			return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 	case ResourceState::kASPostBuildBuffer:		return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	default:									return D3D12_RESOURCE_STATE_COMMON;
 	}
+}
+
+
+D3D12_DESCRIPTOR_RANGE_TYPE GetD3D12DescriptorRangeType(ShaderResourceType type)
+{
+	switch (type)
+	{
+	case ShaderResourceType::kConstantBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	case ShaderResourceType::kStructuredBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	case ShaderResourceType::kRWStructuredBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	case ShaderResourceType::kFormattedBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	case ShaderResourceType::kRWFormattedBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	case ShaderResourceType::kTexture: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	case ShaderResourceType::kRWTexture: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	case ShaderResourceType::kSampler: return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+	case ShaderResourceType::kInputAttachment: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	default:
+		BV_ASSERT(false, "Should never get here");
+	}
+	return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+}
+
+
+D3D12_SHADER_VISIBILITY GetD3D12ShaderVisibility(ShaderStage shaderStages)
+{
+	if (std::popcount((u32)shaderStages) > 1)
+	{
+		return D3D12_SHADER_VISIBILITY_ALL;
+	}
+
+	switch (shaderStages)
+	{
+	case ShaderStage::kVertex: return D3D12_SHADER_VISIBILITY_VERTEX;
+	case ShaderStage::kHullOrControl: return D3D12_SHADER_VISIBILITY_HULL;
+	case ShaderStage::kDomainOrEvaluation: return D3D12_SHADER_VISIBILITY_DOMAIN;
+	case ShaderStage::kGeometry: return D3D12_SHADER_VISIBILITY_GEOMETRY;
+	case ShaderStage::kPixelOrFragment: return D3D12_SHADER_VISIBILITY_PIXEL;
+	case ShaderStage::kMesh: return D3D12_SHADER_VISIBILITY_MESH;
+	case ShaderStage::kAmplificationOrTask: return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+	default:
+		return D3D12_SHADER_VISIBILITY_ALL;
+	}
+}
+
+
+CD3DX12_STATIC_SAMPLER_DESC GetD3D12StaticSamplerDesc(const SamplerDesc& samplerDesc, u32 binding, u32 set, D3D12_SHADER_VISIBILITY shaderVisibility)
+{
+	return CD3DX12_STATIC_SAMPLER_DESC(binding, GetD3D12Filter(samplerDesc), GetD3D12TextureAddressMode(samplerDesc.m_AddressModeU),
+		GetD3D12TextureAddressMode(samplerDesc.m_AddressModeV), GetD3D12TextureAddressMode(samplerDesc.m_AddressModeW), samplerDesc.m_MipLodBias,
+		samplerDesc.m_MaxAnisotropy, GetD3D12ComparisonFunc(samplerDesc.m_CompareOp),
+		GetD3D12StaticBorderColor(samplerDesc), samplerDesc.m_MinLod, samplerDesc.m_MaxLod, shaderVisibility, set);
+}
+
+
+D3D12_FILTER GetD3D12Filter(const SamplerDesc& samplerDesc)
+{
+	if (samplerDesc.m_AnisotropyEnable)
+	{
+		if (samplerDesc.m_CompareOp != CompareOp::kNone)
+		{
+			return D3D12_FILTER_COMPARISON_ANISOTROPIC;
+		}
+		else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+		{
+			return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_ANISOTROPIC : D3D12_FILTER_MAXIMUM_ANISOTROPIC;
+		}
+		else
+		{
+			return D3D12_FILTER_ANISOTROPIC;
+		}
+	}
+
+	switch (samplerDesc.m_MinFilter)
+	{
+	case Filter::kPoint:
+		switch (samplerDesc.m_MagFilter)
+		{
+		case Filter::kPoint:
+			switch (samplerDesc.m_MipmapMode)
+			{
+			case MipMapFilter::kPoint:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT : D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_MAG_MIP_POINT;
+				}
+			}
+			case MipMapFilter::kLinear:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR : D3D12_FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+				}
+			}
+			}
+		case Filter::kLinear:
+			switch (samplerDesc.m_MipmapMode)
+			{
+			case MipMapFilter::kPoint:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+				}
+			}
+			case MipMapFilter::kLinear:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR : D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+				}
+			}
+			}
+		}
+	case Filter::kLinear:
+		switch (samplerDesc.m_MagFilter)
+		{
+		case Filter::kPoint:
+			switch (samplerDesc.m_MipmapMode)
+			{
+			case MipMapFilter::kPoint:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT : D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+				}
+			}
+			case MipMapFilter::kLinear:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR : D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				}
+			}
+			}
+		case Filter::kLinear:
+			switch (samplerDesc.m_MipmapMode)
+			{
+			case MipMapFilter::kPoint:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT : D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+				}
+			}
+			case MipMapFilter::kLinear:
+			{
+				if (samplerDesc.m_CompareOp != CompareOp::kNone)
+				{
+					return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+				}
+				else if (samplerDesc.m_ReductionMode != ReductionMode::kStandard)
+				{
+					return samplerDesc.m_ReductionMode == ReductionMode::kMin ? D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR : D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
+				}
+				else
+				{
+					return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+				}
+			}
+			}
+		}
+	}
+
+	return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+}
+
+
+D3D12_TEXTURE_ADDRESS_MODE GetD3D12TextureAddressMode(AddressMode addressMode)
+{
+	switch (addressMode)
+	{
+	case AddressMode::kWrap: return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	case AddressMode::kMirror: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	case AddressMode::kClamp: return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	case AddressMode::kBorder: return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	case AddressMode::kMirrorOnce: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+	default: return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	}
+}
+
+
+D3D12_COMPARISON_FUNC GetD3D12ComparisonFunc(CompareOp compareOp)
+{
+	switch (compareOp)
+	{
+	case CompareOp::kNever: return D3D12_COMPARISON_FUNC_NEVER;
+	case CompareOp::kLess: return D3D12_COMPARISON_FUNC_LESS;
+	case CompareOp::kEqual: return D3D12_COMPARISON_FUNC_EQUAL;
+	case CompareOp::kLessEqual: return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	case CompareOp::kGreater: return D3D12_COMPARISON_FUNC_GREATER;
+	case CompareOp::kNotEqual: return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+	case CompareOp::kGreaterEqual: return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+	case CompareOp::kAlways: return D3D12_COMPARISON_FUNC_ALWAYS;
+	default: return D3D12_COMPARISON_FUNC_NONE;
+	}
+}
+
+
+D3D12_STATIC_BORDER_COLOR GetD3D12StaticBorderColor(const SamplerDesc& samplerDesc)
+{
+	if (samplerDesc.m_BorderColor[0] == 0.0f
+		|| samplerDesc.m_BorderColor[1] == 0.0f
+		|| samplerDesc.m_BorderColor[2] == 0.0f
+		|| samplerDesc.m_BorderColor[3] == 1.0f)
+	{
+		return D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+	}
+	else if (samplerDesc.m_BorderColor[0] == 1.0f
+		|| samplerDesc.m_BorderColor[1] == 1.0f
+		|| samplerDesc.m_BorderColor[2] == 1.0f
+		|| samplerDesc.m_BorderColor[3] == 1.0f)
+	{
+		return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+	}
+
+	return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+}
+
+
+D3D12_SAMPLER_DESC GetD3D12SamplerDesc(const SamplerDesc& samplerDesc)
+{
+	return D3D12_SAMPLER_DESC{ GetD3D12Filter(samplerDesc), GetD3D12TextureAddressMode(samplerDesc.m_AddressModeU), GetD3D12TextureAddressMode(samplerDesc.m_AddressModeV),
+		GetD3D12TextureAddressMode(samplerDesc.m_AddressModeW), samplerDesc.m_MipLodBias, samplerDesc.m_AnisotropyEnable ? 0 : UINT(samplerDesc.m_MaxAnisotropy),
+		GetD3D12ComparisonFunc(samplerDesc.m_CompareOp), { samplerDesc.m_BorderColor[0], samplerDesc.m_BorderColor[1], samplerDesc.m_BorderColor[2], samplerDesc.m_BorderColor[3], },
+		samplerDesc.m_MinLod, samplerDesc.m_MaxLod };
+}
+
+
+D3D12_ROOT_SIGNATURE_FLAGS GetD3D12RootSignatureFlags(ShaderStage shaderStages)
+{
+	D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+	if (!EHasFlag(shaderStages, ShaderStage::kVertex)) { flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS; }
+	if (!EHasFlag(shaderStages, ShaderStage::kHullOrControl)) {	flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS; }
+	if (!EHasFlag(shaderStages, ShaderStage::kDomainOrEvaluation)) { flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS; }
+	if (!EHasFlag(shaderStages, ShaderStage::kGeometry)) { flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS; }
+	if (!EHasFlag(shaderStages, ShaderStage::kPixelOrFragment)) { flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS; }
+	if (!EHasFlag(shaderStages, ShaderStage::kMesh)) { flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS; }
+	if (!EHasFlag(shaderStages, ShaderStage::kAmplificationOrTask)) { flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS; }
+
+	return flags;
+}
+
+
+D3D12_INPUT_CLASSIFICATION GetD3D12InputClassification(InputRate inputRate)
+{
+	return inputRate == InputRate::kPerVertex ? D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA : D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+}
+
+
+constexpr D3D12_BLEND kBlends[] =
+{
+	D3D12_BLEND_ZERO, 	// kZero,
+	D3D12_BLEND_ONE, 	// kOne,
+	D3D12_BLEND_SRC_COLOR, 	// kSrcColor,
+	D3D12_BLEND_INV_SRC_COLOR, 	// kInvSrcColor,
+	D3D12_BLEND_DEST_COLOR, 	// kDstColor,
+	D3D12_BLEND_INV_DEST_COLOR, 	// kInvDstColor,
+	D3D12_BLEND_SRC_ALPHA, 	// kSrcAlpha,
+	D3D12_BLEND_INV_SRC_ALPHA, 	// kInvkSrcAlpha,
+	D3D12_BLEND_DEST_ALPHA, 	// kDstAlpha,
+	D3D12_BLEND_INV_DEST_ALPHA, 	// kInvDstAlpha,
+	D3D12_BLEND_BLEND_FACTOR, 	// kBlendFactor,
+	D3D12_BLEND_INV_BLEND_FACTOR, 	// kInvBlendFactor,
+	D3D12_BLEND_ALPHA_FACTOR, 	// kAlphaFactor,
+	D3D12_BLEND_INV_ALPHA_FACTOR, 	// kInvAlphaFactor,
+	D3D12_BLEND_SRC_ALPHA_SAT, 	// kSrcAlphaSat,
+	D3D12_BLEND_SRC1_COLOR, 	// kSrc1Color,
+	D3D12_BLEND_INV_SRC1_COLOR, 	// kInvSrc1Color,
+	D3D12_BLEND_SRC1_ALPHA, 	// kSrc1Alpha,
+	D3D12_BLEND_INV_SRC1_ALPHA, 	// kInvkSrc1Alpha,
+};
+
+
+D3D12_BLEND GetD3D12Blend(BlendFactor blendFactor)
+{
+	return kBlends[u32(blendFactor)];
+}
+
+
+constexpr D3D12_BLEND_OP kBlendOps[] =
+{
+	D3D12_BLEND_OP_ADD,
+	D3D12_BLEND_OP_SUBTRACT,
+	D3D12_BLEND_OP_REV_SUBTRACT,
+	D3D12_BLEND_OP_MIN,
+	D3D12_BLEND_OP_MAX,
+};
+
+
+D3D12_BLEND_OP GetD3D12BlendOp(BlendOp blendOp)
+{
+	return kBlendOps[u32(blendOp)];
+}
+
+
+constexpr D3D12_LOGIC_OP kLogicOps[] =
+{
+	D3D12_LOGIC_OP_CLEAR, //kClear,
+	D3D12_LOGIC_OP_SET, //kSet,
+	D3D12_LOGIC_OP_COPY, //kCopy,
+	D3D12_LOGIC_OP_COPY_INVERTED, //kCopyInverted,
+	D3D12_LOGIC_OP_NOOP, //kNoOp,
+	D3D12_LOGIC_OP_INVERT, //kInvert,
+	D3D12_LOGIC_OP_AND, //kAnd,
+	D3D12_LOGIC_OP_NAND, //kNand,
+	D3D12_LOGIC_OP_OR, //kOr,
+	D3D12_LOGIC_OP_NOR, //kNor,
+	D3D12_LOGIC_OP_XOR, //kXor,
+	D3D12_LOGIC_OP_EQUIV, //kEquiv,
+	D3D12_LOGIC_OP_AND_REVERSE, //kAndReverse,
+	D3D12_LOGIC_OP_AND_INVERTED, //kAndInverted,
+	D3D12_LOGIC_OP_OR_REVERSE, //kOrReverse,
+	D3D12_LOGIC_OP_OR_INVERTED, //kOrInverted
+};
+
+
+D3D12_LOGIC_OP GetD3D12LogicOp(LogicOp logicOp)
+{
+	return kLogicOps[u32(logicOp)];
+}
+
+
+constexpr D3D12_STENCIL_OP kStencilOps[] =
+{
+	D3D12_STENCIL_OP_KEEP, // kKeep
+	D3D12_STENCIL_OP_ZERO, // kZero
+	D3D12_STENCIL_OP_REPLACE, // kReplace
+	D3D12_STENCIL_OP_INCR_SAT, // kIncrSat
+	D3D12_STENCIL_OP_DECR_SAT, // kDecrSat
+	D3D12_STENCIL_OP_INVERT, // kInvert
+	D3D12_STENCIL_OP_INCR, // kIncrWrap
+	D3D12_STENCIL_OP_DECR, // kDecrWrap
+};
+
+
+D3D12_STENCIL_OP GetD3D12StencilOp(StencilOp stencilOp)
+{
+	return kStencilOps[u32(stencilOp)];
+}
+
+
+D3D12_FILL_MODE GetD3D12FillMode(FillMode fillMode)
+{
+	return fillMode == FillMode::kSolid ? D3D12_FILL_MODE_SOLID : D3D12_FILL_MODE_WIREFRAME;
+}
+
+
+constexpr D3D12_CULL_MODE kCullModes[] =
+{
+	D3D12_CULL_MODE_NONE,
+	D3D12_CULL_MODE_FRONT,
+	D3D12_CULL_MODE_BACK,
+	D3D12_CULL_MODE_BACK,
+};
+
+
+D3D12_CULL_MODE GetD3D12CullMode(CullMode cullMode)
+{
+	BV_ASSERT(cullMode != CullMode::kFrontAndBack, "D3D12 Doesn't support front-and-back culling");
+
+	return kCullModes[u32(cullMode)];
+}
+
+
+D3D12_COMMAND_LIST_TYPE GetD3D12CommandListType(CommandType commandType)
+{
+	switch (commandType)
+	{
+	case CommandType::kGraphics: return D3D12_COMMAND_LIST_TYPE_DIRECT;
+	case CommandType::kCompute: return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+	case CommandType::kTransfer: return D3D12_COMMAND_LIST_TYPE_COPY;
+	case CommandType::kVideoDecode: return D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE;
+	case CommandType::kVideoEncode: return D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
+	default: return D3D12_COMMAND_LIST_TYPE_NONE;
+	}
+}
+
+
+constexpr D3D_PRIMITIVE_TOPOLOGY kTopologies[] =
+{
+	D3D_PRIMITIVE_TOPOLOGY_UNDEFINED, // kUndefined
+	D3D_PRIMITIVE_TOPOLOGY_POINTLIST, // kPointList
+	D3D_PRIMITIVE_TOPOLOGY_LINELIST, // kLineList
+	D3D_PRIMITIVE_TOPOLOGY_LINESTRIP, // kLineStrip
+	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, // kTriangleList
+	D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP, // kTriangleStrip
+	D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN, // kTriangleFan
+	D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ, // kLineListAdj
+	D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ, // kLineStripAdj
+	D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ, // kTriangleListAdj
+	D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ, // kTriangleStripAdj
+	D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST, // kPatchList
+};
+
+
+D3D_PRIMITIVE_TOPOLOGY GetD3D12PrimitiveTopology(Topology topology, u32 patchControlPoints)
+{
+	return topology != Topology::kPatchList ? kTopologies[u32(topology)] : D3D_PRIMITIVE_TOPOLOGY((kTopologies[u32(topology)] + patchControlPoints) - 1);
+}
+
+
+constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE kTopologyTypes[] =
+{
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED, // kUndefined
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT, // kPointList
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE, // kLineList
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE, // kLineStrip
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // kTriangleList
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // kTriangleStrip
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // kTriangleFan
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE, // kLineListAdj
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE, // kLineStripAdj
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // kTriangleListAdj
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // kTriangleStripAdj
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH, // kPatchList
+};
+
+
+D3D12_PRIMITIVE_TOPOLOGY_TYPE GetD3D12PrimitiveTopologyType(Topology topology)
+{
+	return kTopologyTypes[u32(topology)];
 }

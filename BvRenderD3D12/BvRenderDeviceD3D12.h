@@ -50,17 +50,13 @@ public:
 	IBvGPUFence* CreateFenceImpl(u64 value) override;
 	IBvAccelerationStructure* CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc) override;
 	IBvShaderBindingTable* CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) override;
-	IBvCommandContext* GetGraphicsContextImpl(u32 index = 0) override;
-	IBvCommandContext* GetComputeContextImpl(u32 index = 0) override;
-	IBvCommandContext* GetTransferContextImpl(u32 index = 0) override;
+	IBvCommandContext* CreateCommandContextImpl(const CommandContextDesc& commandContextDesc) override;
 
 	void WaitIdle() const override;
 
 	void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize) const override;
 	u64 GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const override;
-	bool SupportsQueryType(QueryType queryType, CommandType commandType) const override;
 	FormatFeatures GetFormatFeatures(Format format) const override;
-	BV_INLINE RenderDeviceCapabilities GetDeviceCaps() const override { return m_DeviceCaps; }
 	BV_INLINE const BvGPUInfo& GetGPUInfo() const override { return m_GPUInfo; }
 	BV_INLINE const BvVector<Format>& GetSupportedDisplayFormats() const override { return m_SupportedDisplayFormats; }
 

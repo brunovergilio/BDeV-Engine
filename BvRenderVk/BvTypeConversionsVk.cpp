@@ -135,7 +135,7 @@ constexpr FormatMapVk kFormats[] =
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kUnknown,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kUnknown,
 	{ VK_FORMAT_G8_B8R8_2PLANE_422_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT, {} },	// Format::kP208,
-	{ VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM,	VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT, {} },	// Format::kV208,
+	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kV208,
 	{ VK_FORMAT_UNDEFINED,					0, {} },	// Format::kV408,
 };
 
@@ -186,6 +186,7 @@ constexpr VkSamplerAddressMode kSamplerAddressModes[] =
 
 constexpr VkCompareOp kCompareOps[] =
 {
+	VK_COMPARE_OP_NEVER,
 	VK_COMPARE_OP_NEVER,
 	VK_COMPARE_OP_LESS,
 	VK_COMPARE_OP_EQUAL,
@@ -357,6 +358,7 @@ VkPrimitiveTopology GetVkPrimitiveTopology(const Topology topology)
 	case Topology::kLineStrip:			return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
 	case Topology::kTriangleList:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	case Topology::kTriangleStrip:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+	case Topology::kTriangleFan:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
 	case Topology::kLineListAdj:		return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
 	case Topology::kLineStripAdj:		return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
 	case Topology::kTriangleListAdj:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
