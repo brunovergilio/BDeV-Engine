@@ -2,8 +2,8 @@
 
 
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
-#include "BvCommonD3D12.h"
 #include "BDeV/Core/RenderAPI/BvShaderResource.h"
+#include "BvCommonD3D12.h"
 
 
 D3D12_RESOURCE_FLAGS GetD3D12ResourceFlags(BufferUsage usage);
@@ -30,3 +30,10 @@ D3D12_CULL_MODE GetD3D12CullMode(CullMode cullMode);
 D3D12_COMMAND_LIST_TYPE GetD3D12CommandListType(CommandType commandType);
 D3D_PRIMITIVE_TOPOLOGY GetD3D12PrimitiveTopology(Topology topology, u32 patchControlPoints = 0);
 D3D12_PRIMITIVE_TOPOLOGY_TYPE GetD3D12PrimitiveTopologyType(Topology topology);
+D3D12_SRV_DIMENSION GetD3D12SRVDimension(TextureViewType textureViewType, bool multisample = false);
+D3D12_UAV_DIMENSION GetD3D12UAVDimension(TextureViewType textureViewType, bool multisample = false);
+D3D12_CONSTANT_BUFFER_VIEW_DESC GetD3D12CBVDesc(const BufferViewDesc& viewDesc);
+D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const BufferViewDesc& viewDesc);
+D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const BufferViewDesc& viewDesc);
+D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const TextureViewDesc& viewDesc);
+D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const TextureViewDesc& viewDesc);

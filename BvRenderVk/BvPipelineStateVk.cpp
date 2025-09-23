@@ -5,7 +5,9 @@
 #include "BvShaderResourceVk.h"
 #include "BvUtilsVk.h"
 #include "BvShaderResourceVk.h"
+#include "BvShaderVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
+#include <string_view>
 
 
 VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode);

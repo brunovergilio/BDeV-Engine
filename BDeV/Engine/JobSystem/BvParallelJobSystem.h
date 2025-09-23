@@ -8,10 +8,6 @@
 #include "BDeV/Core/System/Process/BvProcess.h"
 #include "BDeV/Core/Utils/BvUtils.h"
 #include "BDeV/Core/Container/BvVector.h"
-#include "BDeV/Core/System/Memory/Allocators/BvHeapAllocator.h"
-#include "BDeV/Core/System/Memory/Utilities/BvBoundsChecker.h"
-#include "BDeV/Core/System/Memory/Utilities/BvMemoryMarker.h"
-#include "BDeV/Core/System/Memory/Utilities/BvMemoryTracker.h"
 
 
 class BvParallelJobSystem;
@@ -32,7 +28,7 @@ class alignas(kCacheLineSize) BvParallelJobList
 
 	struct alignas(kCacheLineSize) Job
 	{
-		BvTask<16> m_Job{};
+		BvTask<24> m_Job;
 		BvParallelJobList* m_pDependency{};
 		JobSyncType m_SyncType{};
 		const char* m_pName = nullptr;
@@ -116,7 +112,7 @@ struct JobSystemDesc
 	u32 m_JobPoolSize = kDefaultMaxJobsAndSyncs;
 	u32 m_NumWorkerThreadDescs = 0;
 	WorkerThreadDesc* m_pWorkerThreadDescs = nullptr;
-	IBvMemoryArena* m_pMemoryArena = nullptr;
+	IBvMemoryArena* m_pMemoryArena = BV_DEFAULT_MEMORY_ARENA;
 };
 
 

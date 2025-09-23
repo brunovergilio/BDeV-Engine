@@ -5,12 +5,11 @@
 #include "BDeV/Core/Container/BvIterator.h"
 #include "BDeV/Core/Utils/BvHash.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
-#include "BDeV/Core/System/Memory/BvMemoryArena.h"
 #include <algorithm>
 #include <utility>
 
 
-template<typename Key, typename Value, typename MemoryArenaType = IBvMemoryArena, typename Hash = std::hash<Key>, typename Comparer = std::equal_to<Key>>
+template<typename Key, typename Value, typename Hash = std::hash<Key>, typename Comparer = std::equal_to<Key>>
 class BvRobinMap
 {
 public:
@@ -20,9 +19,8 @@ public:
 	using ConstIterator = RobinIterator<KeyValue, true>;
 
 	BvRobinMap(); // Default
-	explicit BvRobinMap(MemoryArenaType* pAllocator);
-	explicit BvRobinMap(const size_t capacity, MemoryArenaType* pAllocator = nullptr); // Reserve
-	BvRobinMap(std::initializer_list<KeyValue> list, MemoryArenaType* pAllocator = nullptr); // Initializer List
+	explicit BvRobinMap(IBvMemoryArena* pArena, size_t reserveSize = 0);
+	BvRobinMap(std::initializer_list<KeyValue> list, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Initializer List
 	BvRobinMap(const BvRobinMap& rhs); // Copy
 	BvRobinMap(BvRobinMap&& rhs) noexcept; // Move
 	
@@ -33,8 +31,8 @@ public:
 	~BvRobinMap();
 
 	// Allocator
-	MemoryArenaType* GetAllocator() const;
-	void SetAllocator(MemoryArenaType* pAllocator);
+	IBvMemoryArena* GetAllocator() const;
+	void SetAllocator(IBvMemoryArena* pArena);
 
 	// Iterator
 	Iterator begin() { return Iterator(m_pData, m_pData, m_pHashes, &m_Capacity); }
@@ -47,13 +45,13 @@ public:
 	void ResizeAndRehash(const size_t size);
 
 	template<typename ...Args>
-	std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> Emplace(Key && key, Args &&... args);
+	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> Emplace(Key && key, Args &&... args);
 	template<typename ...Args>
-	std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> Emplace(const Key & key, Args &&... args);
+	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> Emplace(const Key & key, Args &&... args);
 	template<typename ...Args>
-	std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> EmplaceOrAssign(Key&& key, Args &&... args);
+	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> EmplaceOrAssign(Key&& key, Args &&... args);
 	template<typename ...Args>
-	std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> EmplaceOrAssign(const Key & key, Args &&... args);
+	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> EmplaceOrAssign(const Key & key, Args &&... args);
 	bool Erase(const Key & key);
 
 	Iterator FindKey(const Key & key) const;
@@ -81,36 +79,33 @@ private:
 private:
 	KeyValue * m_pData = nullptr;
 	size_t * m_pHashes = nullptr;
-	MemoryArenaType* m_pAllocator = nullptr;
+	IBvMemoryArena* m_pArena = nullptr;
 	size_t m_Size = 0;
 	size_t m_Capacity = 0;
 };
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap()
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap()
+	: m_pArena(BV_DEFAULT_MEMORY_ARENA)
 {
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap(MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap(IBvMemoryArena* pArena, size_t reserveSize)
+	: m_pArena(pArena)
 {
+	if (reserveSize)
+	{
+		ResizeAndRehash(reserveSize);
+	}
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap(const size_t capacity, MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
-{
-	ResizeAndRehash(capacity);
-}
-
-
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap(std::initializer_list<KeyValue> list, MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap(std::initializer_list<KeyValue> list, IBvMemoryArena* pArena)
+	: m_pArena(pArena)
 {
 	ResizeAndRehash(list.size());
 
@@ -121,8 +116,8 @@ inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap(std::
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap(const BvRobinMap& rhs)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap(const BvRobinMap& rhs)
 {
 	ResizeAndRehash(rhs.m_Capacity);
 
@@ -133,20 +128,20 @@ inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap(const
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::BvRobinMap(BvRobinMap&& rhs) noexcept
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap(BvRobinMap&& rhs) noexcept
 {
 	*this = std::move(rhs);
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>& BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::operator=(const BvRobinMap& rhs)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>& BvRobinMap<Key, Value, Hash, Comparer>::operator=(const BvRobinMap& rhs)
 {
 	if (this->m_pHashes != rhs.m_pHashes)
 	{
 		Destroy();
-		SetAllocator(rhs.m_pAllocator);
+		SetAllocator(rhs.m_pArena);
 		ResizeAndRehash(rhs.m_Capacity);
 
 		for (auto it = rhs.cbegin(); it != rhs.cend(); it++)
@@ -159,14 +154,14 @@ inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>& BvRobinMap<Key, 
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>& BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::operator=(BvRobinMap&& rhs) noexcept
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>& BvRobinMap<Key, Value, Hash, Comparer>::operator=(BvRobinMap&& rhs) noexcept
 {
 	if (this->m_pHashes != rhs.m_pHashes)
 	{
 		std::swap(m_pData, rhs.m_pData);
 		std::swap(m_pHashes, rhs.m_pHashes);
-		std::swap(m_pAllocator, rhs.m_pAllocator);
+		std::swap(m_pArena, rhs.m_pArena);
 		std::swap(m_Size, rhs.m_Size);
 		std::swap(m_Capacity, rhs.m_Capacity);
 	}
@@ -175,8 +170,8 @@ inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>& BvRobinMap<Key, 
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>& BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::operator=(std::initializer_list<KeyValue> list)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>& BvRobinMap<Key, Value, Hash, Comparer>::operator=(std::initializer_list<KeyValue> list)
 {
 	Clear();
 
@@ -189,60 +184,62 @@ inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>& BvRobinMap<Key, 
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::~BvRobinMap()
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline BvRobinMap<Key, Value, Hash, Comparer>::~BvRobinMap()
 {
 	Destroy();
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline MemoryArenaType* BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::GetAllocator() const
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline IBvMemoryArena* BvRobinMap<Key, Value, Hash, Comparer>::GetAllocator() const
 {
-	return m_pAllocator;
+	return m_pArena;
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::SetAllocator(MemoryArenaType* pAllocator)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline void BvRobinMap<Key, Value, Hash, Comparer>::SetAllocator(IBvMemoryArena* pArena)
 {
-	if (m_pAllocator == pAllocator)
-	{
-		return;
-	}
+	BV_ASSERT(pArena != nullptr, "Memory arena can't be nullptr");
+	BV_ASSERT(m_pData == nullptr, "Can't change allocators after allocations have been made");
+	//if (m_pArena == pArena)
+	//{
+	//	return;
+	//}
 
-	if (m_Capacity > 0)
-	{
-		KeyValue* pNewData = reinterpret_cast<KeyValue*>(pAllocator ? BV_MALLOC(*pAllocator, sizeof(KeyValue) * m_Capacity, alignof(KeyValue)) : BV_ALLOC(sizeof(KeyValue) * m_Capacity, alignof(KeyValue)));
-		size_t* pNewHashes = reinterpret_cast<size_t*>(pAllocator ? BV_MALLOC(*pAllocator, sizeof(size_t) * m_Capacity, alignof(size_t)) : BV_ALLOC(sizeof(size_t) * m_Capacity, alignof(size_t)));
-		memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
-		if (m_Size > 0)
-		{
-			for (size_t i = 0; i < m_Capacity; i++)
-			{
-				if (m_pHashes[i] != 0)
-				{
-					// Because we're using the same capacity, the elements will hash to the same positions,
-					// therefore there's no need to call EmplaceInternal()
-					new (&pNewData[i]) std::pair<Key, Value>(std::move(m_pData[i].first), std::move(m_pData[i].second));
-					pNewHashes[i] = m_pHashes[i];
-				}
-			}
-		}
-		Clear();
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pHashes) : BV_FREE(m_pHashes);
+	//if (m_Capacity > 0)
+	//{
+	//	KeyValue* pNewData = reinterpret_cast<KeyValue*>(pArena ? BV_MALLOC(*pArena, sizeof(KeyValue) * m_Capacity, alignof(KeyValue)) : BV_ALLOC(sizeof(KeyValue) * m_Capacity, alignof(KeyValue)));
+	//	size_t* pNewHashes = reinterpret_cast<size_t*>(pArena ? BV_MALLOC(*pArena, sizeof(size_t) * m_Capacity, alignof(size_t)) : BV_ALLOC(sizeof(size_t) * m_Capacity, alignof(size_t)));
+	//	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
+	//	if (m_Size > 0)
+	//	{
+	//		for (size_t i = 0; i < m_Capacity; i++)
+	//		{
+	//			if (m_pHashes[i] != 0)
+	//			{
+	//				// Because we're using the same capacity, the elements will hash to the same positions,
+	//				// therefore there's no need to call EmplaceInternal()
+	//				new (&pNewData[i]) std::pair<Key, Value>(std::move(m_pData[i].first), std::move(m_pData[i].second));
+	//				pNewHashes[i] = m_pHashes[i];
+	//			}
+	//		}
+	//	}
+	//	Clear();
+	//	m_pArena ? BV_MFREE(*m_pArena, m_pData) : BV_FREE(m_pData);
+	//	m_pArena ? BV_MFREE(*m_pArena, m_pHashes) : BV_FREE(m_pHashes);
 
-		m_pData = pNewData;
-		m_pHashes = pNewHashes;
-	}
+	//	m_pData = pNewData;
+	//	m_pHashes = pNewHashes;
+	//}
 
-	m_pAllocator = pAllocator;
+	m_pArena = pArena;
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::ResizeAndRehash(const size_t size)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline void BvRobinMap<Key, Value, Hash, Comparer>::ResizeAndRehash(const size_t size)
 {
 	if (size <= m_Capacity)
 	{
@@ -252,8 +249,8 @@ inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::ResizeAndRe
 	auto oldCapacity = m_Capacity;
 	m_Capacity = size;
 
-	KeyValue* pNewData = reinterpret_cast<KeyValue*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, sizeof(KeyValue) * m_Capacity, alignof(KeyValue)) : BV_ALLOC(sizeof(KeyValue) * m_Capacity, alignof(KeyValue)));
-	size_t* pNewHashes = reinterpret_cast<size_t*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, sizeof(size_t) * m_Capacity, alignof(size_t)) : BV_ALLOC(sizeof(size_t) * m_Capacity, alignof(size_t)));
+	KeyValue* pNewData = reinterpret_cast<KeyValue*>(m_pArena->Allocate(sizeof(KeyValue) * m_Capacity, alignof(KeyValue)));
+	size_t* pNewHashes = reinterpret_cast<size_t*>(m_pArena->Allocate(sizeof(size_t) * m_Capacity, alignof(size_t)));
 	memset(pNewHashes, 0, sizeof(size_t) * m_Capacity);
 
 	for (size_t i = 0; i < oldCapacity; i++)
@@ -266,8 +263,8 @@ inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::ResizeAndRe
 
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pHashes) : BV_FREE(m_pHashes);
+		m_pArena->Free(m_pData);
+		m_pArena->Free(m_pHashes);
 	}
 
 	m_pData = pNewData;
@@ -275,9 +272,9 @@ inline void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::ResizeAndRe
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
+template<typename Key, typename Value, typename Hash, typename Comparer>
 template<typename... Args>
-inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Emplace(Key && key, Args &&... args)
+inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, Hash, Comparer>::Emplace(Key && key, Args &&... args)
 {
 	auto iter = FindKey(key);
 	if (iter != cend())
@@ -297,9 +294,9 @@ inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
+template<typename Key, typename Value, typename Hash, typename Comparer>
 template<typename... Args>
-inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Emplace(const Key & key, Args &&... args)
+inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, Hash, Comparer>::Emplace(const Key & key, Args &&... args)
 {
 	auto iter = FindKey(key);
 	if (iter != cend())
@@ -319,9 +316,9 @@ inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
+template<typename Key, typename Value, typename Hash, typename Comparer>
 template<typename ...Args>
-inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::EmplaceOrAssign(Key&& key, Args &&... args)
+inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, Hash, Comparer>::EmplaceOrAssign(Key&& key, Args &&... args)
 {
 	auto iter = FindKey(key);
 	if (iter != cend())
@@ -347,9 +344,9 @@ inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
+template<typename Key, typename Value, typename Hash, typename Comparer>
 template<typename ...Args>
-inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::EmplaceOrAssign(const Key & key, Args &&... args)
+inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> BvRobinMap<Key, Value, Hash, Comparer>::EmplaceOrAssign(const Key & key, Args &&... args)
 {
 	auto iter = FindKey(key);
 	if (iter != cend())
@@ -375,8 +372,8 @@ inline std::pair<typename BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline bool BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Erase(const Key & key)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline bool BvRobinMap<Key, Value, Hash, Comparer>::Erase(const Key & key)
 {
 	auto iter = FindKey(key);
 	if (iter == cend())
@@ -426,8 +423,8 @@ inline bool BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Erase(const
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-RobinIterator<std::pair<Key, Value>, false> BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::FindKey(const Key & key) const
+template<typename Key, typename Value, typename Hash, typename Comparer>
+RobinIterator<std::pair<Key, Value>, false> BvRobinMap<Key, Value, Hash, Comparer>::FindKey(const Key & key) const
 {
 	if (m_Capacity == 0)
 	{
@@ -468,15 +465,15 @@ RobinIterator<std::pair<Key, Value>, false> BvRobinMap<Key, Value, MemoryArenaTy
 }
 
 
- template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
- bool BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::HasKey(const Key& key) const
+ template<typename Key, typename Value, typename Hash, typename Comparer>
+ bool BvRobinMap<Key, Value, Hash, Comparer>::HasKey(const Key& key) const
  {
 	 return FindKey(key) != cend();
  }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Clear()
+template<typename Key, typename Value, typename Hash, typename Comparer>
+void BvRobinMap<Key, Value, Hash, Comparer>::Clear()
 {
 	for (size_t i = 0; i < m_Capacity; i++)
 	{
@@ -498,8 +495,8 @@ void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Clear()
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::operator[](const Key & key)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline Value & BvRobinMap<Key, Value, Hash, Comparer>::operator[](const Key & key)
 {
 	auto iter = FindKey(key);
 	if (iter == end())
@@ -512,8 +509,8 @@ inline Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::operator
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::operator[](Key && key)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline Value & BvRobinMap<Key, Value, Hash, Comparer>::operator[](Key && key)
 {
 	auto iter = FindKey(key);
 	if (iter == cend())
@@ -526,8 +523,8 @@ inline Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::operator
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::At(const Key & key)
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline Value & BvRobinMap<Key, Value, Hash, Comparer>::At(const Key & key)
 {
 	auto iter = FindKey(key);
 	BV_ASSERT(iter != cend(), "Key not found");
@@ -536,8 +533,8 @@ inline Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::At(const
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline const Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::At(const Key & key) const
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline const Value & BvRobinMap<Key, Value, Hash, Comparer>::At(const Key & key) const
 {
 	auto iter = FindKey(key);
 	BV_ASSERT(iter != cend(), "Key not found");
@@ -546,9 +543,9 @@ inline const Value & BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::At
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
+template<typename Key, typename Value, typename Hash, typename Comparer>
 template<typename KeyType, typename ...Args>
-inline size_t BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::EmplaceInternal(KeyValue* const pData, size_t* const pHashes, KeyType&& key, Args && ...args)
+inline size_t BvRobinMap<Key, Value, Hash, Comparer>::EmplaceInternal(KeyValue* const pData, size_t* const pHashes, KeyType&& key, Args && ...args)
 {
 	size_t hash = Hash(key);
 	size_t currPos = HashPos(hash);
@@ -592,8 +589,8 @@ inline size_t BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::EmplaceIn
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Destroy()
+template<typename Key, typename Value, typename Hash, typename Comparer>
+void BvRobinMap<Key, Value, Hash, Comparer>::Destroy()
 {
 	Clear();
 
@@ -601,16 +598,16 @@ void BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Destroy()
 
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pHashes) : BV_FREE(m_pHashes);
+		m_pArena->Free(m_pData);
+		m_pArena->Free(m_pHashes);
 		m_pData = nullptr;
 		m_pHashes = nullptr;
 	}
 }
 
 
-template<typename Key, typename Value, typename MemoryArenaType, typename Hash, typename Comparer>
-inline const size_t BvRobinMap<Key, Value, MemoryArenaType, Hash, Comparer>::Hash(const Key & key) const
+template<typename Key, typename Value, typename Hash, typename Comparer>
+inline const size_t BvRobinMap<Key, Value, Hash, Comparer>::Hash(const Key & key) const
 {
 	size_t hash = MurmurHash64A(&key, sizeof(Key));
 

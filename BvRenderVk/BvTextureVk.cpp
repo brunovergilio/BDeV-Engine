@@ -155,7 +155,7 @@ void BvTextureVk::CopyInitDataToGPUAndTransitionState(const TextureInitData* pIn
 		bufferDesc.m_MemoryType = MemoryType::kUpload;
 		bufferDesc.m_Size = bufferSize;
 		bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-		stagingBuffer = BvRCRaw<BvBufferVk>(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
+		stagingBuffer.Attach(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
 		auto pBufferMemory = static_cast<u8*>(stagingBuffer->GetMappedData());
 
 		// Calculate copy regions

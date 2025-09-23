@@ -1,6 +1,6 @@
 #include "BvStringId.h"
-#include "BvRobinMap.h"
-#include "BvString.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
+#include "BDeV/Core/Container/BvString.h"
 
 
 

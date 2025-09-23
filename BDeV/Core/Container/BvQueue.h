@@ -6,13 +6,13 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 
 
-template<typename Type, typename MemoryArenaType = IBvMemoryArena>
+template<typename Type>
 class BvQueue
 {
 public:
 	BvQueue();
-	BvQueue(MemoryArenaType* pAllocator);
-	BvQueue(std::initializer_list<Type> list, MemoryArenaType* pAllocator = nullptr);
+	explicit BvQueue(IBvMemoryArena* pArena, size_t reserveSize = 0);
+	BvQueue(std::initializer_list<Type> list, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA);
 	BvQueue(const BvQueue& rhs);
 	BvQueue(BvQueue&& rhs) noexcept;
 
@@ -23,8 +23,8 @@ public:
 	~BvQueue();
 
 	// Allocator
-	MemoryArenaType* GetAllocator() const;
-	void SetAllocator(MemoryArenaType* pAllocator);
+	IBvMemoryArena* GetAllocator() const;
+	void SetAllocator(IBvMemoryArena* pArena, size_t reserveSize = 0);
 
 	void PushBack(const Type& value);
 	void PushBack(Type&& value);
@@ -61,29 +61,34 @@ private:
 
 private:
 	Type* m_pData = nullptr;
-	MemoryArenaType* m_pAllocator = nullptr;
+	IBvMemoryArena* m_pArena = nullptr;
 	u32 m_Size = 0;
 	u32 m_Capacity = 0;
 	u32 m_Front = 0;
 };
 
 
-template<typename Type, typename MemoryArenaType>
-BvQueue<Type, MemoryArenaType>::BvQueue()
+template<typename Type>
+BvQueue<Type>::BvQueue()
+	: m_pArena(BV_DEFAULT_MEMORY_ARENA)
 {
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvQueue<Type, MemoryArenaType>::BvQueue(MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Type>
+inline BvQueue<Type>::BvQueue(IBvMemoryArena* pArena, size_t reserveSize)
+	: m_pArena(pArena)
 {
+	if (reserveSize)
+	{
+		Reserve(reserveSize);
+	}
 }
 
 
-template<typename Type, typename MemoryArenaType>
-BvQueue<Type, MemoryArenaType>::BvQueue(std::initializer_list<Type> list, MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Type>
+BvQueue<Type>::BvQueue(std::initializer_list<Type> list, IBvMemoryArena* pArena)
+	: m_pArena(pArena)
 {
 	Grow(list.size());
 
@@ -95,9 +100,9 @@ BvQueue<Type, MemoryArenaType>::BvQueue(std::initializer_list<Type> list, Memory
 }
 
 
-template<typename Type, typename MemoryArenaType>
-BvQueue<Type, MemoryArenaType>::BvQueue(const BvQueue& rhs)
-	: m_pAllocator(rhs.m_pAllocator)
+template<typename Type>
+BvQueue<Type>::BvQueue(const BvQueue& rhs)
+	: m_pArena(rhs.m_pArena)
 {
 	Grow(rhs.m_Size);
 
@@ -109,20 +114,20 @@ BvQueue<Type, MemoryArenaType>::BvQueue(const BvQueue& rhs)
 }
 
 
-template<typename Type, typename MemoryArenaType>
-BvQueue<Type, MemoryArenaType>::BvQueue(BvQueue&& rhs) noexcept
+template<typename Type>
+BvQueue<Type>::BvQueue(BvQueue&& rhs) noexcept
 {
 	*this = std::move(rhs);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-BvQueue<Type, MemoryArenaType>& BvQueue<Type, MemoryArenaType>::operator =(const BvQueue& rhs)
+template<typename Type>
+BvQueue<Type>& BvQueue<Type>::operator =(const BvQueue& rhs)
 {
 	if (this != &rhs)
 	{
 		Destroy();
-		SetAllocator(rhs.m_pAllocator);
+		SetAllocator(rhs.m_pArena);
 		Grow(rhs.m_Size);
 
 		m_Size = rhs.m_Size;
@@ -136,13 +141,13 @@ BvQueue<Type, MemoryArenaType>& BvQueue<Type, MemoryArenaType>::operator =(const
 }
 
 
-template<typename Type, typename MemoryArenaType>
-BvQueue<Type, MemoryArenaType>& BvQueue<Type, MemoryArenaType>::operator =(BvQueue&& rhs) noexcept
+template<typename Type>
+BvQueue<Type>& BvQueue<Type>::operator =(BvQueue&& rhs) noexcept
 {
 	if (this != &rhs)
 	{
 		std::swap(m_pData, rhs.m_pData);
-		std::swap(m_pAllocator, rhs.m_pAllocator);
+		std::swap(m_pArena, rhs.m_pArena);
 		std::swap(m_Size, rhs.m_Size);
 		std::swap(m_Capacity, rhs.m_Capacity);
 		std::swap(m_Front, rhs.m_Front);
@@ -152,8 +157,8 @@ BvQueue<Type, MemoryArenaType>& BvQueue<Type, MemoryArenaType>::operator =(BvQue
 }
 
 
-template<typename Type, typename MemoryArenaType>
-BvQueue<Type, MemoryArenaType>& BvQueue<Type, MemoryArenaType>::operator =(std::initializer_list<Type> list)
+template<typename Type>
+BvQueue<Type>& BvQueue<Type>::operator =(std::initializer_list<Type> list)
 {
 	Clear();
 
@@ -170,62 +175,68 @@ BvQueue<Type, MemoryArenaType>& BvQueue<Type, MemoryArenaType>::operator =(std::
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvQueue<Type, MemoryArenaType>::~BvQueue()
+template<typename Type>
+inline BvQueue<Type>::~BvQueue()
 {
 	Destroy();
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline MemoryArenaType* BvQueue<Type, MemoryArenaType>::GetAllocator() const
+template<typename Type>
+inline IBvMemoryArena* BvQueue<Type>::GetAllocator() const
 {
-	return m_pAllocator;
+	return m_pArena;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline void BvQueue<Type, MemoryArenaType>::SetAllocator(MemoryArenaType* pAllocator)
+template<typename Type>
+inline void BvQueue<Type>::SetAllocator(IBvMemoryArena* pArena, size_t reserveSize)
 {
-	if (m_pAllocator == pAllocator)
+	BV_ASSERT(pArena != nullptr, "Memory arena can't be nullptr");
+	BV_ASSERT(m_pData == nullptr, "Can't change allocators after allocations have been made");
+	//if (m_pArena == pArena)
+	//{
+	//	return;
+	//}
+
+	//if (m_Capacity > 0)
+	//{
+	//	Type* pNewData = reinterpret_cast<Type*>(m_pArena ? BV_MALLOC(*m_pArena, m_Capacity * sizeof(Type), alignof(Type)) : BV_ALLOC(m_Capacity * sizeof(Type), alignof(Type)));
+	//	for (auto i = 0u; i < m_Size; i++)
+	//	{
+	//		new (&pNewData[i]) Type(std::move(m_pData[(m_Front + i) % m_Capacity]));
+	//	}
+
+	//	Clear();
+	//	m_pArena ? BV_MFREE(*m_pArena, m_pData) : BV_FREE(m_pData);
+	//	m_pData = pNewData;
+	//}
+
+	m_pArena = pArena;
+	if (reserveSize)
 	{
-		return;
+		Reserve(reserveSize);
 	}
-
-	if (m_Capacity > 0)
-	{
-		Type* pNewData = reinterpret_cast<Type*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, m_Capacity * sizeof(Type), alignof(Type)) : BV_ALLOC(m_Capacity * sizeof(Type), alignof(Type)));
-		for (auto i = 0u; i < m_Size; i++)
-		{
-			new (&pNewData[i]) Type(std::move(m_pData[(m_Front + i) % m_Capacity]));
-		}
-
-		Clear();
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
-		m_pData = pNewData;
-	}
-
-	m_pAllocator = pAllocator;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-void BvQueue<Type, MemoryArenaType>::PushBack(const Type& value)
+template<typename Type>
+void BvQueue<Type>::PushBack(const Type& value)
 {
 	EmplaceBack(value);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-void BvQueue<Type, MemoryArenaType>::PushBack(Type&& value)
+template<typename Type>
+void BvQueue<Type>::PushBack(Type&& value)
 {
 	EmplaceBack(std::move(value));
 }
 
 
-template<typename Type, typename MemoryArenaType>
+template<typename Type>
 template<typename... Args>
-Type& BvQueue<Type, MemoryArenaType>::EmplaceBack(Args&&... args)
+Type& BvQueue<Type>::EmplaceBack(Args&&... args)
 {
 	if (m_Size == m_Capacity)
 	{
@@ -239,23 +250,23 @@ Type& BvQueue<Type, MemoryArenaType>::EmplaceBack(Args&&... args)
 }
 
 
-template<typename Type, typename MemoryArenaType>
-void BvQueue<Type, MemoryArenaType>::PushFront(const Type& value)
+template<typename Type>
+void BvQueue<Type>::PushFront(const Type& value)
 {
 	EmplaceFront(value);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-void BvQueue<Type, MemoryArenaType>::PushFront(Type&& value)
+template<typename Type>
+void BvQueue<Type>::PushFront(Type&& value)
 {
 	EmplaceFront(std::move(value));
 }
 
 
-template<typename Type, typename MemoryArenaType>
+template<typename Type>
 template<typename... Args>
-Type& BvQueue<Type, MemoryArenaType>::EmplaceFront(Args&&... args)
+Type& BvQueue<Type>::EmplaceFront(Args&&... args)
 {
 	if (m_Size == m_Capacity)
 	{
@@ -270,8 +281,8 @@ Type& BvQueue<Type, MemoryArenaType>::EmplaceFront(Args&&... args)
 }
 
 
-template<typename Type, typename MemoryArenaType>
-bool BvQueue<Type, MemoryArenaType>::PopFront()
+template<typename Type>
+bool BvQueue<Type>::PopFront()
 {
 	if (IsEmpty())
 	{
@@ -289,8 +300,8 @@ bool BvQueue<Type, MemoryArenaType>::PopFront()
 }
 
 
-template<typename Type, typename MemoryArenaType>
-bool BvQueue<Type, MemoryArenaType>::PopFront(Type& value)
+template<typename Type>
+bool BvQueue<Type>::PopFront(Type& value)
 {
 	if (IsEmpty())
 	{
@@ -305,8 +316,8 @@ bool BvQueue<Type, MemoryArenaType>::PopFront(Type& value)
 }
 
 
-template<typename Type, typename MemoryArenaType>
-bool BvQueue<Type, MemoryArenaType>::PopBack()
+template<typename Type>
+bool BvQueue<Type>::PopBack()
 {
 	if (IsEmpty())
 	{
@@ -323,8 +334,8 @@ bool BvQueue<Type, MemoryArenaType>::PopBack()
 }
 
 
-template<typename Type, typename MemoryArenaType>
-bool BvQueue<Type, MemoryArenaType>::PopBack(Type& value)
+template<typename Type>
+bool BvQueue<Type>::PopBack(Type& value)
 {
 	if (IsEmpty())
 	{
@@ -342,61 +353,61 @@ bool BvQueue<Type, MemoryArenaType>::PopBack(Type& value)
 }
 
 
-template<typename Type, typename MemoryArenaType>
-Type& BvQueue<Type, MemoryArenaType>::Front()
+template<typename Type>
+Type& BvQueue<Type>::Front()
 {
 	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[m_Front];
 }
 
 
-template<typename Type, typename MemoryArenaType>
-const Type& BvQueue<Type, MemoryArenaType>::Front() const
+template<typename Type>
+const Type& BvQueue<Type>::Front() const
 {
 	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[m_Front];
 }
 
 
-template<typename Type, typename MemoryArenaType>
-Type& BvQueue<Type, MemoryArenaType>::Back()
+template<typename Type>
+Type& BvQueue<Type>::Back()
 {
 	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[(m_Front + (m_Size - 1)) % m_Capacity];
 }
 
 
-template<typename Type, typename MemoryArenaType>
-const Type& BvQueue<Type, MemoryArenaType>::Back() const
+template<typename Type>
+const Type& BvQueue<Type>::Back() const
 {
 	BV_ASSERT(!IsEmpty(), "Queue is empty!");
 	return m_pData[(m_Front + (m_Size - 1)) % m_Capacity];
 }
 
 
-template<typename Type, typename MemoryArenaType>
-u32 BvQueue<Type, MemoryArenaType>::Size() const
+template<typename Type>
+u32 BvQueue<Type>::Size() const
 {
 	return m_Size;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-u32 BvQueue<Type, MemoryArenaType>::Capacity() const
+template<typename Type>
+u32 BvQueue<Type>::Capacity() const
 {
 	return m_Capacity;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-bool BvQueue<Type, MemoryArenaType>::IsEmpty() const
+template<typename Type>
+bool BvQueue<Type>::IsEmpty() const
 {
 	return m_Size == 0;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline void BvQueue<Type, MemoryArenaType>::Clear()
+template<typename Type>
+inline void BvQueue<Type>::Clear()
 {
 	if constexpr (!std::is_trivially_destructible_v<Type>)
 	{
@@ -412,22 +423,22 @@ inline void BvQueue<Type, MemoryArenaType>::Clear()
 }
 
 
-template<typename Type, typename MemoryArenaType>
-void BvQueue<Type, MemoryArenaType>::Reserve(u32 size)
+template<typename Type>
+void BvQueue<Type>::Reserve(u32 size)
 {
 	Grow(size);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline void BvQueue<Type, MemoryArenaType>::Grow(u32 size)
+template<typename Type>
+inline void BvQueue<Type>::Grow(u32 size)
 {
 	if (size <= m_Capacity)
 	{
 		return;
 	}
 
-	Type* pNewData = reinterpret_cast<Type*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, size * sizeof(Type), alignof(Type)) : BV_ALLOC(size * sizeof(Type), alignof(Type)));
+	Type* pNewData = reinterpret_cast<Type*>(m_pArena->Allocate(size * sizeof(Type), alignof(Type)));
 	for (auto i = 0u; i < m_Size; i++)
 	{
 		auto curr = (m_Front + i) % m_Capacity;
@@ -438,19 +449,19 @@ inline void BvQueue<Type, MemoryArenaType>::Grow(u32 size)
 	m_Capacity = size;
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
+		m_pArena->Free(m_pData);
 	}
 	m_pData = pNewData;
 	m_Front = 0;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline void BvQueue<Type, MemoryArenaType>::Destroy()
+template<typename Type>
+inline void BvQueue<Type>::Destroy()
 {
 	Clear();
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
+		m_pArena->Free(m_pData);
 	}
 }

@@ -8,10 +8,7 @@
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderResourceLayoutVk);
-
-
+BV_OBJECT_DEFINE_ID(BvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
 class BvShaderResourceLayoutVk final : public IBvShaderResourceLayout, public IBvResourceVk
 {
 	struct ResourceId
@@ -76,6 +73,7 @@ private:
 	BvRobinMap<ResourceId, const ShaderResourceDesc*> m_Resources;
 	BvRobinMap<PushConstantId, PushConstantData> m_PushConstantOffsets;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderResourceLayoutVk);
 
 
 class BvShaderResourceParamsVk final : public IBvShaderResourceParams

@@ -1,4 +1,5 @@
 #include "BvMemoryTracker.h"
+#include "BDeV/Core/System/Process/BvProcess.h"
 
 
 // ===============================================
@@ -14,7 +15,7 @@ BvSimpleMemoryTracker::~BvSimpleMemoryTracker()
 }
 
 
-void BvSimpleMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const BvSourceInfo& sourceInfo)
+void BvSimpleMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const std::source_location& sourceInfo)
 {
 	m_NumAllocations++;
 }
@@ -39,7 +40,7 @@ BvExtendedMemoryTracker::~BvExtendedMemoryTracker()
 }
 
 
-void BvExtendedMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const BvSourceInfo& sourceInfo)
+void BvExtendedMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const std::source_location& sourceInfo)
 {
 	auto& trackingData = m_Allocations[pMem];
 	trackingData.m_SourceInfo = sourceInfo;
@@ -54,7 +55,7 @@ void BvExtendedMemoryTracker::OnDeallocation(void* pMem)
 }
 
 
-void BvExtendedMemoryTracker::GetTrackingInfo(void* pMem, TrackingInfo& trackingInfo) const
+void BvExtendedMemoryTracker::GetTrackingInfo(void* pMem, BvTrackedAllocationInfo& trackingInfo) const
 {
 	auto iter = m_Allocations.FindKey(pMem);
 	if (iter != m_Allocations.cend())
@@ -79,7 +80,7 @@ BvFullMemoryTracker::~BvFullMemoryTracker()
 }
 
 
-void BvFullMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const BvSourceInfo& sourceInfo)
+void BvFullMemoryTracker::OnAllocation(void* pMem, size_t size, size_t alignment, const std::source_location& sourceInfo)
 {
 	auto& trackingData = m_Allocations[pMem];
 	trackingData.m_SourceInfo = sourceInfo;
@@ -96,7 +97,7 @@ void BvFullMemoryTracker::OnDeallocation(void* pMem)
 }
 
 
-void BvFullMemoryTracker::GetTrackingInfo(void* pMem, TrackingInfo& trackingInfo) const
+void BvFullMemoryTracker::GetTrackingInfo(void* pMem, BvTrackedAllocationInfo& trackingInfo) const
 {
 	auto iter = m_Allocations.FindKey(pMem);
 	if (iter != m_Allocations.cend())

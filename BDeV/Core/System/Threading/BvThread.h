@@ -41,15 +41,13 @@ public:
 	BvThread& operator=(BvThread&& rhs) noexcept;
 	~BvThread();
 
-	template<class Fn, class... Args,
-		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
-	BvThread(Fn&& fn, Args&&... args)
-		: BvThread(CreateInfo{}, std::forward<Fn>(fn), std::forward<Args>(args)...) {}
+	template<class Fn, typename = typename std::enable_if_t<std::is_invocable_v<Fn> && !std::is_integral_v<Fn>>>
+	BvThread(Fn&& fn)
+		: BvThread(CreateInfo{}, std::forward<Fn>(fn)) {}
 
-	template<class Fn, class... Args,
-		typename = typename std::enable_if_t<std::is_invocable_v<Fn, Args...> && !std::is_integral_v<Fn>>>
-	BvThread(const CreateInfo& createInfo, Fn&& fn, Args&&... args)
-		: m_pTask(new((void*)BV_NEW_ARRAY(u8, sizeof(Internal::BvTaskT<Fn, Args...>))) Internal::BvTaskT<Fn, Args...>(std::forward<Fn>(fn), std::forward<Args>(args)...))
+	template<class Fn, typename = typename std::enable_if_t<std::is_invocable_v<Fn> && !std::is_integral_v<Fn>>>
+	BvThread(const CreateInfo& createInfo, Fn&& fn)
+		: m_Task(std::forward<Fn>(fn))
 	{
 		Create(createInfo);
 	}
@@ -78,9 +76,15 @@ private:
 	void Create(const CreateInfo& createInfo);
 	void Destroy();
 
+#if BV_PLATFORM == BV_PLATFORM_WIN32
+	static u32 CALLBACK ThreadEntryPoint(void* pData);
+#endif
+
 private:
+	static constexpr auto kTaskSize = 32;
+
+	BvMTask<kTaskSize> m_Task;
 	u64 m_ThreadId = 0;
 	OSThreadHandle m_hThread = nullptr;
-	IBvTask* m_pTask = nullptr;
 	bool m_IsRunning = false;
 };

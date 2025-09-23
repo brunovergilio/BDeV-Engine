@@ -5,8 +5,7 @@
 #include "BDeV/Core/Container/BvVector.h"
 
 
-//BV_OBJECT_DEFINE_ID(BvShaderBlob, "fce3fec8-8e9a-4d7f-8da8-39953d8a7471");
-//BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderBlob);
+BV_OBJECT_DEFINE_ID(BvShaderBlob, "fce3fec8-8e9a-4d7f-8da8-39953d8a7471");
 class BvShaderBlob final : public IBvShaderBlob
 {
 	BV_NOCOPYMOVE(BvShaderBlob);
@@ -27,3 +26,4 @@ private:
 private:
 	BvVector<u8> m_ShaderBlob;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderBlob);

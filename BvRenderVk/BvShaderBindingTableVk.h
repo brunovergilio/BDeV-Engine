@@ -3,7 +3,6 @@
 
 #include "BvCommonVk.h"
 #include "BDeV/Core/RenderAPI/BvShaderBindingTable.h"
-#include "BDeV/Core/Utils/BvObject.h"
 #include "BvBufferVk.h"
 
 
@@ -11,10 +10,7 @@ class BvRenderDeviceVk;
 class BvCommandContextVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvShaderBindingTableVk, "0bb5abad-c53b-47bd-b939-989cb9d2e58d");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderBindingTableVk);
-
-
+BV_OBJECT_DEFINE_ID(BvShaderBindingTableVk, "0bb5abad-c53b-47bd-b939-989cb9d2e58d");
 class BvShaderBindingTableVk final : public IBvShaderBindingTable, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvShaderBindingTableVk);
@@ -45,6 +41,7 @@ private:
 	u32 m_GroupHandleAlignment = 0;
 	u32 m_BaseGroupAlignment = 0;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderBindingTableVk);
 
 
 BV_CREATE_CAST_TO_VK(BvShaderBindingTable)

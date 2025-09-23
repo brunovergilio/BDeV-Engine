@@ -3,12 +3,12 @@
 
 #include "BvCommonVk.h"
 #include "BDeV/Core/RenderAPI/BvCommandContext.h"
-#include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/Container/BvRobinMap.h"
 #include "BvCommandPoolVk.h"
 #include "BvDescriptorSetVk.h"
 #include "BvCommandQueueVk.h"
 #include "BvFramebufferVk.h"
+#include "BvGPUFenceVk.h"
 
 
 class BvRenderDeviceVk;
@@ -16,7 +16,6 @@ class BvBufferVk;
 class BvTextureVk;
 class BvQueryVk;
 class BvSwapChainVk;
-class BvGPUFenceVk;
 class BvQueryHeapManagerVk;
 class BvQueryASVk;
 class BvFramebufferManagerVk;
@@ -71,16 +70,13 @@ private:
 	ContextDataVk* m_pContextData;
 	BvVector<BvQueryVk*> m_Queries;
 	u32 m_UpdatedQueries = 0;
-	BvGPUFenceVk* m_pFence = nullptr;
+	BvRCRef<BvGPUFenceVk> m_pFence;
 	std::pair<u64, u64> m_SignaValueIndex;
 	u32 m_FrameIndex;
 };
 
 
-//BV_OBJECT_DEFINE_ID(IBvCommandContextVk, "87f18018-a53f-43e7-b7f5-b39d662d0ce5");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvCommandContextVk);
-
-
+BV_OBJECT_DEFINE_ID(BvCommandContextVk, "87f18018-a53f-43e7-b7f5-b39d662d0ce5");
 class BvCommandContextVk final : public IBvCommandContext, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvCommandContextVk);
@@ -212,6 +208,7 @@ private:
 	u32 m_ContextGroupIndex = 0;
 	u32 m_ContextIndex = 0;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvCommandContextVk);
 
 
 BV_CREATE_CAST_TO_VK(BvCommandContext)

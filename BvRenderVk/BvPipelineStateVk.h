@@ -8,10 +8,7 @@
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvGraphicsPipelineStateVk, "55186b73-74c0-418f-918f-89a434b5ba0e");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvGraphicsPipelineStateVk);
-
-
+BV_OBJECT_DEFINE_ID(BvGraphicsPipelineStateVk, "55186b73-74c0-418f-918f-89a434b5ba0e");
 class BvGraphicsPipelineStateVk final : public IBvGraphicsPipelineState, public IBvResourceVk
 {
 	BV_VK_DEVICE_RES_DECL;
@@ -41,12 +38,10 @@ private:
 	bool m_HasMeshShaders = false;
 	bool m_HasTessellationShaders = false;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvGraphicsPipelineStateVk);
 
 
-//BV_OBJECT_DEFINE_ID(IBvComputePipelineStateVk, "7cd60015-65f1-4258-a8db-fd093dd085c6");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvComputePipelineStateVk);
-
-
+BV_OBJECT_DEFINE_ID(BvComputePipelineStateVk, "7cd60015-65f1-4258-a8db-fd093dd085c6");
 class BvComputePipelineStateVk final : public IBvComputePipelineState, public IBvResourceVk
 {
 	BV_VK_DEVICE_RES_DECL;
@@ -72,12 +67,10 @@ private:
 	VkPipelineCache m_PipelineCache = VK_NULL_HANDLE;
 	ComputePipelineStateDesc m_PipelineStateDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvComputePipelineStateVk);
 
 
-//BV_OBJECT_DEFINE_ID(IBvRayTracingPipelineStateVk, "5ab21c28-09a4-4a86-a001-776e28fa3324");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvRayTracingPipelineStateVk);
-
-
+BV_OBJECT_DEFINE_ID(BvRayTracingPipelineStateVk, "5ab21c28-09a4-4a86-a001-776e28fa3324");
 class BvRayTracingPipelineStateVk final : public IBvRayTracingPipelineState, public IBvResourceVk
 {
 	BV_VK_DEVICE_RES_DECL;
@@ -105,6 +98,7 @@ private:
 	RayTracingPipelineStateDesc m_PipelineStateDesc;
 	BvVector<VkShaderStageFlagBits> m_ShaderStages;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRayTracingPipelineStateVk);
 
 
 BV_CREATE_CAST_TO_VK(BvGraphicsPipelineState)

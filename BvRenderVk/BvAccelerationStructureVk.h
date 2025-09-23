@@ -11,10 +11,7 @@
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvAccelerationStructureVk, "70617509-5657-4c47-9a4e-dc318b535076");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvAccelerationStructureVk);
-
-
+BV_OBJECT_DEFINE_ID(BvAccelerationStructureVk, "70617509-5657-4c47-9a4e-dc318b535076");
 class BvAccelerationStructureVk final : public IBvAccelerationStructure, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvAccelerationStructureVk);
@@ -51,14 +48,15 @@ private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkAccelerationStructureKHR m_Handle = VK_NULL_HANDLE;
 	VkDeviceAddress m_DeviceAddress = 0;
-	BvRCRef<BvBufferVk> m_Buffer = nullptr;
-	BvRCRef<BvBufferVk> m_StagingBuffer = nullptr;
+	BvRCRef<BvBufferVk> m_Buffer;
+	BvRCRef<BvBufferVk> m_StagingBuffer;
 	RayTracingAccelerationStructureScratchSize m_ScratchSizes;
 	BvVector<VkAccelerationStructureGeometryKHR> m_Geometries;
 	BvVector<u32> m_PrimitiveCounts;
 	RayTracingAccelerationStructureDesc m_Desc;
 	BvRobinMap<BvStringId, u32> m_GeometryMap;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvAccelerationStructureVk);
 
 
 BV_CREATE_CAST_TO_VK(BvAccelerationStructure)

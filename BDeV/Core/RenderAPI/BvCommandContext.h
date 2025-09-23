@@ -3,21 +3,12 @@
 
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Core/RenderAPI/BvGPUFence.h"
-#include "BDeV/Core/Utils/BvObject.h"
 
 
-class IBvBuffer;
-class IBvBufferView;
-class IBvTexture;
-class IBvTextureView;
-class IBvSampler;
-class IBvRenderPass;
 class IBvGraphicsPipelineState;
 class IBvComputePipelineState;
-class IBvRayTracingPipelineState;
 class IBvShaderResourceParams;
 class IBvQuery;
-class IBvShaderBindingTable;
 
 
 class BvGPUOp
@@ -37,8 +28,7 @@ private:
 };
 
 
-//BV_OBJECT_DEFINE_ID(IBvCommandContext, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvCommandContext);
+BV_OBJECT_DEFINE_ID(IBvCommandContext, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
 class IBvCommandContext : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvCommandContext);
@@ -215,3 +205,4 @@ protected:
 	IBvCommandContext() {}
 	~IBvCommandContext() = 0 {}
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvCommandContext);

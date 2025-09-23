@@ -1,7 +1,12 @@
 #include "BvMemory.h"
+#include <utility>
+#include "Utilities/BvBoundsChecker.h"
+#include "Utilities/BvMemoryMarker.h"
+#include "Utilities/BvMemoryTracker.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
 
 
-void* BvMemory::Allocate(size_t size, size_t alignment, size_t alignmentOffset)
+void* BvMemory::Allocate(size_t size, size_t alignment, size_t offset)
 {
 	BV_ASSERT(size > 0, "Size can't be 0");
 	BV_ASSERT((alignment & (alignment - 1)) == 0, "Alignment has to be a power of 2");
@@ -10,14 +15,14 @@ void* BvMemory::Allocate(size_t size, size_t alignment, size_t alignmentOffset)
 	// the alignment and alignment offset, and we also add another (kPointerSize * 2)
 	// bytes, that way we can store the total allocation size as well as the
 	// original address, in order to free it later
-	auto totalSize = RoundToNearestMultiple(size + alignment + alignmentOffset, kPointerSize) + (kPointerSize << 1);
+	auto totalSize = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + offset, kPointerSize) + (kPointerSize << 1);
 	MemType unalignedMem{ std::malloc(totalSize) };
 
 	// We align the memory with the added offset and kPointerSize
-	MemType alignedMemWithOffset{ AlignMemory(unalignedMem.pAsCharPtr + alignmentOffset + (kPointerSize << 1), alignment) };
+	MemType alignedMemWithOffset{ AlignMemory(unalignedMem.pAsCharPtr + offset + (kPointerSize << 1), alignment) };
 
 	// We move back the offset bytes
-	alignedMemWithOffset.pAsCharPtr -= alignmentOffset;
+	alignedMemWithOffset.pAsCharPtr -= offset;
 	// And then we set the originally allocated memory address
 	alignedMemWithOffset.pAsSizeTPtr[-1] = unalignedMem.asSizeT;
 
@@ -66,4 +71,24 @@ void* BvMemory::AlignMemory(void* pMem, size_t alignment)
 
 	const size_t mask = alignment - 1;
 	return reinterpret_cast<void*>((reinterpret_cast<size_t>(pMem) + mask) & (~mask));
+}
+
+
+using BvDefaultMemoryArena = BvMemoryArena<BvDefaultAllocator, BvNoLock, BvNoBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker, BvNoMemoryLogger>;
+BvDefaultMemoryArena g_DefaultMemoryArena;
+IBvMemoryArena* g_pDefaultMemoryArena = &g_DefaultMemoryArena;
+
+
+IBvMemoryArena* GetDefaultMemoryArena()
+{
+	return g_pDefaultMemoryArena;
+}
+
+
+IBvMemoryArena* SetDefaultMemoryArena(IBvMemoryArena* pArena)
+{
+	auto pCurrArena = g_pDefaultMemoryArena;
+	g_pDefaultMemoryArena = pArena;
+
+	return pCurrArena;
 }

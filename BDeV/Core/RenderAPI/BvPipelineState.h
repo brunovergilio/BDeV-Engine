@@ -2,19 +2,9 @@
 
 
 #include "BvRenderCommon.h"
-#include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Container/BvFixedVector.h"
-#include "BDeV/Core/Container/BvString.h"
-#include "BDeV/Core/Utils/BvObject.h"
 
 
-class IBvShaderResourceLayout;
-class IBvShader;
-class IBvRenderPass;
-
-
-//BV_OBJECT_DEFINE_ID(IBvGraphicsPipelineState, "863fd051-1ea0-4913-bd1c-2dd02f69589f");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvGraphicsPipelineState);
+BV_OBJECT_DEFINE_ID(IBvGraphicsPipelineState, "863fd051-1ea0-4913-bd1c-2dd02f69589f");
 class IBvGraphicsPipelineState : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvGraphicsPipelineState);
@@ -26,10 +16,10 @@ protected:
 	IBvGraphicsPipelineState() {}
 	~IBvGraphicsPipelineState() {}
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvGraphicsPipelineState);
 
 
-//BV_OBJECT_DEFINE_ID(IBvComputePipelineState, "3d4b6d6a-9cb4-42ff-bc14-ec6a328b2801");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvComputePipelineState);
+BV_OBJECT_DEFINE_ID(IBvComputePipelineState, "3d4b6d6a-9cb4-42ff-bc14-ec6a328b2801");
 class IBvComputePipelineState : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvComputePipelineState);
@@ -41,10 +31,10 @@ protected:
 	IBvComputePipelineState() {}
 	~IBvComputePipelineState() {}
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvComputePipelineState);
 
 
-//BV_OBJECT_DEFINE_ID(IBvRayTracingPipelineState, "e04f4570-bb75-4ff2-b9e2-02ba4affb9de");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvRayTracingPipelineState);
+BV_OBJECT_DEFINE_ID(IBvRayTracingPipelineState, "e04f4570-bb75-4ff2-b9e2-02ba4affb9de");
 class IBvRayTracingPipelineState : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvRayTracingPipelineState);
@@ -56,3 +46,4 @@ protected:
 	IBvRayTracingPipelineState() {}
 	~IBvRayTracingPipelineState() {}
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(IBvRayTracingPipelineState);

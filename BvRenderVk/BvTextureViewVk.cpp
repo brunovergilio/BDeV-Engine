@@ -1,4 +1,5 @@
 #include "BvTextureViewVk.h"
+#include "BvTextureVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvTypeConversionsVk.h"
 #include "BvUtilsVk.h"
@@ -29,10 +30,21 @@ bool BvTextureViewVk::Create()
 	BV_ASSERT(vkFormatMap.format != VK_FORMAT_UNDEFINED, "Format not supported in Vulkan");
 
 	VkImageAspectFlags aspectFlags = vkFormatMap.aspectFlags;
-	if (vkFormatMap.aspectFlags == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)
+	if ((vkFormatMap.aspectFlags & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
 		&& EHasAnyFlags(m_TextureViewDesc.m_pTexture->GetDesc().m_UsageFlags, TextureUsage::kShaderResource | TextureUsage::kInputAttachment))
 	{
 		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+	else if (vkFormatMap.aspectFlags & (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT))
+	{
+		switch (m_TextureViewDesc.m_SubresourceDesc.planeSlice)
+		{
+		case 0: aspectFlags = VK_IMAGE_ASPECT_PLANE_0_BIT; break;
+		case 1: aspectFlags = VK_IMAGE_ASPECT_PLANE_1_BIT; break;
+		case 2: aspectFlags = VK_IMAGE_ASPECT_PLANE_2_BIT; break;
+		default:
+			BV_ASSERT(m_TextureViewDesc.m_SubresourceDesc.planeSlice > 2, "Invalid plane slice");
+		}
 	}
 
 	VkImageViewCreateInfo imageViewCreateInfo{};

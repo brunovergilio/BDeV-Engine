@@ -349,12 +349,9 @@ void BvParallelJobSystem::Initialize(const JobSystemDesc& desc)
 	m_pMemoryArena = desc.m_pMemoryArena;
 	if (!m_pMemoryArena)
 	{
-		using MemoryArenaType = BvMemoryArena<BvGrowableHeapAllocator, BvNoLock, BvNoBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker>;
-
 		// Reserve extra space just in case
 		size_t maxSize = (desc.m_JobListPoolSize * sizeof(BvParallelJobList) + desc.m_JobPoolSize * sizeof(BvParallelJobList::Job)) << 2;
-		m_pMemory = BV_NEW(BvGrowableHeapAllocator)(maxSize);
-		m_pMemoryArena = BV_NEW(MemoryArenaType)(reinterpret_cast<BvGrowableHeapAllocator*>(m_pMemory), BV_NAME_ID("Job System Memory Arena"));
+		m_pMemoryArena->SetName("Job System Memory Arena");
 	}
 
 	const auto& sysInfo = BvSystem::GetSystemInfo();
@@ -408,10 +405,6 @@ void BvParallelJobSystem::Shutdown()
 		}
 		BV_MFREE(*m_pMemoryArena, m_pWorkers);
 
-		auto pAllocator = reinterpret_cast<BvGrowableHeapAllocator*>(m_pMemory);
-		BV_DELETE(pAllocator);
-		m_pMemory = nullptr;
-
 		BV_DELETE(m_pMemoryArena);
 		m_pMemoryArena = nullptr;
 	}
@@ -427,7 +420,7 @@ BvParallelJobList* BvParallelJobSystem::AllocJobList(u32 maxJobs, u32 maxSyncs, 
 
 void BvParallelJobSystem::FreeJobList(BvParallelJobList*& pJobList)
 {
-	BV_MDELETE(*m_pMemoryArena, pJobList);
+	BV_MDELETE_IN_PLACE(*m_pMemoryArena, pJobList);
 	BV_MDELETE_ARRAY(*m_pMemoryArena, pJobList->m_pJobs);
 	pJobList = nullptr;
 }

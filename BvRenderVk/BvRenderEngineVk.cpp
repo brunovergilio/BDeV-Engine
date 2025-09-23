@@ -2,6 +2,7 @@
 #include "BvUtilsVk.h"
 #include "BvRenderDeviceVk.h"
 #include "BvDebugReportVk.h"
+#include "BDeV/Core/Container/BvVector.h"
 
 
 class BvRenderEngineVkHelper
@@ -16,7 +17,7 @@ public:
 			s_pEngine = BV_NEW(BvRenderEngineVk)();
 			if (s_pEngine->GetGPUs().Size() == 0)
 			{
-				BV_DELETE(s_pEngine);
+				Destroy();
 				s_pEngine = nullptr;
 			}
 		}
@@ -30,7 +31,7 @@ public:
 
 	static void Destroy()
 	{
-		BV_DELETE(s_pEngine);
+		BV_DELETE_IN_PLACE(s_pEngine);
 	}
 
 private:
@@ -46,8 +47,13 @@ bool IsDeviceSuitable(VkPhysicalDevice gpu);
 void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo, BvGPUInfo& gpuInfo);
 
 
-IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc)
+bool BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvRenderDevice)))
+	{
+		return false;
+	}
+
 	BvRenderDeviceCreateDescVk descVk;
 	memcpy(&descVk, &deviceCreateDesc, sizeof(BvRenderDeviceCreateDesc));
 	u32 gpuIndex = descVk.m_GPUIndex;
@@ -73,10 +79,14 @@ IBvRenderDevice* BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCr
 		{
 			pDevice->Release();
 			pDevice = nullptr;
+
+			return false;
 		}
 	}
 
-	return pDevice;
+	*ppObj = pDevice;
+
+	return true;
 }
 
 
@@ -619,7 +629,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 
 	u32 queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, nullptr);
-	deviceInfo.m_QueueFamilyProperties.Resize(queueFamilyCount);
+	deviceInfo.m_QueueFamilyProperties.Resize(queueFamilyCount, { VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
 	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, deviceInfo.m_QueueFamilyProperties.Data());
 
 	auto hasFlagFn = [](VkQueueFlags queueFlags, VkQueueFlagBits flag)
@@ -741,14 +751,16 @@ namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API IBvRenderEngine* CreateRenderEngine()
+		BV_API bool CreateRenderEngine(const BvUUID& objId, void** ppObj)
 		{
-			return BvRenderEngineVkHelper::Create();
-		}
+			if (!ppObj || (objId != BV_OBJECT_ID(BvRenderEngineVk) && objId != BV_OBJECT_ID(IBvRenderEngine)))
+			{
+				return false;
+			}
 
-		BV_API BvRenderEngineVk* CreateRenderEngineVk()
-		{
-			return BvRenderEngineVkHelper::Create();
+			*ppObj = BvRenderEngineVkHelper::Create();
+			
+			return *ppObj != nullptr;
 		}
 	}
 }

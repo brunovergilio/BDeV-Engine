@@ -1,4 +1,5 @@
 #include "BvRenderDeviceVk.h"
+#include "BvRenderEngineVk.h"
 #include "BvUtilsVk.h"
 #include "BvCommandQueueVk.h"
 #include "BvSwapChainVk.h"
@@ -37,136 +38,253 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 }
 
 
-IBvSwapChain* BvRenderDeviceVk::CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext)
+bool BvRenderDeviceVk::CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj)
 {
-	auto pObj = CreateResource<BvSwapChainVk>(this, pWindow, swapChainDesc, TO_VK(pContext));
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvSwapChain)))
+	{
+		return false;
+	}
+
+	auto pObj = CreateResource<BvSwapChainVk>(this, pWindow, desc, TO_VK(pContext));
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvBuffer* BvRenderDeviceVk::CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData)
+bool BvRenderDeviceVk::CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvBuffer)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvBufferVk>(this, desc, pInitData);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvBufferView* BvRenderDeviceVk::CreateBufferViewImpl(const BufferViewDesc& desc)
+bool BvRenderDeviceVk::CreateBufferViewImpl(const BufferViewDesc& desc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvBufferView)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvBufferViewVk>(this, desc);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvTexture* BvRenderDeviceVk::CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData)
+bool BvRenderDeviceVk::CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvTexture)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvTextureVk>(this, desc, pInitData);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvTextureView* BvRenderDeviceVk::CreateTextureViewImpl(const TextureViewDesc& desc)
+bool BvRenderDeviceVk::CreateTextureViewImpl(const TextureViewDesc& desc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvTextureView)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvTextureViewVk>(this, desc);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvSampler* BvRenderDeviceVk::CreateSamplerImpl(const SamplerDesc& desc)
+bool BvRenderDeviceVk::CreateSamplerImpl(const SamplerDesc& desc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvSampler)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvSamplerVk>(this, desc);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvRenderPass* BvRenderDeviceVk::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc)
+bool BvRenderDeviceVk::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvRenderPass)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvRenderPassVk>(this, renderPassDesc);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvShaderResourceLayout* BvRenderDeviceVk::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc)
+bool BvRenderDeviceVk::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvShaderResourceLayout)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvShaderResourceLayoutVk>(this, srlDesc);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvShader* BvRenderDeviceVk::CreateShaderImpl(const ShaderCreateDesc& shaderDesc)
+bool BvRenderDeviceVk::CreateShaderImpl(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvShader)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvShaderVk>(this, shaderDesc);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvGraphicsPipelineState* BvRenderDeviceVk::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
+bool BvRenderDeviceVk::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvGraphicsPipelineState)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvGraphicsPipelineStateVk>(this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvComputePipelineState* BvRenderDeviceVk::CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc)
+bool BvRenderDeviceVk::CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvComputePipelineState)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvComputePipelineStateVk>(this, computePipelineStateDesc, VK_NULL_HANDLE);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvRayTracingPipelineState* BvRenderDeviceVk::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc)
+bool BvRenderDeviceVk::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvRayTracingPipelineState)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvRayTracingPipelineStateVk>(this, rayTracingPipelineStateDesc, VK_NULL_HANDLE);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvQuery* BvRenderDeviceVk::CreateQueryImpl(QueryType queryType)
+bool BvRenderDeviceVk::CreateQueryImpl(QueryType queryType, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvQuery)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvQueryVk>(this, queryType, 3);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvGPUFence* BvRenderDeviceVk::CreateFenceImpl(u64 value)
+bool BvRenderDeviceVk::CreateFenceImpl(u64 value, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvGPUFence)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvGPUFenceVk>(this, value);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvAccelerationStructure* BvRenderDeviceVk::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc)
+bool BvRenderDeviceVk::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvAccelerationStructure)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvAccelerationStructureVk>(this, asDesc);
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvShaderBindingTable* BvRenderDeviceVk::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext)
+bool BvRenderDeviceVk::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvShaderBindingTable)))
+	{
+		return false;
+	}
+
 	auto pObj = CreateResource<BvShaderBindingTableVk>(this, sbtDesc, m_pDeviceInfo->m_ExtendedProperties.rayTracingPipelineProps, TO_VK(pContext));
 	m_DeviceObjects.Emplace(pObj);
-	return pObj;
+	*ppObj = pObj;
+
+	return true;
 }
 
 
-IBvCommandContext* BvRenderDeviceVk::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc)
+bool BvRenderDeviceVk::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvCommandContext)))
+	{
+		return false;
+	}
+
 	BvCommandContextVk* pContext = nullptr;
 	u32 contextGroupIndex = kU32Max;
 	// If we have a specific, valid context group index, choose that
@@ -199,7 +317,7 @@ IBvCommandContext* BvRenderDeviceVk::CreateCommandContextImpl(const CommandConte
 	else
 	{
 		BV_ASSERT(false, "Invalid command context creation parameters");
-		return nullptr;
+		return false;
 	}
 
 	if (contextGroupIndex < m_Contexts.Size())
@@ -209,7 +327,9 @@ IBvCommandContext* BvRenderDeviceVk::CreateCommandContextImpl(const CommandConte
 		commandContextGroup.EmplaceBack(pContext);
 	}
 
-	return pContext;
+	*ppObj = pContext;
+
+	return true;
 }
 
 
@@ -447,7 +567,7 @@ void BvRenderDeviceVk::Destroy()
 
 void BvRenderDeviceVk::SelfDestroy()
 {
-	BV_DELETE(this);
+	BV_DELETE_IN_PLACE(this);
 }
 
 

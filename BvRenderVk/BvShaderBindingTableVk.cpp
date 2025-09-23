@@ -118,7 +118,7 @@ void BvShaderBindingTableVk::Create(BvCommandContextVk* pContext)
 	initData.m_pData = bufferData.Data();
 	initData.m_Size = bufferData.Size();
 
-	m_Buffer = BvRCRaw(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, &initData));
+	m_Buffer.Attach(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, &initData));
 	auto deviceAddress = m_Buffer->GetDeviceAddress();
 	currOffset = 0;
 	for (auto g = 0; g < 4; ++g)

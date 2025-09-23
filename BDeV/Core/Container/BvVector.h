@@ -4,17 +4,16 @@
 // BvVector
 // Container class, with variable-sized memory. Once memory has been allocated for a specific instance, the specified amount becomes
 // the maximum size for that instance. If the size needs to be increased, memory is reallocated again.
-// The class can reserve and/or resize its underlying container
+// The class can reserve and/or resize its underlying container, but not shrink.
 
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Container/BvIterator.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/System/Memory/BvMemoryArena.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 
 
-template<typename Type, typename MemoryArenaType = IBvMemoryArena>
+template<typename Type>
 class BvVector
 {
 public:
@@ -24,10 +23,10 @@ public:
 	using ConstReverseIterator = RandomReverseIterator<const Type>;
 
 	BvVector(); // Default
-	BvVector(MemoryArenaType* pAllocator); // Allocator
-	explicit BvVector(const size_t size, const Type & val = Type(), MemoryArenaType* pAllocator = nullptr); // Fill
-	explicit BvVector(Iterator start, Iterator end, MemoryArenaType* pAllocator = nullptr); // Range
-	BvVector(std::initializer_list<Type> list, MemoryArenaType* pAllocator = nullptr); // Initializer List
+	explicit BvVector(IBvMemoryArena* pArena, size_t reserveSize = 0); // Allocator
+	explicit BvVector(const size_t size, const Type & val = Type(), IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Fill
+	explicit BvVector(Iterator start, Iterator end, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Range
+	BvVector(std::initializer_list<Type> list, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Initializer List
 	BvVector(const BvVector & rhs); // Copy
 	BvVector(BvVector && rhs) noexcept; // Move
 
@@ -38,8 +37,8 @@ public:
 	~BvVector();
 
 	// Allocator
-	MemoryArenaType* GetAllocator() const;
-	void SetAllocator(MemoryArenaType* pAllocator);
+	IBvMemoryArena* GetAllocator() const;
+	void SetAllocator(IBvMemoryArena* pArena, size_t reserveSize = 0);
 
 	// Iterator
 	Iterator begin() { return Iterator(m_pData); }
@@ -80,8 +79,8 @@ public:
 	void Assign(Iterator start, Iterator end); // Range
 	void Assign(const size_t size, const Type & val); // Fill
 	void Assign(std::initializer_list<Type> list); // Initializer List
-	void PushBack(const Type & value);
-	void PushBack(Type && value);
+	Type& PushBack(const Type & value);
+	Type& PushBack(Type && value);
 	void PopBack();
 	void PopFront();
 	Iterator Insert(ConstIterator position, const Type & value);
@@ -93,7 +92,7 @@ public:
 	Iterator Erase(size_t startIndex, size_t count);
 	Iterator Erase(ConstIterator position);
 	Iterator Erase(ConstIterator first, ConstIterator last);
-	void EraseAndSwapWithLast(size_t index);
+	void EraseUnsorted(size_t index);
 	void Clear();
 	template <class... Args>
 	Iterator Emplace(ConstIterator position, Args&&... args);
@@ -108,52 +107,57 @@ private:
 
 private:
 	Type* m_pData = nullptr;
-	MemoryArenaType* m_pAllocator = nullptr;
+	IBvMemoryArena* m_pArena = nullptr;
 	size_t m_Size = 0;
 	size_t m_Capacity = 0;
 };
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::BvVector()
+template<typename Type>
+inline BvVector<Type>::BvVector()
+	: m_pArena(BV_DEFAULT_MEMORY_ARENA)
 {
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::BvVector(MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Type>
+inline BvVector<Type>::BvVector(IBvMemoryArena* pArena, size_t reserveSize)
+	: m_pArena(pArena)
 {
+	if (reserveSize)
+	{
+		Reserve(reserveSize);
+	}
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::BvVector(const size_t size, const Type & val, MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Type>
+inline BvVector<Type>::BvVector(const size_t size, const Type & val, IBvMemoryArena* pArena)
+	: m_pArena(pArena)
 {
 	Assign(size, val);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::BvVector(Iterator start, Iterator end, MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Type>
+inline BvVector<Type>::BvVector(Iterator start, Iterator end, IBvMemoryArena* pArena)
+	: m_pArena(pArena)
 {
 	Assign(start, end);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::BvVector(std::initializer_list<Type> list, MemoryArenaType* pAllocator)
-	: m_pAllocator(pAllocator)
+template<typename Type>
+inline BvVector<Type>::BvVector(std::initializer_list<Type> list, IBvMemoryArena* pArena)
+	: m_pArena(pArena)
 {
 	Assign(list);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::BvVector(const BvVector & rhs)
-	: m_pAllocator(rhs.m_pAllocator)
+template<typename Type>
+inline BvVector<Type>::BvVector(const BvVector & rhs)
+	: m_pArena(rhs.m_pArena)
 {
 	Grow(rhs.m_Size);
 
@@ -165,20 +169,20 @@ inline BvVector<Type, MemoryArenaType>::BvVector(const BvVector & rhs)
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::BvVector(BvVector && rhs) noexcept
+template<typename Type>
+inline BvVector<Type>::BvVector(BvVector && rhs) noexcept
 {
 	*this = std::move(rhs);
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>& BvVector<Type, MemoryArenaType>::operator=(const BvVector & rhs)
+template<typename Type>
+inline BvVector<Type>& BvVector<Type>::operator=(const BvVector & rhs)
 {
 	if (this != &rhs)
 	{
 		Destroy();
-		SetAllocator(rhs.m_pAllocator);
+		SetAllocator(rhs.m_pArena);
 		Grow(rhs.m_Size);
 
 		m_Size = rhs.m_Size;
@@ -192,13 +196,13 @@ inline BvVector<Type, MemoryArenaType>& BvVector<Type, MemoryArenaType>::operato
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>& BvVector<Type, MemoryArenaType>::operator=(BvVector && rhs) noexcept
+template<typename Type>
+inline BvVector<Type>& BvVector<Type>::operator=(BvVector && rhs) noexcept
 {
 	if (this != &rhs)
 	{
 		std::swap(m_pData, rhs.m_pData);
-		std::swap(m_pAllocator, rhs.m_pAllocator);
+		std::swap(m_pArena, rhs.m_pArena);
 		std::swap(m_Size, rhs.m_Size);
 		std::swap(m_Capacity, rhs.m_Capacity);
 	}
@@ -207,8 +211,8 @@ inline BvVector<Type, MemoryArenaType>& BvVector<Type, MemoryArenaType>::operato
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>& BvVector<Type, MemoryArenaType>::operator=(std::initializer_list<Type> list)
+template<typename Type>
+inline BvVector<Type>& BvVector<Type>::operator=(std::initializer_list<Type> list)
 {
 	Clear();
 
@@ -225,65 +229,71 @@ inline BvVector<Type, MemoryArenaType>& BvVector<Type, MemoryArenaType>::operato
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline BvVector<Type, MemoryArenaType>::~BvVector()
+template<typename Type>
+inline BvVector<Type>::~BvVector()
 {
 	Destroy();
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline MemoryArenaType* BvVector<Type, MemoryArenaType>::GetAllocator() const
+template<typename Type>
+inline IBvMemoryArena* BvVector<Type>::GetAllocator() const
 {
-	return m_pAllocator;
+	return m_pArena;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::SetAllocator(MemoryArenaType* pAllocator)
+template<typename Type>
+inline void BvVector<Type>::SetAllocator(IBvMemoryArena* pArena, size_t reserveSize)
 {
-	if (m_pAllocator == pAllocator)
+	BV_ASSERT(pArena != nullptr, "Memory arena can't be nullptr");
+	BV_ASSERT(m_pData == nullptr, "Can't change allocators after allocations have been made");
+	//if (m_pArena == pArena)
+	//{
+	//	return;
+	//}
+
+	//if (m_Capacity > 0)
+	//{
+	//	Type* pNewData = reinterpret_cast<Type*>(m_pArena ? BV_MALLOC(*m_pArena, m_Capacity * sizeof(Type), alignof(Type)) : BV_ALLOC(m_Capacity * sizeof(Type), alignof(Type)));
+	//	for (auto i = 0u; i < m_Size; i++)
+	//	{
+	//		new (&pNewData[i]) Type(std::move(m_pData[i]));
+	//	}
+
+	//	Clear();
+	//	m_pArena ? BV_MFREE(*m_pArena, m_pData) : BV_FREE(m_pData);
+	//	m_pData = pNewData;
+	//}
+
+	m_pArena = pArena;
+	if (reserveSize)
 	{
-		return;
+		Reserve(reserveSize);
 	}
-
-	if (m_Capacity > 0)
-	{
-		Type* pNewData = reinterpret_cast<Type*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, m_Capacity * sizeof(Type), alignof(Type)) : BV_ALLOC(m_Capacity * sizeof(Type), alignof(Type)));
-		for (auto i = 0u; i < m_Size; i++)
-		{
-			new (&pNewData[i]) Type(std::move(m_pData[i]));
-		}
-
-		Clear();
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
-		m_pData = pNewData;
-	}
-
-	m_pAllocator = pAllocator;
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline const size_t BvVector<Type, MemoryArenaType>::Size() const
+template<typename Type>
+inline const size_t BvVector<Type>::Size() const
 {
 	return m_Size;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline const size_t BvVector<Type, MemoryArenaType>::Capacity() const
+template<typename Type>
+inline const size_t BvVector<Type>::Capacity() const
 {
 	return m_Capacity;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline const bool BvVector<Type, MemoryArenaType>::Empty() const
+template<typename Type>
+inline const bool BvVector<Type>::Empty() const
 {
 	return m_Size == 0;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Resize(const size_t size, const Type & value)
+template<typename Type>
+inline void BvVector<Type>::Resize(const size_t size, const Type & value)
 {
 	if (size > m_Size)
 	{
@@ -310,82 +320,82 @@ inline void BvVector<Type, MemoryArenaType>::Resize(const size_t size, const Typ
 	}
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Reserve(const size_t size)
+template<typename Type>
+inline void BvVector<Type>::Reserve(const size_t size)
 {
 	Grow(size);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline Type & BvVector<Type, MemoryArenaType>::operator[](const size_t index)
+template<typename Type>
+inline Type & BvVector<Type>::operator[](const size_t index)
 {
 	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline const Type & BvVector<Type, MemoryArenaType>::operator[](const size_t index) const
+template<typename Type>
+inline const Type & BvVector<Type>::operator[](const size_t index) const
 {
 	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline Type & BvVector<Type, MemoryArenaType>::At(const size_t index)
+template<typename Type>
+inline Type & BvVector<Type>::At(const size_t index)
 {
 	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline const Type & BvVector<Type, MemoryArenaType>::At(const size_t index) const
+template<typename Type>
+inline const Type & BvVector<Type>::At(const size_t index) const
 {
 	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	return m_pData[index];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline Type & BvVector<Type, MemoryArenaType>::Front()
+template<typename Type>
+inline Type & BvVector<Type>::Front()
 {
 	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline const Type & BvVector<Type, MemoryArenaType>::Front() const
+template<typename Type>
+inline const Type & BvVector<Type>::Front() const
 {
 	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[0];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline Type & BvVector<Type, MemoryArenaType>::Back()
+template<typename Type>
+inline Type & BvVector<Type>::Back()
 {
 	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline const Type & BvVector<Type, MemoryArenaType>::Back() const
+template<typename Type>
+inline const Type & BvVector<Type>::Back() const
 {
 	BV_ASSERT(m_Size > 0, "Vector is empty");
 	return m_pData[m_Size - 1];
 }
 
-template<typename Type, typename MemoryArenaType>
-inline Type * BvVector<Type, MemoryArenaType>::Data()
+template<typename Type>
+inline Type * BvVector<Type>::Data()
 {
 	return m_pData;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline const Type * const BvVector<Type, MemoryArenaType>::Data() const
+template<typename Type>
+inline const Type * const BvVector<Type>::Data() const
 {
 	return m_pData;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Assign(Iterator start, Iterator end)
+template<typename Type>
+inline void BvVector<Type>::Assign(Iterator start, Iterator end)
 {
 	Clear();
 
@@ -399,8 +409,8 @@ inline void BvVector<Type, MemoryArenaType>::Assign(Iterator start, Iterator end
 	}
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Assign(const size_t size, const Type & val)
+template<typename Type>
+inline void BvVector<Type>::Assign(const size_t size, const Type & val)
 {
 	Clear();
 
@@ -413,8 +423,8 @@ inline void BvVector<Type, MemoryArenaType>::Assign(const size_t size, const Typ
 	}
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Assign(std::initializer_list<Type> list)
+template<typename Type>
+inline void BvVector<Type>::Assign(std::initializer_list<Type> list)
 {
 	Clear();
 
@@ -428,20 +438,20 @@ inline void BvVector<Type, MemoryArenaType>::Assign(std::initializer_list<Type> 
 	}
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::PushBack(const Type & value)
+template<typename Type>
+inline Type& BvVector<Type>::PushBack(const Type & value)
 {
-	EmplaceBack(value);
+	return EmplaceBack(value);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::PushBack(Type && value)
+template<typename Type>
+inline Type& BvVector<Type>::PushBack(Type && value)
 {
-	EmplaceBack(std::move(value));
+	return EmplaceBack(std::move(value));
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::PopBack()
+template<typename Type>
+inline void BvVector<Type>::PopBack()
 {
 	if (m_Size > 0)
 	{
@@ -454,15 +464,15 @@ inline void BvVector<Type, MemoryArenaType>::PopBack()
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::PopFront()
+template<typename Type>
+inline void BvVector<Type>::PopFront()
 {
 	Erase(cbegin());
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Insert(ConstIterator position, const Type & value)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const Type & value)
 {
 	auto pos = position - ConstIterator(m_pData);
 	if (pos > m_Size)
@@ -489,8 +499,8 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 	return Iterator(m_pData + pos);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Insert(ConstIterator position, const size_t count, const Type & value)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const size_t count, const Type & value)
 {
 	auto pos = position - ConstIterator(m_pData);
 	if (pos > m_Size)
@@ -520,8 +530,8 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 	return Iterator(m_pData + pos);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Insert(ConstIterator position, Iterator first, Iterator last)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Iterator first, Iterator last)
 {
 	auto pos = position - ConstIterator(m_pData);
 	if (pos > m_Size)
@@ -554,8 +564,8 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 	return Iterator(m_pData + pos);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Insert(ConstIterator position, Type && value)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Type && value)
 {
 	auto pos = position - ConstIterator(m_pData);
 	if (pos > m_Size)
@@ -582,8 +592,8 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 	return Iterator(m_pData + pos);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Insert(ConstIterator position, std::initializer_list<Type> list)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, std::initializer_list<Type> list)
 {
 	auto pos = position - ConstIterator(m_pData);
 	if (pos > m_Size)
@@ -617,8 +627,8 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Erase(size_t index)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(size_t index)
 {
 	if (index >= m_Size)
 	{
@@ -643,8 +653,8 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 	return Iterator(m_pData + index);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Erase(size_t startIndex, size_t count)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(size_t startIndex, size_t count)
 {
 	if (startIndex >= m_Size)
 	{
@@ -678,15 +688,15 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Erase(ConstIterator position)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(ConstIterator position)
 {
 	auto index = position - ConstIterator(m_pData);
 	return Erase(index);
 }
 
-template<typename Type, typename MemoryArenaType>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Erase(ConstIterator first, ConstIterator last)
+template<typename Type>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Erase(ConstIterator first, ConstIterator last)
 {
 	auto index = first - ConstIterator(m_pData);
 	auto count = last - first;
@@ -695,8 +705,8 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 }
 
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::EraseAndSwapWithLast(size_t index)
+template<typename Type>
+inline void BvVector<Type>::EraseUnsorted(size_t index)
 {
 	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
 	if (index < m_Size - 1)
@@ -706,23 +716,17 @@ inline void BvVector<Type, MemoryArenaType>::EraseAndSwapWithLast(size_t index)
 	PopBack();
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Clear()
+template<typename Type>
+inline void BvVector<Type>::Clear()
 {
-	if constexpr (!std::is_trivially_destructible_v<Type>)
-	{
-		for (size_t i = m_Size; i > 0; i--)
-		{
-			m_pData[i - 1].~Type();
-		}
-	}
+	Internal::DestructArray(m_pData, m_Size);
 
 	m_Size = 0;
 }
 
-template<typename Type, typename MemoryArenaType>
+template<typename Type>
 template<class ...Args>
-inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryArenaType>::Emplace(ConstIterator position, Args&& ...args)
+inline typename BvVector<Type>::Iterator BvVector<Type>::Emplace(ConstIterator position, Args&& ...args)
 {
 	auto pos = position - ConstIterator(m_pData);
 	if (pos > m_Size)
@@ -749,9 +753,9 @@ inline typename BvVector<Type, MemoryArenaType>::Iterator BvVector<Type, MemoryA
 	return Iterator(m_pData + pos);
 }
 
-template<typename Type, typename MemoryArenaType>
+template<typename Type>
 template<class ...Args>
-inline Type& BvVector<Type, MemoryArenaType>::EmplaceBack(Args&& ...args)
+inline Type& BvVector<Type>::EmplaceBack(Args&& ...args)
 {
 	if (m_Size == m_Capacity)
 	{
@@ -763,8 +767,8 @@ inline Type& BvVector<Type, MemoryArenaType>::EmplaceBack(Args&& ...args)
 	return m_pData[m_Size++];
 }
 
-template<typename Type, typename MemoryArenaType>
-size_t BvVector<Type, MemoryArenaType>::Find(const Type& value) const
+template<typename Type>
+size_t BvVector<Type>::Find(const Type& value) const
 {
 	for (auto i = 0; i < m_Size; i++)
 	{
@@ -777,21 +781,21 @@ size_t BvVector<Type, MemoryArenaType>::Find(const Type& value) const
 	return kU64Max;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline bool BvVector<Type, MemoryArenaType>::Contains(const Type& value) const
+template<typename Type>
+inline bool BvVector<Type>::Contains(const Type& value) const
 {
 	return Find(value) != kU64Max;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Grow(const size_t size)
+template<typename Type>
+inline void BvVector<Type>::Grow(const size_t size)
 {
 	if (size <= m_Capacity)
 	{
 		return;
 	}
 
-	Type* pNewData = reinterpret_cast<Type*>(m_pAllocator ? BV_MALLOC(*m_pAllocator, size * sizeof(Type), alignof(Type)) : BV_ALLOC(size * sizeof(Type), alignof(Type)));
+	Type* pNewData = reinterpret_cast<Type*>(m_pArena->Allocate(size * sizeof(Type), alignof(Type)));
 	for (auto i = 0u; i < m_Size; i++)
 	{
 		new (&pNewData[i]) Type(std::move(m_pData[i]));
@@ -804,19 +808,19 @@ inline void BvVector<Type, MemoryArenaType>::Grow(const size_t size)
 	m_Capacity = size;
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
+		m_pArena->Free(m_pData);
 	}
 	m_pData = pNewData;
 }
 
-template<typename Type, typename MemoryArenaType>
-inline void BvVector<Type, MemoryArenaType>::Destroy()
+template<typename Type>
+inline void BvVector<Type>::Destroy()
 {
 	Clear();
 
 	if (m_pData)
 	{
-		m_pAllocator ? BV_MFREE(*m_pAllocator, m_pData) : BV_FREE(m_pData);
+		m_pArena->Free(m_pData);
 		m_pData = nullptr;
 	}
 

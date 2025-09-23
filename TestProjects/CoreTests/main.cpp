@@ -5,6 +5,7 @@
 #include <format>
 #include <BDeV/Engine/JobSystem/BvParallelJobSystem.h>
 #include <span>
+#include <source_location>
 
 char stack[1024];
 char stack2[1024];
@@ -115,39 +116,6 @@ constexpr BvUUID fa3 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a5cdba2b");
 #include <utility>
 
 
-void abc(int f)
-{
-	printf("abc %d\n", f);
-}
-
-struct def
-{
-	def()
-	{
-		printf("def c\n");
-	}
-	void abc(int f)
-	{
-		printf("def %d\n", f);
-	}
-
-	void fff(def e)
-	{
-		e.abc(9);
-	}
-
-	void cc(int ff) const
-	{
-		printf("%d %d\n", ff, ff);
-	}
-};
-
-
-int hij(int g)
-{
-	return g * 2;
-}
-
 
 thread_local int a = 0;
 BvFiber* pFb = nullptr;
@@ -157,55 +125,8 @@ BvAdaptiveMutex am;
 BvMutex mm;
 
 
-struct A1N
-{
-	using T = i32;
-	using U = f32;
-};
-
-struct A2N
-{
-	using T = i64;
-	using U = f64;
-};
-
-
-template<typename T>
-class A1
-{
-public:
-	using TT = typename T::T;
-	virtual TT GetValue() = 0;
-
-	using UU = typename T::U;
-	virtual UU GetValueF() = 0;
-};
-
-
-class A2 : public A1<A1N>
-{
-public:
-	TT GetValue() override { return TT(0); }
-	UU GetValueF() override { return UU(0.0); }
-};
-
-
-class A3 : public A1<A2N>
-{
-public:
-	TT GetValue() override { return TT(0); }
-	UU GetValueF() override { return UU(0.0); }
-};
-
-
 int main()
 {
-	A2 af;
-	A3 bf;
-	auto aa = af.GetValue();
-	auto aaa = af.GetValueF();
-	auto bb = bf.GetValue();
-	auto bbb = bf.GetValueF();
 	JobSystemDesc jsDesc;
 	jsDesc.m_NumWorkerThreadDescs = 4;
 

@@ -100,7 +100,7 @@ void BvExtendedBoundsChecker::CheckFrontGuard(void* pMemory)
 		}
 	}
 
-	m_FrontGuards.EraseAndSwapWithLast(index);
+	m_FrontGuards.EraseUnsorted(index);
 }
 
 
@@ -119,5 +119,5 @@ void BvExtendedBoundsChecker::CheckBackGuard(void* pMemory)
 		}
 	}
 
-	m_BackGuards.EraseAndSwapWithLast(index);
+	m_BackGuards.EraseUnsorted(index);
 }

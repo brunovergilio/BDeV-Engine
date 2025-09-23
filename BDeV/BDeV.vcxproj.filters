@@ -37,7 +37,7 @@
     <ClInclude Include="Core\System\HID\BvKeyboard.h" />
     <ClInclude Include="Core\System\HID\BvMouse.h" />
     <ClInclude Include="Core\System\Library\BvSharedLib.h" />
-    <ClInclude Include="Core\System\Memory\Allocators\BvHeapAllocator.h" />
+    <ClInclude Include="Core\System\Memory\Allocators\BvFreeListAllocator.h" />
     <ClInclude Include="Core\System\Memory\Allocators\BvLinearAllocator.h" />
     <ClInclude Include="Core\System\Memory\Allocators\BvPoolAllocator.h" />
     <ClInclude Include="Core\System\Memory\Allocators\BvStackAllocator.h" />
@@ -54,7 +54,7 @@
     <ClInclude Include="Core\System\Window\BvMonitor.h" />
     <ClInclude Include="Core\Container\BvQueue.h" />
     <ClInclude Include="Core\Utils\BvTestUnit.h" />
-    <ClInclude Include="Core\Container\BvStringId.h" />
+    <ClInclude Include="Core\Utils\BvStringId.h" />
     <ClInclude Include="Core\System\Window\BvWindowCommon.h" />
     <ClInclude Include="Core\Container\BvRobinSet.h" />
     <ClInclude Include="Core\RenderAPI\BvColor.h" />
@@ -65,8 +65,6 @@
     <ClInclude Include="BDeV.h" />
     <ClInclude Include="Core\System\HID\BvXInput.h" />
     <ClInclude Include="Core\Utils\BvUUID.h" />
-    <ClInclude Include="Core\System\Memory\Allocators\BvDefaultAllocator.h" />
-    <ClInclude Include="Core\System\Memory\BvMemoryArena.h" />
     <ClInclude Include="Core\Utils\BvText.h" />
     <ClInclude Include="Core\RenderAPI\BvShader.h" />
     <ClInclude Include="Core\Utils\BvObject.h" />
@@ -100,7 +98,7 @@
     <ClCompile Include="Core\System\HID\Windows\BvMouseWindows.cpp" />
     <ClCompile Include="Core\System\HID\BvHIDCommon.cpp" />
     <ClCompile Include="Core\System\Library\Windows\BvSharedLibWindows.cpp" />
-    <ClCompile Include="Core\System\Memory\Allocators\BvHeapAllocator.cpp" />
+    <ClCompile Include="Core\System\Memory\Allocators\BvFreeListAllocator.cpp" />
     <ClCompile Include="Core\System\Memory\Allocators\BvLinearAllocator.cpp" />
     <ClCompile Include="Core\System\Memory\Allocators\BvPoolAllocator.cpp" />
     <ClCompile Include="Core\System\Memory\Allocators\BvStackAllocator.cpp" />
@@ -118,11 +116,9 @@
     <ClCompile Include="Core\System\Window\Windows\BvMonitorWindows.cpp" />
     <ClCompile Include="Core\Utils\BvTestUnit.cpp" />
     <ClCompile Include="Core\Utils\BvHash.cpp" />
-    <ClCompile Include="Core\Container\BvStringId.cpp" />
+    <ClCompile Include="Core\Utils\BvStringId.cpp" />
     <ClCompile Include="Core\RenderAPI\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
-    <ClCompile Include="Core\Utils\BvUUID.cpp" />
-    <ClCompile Include="Core\System\Memory\Allocators\BvDefaultAllocator.cpp" />
     <ClCompile Include="Core\Utils\BvText.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\Math\BvIntersections.cpp" />

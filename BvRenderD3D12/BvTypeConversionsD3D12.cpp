@@ -1,4 +1,6 @@
 #include "BvTypeConversionsD3D12.h"
+#include "BvTextureD3D12.h"
+#include "BvBufferD3D12.h"
 #include <bit>
 
 
@@ -589,4 +591,167 @@ constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE kTopologyTypes[] =
 D3D12_PRIMITIVE_TOPOLOGY_TYPE GetD3D12PrimitiveTopologyType(Topology topology)
 {
 	return kTopologyTypes[u32(topology)];
+}
+
+
+constexpr D3D12_SRV_DIMENSION kSRVDimensions[][2] =
+{
+	{ D3D12_SRV_DIMENSION_UNKNOWN, D3D12_SRV_DIMENSION_UNKNOWN },
+	{ D3D12_SRV_DIMENSION_TEXTURE1D, D3D12_SRV_DIMENSION_TEXTURE1D },
+	{ D3D12_SRV_DIMENSION_TEXTURE1DARRAY, D3D12_SRV_DIMENSION_TEXTURE1DARRAY },
+	{ D3D12_SRV_DIMENSION_TEXTURE2D, D3D12_SRV_DIMENSION_TEXTURE2DMS },
+	{ D3D12_SRV_DIMENSION_TEXTURE2DARRAY, D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY },
+	{ D3D12_SRV_DIMENSION_TEXTURECUBE, D3D12_SRV_DIMENSION_TEXTURECUBE },
+	{ D3D12_SRV_DIMENSION_TEXTURECUBEARRAY, D3D12_SRV_DIMENSION_TEXTURECUBEARRAY },
+	{ D3D12_SRV_DIMENSION_TEXTURE3D, D3D12_SRV_DIMENSION_TEXTURE3D },
+};
+
+
+D3D12_SRV_DIMENSION GetD3D12SRVDimension(TextureViewType textureViewType, bool multisample)
+{
+	return kSRVDimensions[u32(textureViewType)][u32(multisample)];
+}
+
+
+constexpr D3D12_UAV_DIMENSION kUAVDimensions[][2] =
+{
+	{ D3D12_UAV_DIMENSION_UNKNOWN, D3D12_UAV_DIMENSION_UNKNOWN },
+	{ D3D12_UAV_DIMENSION_TEXTURE1D, D3D12_UAV_DIMENSION_TEXTURE1D },
+	{ D3D12_UAV_DIMENSION_TEXTURE1DARRAY, D3D12_UAV_DIMENSION_TEXTURE1DARRAY },
+	{ D3D12_UAV_DIMENSION_TEXTURE2D, D3D12_UAV_DIMENSION_TEXTURE2DMS },
+	{ D3D12_UAV_DIMENSION_TEXTURE2DARRAY, D3D12_UAV_DIMENSION_TEXTURE2DMSARRAY },
+	{ D3D12_UAV_DIMENSION_UNKNOWN, D3D12_UAV_DIMENSION_UNKNOWN },
+	{ D3D12_UAV_DIMENSION_UNKNOWN, D3D12_UAV_DIMENSION_UNKNOWN },
+	{ D3D12_UAV_DIMENSION_TEXTURE3D, D3D12_UAV_DIMENSION_TEXTURE3D },
+};
+
+
+D3D12_UAV_DIMENSION GetD3D12UAVDimension(TextureViewType textureViewType, bool multisample)
+{
+	return kUAVDimensions[u32(textureViewType)][u32(multisample)];
+}
+
+
+D3D12_CONSTANT_BUFFER_VIEW_DESC GetD3D12CBVDesc(const BufferViewDesc& viewDesc)
+{
+	BV_ASSERT(viewDesc.m_pBuffer != nullptr, "Invalid buffer handle");
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbv{};
+	cbv.BufferLocation = viewDesc.m_pBuffer->GetDeviceAddress() + viewDesc.m_Offset;
+	cbv.SizeInBytes = viewDesc.m_Stride * viewDesc.m_ElementCount;
+
+	return cbv;
+}
+
+
+D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const BufferViewDesc& viewDesc)
+{
+	BV_ASSERT(viewDesc.m_pBuffer != nullptr, "Invalid buffer handle");
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+	srv.Format = DXGI_FORMAT(viewDesc.m_Format);
+	srv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srv.Buffer = { 0, viewDesc.m_ElementCount, viewDesc.m_Stride, D3D12_BUFFER_SRV_FLAG_NONE };
+
+	return srv;
+}
+
+D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const BufferViewDesc& viewDesc)
+{
+	BV_ASSERT(viewDesc.m_pBuffer != nullptr, "Invalid buffer handle");
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};
+	uav.Format = DXGI_FORMAT(viewDesc.m_Format);
+	uav.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+	uav.Buffer = { 0, viewDesc.m_ElementCount, viewDesc.m_Stride, 0, D3D12_BUFFER_UAV_FLAG_NONE };
+
+	return uav;
+}
+
+
+D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const TextureViewDesc& viewDesc)
+{
+	BV_ASSERT(viewDesc.m_pTexture != nullptr, "Invalid texture handle");
+
+	auto pTex = TO_D3D12(viewDesc.m_pTexture);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+	srv.Format = DXGI_FORMAT(viewDesc.m_Format);
+	srv.ViewDimension = GetD3D12SRVDimension(viewDesc.m_ViewType, pTex->GetDesc().m_SampleCount > 1);
+	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	auto& subres = viewDesc.m_SubresourceDesc;
+	switch (srv.ViewDimension)
+	{
+	case D3D12_SRV_DIMENSION_TEXTURE1D:
+		srv.Texture1D = { subres.firstMip, subres.mipCount, 0.0f };
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURE1DARRAY:
+		srv.Texture1DArray = { subres.firstMip, subres.mipCount, subres.firstLayer, subres.layerCount, 0.0f };
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURE2D:
+		srv.Texture2D = { subres.firstMip, subres.mipCount, subres.planeSlice, 0.0f };
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURE2DMS:
+		srv.Texture2DMS = {};
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
+		srv.Texture2DArray = { subres.firstMip, subres.mipCount, subres.firstLayer, subres.layerCount, subres.planeSlice, 0.0f };
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY:
+		srv.Texture2DMSArray = { subres.firstLayer, subres.layerCount };
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURECUBE:
+		srv.TextureCube = { subres.firstMip, subres.mipCount, 0.0f };
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
+		srv.TextureCubeArray = { subres.firstMip, subres.mipCount, subres.firstLayer, subres.layerCount, 0.0f };
+		break;
+	case D3D12_SRV_DIMENSION_TEXTURE3D:
+		srv.Texture3D = { subres.firstMip, subres.mipCount, 0.0f };
+		break;
+	}
+
+	return srv;
+}
+
+
+D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const TextureViewDesc& viewDesc)
+{
+	BV_ASSERT(viewDesc.m_pTexture != nullptr, "Invalid texture handle");
+
+	auto pTex = TO_D3D12(viewDesc.m_pTexture);
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};
+	uav.Format = DXGI_FORMAT(viewDesc.m_Format);
+	uav.ViewDimension = GetD3D12UAVDimension(viewDesc.m_ViewType, pTex->GetDesc().m_SampleCount > 1);
+
+	auto& subres = viewDesc.m_SubresourceDesc;
+	switch (uav.ViewDimension)
+	{
+	case D3D12_UAV_DIMENSION_TEXTURE1D:
+		uav.Texture1D = { subres.firstMip };
+		break;
+	case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
+		uav.Texture1DArray = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		break;
+	case D3D12_UAV_DIMENSION_TEXTURE2D:
+		uav.Texture2D = { subres.firstMip, subres.planeSlice };
+		break;
+	case D3D12_UAV_DIMENSION_TEXTURE2DMS:
+		uav.Texture2DMS = {};
+		break;
+	case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
+		uav.Texture2DArray = { subres.firstMip, subres.firstLayer, subres.layerCount, subres.planeSlice };
+		break;
+	case D3D12_UAV_DIMENSION_TEXTURE2DMSARRAY:
+		uav.Texture2DMSArray = { subres.firstLayer, subres.layerCount };
+		break;
+	case D3D12_UAV_DIMENSION_TEXTURE3D:
+		uav.Texture3D = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		break;
+	}
+
+	return uav;
 }

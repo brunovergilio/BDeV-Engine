@@ -3,7 +3,6 @@
 
 #include "BDeV/Core/RenderAPI/BvQuery.h"
 #include "BvCommonVk.h"
-#include "BDeV/Core/Container/BvVector.h"
 
 
 class BvQueryHeapVk;
@@ -23,10 +22,7 @@ struct QueryDataVk
 };
 
 
-//BV_OBJECT_DEFINE_ID(IBvQueryVk, "842f2026-34c0-471f-a6fc-4f3a639bdab9");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvQueryVk);
-
-
+BV_OBJECT_DEFINE_ID(BvQueryVk, "842f2026-34c0-471f-a6fc-4f3a639bdab9");
 class BvQueryVk final : public IBvQuery, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvQueryVk);
@@ -54,6 +50,7 @@ private:
 	QueryType m_QueryType = QueryType::kTimestamp;
 	u32 m_LatestResultIndex = 0;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvQueryVk);
 
 
 BV_CREATE_CAST_TO_VK(BvQuery)

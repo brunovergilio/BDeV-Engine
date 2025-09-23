@@ -78,7 +78,7 @@ void Triangle::OnShutdown()
 void Triangle::CreateShaderResourceLayout()
 {
 	ShaderResourceLayoutDesc layoutDesc{};
-	m_SRL = m_Device->CreateShaderResourceLayout(layoutDesc);
+	m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 }
 
 
@@ -92,7 +92,7 @@ void Triangle::CreatePipeline()
 	pipelineDesc.m_RenderTargetFormats[0] = m_SwapChain->GetDesc().m_Format;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-	m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
+	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 }
 
 

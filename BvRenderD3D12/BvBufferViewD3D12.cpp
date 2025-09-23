@@ -22,6 +22,19 @@ BvBufferViewD3D12::~BvBufferViewD3D12()
 void BvBufferViewD3D12::Create()
 {
 	BV_ASSERT(m_BufferViewDesc.m_pBuffer != nullptr, "Invalid buffer handle");
+
+	auto pRes = TO_D3D12(m_BufferViewDesc.m_pBuffer)->GetHandle();
+
+	auto cbv = GetD3D12CBVDesc(m_BufferViewDesc);
+	auto srv = GetD3D12SRVDesc(m_BufferViewDesc);
+	auto uav = GetD3D12UAVDesc(m_BufferViewDesc);
+
+	// TODO: Allocate CPU descriptors
+
+	auto pDevice = m_pDevice->GetHandle();
+	pDevice->CreateConstantBufferView(&cbv, m_CBV);
+	pDevice->CreateShaderResourceView(pRes, &srv, m_SRV);
+	pDevice->CreateUnorderedAccessView(pRes, nullptr, &uav, m_UAV);
 }
 
 

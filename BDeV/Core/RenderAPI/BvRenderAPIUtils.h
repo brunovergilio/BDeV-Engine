@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BvTexture.h"
+#include "BvRenderCommon.h"
 
 
 void GetTextureSubresourceInfo(TextureSubresourceInfo& subresource, Format format, const Extent3D& size, u32 mipLevel = 0);

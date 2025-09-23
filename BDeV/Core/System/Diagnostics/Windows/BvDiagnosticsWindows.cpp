@@ -123,7 +123,7 @@ void BvDebug::Break()
 }
 
 
-void BvDebug::Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...)
+void BvDebug::Assert(const char* pCondition, const std::source_location& sourceInfo, const char* pFormat, ...)
 {
 #if BV_DEBUG
 	auto pErrorMessage = GetMessageBuffer();
@@ -135,7 +135,7 @@ void BvDebug::Assert(const char* pCondition, const BvSourceInfo& sourceInfo, con
 	if (u32 remaining = kMaxMessageSize - (1 + charsWritten))
 	{
 		charsWritten += std::min(u32(snprintf(pErrorMessage + charsWritten, remaining,
-			"\nSource: %s in %s [%d]", sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line)) + 1, remaining);
+			"\nSource: %s in %s [%u]", sourceInfo.function_name(), sourceInfo.file_name(), sourceInfo.line())) + 1, remaining);
 	}
 
 	wchar_t errorMessageW[kMaxMessageSize];

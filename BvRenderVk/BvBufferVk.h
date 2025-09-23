@@ -8,10 +8,7 @@
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvBufferVk, "4e59c7e7-48f1-4d95-a852-96391f35aa78");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvBufferVk);
-
-
+BV_OBJECT_DEFINE_ID(BvBufferVk, "4e59c7e7-48f1-4d95-a852-96391f35aa78");
 class BvBufferVk final : public IBvBuffer, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvBufferVk);
@@ -49,6 +46,7 @@ private:
 	VmaAllocation m_VMAAllocation = nullptr;
 	bool m_NeedsFlush = false;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvBufferVk);
 
 
 BV_CREATE_CAST_TO_VK(BvBuffer)

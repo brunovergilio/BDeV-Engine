@@ -2,11 +2,50 @@
 
 
 #include "BDeV/Core/BvCore.h"
-#include "BDeV/Core/System/Memory/BvMemoryArena.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 #include "BDeV/Core/Utils/BvUUID.h"
 #include <atomic>
 
+
+namespace Internal
+{
+	template<typename T>
+	constexpr const BvUUID GetObjectUUID()
+	{
+		return BvUUID{};
+	}
+
+	template<typename T>
+	constexpr bool IsValidObjectUUID()
+	{
+		return false;
+	}
+
+	template<typename T>
+	const BvUUID GetObjectUUIDHelper(T** ppObj)
+	{
+		return GetObjectUUID<T>();
+	}
+}
+
+// Creates a UUID for a specific object type
+#define BV_OBJECT_DEFINE_ID(objType, uuid) namespace Internal \
+{ \
+	constexpr const BvUUID objType##_UUID = MakeUUIDv4(uuid); \
+}
+
+// Enables the operator BV_OBJECT_ID() to be used for a specific type
+#define BV_OBJECT_ENABLE_ID_OPERATOR(objType) template<> constexpr const BvUUID Internal::GetObjectUUID<objType>() \
+{ \
+	return Internal::objType##_UUID; \
+} \
+template<> constexpr bool Internal::IsValidObjectUUID<objType>() { return true; }
+
+// Returns the UUID of a specific object type
+#define BV_OBJECT_ID(objType) Internal::GetObjectUUID<objType>()
+
+// Helper for methods that create RefCounted-based objects
+#define BV_OBJ_ARGS(ppObj) Internal::GetObjectUUIDHelper(ppObj), reinterpret_cast<void**>(ppObj)
 
 //class BvControlBlockBase
 //{
@@ -96,32 +135,6 @@
 //	A* m_pArena = nullptr;
 //	T* m_pObj = nullptr;
 //};
-//
-//
-//namespace Internal
-//{
-//	template<typename T>
-//	constexpr const BvUUID GetObjectUUID()
-//	{
-//		return BvUUID{};
-//	}
-//}
-//
-//
-//// Creates a UUID for a specific object type
-//#define BV_OBJECT_DEFINE_ID(objType, uuid) namespace Internal \
-//{ \
-//	constexpr const BvUUID objType##_UUID = MakeUUIDv4(uuid); \
-//}
-//
-//// Enables the operator BV_OBJECT_ID() to be used for a specific type
-//#define BV_OBJECT_ENABLE_ID_OPERATOR(objType) template<> constexpr const BvUUID Internal::GetObjectUUID<objType>() \
-//{ \
-//	return Internal::objType##_UUID; \
-//}
-//
-//// Returns the UUID of a specific object type
-//#define BV_OBJECT_ID(objType) Internal::GetObjectUUID<objType>()
 //
 //
 //#define BV_OBJECT_IMPL_INTERFACE_FOR_EACH(id, first, ...) || id == Internal::first##_UUID \
@@ -460,35 +473,7 @@ private:
 
 
 template<typename T>
-concept BvRCType = std::is_base_of_v<BvRCObj, T>;
-
-
-template<BvRCType T>
-class BvRCRaw
-{
-public:
-	BvRCRaw() = default;
-	BvRCRaw(const BvRCRaw& rhs) = default;
-	BvRCRaw(BvRCRaw&& rhs) = default;
-	BvRCRaw& operator=(const BvRCRaw& rhs) = default;
-	BvRCRaw& operator=(BvRCRaw&& rhs) = default;
-	~BvRCRaw() = default;
-
-	BvRCRaw(T* pObj) : m_pObj(pObj) {}
-	T* operator->() const { return m_pObj; }
-	operator bool() const { return m_pObj != nullptr; }
-	operator T* () const { return m_pObj; }
-
-private:
-	T* m_pObj;
-};
-
-
-template<typename T, typename U>
-concept BvRCIsRawType = std::is_same_v<T, BvRCRaw<U>>;
-
-template<typename T, typename U>
-concept BvRCIsNotRawType = !BvRCIsRawType<T, U>;
+concept BvRCType = std::is_base_of_v<BvRCObj, T> && Internal::IsValidObjectUUID<T>();
 
 
 template<BvRCType T>
@@ -499,13 +484,7 @@ public:
 		: m_pObj(nullptr)
 	{
 	}
-	template<BvRCIsRawType<T> U>
-	BvRCRef(U obj)
-		: m_pObj(obj)
-	{
-	}
-	template<BvRCIsNotRawType<T> U>
-	BvRCRef(U* pObj)
+	BvRCRef(T* pObj)
 		: m_pObj(pObj)
 	{
 		InternalAddRef();
@@ -549,9 +528,24 @@ public:
 		InternalRelease();
 	}
 
+	void Attach(T* pObj)
+	{
+		InternalRelease();
+		m_pObj = pObj;
+	}
+
+	T* Detach()
+	{
+		auto pObj = m_pObj;
+		m_pObj = nullptr;
+
+		return pObj;
+	}
+
 	T* operator->() const { return m_pObj; }
 	operator bool() const { return m_pObj != nullptr; }
 	operator T*() const { return m_pObj; }
+	T** operator&() { return &m_pObj; }
 
 private:
 	void InternalAddRef()
@@ -574,3 +568,6 @@ private:
 private:
 	T* m_pObj;
 };
+
+
+using BvRCCreateFn = bool(*)(const BvUUID&, void**);

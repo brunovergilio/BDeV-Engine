@@ -179,7 +179,7 @@ void DynamicBuffers::CreateShaderResourceLayout()
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
 
-	m_SRL = m_Device->CreateShaderResourceLayout(layoutDesc);
+	m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 }
 
 
@@ -204,7 +204,7 @@ void DynamicBuffers::CreatePipeline()
 	pipelineDesc.m_VertexInputDescCount = 2;
 	pipelineDesc.m_pVertexInputDescs = inputDescs;
 
-	m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
+	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 }
 
 
@@ -231,26 +231,26 @@ void DynamicBuffers::CreateBuffers()
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = vertices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_VB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_VB);
 
 	bufferDesc.m_Size = sizeof(u32) * data.m_Indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kIndexBuffer;
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = data.m_Indices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_IB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_IB);
 
 	m_ItemStride = m_Device->GetDynamicBufferElementSize(BufferUsage::kConstantBuffer, sizeof(Float44));
 	bufferDesc.m_Size = m_ItemStride * size_t(std::pow(m_MaxItemsPerDimension, 3));
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_UB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_UB);
 
 	viewDesc.m_pBuffer = m_UB;
 	viewDesc.m_Stride = sizeof(Float44);
 	viewDesc.m_ElementCount = 1;
-	m_UBView = m_Device->CreateBufferView(viewDesc);
+	m_Device->CreateBufferView(viewDesc, &m_UBView);
 }
 
 
@@ -263,12 +263,12 @@ void DynamicBuffers::CreateRenderTargets()
 	desc.m_Size = { w, h, 1 };
 	desc.m_Format = Format::kD24_UNorm_S8_UInt;
 	desc.m_UsageFlags = TextureUsage::kDepthStencilTarget;
-	m_Depth = m_Device->CreateTexture(desc, nullptr);
+	m_Device->CreateTexture(desc, nullptr, &m_Depth);
 
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = desc.m_Format;
 	viewDesc.m_pTexture = m_Depth;
-	m_DepthView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_DepthView);
 }
 
 

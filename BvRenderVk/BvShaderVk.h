@@ -8,10 +8,7 @@
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvShaderVk, "73dd3e67-1619-4f36-a29e-99bf0f90ea0b");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderVk);
-
-
+BV_OBJECT_DEFINE_ID(BvShaderVk, "73dd3e67-1619-4f36-a29e-99bf0f90ea0b");
 class BvShaderVk final : public IBvShader, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvShaderVk);
@@ -38,6 +35,7 @@ private:
 	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
 	const char* m_pEntryPoint = "main";
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderVk);
 
 
 BV_CREATE_CAST_TO_VK(BvShader)

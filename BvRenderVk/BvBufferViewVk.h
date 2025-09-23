@@ -2,16 +2,13 @@
 
 
 #include "BDeV/Core/RenderAPI/BvBufferView.h"
-#include "BvBufferVk.h"
+#include "BvCommonVk.h"
 
 
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvBufferViewVk, "d354dda0-8c2f-49b9-9de6-ddc37d7179f5");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvBufferViewVk);
-
-
+BV_OBJECT_DEFINE_ID(BvBufferViewVk, "d354dda0-8c2f-49b9-9de6-ddc37d7179f5");
 class BvBufferViewVk final : public IBvBufferView, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvBufferViewVk);
@@ -36,6 +33,7 @@ private:
 	VkBufferView m_View = VK_NULL_HANDLE;
 	BufferViewDesc m_BufferViewDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvBufferViewVk);
 
 
 BV_CREATE_CAST_TO_VK(BvBufferView)

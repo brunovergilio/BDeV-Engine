@@ -251,7 +251,10 @@ void BvManualResetEvent::Reset()
 
 void BvManualResetEvent::Wait()
 {
-	m_Event.wait(false, std::memory_order::acquire);
+	while (!m_Event.test(std::memory_order::memory_order_acquire))
+	{
+		m_Event.wait(false, std::memory_order::acquire);
+	}
 }
 
 

@@ -3,6 +3,7 @@
 
 #include "BvCommonVk.h"
 #include "BDeV/Core/RenderAPI/BvShaderResource.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
 
 
 class BvRenderDeviceVk;

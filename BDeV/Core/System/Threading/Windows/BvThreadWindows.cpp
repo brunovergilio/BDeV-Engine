@@ -8,9 +8,6 @@
 #include <algorithm>
 
 
-u32 CALLBACK ThreadEntryPoint(void* pData);
-
-
 BvThread::BvThread()
 {
 }
@@ -30,7 +27,7 @@ BvThread & BvThread::operator =(BvThread && rhs) noexcept
 
 		std::swap(m_ThreadId, rhs.m_ThreadId);
 		std::swap(m_hThread, rhs.m_hThread);
-		std::swap(m_pTask, rhs.m_pTask);
+		std::swap(m_Task, rhs.m_Task);
 		std::swap(m_IsRunning, rhs.m_IsRunning);
 	}
 
@@ -57,7 +54,6 @@ void BvThread::Start()
 
 void BvThread::Wait()
 {
-	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
 	if (m_IsRunning)
 	{
 		WaitForSingleObject(m_hThread, INFINITE);
@@ -284,7 +280,7 @@ bool BvThread::IsFiber()
 void BvThread::Create(const CreateInfo& createInfo)
 {
 	m_IsRunning = !createInfo.m_CreateSuspended;
-	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, ThreadEntryPoint, m_pTask,
+	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, BvThread::ThreadEntryPoint, this,
 		m_IsRunning ? 0u : CREATE_SUSPENDED, reinterpret_cast<u32*>(&m_ThreadId)));
 	if (m_hThread == kNullOSThreadHandle)
 	{
@@ -307,19 +303,20 @@ void BvThread::Create(const CreateInfo& createInfo)
 
 void BvThread::Destroy()
 {
-	if (m_hThread && m_pTask)
+	if (m_hThread && m_Task)
 	{
+		Wait();
 		CloseHandle(m_hThread);
-		BV_DELETE_ARRAY((u8*)m_pTask);
+		m_Task.Reset();
 		m_hThread = nullptr;
 	}
 }
 
 
-u32 CALLBACK ThreadEntryPoint(void* pData)
+u32 CALLBACK BvThread::ThreadEntryPoint(void* pData)
 {
-	IBvTask* pDelegate = reinterpret_cast<IBvTask*>(pData);
-	pDelegate->Run();
+	BvThread* pThread = reinterpret_cast<BvThread*>(pData);
+	pThread->m_Task();
 
 	_endthreadex(0);
 

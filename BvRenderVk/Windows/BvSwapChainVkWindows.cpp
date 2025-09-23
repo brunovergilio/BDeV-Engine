@@ -1,7 +1,8 @@
-#include "../BvSwapchainVk.h"
+#include "BvRenderVk/BvSwapchainVk.h"
 #include "BDeV/Core/System/Window/BvWindow.h"
-#include "../BvUtilsVk.h"
-#include "../BvRenderDeviceVk.h"
+#include "BvRenderVk/BvUtilsVk.h"
+#include "BvRenderVk/BvRenderDeviceVk.h"
+#include "BvRenderVk/BvRenderEngineVk.h"
 
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
@@ -14,7 +15,7 @@ void BvSwapChainVk::CreateSurface()
 	surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
 	surfaceCreateInfo.hwnd = (HWND)m_pWindow->GetHandle();
 
-	auto result = vkCreateWin32SurfaceKHR(m_pDevice->GetInstanceHandle(), &surfaceCreateInfo, nullptr, &m_Surface);
+	auto result = vkCreateWin32SurfaceKHR(m_pDevice->GetEngine()->GetHandle(), &surfaceCreateInfo, nullptr, &m_Surface);
 }
 
 

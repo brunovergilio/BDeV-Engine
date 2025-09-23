@@ -2,16 +2,13 @@
 
 
 #include "BDeV/Core/RenderAPI/BvTextureView.h"
-#include "BvTextureVk.h"
+#include "BvCommonVk.h"
 
 
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvTextureViewVk, "7ce274c0-e876-4b9a-8016-4b8ca8c84640");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureViewVk);
-
-
+BV_OBJECT_DEFINE_ID(BvTextureViewVk, "7ce274c0-e876-4b9a-8016-4b8ca8c84640");
 class BvTextureViewVk final : public IBvTextureView, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvTextureViewVk);
@@ -36,6 +33,7 @@ private:
 	VkImageView m_View = VK_NULL_HANDLE;
 	TextureViewDesc m_TextureViewDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvTextureViewVk);
 
 
 BV_CREATE_CAST_TO_VK(BvTextureView)

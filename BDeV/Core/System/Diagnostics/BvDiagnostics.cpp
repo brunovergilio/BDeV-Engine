@@ -61,7 +61,7 @@ namespace Logging
 		GetLoggerManager() = pLoggerManager;
 	}
 
-	void Dispatch(const char* pChannel, u32 level, u32 verbosity, const BvSourceInfo& sourceInfo, const char* pMessage, ...)
+	void Dispatch(const char* pChannel, u32 level, u32 verbosity, const std::source_location& sourceInfo, const char* pMessage, ...)
 	{
 		constexpr u32 kMaxLogMessageSize = 2_kb;
 
@@ -104,7 +104,9 @@ namespace Logging
 
 			auto time = BvTime::GetLocalTime();
 
-			BvConsole::Print(kDefaultColors[level], "[%02d:%02d:%02d] - [%s] [%s]: %s - Function: %s (%s [%d])\n", time.tm_hour, time.tm_min, time.tm_sec, kDefaultLevels[level], pChannel, pMessage, sourceInfo.m_pFunction, sourceInfo.m_pFile, sourceInfo.m_Line);
+			BvConsole::Print(kDefaultColors[level], "[%02d:%02d:%02d] - [%s] [%s]: %s - Function: %s (%s [%u])\n",
+				time.tm_hour, time.tm_min, time.tm_sec, kDefaultLevels[level], pChannel, pMessage,
+				sourceInfo.function_name(), sourceInfo.file_name(), sourceInfo.line());
 		}
 	}
 }

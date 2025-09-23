@@ -130,6 +130,7 @@
 #include <cstdint>
 #include <new>
 #include <type_traits>
+#include <source_location>
 
 using i8	= std::int8_t;
 using i16	= std::int16_t;
@@ -227,18 +228,13 @@ constexpr size_t OffsetOfPtr()
 #define BV_OFFSETOF(t, v) OffsetOfPtr<t, &t::v>()
 
 
-struct BvSourceInfo
+struct BvTrackedAllocationInfo
 {
-	const char* m_pFunction;
-	const char* m_pFile;
-	i32 m_Line;
+	size_t m_Size;
+	size_t m_Alignment;
+	std::source_location m_SourceInfo;
+	const struct BvStackTrace* m_pStackTrace;
 };
-
-#if BV_DEBUG
-#define BV_SOURCE_INFO BvSourceInfo{ BV_FUNCTION, __FILE__, __LINE__ }
-#else
-#define BV_SOURCE_INFO BvSourceInfo{}
-#endif
 
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)

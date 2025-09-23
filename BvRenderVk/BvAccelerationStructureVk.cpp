@@ -35,9 +35,9 @@ BvAccelerationStructureVk::~BvAccelerationStructureVk()
 
 	if (m_Desc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
 	{
-		if (auto pGeometries = m_Desc.m_BLAS.m_pGeometries)
+		if (auto pGeometries = const_cast<BLASGeometryDesc*>(m_Desc.m_BLAS.m_pGeometries))
 		{
-			BV_DELETE_ARRAY(m_Desc.m_BLAS.m_pGeometries);
+			BV_DELETE_ARRAY(pGeometries);
 		}
 	}
 }
@@ -69,7 +69,7 @@ void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer
 			bufferDesc.m_MemoryType = MemoryType::kUpload;
 			bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 			bufferDesc.m_Size = std::max(m_PrimitiveCounts[0] * sizeof(VkAccelerationStructureInstanceKHR), sizeof(VkAccelerationStructureInstanceKHR));
-			m_StagingBuffer = BvRCRaw(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
+			m_StagingBuffer.Attach(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
 		}
 		pStagingBuffer = m_StagingBuffer;
 	}
@@ -193,7 +193,7 @@ void BvAccelerationStructureVk::Create()
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	bufferDesc.m_MemoryType = MemoryType::kDevice;
 	bufferDesc.m_Size = sizeInfo.accelerationStructureSize;
-	m_Buffer = BvRCRaw(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
+	m_Buffer.Attach(BV_NEW(BvBufferVk)(m_pDevice, bufferDesc, nullptr));
 
 	auto device = m_pDevice->GetHandle();
 

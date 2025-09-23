@@ -8,6 +8,7 @@
 #include "BvFramebufferVk.h"
 #include "BvShaderBindingTableVk.h"
 #include "BvBufferVk.h"
+#include "BvTextureVk.h"
 
 
 BvFrameDataVk::BvFrameDataVk()
@@ -17,8 +18,9 @@ BvFrameDataVk::BvFrameDataVk()
 
 BvFrameDataVk::BvFrameDataVk(BvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData)
 	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_FrameIndex(frameIndex),
-	m_pContextData(pContextData), m_pFence(pDevice->CreateFence<BvGPUFenceVk>(0))
+	m_pContextData(pContextData)
 {
+	pDevice->CreateFence(0, &m_pFence);
 	BV_ASSERT(m_pFence->IsValid(), "Fence has to be valid");
 }
 

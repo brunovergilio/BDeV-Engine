@@ -317,8 +317,8 @@ void BvQueryHeapVk::Create()
 	bufferDesc.m_Size = m_QuerySize * m_QueryCount * m_FrameCount;
 	bufferDesc.m_MemoryType = MemoryType::kReadBack;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	BvBufferVk* pBuffer;
-	if (!(pBuffer = m_pDevice->CreateBuffer<BvBufferVk>(bufferDesc, nullptr)))
+	BvRCRef<BvBufferVk> pBuffer;
+	if (!(m_pDevice->CreateBuffer(bufferDesc, nullptr, &pBuffer)))
 	{
 		return;
 	}

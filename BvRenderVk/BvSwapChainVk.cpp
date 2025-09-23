@@ -7,6 +7,7 @@
 #include "BvFramebufferVk.h"
 #include "BvCommandContextVk.h"
 #include "BvRenderDeviceVk.h"
+#include "BvRenderEngineVk.h"
 #include "BvGPUFenceVk.h"
 #include "BDeV/Core/System/Window/BvMonitor.h"
 
@@ -479,7 +480,7 @@ bool BvSwapChainVk::Create()
 		m_SwapChainTextures[i] = m_pDevice->CreateResource<BvTextureVk>(m_pDevice, this, textureDesc, swapChainImages[i]);
 
 		textureViewDesc.m_pTexture = m_SwapChainTextures[i];
-		m_SwapChainTextureViews[i] = m_pDevice->CreateTextureView<BvTextureViewVk>(textureViewDesc);
+		m_pDevice->CreateTextureView<BvTextureViewVk>(textureViewDesc, &m_SwapChainTextureViews[i]);
 	}
 
 	CreateSynchronizationResources();
@@ -502,10 +503,13 @@ void BvSwapChainVk::Destroy()
 	{
 		m_pCommandQueue->WaitIdle();
 
+		SetTrueFullscreen(false);
+
 		DestroySynchronizationResources();
 
 		for (auto& pTextureView : m_SwapChainTextureViews)
 		{
+			m_pCommandContext->RemoveFramebuffers(pTextureView->GetHandle());
 			pTextureView->Release();
 			pTextureView = nullptr;
 		}
@@ -530,7 +534,7 @@ void BvSwapChainVk::DestroySurface()
 {
 	if (m_Surface)
 	{
-		vkDestroySurfaceKHR(m_pDevice->GetInstanceHandle(), m_Surface, nullptr);
+		vkDestroySurfaceKHR(m_pDevice->GetEngine()->GetHandle(), m_Surface, nullptr);
 		m_Surface = VK_NULL_HANDLE;
 	}
 }

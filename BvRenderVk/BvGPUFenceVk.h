@@ -8,10 +8,7 @@
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvGPUFenceVk, "96de8b96-bb06-4ae4-b96e-e6a3c5323232");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvGPUFenceVk);
-
-
+BV_OBJECT_DEFINE_ID(BvGPUFenceVk, "96de8b96-bb06-4ae4-b96e-e6a3c5323232");
 class BvGPUFenceVk final : public IBvGPUFence, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvGPUFenceVk);
@@ -39,6 +36,7 @@ private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkSemaphore m_Semaphore = VK_NULL_HANDLE;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvGPUFenceVk);
 
 
 BV_CREATE_CAST_TO_VK(BvGPUFence)

@@ -237,8 +237,13 @@ BvSPIRVCompiler::~BvSPIRVCompiler()
 }
 
 
-BvRCRaw<IBvShaderBlob> BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, BvRCRaw<IBvShaderBlob>* pErrorBlob)
+bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppShaderBlob, void** ppErrorBlob)
 {
+	if (!ppShaderBlob || (objId != BV_OBJECT_ID(BvShaderBlob) && objId != BV_OBJECT_ID(IBvShaderBlob)))
+	{
+		return false;
+	}
+
 	auto shaderStage = GetShaderStage(shaderDesc.m_ShaderStage);
 	auto targetClient = GetAPIVersion(shaderDesc.m_ShaderTarget);
 	auto targetLanguage = GetShaderTarget(shaderDesc.m_ShaderTarget);
@@ -259,22 +264,22 @@ BvRCRaw<IBvShaderBlob> BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDe
 	EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
 	if (!shader.parse(&g_DefaultTBuiltInResource, version, false, messages))
 	{
-		if (pErrorBlob)
+		if (ppErrorBlob)
 		{
-			*pErrorBlob = BV_NEW(BvShaderBlob)(shader.getInfoLog());
+			*ppErrorBlob = BV_NEW(BvShaderBlob)(shader.getInfoLog());
 		}
-		return nullptr;
+		return false;
 	}
 
 	glslang::TProgram program;
 	program.addShader(&shader);
 	if (!program.link(messages) || !program.mapIO())
 	{
-		if (pErrorBlob)
+		if (ppErrorBlob)
 		{
-			*pErrorBlob = BV_NEW(BvShaderBlob)(program.getInfoLog());
+			*ppErrorBlob = BV_NEW(BvShaderBlob)(program.getInfoLog());
 		}
-		return nullptr;
+		return false;
 	}
 
 	std::vector<u32> spv;
@@ -301,21 +306,28 @@ BvRCRaw<IBvShaderBlob> BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDe
 		compiledShaderBlob.Resize(spvOpt.size() * sizeof(u32));
 		memcpy(compiledShaderBlob.Data(), spvOpt.data(), compiledShaderBlob.Size());
 	}
-
-	return BV_NEW(BvShaderBlob)(compiledShaderBlob);
+	
+	*ppShaderBlob = BV_NEW(BvShaderBlob)(compiledShaderBlob);
+	
+	return true;
 }
 
 
-BvRCRaw<IBvShaderBlob> BvSPIRVCompiler::CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, BvRCRaw<IBvShaderBlob>* pErrorBlob)
+bool BvSPIRVCompiler::CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppShaderBlob, void** ppErrorBlob)
 {
+	if (!ppShaderBlob || (objId != BV_OBJECT_ID(BvShaderBlob) && objId != BV_OBJECT_ID(IBvShaderBlob)))
+	{
+		return false;
+	}
+
 	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
-		if (pErrorBlob)
+		if (ppErrorBlob)
 		{
-			*pErrorBlob = BV_NEW(BvShaderBlob)("Error opening the file.");
+			*ppErrorBlob = BV_NEW(BvShaderBlob)("Error opening the file.");
 		}
-		return nullptr;
+		return false;
 	}
 	auto size = file.GetSize();
 	BvVector<char> sourceCode(size);
@@ -325,7 +337,7 @@ BvRCRaw<IBvShaderBlob> BvSPIRVCompiler::CompileFromFile(const char* pFilename, c
 	desc.m_pSourceCode = sourceCode.Data();
 	desc.m_SourceCodeSize = size;
 
-	return Compile(shaderDesc, pErrorBlob);
+	return Compile(shaderDesc, objId, ppShaderBlob, ppErrorBlob);
 }
 
 
@@ -479,9 +491,15 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API IBvShaderCompiler* CreateSPIRVCompiler()
+		BV_API bool CreateSPIRVCompiler(const BvUUID& objId, void** ppObj)
 		{
-			return BV_NEW(BvSPIRVCompiler)();
+			if (!ppObj || (objId != BV_OBJECT_ID(BvSPIRVCompiler) && objId != BV_OBJECT_ID(IBvShaderCompiler)))
+			{
+				return false;
+			}
+
+			*ppObj = BV_NEW(BvSPIRVCompiler)();
+			return true;
 		}
 	}
 }

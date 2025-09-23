@@ -4,7 +4,7 @@
 #include "BvTypeConversionsVk.h"
 
 
-const char * const VkResultToString(const VkResult result)
+const char* const VkResultToString(const VkResult result)
 {
 #define VkStringifyCase(result) case result: return #result
 	switch (result)

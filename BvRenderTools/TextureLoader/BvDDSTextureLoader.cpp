@@ -15,16 +15,17 @@ BvDDSTextureLoader::~BvDDSTextureLoader()
 }
 
 
-BvRCRaw<IBvTextureBlob> BvDDSTextureLoader::LoadTextureFromFile(const char* pFilename, IBvTextureLoader::Result* pResult)
+IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromFile(const char* pFilename, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || (objId != BV_OBJECT_ID(BvTextureBlob) && objId != BV_OBJECT_ID(IBvTextureBlob)))
+	{
+		return IBvTextureLoader::Result::kBadPointer;
+	}
+
 	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
-		if (pResult)
-		{
-			*pResult = IBvTextureLoader::Result::kInvalidArg;
-		}
-		return nullptr;
+		return IBvTextureLoader::Result::kInvalidArg;
 	}
 
 	u64 bufferSize = file.GetSize();
@@ -32,31 +33,50 @@ BvRCRaw<IBvTextureBlob> BvDDSTextureLoader::LoadTextureFromFile(const char* pFil
 	file.Read(buffer.Data(), (u32)bufferSize);
 	file.Close();
 
-	return LoadTextureInternal(buffer, pResult);
+	BvTextureBlob* pBlob;
+	auto result = LoadTextureInternal(buffer, pBlob);
+	if (result == IBvTextureLoader::Result::kOk)
+	{
+		*ppObj = pBlob;
+	}
+
+	return result;
 }
 
 
-BvRCRaw<IBvTextureBlob> BvDDSTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureLoader::Result* pResult)
+IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj)
+	{
+		return IBvTextureLoader::Result::kBadPointer;
+	}
+
 	BvVector<u8> buffer(bufferSize);
 	memcpy(buffer.Data(), pBuffer, bufferSize);
 
-	return LoadTextureInternal(buffer, pResult);
+	BvTextureBlob* pBlob;
+	auto result = LoadTextureInternal(buffer, pBlob);
+	if (result == IBvTextureLoader::Result::kOk)
+	{
+		*ppObj = pBlob;
+	}
+
+	return result;
 }
 
 
-BvTextureBlob* BvDDSTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBvTextureLoader::Result* pResult)
+IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, BvTextureBlob*& pTextureBlob)
 {
 	BvVector<SubresourceData> subresources;
 	IBvTextureBlob::Info textureInfo;
 
 	auto result = LoadDDSTexture(buffer.Data(), buffer.Size(), textureInfo, subresources);
-	if (pResult)
+	if (result == IBvTextureLoader::Result::kOk)
 	{
-		*pResult = result;
+		pTextureBlob = BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
 	}
 
-	return result == IBvTextureLoader::Result::kOk ? BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources) : nullptr;
+	return result;
 }
 
 
@@ -70,9 +90,15 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API IBvTextureLoader* CreateDDSTextureLoader()
+		BV_API bool CreateDDSTextureLoader(const BvUUID& objId, void** ppObj)
 		{
-			return BV_NEW(BvDDSTextureLoader)();
+			if (!ppObj || (objId != BV_OBJECT_ID(BvDDSTextureLoader) && objId != BV_OBJECT_ID(IBvTextureLoader)))
+			{
+				return false;
+			}
+
+			*ppObj = BV_NEW(BvDDSTextureLoader)();
+			return true;
 		}
 	}
 }

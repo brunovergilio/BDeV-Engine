@@ -27,31 +27,31 @@ public:
 	static void Break();
 
 	// Asserts a condition (should be used with macros)
-	static void Assert(const char* pCondition, const BvSourceInfo& sourceInfo, const char* pFormat, ...);
+	static void Assert(const char* pCondition, const std::source_location& sourceInfo, const char* pFormat, ...);
 };
 
 
 #if BV_DEBUG
 
 // Asserts a condition and throws an error with a custom message
-#define BV_ASSERT(cond, msg, ...) do												\
-{																					\
-	if (!(cond))																	\
-	{																				\
-		BvDebug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
-	}																				\
-} while (false)
+#define BV_ASSERT(cond, msg, ...) do															\
+{																								\
+	if (!(cond))																				\
+	{																							\
+		BvDebug::Assert(#cond, std::source_location::current(), msg __VA_OPT__(,) __VA_ARGS__);	\
+	}																							\
+} while (0)
 
 // Asserts a condition and throws an error with a custom message once
-#define BV_ASSERT_ONCE(cond, msg, ...) do											\
-{																					\
-	static bool doAssert = true;													\
-	if (doAssert && !(cond))														\
-	{																				\
-		BvDebug::Assert(#cond, BV_SOURCE_INFO, msg __VA_OPT__(,) __VA_ARGS__);		\
-		doAssert = false;															\
-	}																				\
-} while (false)
+#define BV_ASSERT_ONCE(cond, msg, ...) do														\
+{																								\
+	static bool doAssert = true;																\
+	if (doAssert && !(cond))																	\
+	{																							\
+		BvDebug::Assert(#cond, std::source_location::current(), msg __VA_OPT__(,) __VA_ARGS__);	\
+		doAssert = false;																		\
+	}																							\
+} while (0)
 
 #else
 
@@ -63,7 +63,7 @@ public:
 
 struct BvLogInfo
 {
-	const BvSourceInfo& m_SourceInfo;
+	const std::source_location& m_SourceInfo;
 	const char* m_pMessage;
 	const char* m_pChannel;
 	u32 m_Level;
@@ -190,14 +190,14 @@ namespace Logging
 	void SetLoggerManager(BvLoggerManager* pLoggerManager);
 
 	// Used by macros to dispatch information to multiple loggers
-	void Dispatch(const char* pChannel, u32 level, u32 verbosity, const BvSourceInfo& sourceInfo, const char* pMessage, ...);
+	void Dispatch(const char* pChannel, u32 level, u32 verbosity, const std::source_location& sourceInfo, const char* pMessage, ...);
 }
 
 
 #define BV_LOG(channel, level, verbosity, message, ...) do												\
 {																										\
-	Logging::Dispatch(channel, level, verbosity, BV_SOURCE_INFO, message __VA_OPT__(, ) __VA_ARGS__);	\
-} while (false)
+	Logging::Dispatch(channel, level, verbosity, std::source_location::current(), message __VA_OPT__(, ) __VA_ARGS__);	\
+} while (0)
 
 
 namespace Internal
@@ -218,7 +218,7 @@ namespace Internal
 {																\
 	BV_LOG(channel, 4, 0, message __VA_OPT__(, ) __VA_ARGS__);	\
 	Internal::ReportFatalError(message);						\
-} while (false)
+} while (0)
 
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)

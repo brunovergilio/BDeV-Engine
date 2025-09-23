@@ -4,7 +4,6 @@
 #include "BvCommonVk.h"
 #include "BDeV/Core/Container/BvFixedVector.h"
 #include "BvTextureViewVk.h"
-#include "BDeV/Core/Utils/BvHash.h"
 #include "BDeV/Core/Container/BvRobinMap.h"
 #include "BvRenderPassVk.h"
 

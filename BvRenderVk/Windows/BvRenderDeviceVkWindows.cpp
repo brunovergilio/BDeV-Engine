@@ -1,4 +1,5 @@
 #include "BvRenderVk/BvRenderDeviceVk.h"
+#include "BvRenderVk/BvRenderEngineVk.h"
 #include <BDeV/Core/System/Window/BvMonitor.h>
 
 
@@ -15,7 +16,7 @@ void BvRenderDeviceVk::SetupSupportedDisplayFormats()
 
 	RegisterClassW(&wc);
 
-	auto instance = GetInstanceHandle();
+	auto instance = GetEngine()->GetHandle();
 	HWND hWnd = nullptr;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	do

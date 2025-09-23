@@ -94,26 +94,38 @@
   <ItemGroup>
     <ClInclude Include="BvBufferD3D12.h" />
     <ClInclude Include="BvBufferViewD3D12.h" />
+    <ClInclude Include="BvCommandContextD3D12.h" />
     <ClInclude Include="BvCommonD3D12.h" />
     <ClInclude Include="BvGPUFenceD3D12.h" />
     <ClInclude Include="BvPipelineStateD3D12.h" />
     <ClInclude Include="BvRenderDeviceD3D12.h" />
     <ClInclude Include="BvRenderEngineD3D12.h" />
+    <ClInclude Include="BvRenderPassD3D12.h" />
+    <ClInclude Include="BvSamplerD3D12.h" />
+    <ClInclude Include="BvShaderD3D12.h" />
     <ClInclude Include="BvShaderResourceLayoutD3D12.h" />
+    <ClInclude Include="BvSwapChainD3D12.h" />
     <ClInclude Include="BvTextureD3D12.h" />
+    <ClInclude Include="BvTextureViewD3D12.h" />
     <ClInclude Include="BvTypeConversionsD3D12.h" />
     <ClInclude Include="Third Party\D3D12MemAlloc.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvBufferD3D12.cpp" />
     <ClCompile Include="BvBufferViewD3D12.cpp" />
+    <ClCompile Include="BvCommandContextD3D12.cpp" />
     <ClCompile Include="BvCommonD3D12.cpp" />
     <ClCompile Include="BvGPUFenceD3D12.cpp" />
     <ClCompile Include="BvPipelineStateD3D12.cpp" />
     <ClCompile Include="BvRenderDeviceD3D12.cpp" />
     <ClCompile Include="BvRenderEngineD3D12.cpp" />
+    <ClCompile Include="BvRenderPassD3D12.cpp" />
+    <ClCompile Include="BvSamplerD3D12.cpp" />
+    <ClCompile Include="BvShaderD3D12.cpp" />
     <ClCompile Include="BvShaderResourceLayoutD3D12.cpp" />
+    <ClCompile Include="BvSwapChainD3D12.cpp" />
     <ClCompile Include="BvTextureD3D12.cpp" />
+    <ClCompile Include="BvTextureViewD3D12.cpp" />
     <ClCompile Include="BvTypeConversionsD3D12.cpp" />
     <ClCompile Include="Third Party\D3D12MemAlloc.cpp" />
   </ItemGroup>

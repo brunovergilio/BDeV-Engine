@@ -21,17 +21,17 @@ BvSTBTextureLoader::~BvSTBTextureLoader()
 }
 
 
-BvRCRaw<IBvTextureBlob> BvSTBTextureLoader::LoadTextureFromFile(const char* pFilename, IBvTextureLoader::Result* pResult)
+IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureFromFile(const char* pFilename, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj || (objId != BV_OBJECT_ID(BvTextureBlob) && objId != BV_OBJECT_ID(IBvTextureBlob)))
+	{
+		return IBvTextureLoader::Result::kBadPointer;
+	}
+
 	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
-		if (pResult)
-		{
-			*pResult = IBvTextureLoader::Result::kInvalidArg;
-		}
-
-		return nullptr;
+		return IBvTextureLoader::Result::kInvalidArg;
 	}
 
 	u64 bufferSize = file.GetSize();
@@ -39,20 +39,39 @@ BvRCRaw<IBvTextureBlob> BvSTBTextureLoader::LoadTextureFromFile(const char* pFil
 	file.Read(buffer.Data(), (u32)bufferSize);
 	file.Close();
 
-	return LoadTextureInternal(buffer, pResult);
+	BvTextureBlob* pBlob;
+	auto result = LoadTextureInternal(buffer, pBlob);
+	if (result == IBvTextureLoader::Result::kOk)
+	{
+		*ppObj = pBlob;
+	}
+
+	return result;
 }
 
 
-BvRCRaw<IBvTextureBlob> BvSTBTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, IBvTextureLoader::Result* pResult)
+IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, const BvUUID& objId, void** ppObj)
 {
+	if (!ppObj)
+	{
+		return IBvTextureLoader::Result::kBadPointer;
+	}
+
 	BvVector<u8> buffer(bufferSize);
 	memcpy(buffer.Data(), pBuffer, bufferSize);
 
-	return LoadTextureInternal(buffer, pResult);
+	BvTextureBlob* pBlob;
+	auto result = LoadTextureInternal(buffer, pBlob);
+	if (result == IBvTextureLoader::Result::kOk)
+	{
+		*ppObj = pBlob;
+	}
+
+	return result;
 }
 
 
-BvTextureBlob* BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBvTextureLoader::Result* pResult)
+IBvTextureLoader::Result BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, BvTextureBlob*& pTextureBlob)
 {
 	BvVector<SubresourceData> subresources;
 	IBvTextureBlob::Info textureInfo;
@@ -63,11 +82,7 @@ BvTextureBlob* BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBv
 	Format format = Format::kUnknown;
 	if (!stbi_info_from_memory(buffer.Data(), i32(buffer.Size()), &x, &y, &comp))
 	{
-		if (pResult)
-		{
-			*pResult = IBvTextureLoader::Result::kNotSupported;
-		}
-		return nullptr;
+		return IBvTextureLoader::Result::kNotSupported;
 	}
 
 	if (stbi_is_16_bit_from_memory(buffer.Data(), buffer.Size()))
@@ -119,20 +134,12 @@ BvTextureBlob* BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBv
 
 	if (!pData)
 	{
-		if (pResult)
-		{
-			*pResult = IBvTextureLoader::Result::kInvalidData;
-		}
-		return nullptr;
+		return IBvTextureLoader::Result::kInvalidData;
 	}
 	else if (format == Format::kUnknown)
 	{
 		stbi_image_free(pData);
-		if (pResult)
-		{
-			*pResult = IBvTextureLoader::Result::kNotSupported;
-		}
-		return nullptr;
+		return IBvTextureLoader::Result::kNotSupported;
 	}
 
 	textureInfo.m_TextureType = TextureType::kTexture2D;
@@ -156,11 +163,9 @@ BvTextureBlob* BvSTBTextureLoader::LoadTextureInternal(BvVector<u8>& buffer, IBv
 	memcpy(buffer.Data(), pData, buffer.Size());
 	stbi_image_free(pData);
 
-	if (pResult)
-	{
-		*pResult = IBvTextureLoader::Result::kOk;
-	}
-	return BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
+	pTextureBlob = BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
+
+	return IBvTextureLoader::Result::kOk;
 }
 
 
@@ -174,9 +179,15 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API IBvTextureLoader* CreateSTBTextureLoader()
+		BV_API bool CreateSTBTextureLoader(const BvUUID& objId, void** ppObj)
 		{
-			return BV_NEW(BvSTBTextureLoader)();
+			if (!ppObj || (objId != BV_OBJECT_ID(BvSTBTextureLoader) && objId != BV_OBJECT_ID(IBvTextureLoader)))
+			{
+				return false;
+			}
+
+			*ppObj = BV_NEW(BvSTBTextureLoader)();
+			return true;
 		}
 	}
 }

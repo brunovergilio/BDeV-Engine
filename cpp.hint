@@ -47,3 +47,5 @@ bool QueryInterface(const BvUUID& id, IBvObject** ppInterface) override \
 	} \
 	return BvObjectBase::QueryInterface(id, ppInterface); \
 }
+
+#define BV_IS_CHAR_TYPE(type) template<> struct IsCharType<type> { static constexpr bool value = true; };

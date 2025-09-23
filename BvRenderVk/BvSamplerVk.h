@@ -8,10 +8,7 @@
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvSamplerVk, "15824086-fe4a-46c3-9362-f8e43b8c3e67");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvSamplerVk);
-
-
+BV_OBJECT_DEFINE_ID(BvSamplerVk, "15824086-fe4a-46c3-9362-f8e43b8c3e67");
 class BvSamplerVk final : public IBvSampler, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvSamplerVk);
@@ -36,6 +33,7 @@ private:
 	VkSampler m_Sampler = VK_NULL_HANDLE;
 	SamplerDesc m_SamplerDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvSamplerVk);
 
 
 BV_CREATE_CAST_TO_VK(BvSampler)

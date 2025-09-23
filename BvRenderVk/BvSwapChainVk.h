@@ -14,10 +14,7 @@ class BvCommandContextVk;
 class BvGPUFenceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvSwapChainVk, "68fe17c5-c20d-4c33-83dc-22ac819ab867");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvSwapChainVk);
-
-
+BV_OBJECT_DEFINE_ID(BvSwapChainVk, "68fe17c5-c20d-4c33-83dc-22ac819ab867");
 class BvSwapChainVk final : public IBvSwapChain, public IBvResourceVk
 {
 	BV_VK_DEVICE_RES_DECL;
@@ -83,6 +80,7 @@ private:
 	bool m_IsReady = false;
 	bool m_FullscreenAcquired = false;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvSwapChainVk);
 
 
 BV_CREATE_CAST_TO_VK(BvSwapChain)

@@ -1,17 +1,20 @@
 #pragma once
 
 
-#include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Container/BvStringId.h"
+#include "BDeV/Core/Utils/BvStringId.h"
 #include "BDeV/Core/Math/BvMath.h"
 #include "BDeV/Core/Container/BvFixedVector.h"
+#include "BDeV/Core/Utils/BvObject.h"
+#include "BDeV/Core/Utils/BvHash.h"
 #include <algorithm>
 
 
 class IBvBuffer;
+class IBvBufferView;
 class IBvTexture;
 class IBvTextureView;
+class IBvSampler;
 class IBvCommandContext;
 class IBvAccelerationStructure;
 class IBvRayTracingPipelineState;
@@ -684,7 +687,7 @@ struct BufferViewDesc
 {
 	IBvBuffer* m_pBuffer = nullptr;
 	u64 m_Offset = 0;
-	u64 m_ElementCount = 0;
+	u32 m_ElementCount = 0;
 	u32 m_Stride = 0;
 	Format m_Format = Format::kUnknown;
 };
@@ -755,6 +758,7 @@ struct TextureDesc
 
 enum class TextureViewType : u8
 {
+	kUnknown,
 	kTexture1D,
 	kTexture1DArray,
 	kTexture2D,
@@ -771,6 +775,7 @@ struct SubresourceDesc
 	u32 mipCount = kU32Max;
 	u32 firstLayer = 0;
 	u32 layerCount = kU32Max;
+	u32 planeSlice = 0;
 };
 
 
@@ -971,6 +976,132 @@ enum class ShaderResourceType : u8
 };
 
 
+// HLSL Type					DirectX Descriptor Type		Vulkan Descriptor Type		GLSL Type
+// SamplerState					Sampler						Sampler						uniform sampler*
+// SamplerComparisonState		Sampler						Sampler						uniform sampler*Shadow
+// Buffer						SRV							Uniform Texel Buffer		uniform samplerBuffer
+// RWBuffer						UAV							Storage Texel Buffer		uniform imageBuffer
+// Texture*						SRV							Sampled Image				uniform texture*
+// RWTexture*					UAV							Storage Image				uniform image*
+// cbuffer						CBV							Uniform Buffer				uniform{ ... }
+// ConstantBuffer				CBV							Uniform Buffer				uniform{ ... }
+// tbuffer						SRV							Uniform Texel Buffer		uniform samplerBuffer
+// TextureBuffer				SRV							Uniform Texel Buffer		uniform samplerBuffer
+// StructuredBuffer				SRV							Storage Buffer				buffer{ ... }
+// RWStructuredBuffer			UAV							Storage Buffer				buffer{ ... }
+// ByteAddressBuffer			SRV							Storage Buffer				-
+// RWByteAddressBuffer			UAV							Storage Buffer				-
+// AppendStructuredBuffer		UAV							Storage Buffer				-
+// ConsumeStructuredBuffer		UAV							Storage Buffer				-
+
+
+struct ShaderResourceDesc
+{
+	BvStringId m_Name;
+	u32 m_Binding;
+	u32 m_Count;
+	ShaderResourceType m_ShaderResourceType;
+	ShaderStage m_ShaderStages;
+	const IBvSampler* const* m_ppStaticSamplers;
+	bool m_Bindless;
+
+	template<ShaderResourceType Type>
+	static ShaderResourceDesc As(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ name, binding, count, Type, shaderStages, nullptr }; }
+	template<ShaderResourceType Type>
+	static ShaderResourceDesc As(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ BvStringId::Empty(), binding, count, Type, shaderStages, nullptr }; }
+
+	static ShaderResourceDesc AsConstantBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kConstantBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kStructuredBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsRWStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kRWStructuredBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsDynamicConstantBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kDynamicConstantBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsDynamicStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kDynamicStructuredBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsDynamicRWStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kDynamicRWStructuredBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsFormattedBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kFormattedBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsRWFormattedBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kRWFormattedBuffer, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsTexture(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kTexture, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsRWTexture(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kRWTexture, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsSampler(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kSampler, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsInputAttachment(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kInputAttachment, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsAccelerationStructure(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kAccelerationStructure, shaderStages, nullptr }; }
+	static ShaderResourceDesc AsStaticSampler(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kSampler, shaderStages, ppSamplers }; }
+
+	static ShaderResourceDesc AsConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsConstantBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsTexture(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWTexture(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsSampler(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsInputAttachment(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsStaticSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return AsStaticSampler(BvStringId::Empty(), binding, shaderStages, count, ppSamplers); }
+
+	friend bool operator<(const ShaderResourceDesc& lhs, const ShaderResourceDesc& rhs)
+	{
+		return lhs.m_Binding < rhs.m_Binding;
+	}
+
+	friend bool operator==(const ShaderResourceDesc& lhs, const ShaderResourceDesc& rhs)
+	{
+		return lhs.m_Name == rhs.m_Name && lhs.m_Binding == rhs.m_Binding && lhs.m_Count == rhs.m_Count && lhs.m_ShaderResourceType == rhs.m_ShaderResourceType
+			&& lhs.m_ShaderStages == rhs.m_ShaderStages && lhs.m_ppStaticSamplers == rhs.m_ppStaticSamplers && lhs.m_Bindless == rhs.m_Bindless;
+	}
+};
+
+
+struct ShaderResourceConstantDesc
+{
+	BvStringId m_Name;
+	u32 m_Binding;
+	u32 m_Size;
+	ShaderStage m_ShaderStages;
+
+	template<typename T>
+	static ShaderResourceConstantDesc As(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return { name, binding, sizeof(T), shaderStages }; }
+	template<typename T>
+	static ShaderResourceConstantDesc As(const BvStringId name, ShaderStage shaderStages = ShaderStage::kAllStages) { return { name, 0, sizeof(T), shaderStages }; }
+	template<typename T>
+	static ShaderResourceConstantDesc As(ShaderStage shaderStages = ShaderStage::kAllStages) { return { nullptr, 0, sizeof(T), shaderStages }; }
+
+	friend bool operator<(const ShaderResourceConstantDesc& lhs, const ShaderResourceConstantDesc& rhs)
+	{
+		return lhs.m_Binding < rhs.m_Binding;
+	}
+
+	friend bool operator==(const ShaderResourceConstantDesc& lhs, const ShaderResourceConstantDesc& rhs)
+	{
+		return lhs.m_Name == rhs.m_Name && lhs.m_Binding == rhs.m_Binding && lhs.m_Size == rhs.m_Size && lhs.m_ShaderStages == rhs.m_ShaderStages;
+	}
+};
+
+
+struct ShaderResourceSetDesc
+{
+	u32 m_Index;
+	u32 m_ResourceCount;
+	const ShaderResourceDesc* m_pResources;
+	bool m_Bindless;
+	u32 m_ConstantCount;
+	const ShaderResourceConstantDesc* m_pConstants;
+
+	friend bool operator<(const ShaderResourceSetDesc& lhs, const ShaderResourceSetDesc& rhs)
+	{
+		return lhs.m_Index < rhs.m_Index;
+	}
+};
+
+
+struct ShaderResourceLayoutDesc
+{
+	u32 m_ShaderResourceSetCount = 0;
+	const ShaderResourceSetDesc* m_pShaderResourceSets = nullptr;
+};
+
+
 enum class Filter : u8
 {
 	kPoint,
@@ -1131,6 +1262,279 @@ struct RenderPassTargetDesc
 
 	IBvTextureView* m_pView = nullptr;
 	ClearColorValue m_ClearValues = ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+};
+
+
+struct AttachmentRef
+{
+	u32 m_Index = 0;
+	ResourceState m_ResourceState = ResourceState::kCommon;
+	ResolveMode m_ResolveMode = ResolveMode::kNone;
+
+	constexpr bool operator==(const AttachmentRef& rhs) const
+	{
+		return m_Index == rhs.m_Index && m_ResourceState == rhs.m_ResourceState && m_ResolveMode == rhs.m_ResolveMode;
+	}
+
+	constexpr bool operator!=(const AttachmentRef& rhs) const
+	{
+		return !(*this == rhs);
+	}
+};
+
+
+struct ShadingRateAttachmentRef
+{
+	u32 m_Index = 0;
+	ResourceState m_ResourceState = ResourceState::kCommon;
+	u32 m_TexelSizes[2]{ 0,0 };
+
+	constexpr bool operator==(const ShadingRateAttachmentRef& rhs) const
+	{
+		return m_Index == rhs.m_Index && m_ResourceState == rhs.m_ResourceState
+			&& m_TexelSizes[0] == rhs.m_TexelSizes[0] && m_TexelSizes[1] == rhs.m_TexelSizes[1];
+	}
+
+	constexpr bool operator!=(const ShadingRateAttachmentRef& rhs) const
+	{
+		return !(*this == rhs);
+	}
+};
+
+
+struct SubpassDesc
+{
+	u32 m_InputAttachmentCount = 0;
+	u32 m_ColorAttachmentCount = 0;
+	const AttachmentRef* m_pColorAttachments = nullptr;
+	const AttachmentRef* m_pDepthStencilAttachment = nullptr;
+	const AttachmentRef* m_pInputAttachments = nullptr;
+	const AttachmentRef* m_pResolveAttachments = nullptr;
+	const AttachmentRef* m_pDepthStencilResolveAttachment = nullptr;
+	const ShadingRateAttachmentRef* m_pShadingRateAttachment = nullptr;
+	u32 m_MultiviewCount = 0;
+	u32 m_MultiviewCorrelationMask = 0;
+
+	constexpr bool operator==(const SubpassDesc& rhs) const
+	{
+		if (m_ColorAttachmentCount != rhs.m_ColorAttachmentCount || m_InputAttachmentCount != rhs.m_InputAttachmentCount)
+		{
+			return false;
+		}
+
+		if ((m_pDepthStencilAttachment == nullptr && rhs.m_pDepthStencilAttachment != nullptr)
+			|| (m_pDepthStencilAttachment != nullptr && rhs.m_pDepthStencilAttachment == nullptr))
+		{
+			return false;
+		}
+
+		if (m_pDepthStencilAttachment != nullptr && rhs.m_pDepthStencilAttachment != nullptr
+			&& *m_pDepthStencilAttachment != *rhs.m_pDepthStencilAttachment)
+		{
+			return false;
+		}
+
+		if ((m_pResolveAttachments == nullptr && rhs.m_pResolveAttachments != nullptr)
+			|| (m_pResolveAttachments != nullptr && rhs.m_pResolveAttachments == nullptr))
+		{
+			return false;
+		}
+
+		if (m_pResolveAttachments != nullptr && rhs.m_pResolveAttachments != nullptr
+			&& *m_pResolveAttachments != *rhs.m_pResolveAttachments)
+		{
+			return false;
+		}
+
+		if (m_pDepthStencilResolveAttachment != nullptr && rhs.m_pDepthStencilResolveAttachment != nullptr
+			&& *m_pDepthStencilResolveAttachment != *rhs.m_pDepthStencilResolveAttachment)
+		{
+			return false;
+		}
+
+		if ((m_pShadingRateAttachment == nullptr && rhs.m_pShadingRateAttachment != nullptr)
+			|| (m_pShadingRateAttachment != nullptr && rhs.m_pShadingRateAttachment == nullptr))
+		{
+			return false;
+		}
+
+		if (m_pShadingRateAttachment != nullptr && rhs.m_pShadingRateAttachment != nullptr
+			&& *m_pShadingRateAttachment != *rhs.m_pShadingRateAttachment)
+		{
+			return false;
+		}
+
+		for (auto i = 0u; i < m_ColorAttachmentCount; ++i)
+		{
+			if (m_pColorAttachments[i] != rhs.m_pColorAttachments[i])
+			{
+				return false;
+			}
+		}
+
+		for (auto i = 0u; i < m_InputAttachmentCount; ++i)
+		{
+			if (m_pInputAttachments[i] != rhs.m_pInputAttachments[i])
+			{
+				return false;
+			}
+		}
+
+		if (m_MultiviewCount != rhs.m_MultiviewCount || m_MultiviewCorrelationMask != rhs.m_MultiviewCorrelationMask)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	constexpr bool operator!=(const SubpassDesc& rhs) const
+	{
+		return !(*this == rhs);
+	}
+};
+
+
+struct SubpassDependency
+{
+	static constexpr auto kExternalSubpassIndex = kU32Max;
+
+	u32 m_SrcSubpass = 0;
+	u32 m_DstSubpass = 0;
+	ResourceAccess m_SrcAccess = ResourceAccess::kAuto;
+	ResourceAccess m_DstAccess = ResourceAccess::kAuto;
+	PipelineStage m_SrcStage = PipelineStage::kAuto;
+	PipelineStage m_DstStage = PipelineStage::kAuto;
+
+	constexpr bool operator==(const SubpassDependency& rhs) const
+	{
+		return m_SrcSubpass == rhs.m_SrcSubpass && (u32)m_SrcAccess == (u32)rhs.m_SrcAccess && (u32)m_SrcStage == (u32)rhs.m_SrcStage
+			&& m_DstSubpass == rhs.m_DstSubpass && (u32)m_DstAccess == (u32)rhs.m_DstAccess && (u32)m_DstStage == (u32)rhs.m_DstStage;
+	}
+
+	constexpr bool operator!=(const SubpassDependency& rhs) const
+	{
+		return !(*this == rhs);
+	}
+};
+
+
+
+struct RenderPassAttachment
+{
+	RenderPassAttachment()
+		: m_Format(Format::kUnknown), m_StateBefore(ResourceState::kCommon), m_StateAfter(ResourceState::kCommon), m_SampleCount(1),
+		m_LoadOp(LoadOp::kClear), m_StoreOp(StoreOp::kStore)
+	{}
+
+	Format m_Format;
+	ResourceState m_StateBefore;
+	ResourceState m_StateAfter;
+	u8 m_SampleCount : 5;
+	LoadOp m_LoadOp : 2;
+	StoreOp m_StoreOp : 1;
+
+	constexpr bool operator==(const RenderPassAttachment& rhs) const
+	{
+		return m_Format == rhs.m_Format &&
+			m_StateBefore == rhs.m_StateBefore &&
+			m_StateAfter == rhs.m_StateAfter &&
+			m_SampleCount == rhs.m_SampleCount &&
+			m_LoadOp == rhs.m_LoadOp &&
+			m_StoreOp == rhs.m_StoreOp;
+	}
+
+	constexpr bool operator!=(const RenderPassAttachment& rhs) const
+	{
+		return !(*this == rhs);
+	}
+};
+
+
+struct RenderPassDesc
+{
+	const RenderPassAttachment* m_pAttachments = nullptr;
+	const SubpassDesc* m_pSubpasses = nullptr;
+	const SubpassDependency* m_pSubpassDependencies = nullptr;
+	u32 m_AttachmentCount = 0;
+	u32 m_SubpassCount = 0;
+	u32 m_SubpassDependencyCount = 0;
+
+	bool operator==(const RenderPassDesc& rhs) const noexcept
+	{
+		return true;
+	}
+
+	bool operator!=(const RenderPassDesc& rhs) const noexcept
+	{
+		return !(*this == rhs);
+	}
+};
+
+
+template<>
+struct std::hash<RenderPassDesc>
+{
+	size_t operator()(const RenderPassDesc& renderPassDesc) const
+	{
+		u64 hash = 0;
+		HashCombine(hash, renderPassDesc.m_AttachmentCount);
+		for (auto i = 0u; i < renderPassDesc.m_AttachmentCount; ++i)
+		{
+			auto& attachment = renderPassDesc.m_pAttachments[i];
+			HashCombine(hash, attachment.m_Format, attachment.m_StateBefore, attachment.m_StateAfter, attachment.m_SampleCount,
+				attachment.m_LoadOp, attachment.m_StoreOp);
+		}
+
+		HashCombine(hash, renderPassDesc.m_SubpassCount);
+		for (auto i = 0u; i < renderPassDesc.m_SubpassCount; ++i)
+		{
+			auto& subpass = renderPassDesc.m_pSubpasses[i];
+			HashCombine(hash, subpass.m_ColorAttachmentCount);
+			for (auto j = 0u; j < subpass.m_ColorAttachmentCount; ++j)
+			{
+				auto& attachment = subpass.m_pColorAttachments[j];
+				HashCombine(hash, attachment.m_Index, attachment.m_ResourceState);
+			}
+
+			if (subpass.m_pDepthStencilAttachment)
+			{
+				HashCombine(hash, subpass.m_pDepthStencilAttachment->m_Index, subpass.m_pDepthStencilAttachment->m_ResourceState);
+			}
+
+			HashCombine(hash, subpass.m_InputAttachmentCount);
+			for (auto j = 0u; j < subpass.m_InputAttachmentCount; ++j)
+			{
+				auto& attachment = subpass.m_pInputAttachments[j];
+				HashCombine(hash, attachment.m_Index, attachment.m_ResourceState);
+			}
+
+			if (subpass.m_pResolveAttachments)
+			{
+				for (auto j = 0u; j < subpass.m_ColorAttachmentCount; ++j)
+				{
+					auto& attachment = subpass.m_pResolveAttachments[j];
+					HashCombine(hash, attachment.m_Index, attachment.m_ResourceState);
+				}
+			}
+
+			if (subpass.m_pShadingRateAttachment)
+			{
+				HashCombine(hash, subpass.m_pShadingRateAttachment->m_Index, subpass.m_pShadingRateAttachment->m_ResourceState,
+					subpass.m_pShadingRateAttachment->m_TexelSizes[0], subpass.m_pShadingRateAttachment->m_TexelSizes[1]);
+			}
+		}
+
+		HashCombine(hash, renderPassDesc.m_SubpassDependencyCount);
+		for (auto i = 0u; i < renderPassDesc.m_SubpassDependencyCount; ++i)
+		{
+			auto& subpassDep = renderPassDesc.m_pSubpassDependencies[i];
+			HashCombine(hash, subpassDep.m_SrcSubpass, subpassDep.m_DstSubpass,
+				subpassDep.m_SrcAccess, subpassDep.m_DstAccess, subpassDep.m_SrcStage, subpassDep.m_DstStage);
+		}
+
+		return hash;
+	}
 };
 
 
@@ -1818,3 +2222,20 @@ struct CommandContextDesc
 	CommandType m_CommandType = CommandType::kNone;
 	bool m_RequireDedicated = false;
 };
+
+
+struct BvRenderDeviceCreateDesc
+{
+	struct ContextGroupDesc
+	{
+		u32 m_GroupIndex;
+		u32 m_ContextCount;
+	};
+
+	u32 m_GPUIndex = kU32Max;
+	BvFixedVector<ContextGroupDesc, kMaxContextGroupCount> m_ContextGroups;
+	bool m_UseDebug = true;
+};
+
+
+using GPUList = BvFixedVector<BvGPUInfo*, kMaxDevices>;

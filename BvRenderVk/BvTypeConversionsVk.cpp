@@ -150,6 +150,7 @@ constexpr VkImageType kImageTypes[] =
 
 constexpr VkImageViewType kImageViewTypes[] =
 {
+	VK_IMAGE_VIEW_TYPE_MAX_ENUM,
 	VK_IMAGE_VIEW_TYPE_1D,
 	VK_IMAGE_VIEW_TYPE_1D_ARRAY,
 	VK_IMAGE_VIEW_TYPE_2D,

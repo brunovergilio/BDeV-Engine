@@ -115,7 +115,7 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	texData.m_SubresourceCount = 1;
 	texData.m_pSubresources = &texSubRes;
 	texData.m_pContext = pContext;
-	m_Texture = m_Device->CreateTexture(texDesc, &texData);
+	m_Device->CreateTexture(texDesc, &texData, &m_Texture);
 	
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = texDesc.m_Format;
@@ -123,11 +123,11 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	viewDesc.m_ViewType = TextureViewType::kTexture2D;
 	viewDesc.m_SubresourceDesc.mipCount = 1;
 	viewDesc.m_SubresourceDesc.layerCount = 1;
-	m_TextureView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_TextureView);
 
 	SamplerDesc samDesc;
 	samDesc.m_AddressModeU = samDesc.m_AddressModeV = samDesc.m_AddressModeW = AddressMode::kClamp;
-	m_Sampler = m_Device->CreateSampler(samDesc);
+	m_Device->CreateSampler(samDesc, &m_Sampler);
 
 	ShaderResourceDesc resources[] =
 	{
@@ -148,31 +148,31 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	ShaderResourceLayoutDesc srlDesc;
 	srlDesc.m_ShaderResourceSetCount = 1;
 	srlDesc.m_pShaderResourceSets = &setDesc;
-	m_SRL = m_Device->CreateShaderResourceLayout(srlDesc);
+	m_Device->CreateShaderResourceLayout(srlDesc, &m_SRL);
 
 	ShaderCreateDesc vsDesc;
 	vsDesc.m_ShaderStage = ShaderStage::kVertex;
 	vsDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	vsDesc.m_pSourceCode = pVS;
 	vsDesc.m_SourceCodeSize = vsSize;
-	BvRCRef<IBvShaderBlob> vsBlob = m_Compiler->Compile(vsDesc);
+	BvRCRef<IBvShaderBlob> vsBlob;
+	m_Compiler->Compile(vsDesc, &vsBlob);
 
 	ShaderCreateDesc psDesc;
 	psDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
 	psDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	psDesc.m_pSourceCode = pPS;
 	psDesc.m_SourceCodeSize = psSize;
-	BvRCRef<IBvShaderBlob> psBlob = m_Compiler->Compile(psDesc);
+	BvRCRef<IBvShaderBlob> psBlob;
+	m_Compiler->Compile(psDesc, &psBlob);
 
 	vsDesc.m_pByteCode = (const u8*)vsBlob->GetBufferPointer();
 	vsDesc.m_ByteCodeSize = vsBlob->GetBufferSize();
-	m_VS = m_Device->CreateShader(vsDesc);
-	vsBlob.Reset();
+	m_Device->CreateShader(vsDesc, &m_VS);
 
 	psDesc.m_pByteCode = (const u8*)psBlob->GetBufferPointer();
 	psDesc.m_ByteCodeSize = psBlob->GetBufferSize();
-	m_PS = m_Device->CreateShader(psDesc);
-	psBlob.Reset();
+	m_Device->CreateShader(psDesc, &m_PS);
 }
 
 
@@ -215,12 +215,12 @@ void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRen
 
 	if (sampleCount == 1)
 	{
-		m_Pipeline = m_Device->CreateGraphicsPipeline(psoDesc);
+		m_Device->CreateGraphicsPipeline(psoDesc, &m_Pipeline);
 	}
 	else
 	{
 		psoDesc.m_SampleCount = sampleCount;
-		m_PipelineMSAA = m_Device->CreateGraphicsPipeline(psoDesc);
+		m_Device->CreateGraphicsPipeline(psoDesc, &m_PipelineMSAA);
 	}
 }
 
@@ -388,7 +388,7 @@ void UIOverlay::CreateVB(u64 size, u32 count)
 	desc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 	desc.m_Size = size;
 	desc.m_UsageFlags = BufferUsage::kVertexBuffer;
-	m_VB = m_Device->CreateBuffer(desc, nullptr);
+	m_Device->CreateBuffer(desc, nullptr, &m_VB);
 }
 
 
@@ -399,5 +399,5 @@ void UIOverlay::CreateIB(u64 size, u32 count)
 	desc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
 	desc.m_Size = size;
 	desc.m_UsageFlags = BufferUsage::kIndexBuffer;
-	m_IB = m_Device->CreateBuffer(desc, nullptr);
+	m_Device->CreateBuffer(desc, nullptr, &m_IB);
 }

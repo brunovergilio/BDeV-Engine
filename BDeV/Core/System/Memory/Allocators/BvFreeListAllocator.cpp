@@ -1,4 +1,4 @@
-#include "BvHeapAllocator.h"
+#include "BvFreeListAllocator.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/Process/BvProcess.h"
 
@@ -39,7 +39,7 @@ void SetBlockInfo(size_t* pMemory, size_t size, bool inUse)
 // ===============================================
 // Heap Allocator
 // ===============================================
-BvHeapAllocator::BvHeapAllocator(void* pStart, void* pEnd)
+BvFreeListAllocator::BvFreeListAllocator(void* pStart, void* pEnd)
 	: m_pStart(reinterpret_cast<char*>(pStart)), m_pEnd(reinterpret_cast<char*>(pEnd))
 {
 	const size_t size = size_t(m_pEnd - m_pStart);
@@ -48,7 +48,7 @@ BvHeapAllocator::BvHeapAllocator(void* pStart, void* pEnd)
 }
 
 
-BvHeapAllocator::BvHeapAllocator(size_t size)
+BvFreeListAllocator::BvFreeListAllocator(size_t size)
 	: m_pStart(reinterpret_cast<char*>(BvMemory::Allocate(std::max(size, kBlockInfoSize + kPointerSize)))),
 	m_pEnd(m_pStart + std::max(size, kBlockInfoSize + kPointerSize)), m_HasOwnMemory(true)
 {
@@ -56,7 +56,7 @@ BvHeapAllocator::BvHeapAllocator(size_t size)
 }
 
 
-BvHeapAllocator::~BvHeapAllocator()
+BvFreeListAllocator::~BvFreeListAllocator()
 {
 	if (m_HasOwnMemory)
 	{
@@ -65,7 +65,7 @@ BvHeapAllocator::~BvHeapAllocator()
 }
 
 
-void BvHeapAllocator::Set(void* pStart, void* pEnd)
+void BvFreeListAllocator::Set(void* pStart, void* pEnd)
 {
 	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(pStart);
@@ -77,7 +77,7 @@ void BvHeapAllocator::Set(void* pStart, void* pEnd)
 }
 
 
-void BvHeapAllocator::Set(size_t size)
+void BvFreeListAllocator::Set(size_t size)
 {
 	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	m_pStart = reinterpret_cast<char*>(BvMemory::Allocate(std::max(size, kBlockInfoSize + kPointerSize)));
@@ -86,9 +86,9 @@ void BvHeapAllocator::Set(size_t size)
 }
 
 
-void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
+void* BvFreeListAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	size = RoundToNearestPowerOf2(size + alignment + alignmentOffset, kPointerSize) + kPointerSize;
+	size = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + kPointerSize;
 	
 	size_t blockSize = 0;
 	bool blockInUse = true;
@@ -143,7 +143,7 @@ void* BvHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentO
 }
 
 
-void BvHeapAllocator::Free(void* pMem)
+void BvFreeListAllocator::Free(void* pMem)
 {
 	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
@@ -192,7 +192,7 @@ void BvHeapAllocator::Free(void* pMem)
 }
 
 
-size_t BvHeapAllocator::GetAllocationSize(void* pMem) const
+size_t BvFreeListAllocator::GetAllocationSize(void* pMem) const
 {
 	MemType mem{ pMem };
 	// Retrieve the original address
@@ -212,7 +212,7 @@ size_t BvHeapAllocator::GetAllocationSize(void* pMem) const
 // ===============================================
 // Growable Heap Allocator
 // ===============================================
-BvGrowableHeapAllocator::BvGrowableHeapAllocator(void* pStart, void* pEnd, size_t growSize)
+BvGrowableFreeListAllocator::BvGrowableFreeListAllocator(void* pStart, void* pEnd, size_t growSize)
 	: m_pVirtualStart(reinterpret_cast<char*>(pStart)), m_pVirtualEnd(reinterpret_cast<char*>(pEnd)),
 	m_pStart(m_pVirtualStart), m_pEnd(m_pVirtualStart), m_pUsedAddressEnd(m_pVirtualStart)
 {
@@ -221,7 +221,7 @@ BvGrowableHeapAllocator::BvGrowableHeapAllocator(void* pStart, void* pEnd, size_
 }
 
 
-BvGrowableHeapAllocator::BvGrowableHeapAllocator(size_t maxSize, size_t growSize)
+BvGrowableFreeListAllocator::BvGrowableFreeListAllocator(size_t maxSize, size_t growSize)
 	: m_HasOwnMemory(true)
 {
 	auto& systemInfo = BvSystem::GetSystemInfo();
@@ -233,7 +233,7 @@ BvGrowableHeapAllocator::BvGrowableHeapAllocator(size_t maxSize, size_t growSize
 }
 
 
-BvGrowableHeapAllocator::~BvGrowableHeapAllocator()
+BvGrowableFreeListAllocator::~BvGrowableFreeListAllocator()
 {
 	if (m_HasOwnMemory)
 	{
@@ -242,7 +242,7 @@ BvGrowableHeapAllocator::~BvGrowableHeapAllocator()
 }
 
 
-void BvGrowableHeapAllocator::Set(void* pStart, void* pEnd, size_t growSize)
+void BvGrowableFreeListAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 {
 	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
@@ -256,7 +256,7 @@ void BvGrowableHeapAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 }
 
 
-void BvGrowableHeapAllocator::Set(size_t maxSize, size_t growSize)
+void BvGrowableFreeListAllocator::Set(size_t maxSize, size_t growSize)
 {
 	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
@@ -270,9 +270,9 @@ void BvGrowableHeapAllocator::Set(size_t maxSize, size_t growSize)
 }
 
 
-void* BvGrowableHeapAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset)
+void* BvGrowableFreeListAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset)
 {
-	size = RoundToNearestPowerOf2(size + alignment + alignmentOffset, kPointerSize) + kPointerSize;
+	size = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + kPointerSize;
 
 	size_t blockSize = 0;
 	bool blockInUse = true;
@@ -344,7 +344,7 @@ void* BvGrowableHeapAllocator::Allocate(size_t size, size_t alignment, size_t al
 }
 
 
-void BvGrowableHeapAllocator::Free(void* pMem)
+void BvGrowableFreeListAllocator::Free(void* pMem)
 {
 	BV_ASSERT(pMem != nullptr, "Trying to free nullptr");
 
@@ -407,7 +407,7 @@ void BvGrowableHeapAllocator::Free(void* pMem)
 }
 
 
-size_t BvGrowableHeapAllocator::GetAllocationSize(void* pMem) const
+size_t BvGrowableFreeListAllocator::GetAllocationSize(void* pMem) const
 {
 	MemType mem{ pMem };
 	// Retrieve the original address
@@ -424,7 +424,7 @@ size_t BvGrowableHeapAllocator::GetAllocationSize(void* pMem) const
 }
 
 
-void BvGrowableHeapAllocator::Purge()
+void BvGrowableFreeListAllocator::Purge()
 {
 	MemType addressToFree{ m_pUsedAddressEnd }, end{ m_pEnd };
 
@@ -462,7 +462,7 @@ void BvGrowableHeapAllocator::Purge()
 }
 
 
-bool BvGrowableHeapAllocator::CommitMemory(size_t size)
+bool BvGrowableFreeListAllocator::CommitMemory(size_t size)
 {
 	// Round the size needed to a multiple of the grow size
 	auto sizeNeeded = RoundToNearestPowerOf2(size + kBlockInfoSize, m_GrowSize);

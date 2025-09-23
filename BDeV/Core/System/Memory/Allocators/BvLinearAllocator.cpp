@@ -49,7 +49,7 @@ void BvLinearAllocator::Set(size_t size)
 
 void* BvLinearAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	size = RoundToNearestMultiple(size + alignment + alignmentOffset, kPointerSize) + (kPointerSize << 1);
+	size = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds
 	if (m_pCurrent + size > m_pEnd)
@@ -154,7 +154,7 @@ void BvGrowableLinearAllocator::Set(size_t maxSize, size_t growSize)
 
 void* BvGrowableLinearAllocator::Allocate(size_t size, size_t alignment /*= kDefaultAlignmentSize*/, size_t alignmentOffset /*= 0*/)
 {
-	size = RoundToNearestPowerOf2(size + alignment + alignmentOffset, kPointerSize) + (kPointerSize << 1);
+	size = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds; if we are, try committing more memory
 	if (m_pCurrent + size > m_pEnd && !CommitMemory(size - size_t(m_pEnd - m_pCurrent)))

@@ -10,10 +10,7 @@ class BvSwapChainVk;
 class BvCommandContextVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvTextureVk, "be4459ed-ed7b-4674-a638-6eff292841d4");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvTextureVk);
-
-
+BV_OBJECT_DEFINE_ID(BvTextureVk, "be4459ed-ed7b-4674-a638-6eff292841d4");
 class BvTextureVk final : public IBvTexture, public IBvResourceVk
 {
 	BV_NOCOPYMOVE(BvTextureVk);
@@ -45,6 +42,7 @@ protected:
 	BvSwapChainVk* m_pSwapChain = nullptr;
 	TextureDesc m_TextureDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvTextureVk);
 
 
 BV_CREATE_CAST_TO_VK(BvTexture)

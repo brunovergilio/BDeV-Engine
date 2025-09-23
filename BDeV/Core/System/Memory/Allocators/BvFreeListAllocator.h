@@ -4,14 +4,14 @@
 #include "BDeV/Core/System/Memory/BvMemory.h"
 
 
-class BvHeapAllocator
+class BvFreeListAllocator
 {
-	BV_NOCOPYMOVE(BvHeapAllocator);
+	BV_NOCOPYMOVE(BvFreeListAllocator);
 public:
-	BvHeapAllocator() = default;
-	BvHeapAllocator(void* pStart, void* pEnd);
-	BvHeapAllocator(size_t size);
-	~BvHeapAllocator();
+	BvFreeListAllocator() = default;
+	BvFreeListAllocator(void* pStart, void* pEnd);
+	BvFreeListAllocator(size_t size);
+	~BvFreeListAllocator();
 
 	void Set(void* pStart, void* pEnd);
 	void Set(size_t size);
@@ -27,14 +27,14 @@ private:
 };
 
 
-class BvGrowableHeapAllocator
+class BvGrowableFreeListAllocator
 {
-	BV_NOCOPYMOVE(BvGrowableHeapAllocator);
+	BV_NOCOPYMOVE(BvGrowableFreeListAllocator);
 public:
-	BvGrowableHeapAllocator() = default;
-	BvGrowableHeapAllocator(void* pStart, void* pEnd, size_t growSize = 0);
-	BvGrowableHeapAllocator(size_t maxSize, size_t growSize = 0);
-	~BvGrowableHeapAllocator();
+	BvGrowableFreeListAllocator() = default;
+	BvGrowableFreeListAllocator(void* pStart, void* pEnd, size_t growSize = 0);
+	BvGrowableFreeListAllocator(size_t maxSize, size_t growSize = 0);
+	~BvGrowableFreeListAllocator();
 
 	void Set(void* pStart, void* pEnd, size_t growSize = 0);
 	void Set(size_t maxSize, size_t growSize = 0);

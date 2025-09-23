@@ -26,10 +26,10 @@ namespace Internal
 	}
 }
 
-void __stdcall FiberEntryPoint(void* pData)
+void CALLBACK BvFiber::FiberEntryPoint(void* pData)
 {
-	IBvTask* pTask = reinterpret_cast<IBvTask*>(pData);
-	pTask->Run();
+	BvFiber* pFiber = reinterpret_cast<BvFiber*>(pData);
+	pFiber->m_Task();
 
 	BV_ASSERT(nullptr, "A fiber should never hit this point");
 	exit(0);
@@ -92,14 +92,14 @@ extern "C"
 }
 
 
-void FiberEntryPoint(void* pData)
+void BvFiber::FiberEntryPoint(void* pData)
 {
-	IBvTask* pTask = reinterpret_cast<IBvTask*>(pData);
-	pTask->Run();
+	BvFiber* pFiber = reinterpret_cast<BvFiber*>(pData);
+	pFiber->m_Task();
 }
 
 
-void FiberExitPoint()
+void BvFiber::FiberExitPoint()
 {
 	BV_ASSERT(nullptr, "A fiber should never hit this point");
 	exit(0);
@@ -123,7 +123,7 @@ BvFiber& BvFiber::operator=(BvFiber&& rhs) noexcept
 	if (this != &rhs)
 	{
 		std::swap(m_hFiber, rhs.m_hFiber);
-		std::swap(m_pTask, rhs.m_pTask);
+		std::swap(m_Task, rhs.m_Task);
 		//std::swap(m_IsThreadSetup, rhs.m_IsThreadSetup);
 	}
 
@@ -206,7 +206,7 @@ void BvFiber::Create(size_t stackSize)
 	// If this minimum stack size is OK for performance, then that's how fiber creation should be done on Windows.
 	//
 	// If we need smaller values(16KiB is common in schedulers), then asm fibers should be used instead IMO.
-	m_hFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, m_pTask);
+	m_hFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, BvFiber::FiberEntryPoint, this);
 
 	BV_ASSERT(m_hFiber != nullptr, "Couldn't create Fiber");
 #else
@@ -240,9 +240,9 @@ void BvFiber::Create(size_t stackSize)
 	// The limit is our initially allocated pointer (stack grows downwards)
 	pContext->m_pStackLimit = pContext->m_pDeallocationStack = m_hFiber.m_pMemory;
 	// These 3 registers will store some basic information for when the fiber is first switched into
-	pContext->m_pRDI = m_pTask;
-	pContext->m_pRSI = FiberEntryPoint;
-	pContext->m_pRBP = FiberExitPoint;
+	pContext->m_pRDI = this;
+	pContext->m_pRSI = BvFiber::FiberEntryPoint;
+	pContext->m_pRBP = BvFiber::FiberExitPoint;
 	// The MMX and x87 control/status words have to be stored in the context's stack before the first switch. I've gotten some
 	// really strange crashes when I didn't do this, such as a MessageBox call within a Fiber's callstack crashing.
 	SaveFPControlASM(pContext);
@@ -256,9 +256,10 @@ void BvFiber::Create(size_t stackSize)
 void BvFiber::Destroy()
 {
 #if !defined(BV_USE_ASM_FIBERS)
-	if (m_hFiber && m_pTask)
+	if (m_hFiber && m_Task)
 	{
 		DeleteFiber(m_hFiber);
+		m_hFiber = nullptr;
 	}
 
 	if (m_IsThreadSetup)
@@ -271,9 +272,4 @@ void BvFiber::Destroy()
 		BV_FREE(m_hFiber.m_pMemory);
 	}
 #endif
-
-	if (m_pTask)
-	{
-		BV_DELETE_ARRAY((u8*)m_pTask);
-	}
 }

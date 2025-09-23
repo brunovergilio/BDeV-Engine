@@ -3,18 +3,13 @@
 
 #include "BvCommonVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderPass.h"
-#include "BDeV/Core/System/Threading/BvSync.h"
-#include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/Container/BvRobinMap.h"
 
 
 class BvRenderDeviceVk;
 
 
-//BV_OBJECT_DEFINE_ID(IBvRenderPassVk, "1be279e7-57e1-49a2-98f0-61bb54edac9b");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvRenderPassVk);
-
-
+BV_OBJECT_DEFINE_ID(BvRenderPassVk, "1be279e7-57e1-49a2-98f0-61bb54edac9b");
 class BvRenderPassVk final : public IBvRenderPass, public IBvResourceVk
 {
 	BV_VK_DEVICE_RES_DECL;
@@ -51,6 +46,7 @@ private:
 	AttachmentRef* m_pRefs = nullptr;
 	ShadingRateAttachmentRef* m_pSRRefs = nullptr;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderPassVk);
 
 
 BV_CREATE_CAST_TO_VK(BvRenderPass)

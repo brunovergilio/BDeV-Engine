@@ -2,7 +2,6 @@
 
 
 #include "BvCommonVk.h"
-#include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 
 
