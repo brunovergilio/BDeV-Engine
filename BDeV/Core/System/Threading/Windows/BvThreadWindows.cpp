@@ -14,8 +14,11 @@ BvThread::BvThread()
 
 
 BvThread::BvThread(BvThread && rhs) noexcept
+	: m_ThreadId(rhs.m_ThreadId), m_hThread(rhs.m_hThread), m_Task(std::move(rhs.m_Task)), m_IsRunning(rhs.m_IsRunning)
 {
-	*this = std::move(rhs);
+	rhs.m_ThreadId = 0;
+	rhs.m_hThread = kNullOSThreadHandle;
+	rhs.m_IsRunning = 0;
 }
 
 
@@ -25,10 +28,14 @@ BvThread & BvThread::operator =(BvThread && rhs) noexcept
 	{
 		Destroy();
 
-		std::swap(m_ThreadId, rhs.m_ThreadId);
-		std::swap(m_hThread, rhs.m_hThread);
-		std::swap(m_Task, rhs.m_Task);
-		std::swap(m_IsRunning, rhs.m_IsRunning);
+		m_ThreadId = rhs.m_ThreadId;
+		m_hThread = rhs.m_hThread;
+		m_Task = std::move(rhs.m_Task);
+		m_IsRunning = rhs.m_IsRunning;
+
+		rhs.m_ThreadId = 0;
+		rhs.m_hThread = kNullOSThreadHandle;
+		rhs.m_IsRunning = 0;
 	}
 
 	return *this;
@@ -172,7 +179,7 @@ void BvThread::SetName(const char* pThreadName) const
 
 		if (FAILED(hr))
 		{
-			BV_WIN_ERROR(hr);
+			BV_SYS_ERROR(hr);
 		}
 	}
 #else
@@ -284,7 +291,7 @@ void BvThread::Create(const CreateInfo& createInfo)
 		m_IsRunning ? 0u : CREATE_SUSPENDED, reinterpret_cast<u32*>(&m_ThreadId)));
 	if (m_hThread == kNullOSThreadHandle)
 	{
-		BV_WIN_FATAL();
+		BV_SYS_FATAL();
 	}
 	if (createInfo.m_Priority != Priority::kAuto)
 	{

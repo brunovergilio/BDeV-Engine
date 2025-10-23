@@ -57,7 +57,7 @@
     <ClInclude Include="Core\Utils\BvStringId.h" />
     <ClInclude Include="Core\System\Window\BvWindowCommon.h" />
     <ClInclude Include="Core\Container\BvRobinSet.h" />
-    <ClInclude Include="Core\RenderAPI\BvColor.h" />
+    <ClInclude Include="Core\Utils\BvColor.h" />
     <ClInclude Include="Core\RenderAPI\BvCommandContext.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderAPIUtils.h" />
     <ClInclude Include="Core\RenderAPI\BvQuery.h" />
@@ -70,10 +70,7 @@
     <ClInclude Include="Core\Utils\BvObject.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
     <ClInclude Include="Core\Utils\BvRandom.h" />
-    <ClInclude Include="Core\Math\BvTrigo.h" />
     <ClInclude Include="Core\Math\BvGeometryGenerator.h" />
-    <ClInclude Include="Core\Math\BvPrimitives.h" />
-    <ClInclude Include="Core\Math\BvIntersections.h" />
     <ClInclude Include="Core\System\Diagnostics\BvDiagnostics.h" />
     <ClInclude Include="Core\System\BvPlatformHeaders.h" />
     <ClInclude Include="Core\RenderAPI\BvGPUFence.h" />
@@ -82,6 +79,15 @@
     <ClInclude Include="Core\RenderAPI\BvShaderBindingTable.h" />
     <ClInclude Include="Core\System\Window\Windows\BvWindowWindows.h" />
     <ClInclude Include="Core\System\File\Windows\BvAsyncFileWindows.h" />
+    <ClInclude Include="Core\System\Network\BvNetSocket.h" />
+    <ClInclude Include="Core\System\Network\BvNetworkCommon.h" />
+    <ClInclude Include="Core\System\Network\BvNetAddress.h" />
+    <ClInclude Include="Core\System\Network\Windows\BvNetworkWindows.h" />
+    <ClInclude Include="Core\Math\DirectXMath\DirectXCollision.h" />
+    <ClInclude Include="Core\Math\DirectXMath\DirectXColors.h" />
+    <ClInclude Include="Core\Math\DirectXMath\DirectXMath.h" />
+    <ClInclude Include="Core\Math\DirectXMath\DirectXPackedVector.h" />
+    <ClInclude Include="Core\Math\DirectXMath\sal.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -117,20 +123,28 @@
     <ClCompile Include="Core\Utils\BvTestUnit.cpp" />
     <ClCompile Include="Core\Utils\BvHash.cpp" />
     <ClCompile Include="Core\Utils\BvStringId.cpp" />
-    <ClCompile Include="Core\RenderAPI\BvColor.cpp" />
+    <ClCompile Include="Core\Utils\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
     <ClCompile Include="Core\Utils\BvText.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
-    <ClCompile Include="Core\Math\BvIntersections.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
     <ClCompile Include="Core\System\HID\Windows\BvXInputWindows.cpp" />
     <ClCompile Include="Core\System\Diagnostics\BvDiagnostics.cpp" />
+    <ClCompile Include="Core\System\Network\BvNetSocket.cpp" />
+    <ClCompile Include="Core\System\Network\BvNetAddress.cpp" />
+    <ClCompile Include="Core\System\Network\Windows\BvNetworkWindows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Math\BvMathVector.inl" />
     <None Include="Core\Math\BvMathLoaders.inl" />
     <None Include="Core\Math\BvMathMatrix.inl" />
     <None Include="Core\Math\BvMathQuaternion.inl" />
+    <None Include="Core\Math\DirectXMath\DirectXCollision.inl" />
+    <None Include="Core\Math\DirectXMath\DirectXMathConvert.inl" />
+    <None Include="Core\Math\DirectXMath\DirectXMathMatrix.inl" />
+    <None Include="Core\Math\DirectXMath\DirectXMathMisc.inl" />
+    <None Include="Core\Math\DirectXMath\DirectXMathVector.inl" />
+    <None Include="Core\Math\DirectXMath\DirectXPackedVector.inl" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="Core\System\Threading\Windows\BvFiberMASM.asm" />

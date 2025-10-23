@@ -38,7 +38,7 @@ public:
 
 	// Allocator
 	IBvMemoryArena* GetAllocator() const;
-	void SetAllocator(IBvMemoryArena* pArena, size_t reserveSize = 0);
+	void SetAllocator(IBvMemoryArena* pArena);
 
 	// Iterator
 	Iterator begin() { return Iterator(m_pData); }
@@ -83,19 +83,26 @@ public:
 	Type& PushBack(Type && value);
 	void PopBack();
 	void PopFront();
-	Iterator Insert(ConstIterator position, const Type & value);
-	Iterator Insert(ConstIterator position, const size_t count, const Type & value);
-	Iterator Insert(ConstIterator position, Iterator first, Iterator last);
-	Iterator Insert(ConstIterator position, Type && value);
-	Iterator Insert(ConstIterator position, std::initializer_list<Type> list);
+	//Iterator Insert(ConstIterator position, const Type & value);
+	//Iterator Insert(ConstIterator position, const size_t count, const Type & value);
+	//Iterator Insert(ConstIterator position, Iterator first, Iterator last);
+	//Iterator Insert(ConstIterator position, Type && value);
+	//Iterator Insert(ConstIterator position, std::initializer_list<Type> list);
 	Iterator Erase(size_t index);
 	Iterator Erase(size_t startIndex, size_t count);
 	Iterator Erase(ConstIterator position);
 	Iterator Erase(ConstIterator first, ConstIterator last);
 	void EraseUnsorted(size_t index);
 	void Clear();
+	void Destroy();
 	template <class... Args>
 	Iterator Emplace(ConstIterator position, Args&&... args);
+	template <class... Args>
+	Iterator Emplace(size_t index, Args&&... args);
+	template <class... Args>
+	Iterator EmplaceUnsorted(ConstIterator position, Args&&... args);
+	template <class... Args>
+	Iterator EmplaceUnsorted(size_t index, Args&&... args);
 	template <class... Args>
 	Type& EmplaceBack(Args&&... args);
 	size_t Find(const Type& value) const;
@@ -103,7 +110,6 @@ public:
 
 private:
 	void Grow(const size_t size);
-	void Destroy();
 
 private:
 	Type* m_pData = nullptr;
@@ -161,18 +167,21 @@ inline BvVector<Type>::BvVector(const BvVector & rhs)
 {
 	Grow(rhs.m_Size);
 
-	m_Size = rhs.m_Size;
-	for (auto i = 0; i < m_Size; i++)
+	for (auto i = 0; i < rhs.m_Size; i++)
 	{
-		new (&m_pData[i]) Type(rhs.m_pData[i]);
+		PushBack(rhs.m_pData[i]);
 	}
 }
 
 
 template<typename Type>
 inline BvVector<Type>::BvVector(BvVector && rhs) noexcept
+	: m_pData(rhs.m_pData), m_pArena(rhs.m_pArena), m_Size(rhs.m_Size), m_Capacity(rhs.m_Capacity)
 {
-	*this = std::move(rhs);
+	rhs.m_pData = nullptr;
+	rhs.m_pArena = nullptr;
+	rhs.m_Size = 0;
+	rhs.m_Capacity = 0;
 }
 
 
@@ -185,10 +194,9 @@ inline BvVector<Type>& BvVector<Type>::operator=(const BvVector & rhs)
 		SetAllocator(rhs.m_pArena);
 		Grow(rhs.m_Size);
 
-		m_Size = rhs.m_Size;
-		for (auto i = 0; i < m_Size; i++)
+		for (auto i = 0; i < rhs.m_Size; i++)
 		{
-			new (&m_pData[i]) Type(rhs.m_pData[i]);
+			PushBack(rhs.m_pData[i]);
 		}
 	}
 
@@ -201,10 +209,17 @@ inline BvVector<Type>& BvVector<Type>::operator=(BvVector && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		std::swap(m_pData, rhs.m_pData);
-		std::swap(m_pArena, rhs.m_pArena);
-		std::swap(m_Size, rhs.m_Size);
-		std::swap(m_Capacity, rhs.m_Capacity);
+		Destroy();
+
+		m_pData = rhs.m_pData;
+		m_pArena = rhs.m_pArena;
+		m_Size = rhs.m_Size;
+		m_Capacity = rhs.m_Capacity;
+
+		rhs.m_pData = nullptr;
+		rhs.m_pArena = nullptr;
+		rhs.m_Size = 0;
+		rhs.m_Capacity = 0;
 	}
 
 	return *this;
@@ -219,10 +234,9 @@ inline BvVector<Type>& BvVector<Type>::operator=(std::initializer_list<Type> lis
 	auto size = list.size();
 	Grow(size);
 
-	m_Size = size;
-	for (auto i = 0; i < m_Size; i++)
+	for (auto i = 0; i < size; i++)
 	{
-		new (&m_pData[i]) Type(list[i]);
+		PushBack(list[i]);
 	}
 
 	return *this;
@@ -244,7 +258,7 @@ inline IBvMemoryArena* BvVector<Type>::GetAllocator() const
 
 
 template<typename Type>
-inline void BvVector<Type>::SetAllocator(IBvMemoryArena* pArena, size_t reserveSize)
+inline void BvVector<Type>::SetAllocator(IBvMemoryArena* pArena)
 {
 	BV_ASSERT(pArena != nullptr, "Memory arena can't be nullptr");
 	BV_ASSERT(m_pData == nullptr, "Can't change allocators after allocations have been made");
@@ -267,10 +281,6 @@ inline void BvVector<Type>::SetAllocator(IBvMemoryArena* pArena, size_t reserveS
 	//}
 
 	m_pArena = pArena;
-	if (reserveSize)
-	{
-		Reserve(reserveSize);
-	}
 }
 
 
@@ -301,7 +311,7 @@ inline void BvVector<Type>::Resize(const size_t size, const Type & value)
 
 		for (auto i = m_Size; i < size; i++)
 		{
-			new (&m_pData[i]) Type(value);
+			PushBack(value);
 		}
 
 		m_Size = size;
@@ -402,10 +412,9 @@ inline void BvVector<Type>::Assign(Iterator start, Iterator end)
 	auto size = end - start;
 	Grow(size);
 
-	m_Size = size;
 	for (auto it = start; it != end; it++)
 	{
-		new (&m_pData[m_Size++]) Type(*it);
+		PushBack(*it);
 	}
 }
 
@@ -416,10 +425,9 @@ inline void BvVector<Type>::Assign(const size_t size, const Type & val)
 
 	Grow(size);
 
-	m_Size = size;
-	for (u32 i = 0; i < m_Size; i++)
+	for (u32 i = 0; i < size; i++)
 	{
-		new (&m_pData[i]) Type(val);
+		PushBack(val);
 	}
 }
 
@@ -431,21 +439,20 @@ inline void BvVector<Type>::Assign(std::initializer_list<Type> list)
 	auto size = list.size();
 	Grow(size);
 
-	m_Size = size;
-	for (auto i = 0; i < m_Size; i++)
+	for (auto i = 0; i < size; i++)
 	{
-		new (&m_pData[i]) Type(list[i]);
+		PushBack(list[i]);
 	}
 }
 
 template<typename Type>
-inline Type& BvVector<Type>::PushBack(const Type & value)
+inline Type& BvVector<Type>::PushBack(const Type& value)
 {
 	return EmplaceBack(value);
 }
 
 template<typename Type>
-inline Type& BvVector<Type>::PushBack(Type && value)
+inline Type& BvVector<Type>::PushBack(Type&& value)
 {
 	return EmplaceBack(std::move(value));
 }
@@ -471,160 +478,138 @@ inline void BvVector<Type>::PopFront()
 }
 
 
-template<typename Type>
-inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const Type & value)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		pos = m_Size;
-	}
-
-	if (m_Size == m_Capacity)
-	{
-		Grow(m_Capacity + 1);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size; i > pos; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - 1]);
-		}
-	}
-
-	new (&m_pData[pos]) Type(value);
-	m_Size++;
-
-	return Iterator(m_pData + pos);
-}
-
-template<typename Type>
-inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const size_t count, const Type & value)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		pos = m_Size;
-	}
-
-	if (m_Size + count > m_Capacity)
-	{
-		Grow(m_Size + count + 1);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - count]);
-		}
-	}
-
-	for (auto i = 0; i < count; i++)
-	{
-		new (&m_pData[pos + i]) Type(value);
-	}
-	m_Size += count;
-
-	return Iterator(m_pData + pos);
-}
-
-template<typename Type>
-inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Iterator first, Iterator last)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		pos = m_Size;
-	}
-
-	auto count = last - first;
-	if (m_Size + count > m_Capacity)
-	{
-		Grow(m_Size + count + 1);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - count]);
-		}
-	}
-
-	auto it = first;
-	for (auto i = 0; i < count; i++)
-	{
-		new (&m_pData[pos + i]) Type(*(it++));
-	}
-
-	m_Size += count;
-
-	return Iterator(m_pData + pos);
-}
-
-template<typename Type>
-inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Type && value)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		pos = m_Size;
-	}
-
-	if (m_Size == m_Capacity)
-	{
-		Grow(m_Capacity + 1);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size; i > pos; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - 1]);
-		}
-	}
-
-	new (&m_pData[pos]) Type(std::move(value));
-	m_Size++;
-
-	return Iterator(m_pData + pos);
-}
-
-template<typename Type>
-inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, std::initializer_list<Type> list)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		pos = m_Size;
-	}
-
-	auto count = list.size();
-	if (m_Size + count > m_Capacity)
-	{
-		Grow(m_Size + count + 1);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - count]);
-		}
-	}
-
-	auto it = list.begin();
-	for (auto i = 0; i < count; i++)
-	{
-		new (&m_pData[pos + i]) Type(*(it++));
-	}
-
-	m_Size += count;
-
-	return Iterator(m_pData + pos);
-}
+//template<typename Type>
+//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const Type & value)
+//{
+//	return Insert(position, 1, value);
+//}
+//
+//template<typename Type>
+//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const size_t count, const Type & value)
+//{
+//	auto pos = position - ConstIterator(m_pData);
+//	if (pos > m_Size)
+//	{
+//		pos = m_Size;
+//	}
+//
+//	if (m_Size + count > m_Capacity)
+//	{
+//		Grow(m_Size + count + 1);
+//	}
+//
+//	if (pos < m_Size)
+//	{
+//		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
+//		{
+//			m_pData[i] = std::move(m_pData[i - count]);
+//		}
+//	}
+//
+//	for (auto i = 0; i < count; i++)
+//	{
+//		new (&m_pData[pos + i]) Type(value);
+//	}
+//	m_Size += count;
+//
+//	return Iterator(m_pData + pos);
+//}
+//
+//template<typename Type>
+//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Iterator first, Iterator last)
+//{
+//	auto pos = position - ConstIterator(m_pData);
+//	if (pos > m_Size)
+//	{
+//		pos = m_Size;
+//	}
+//
+//	auto count = last - first;
+//	if (m_Size + count > m_Capacity)
+//	{
+//		Grow(m_Size + count + 1);
+//	}
+//
+//	if (pos < m_Size)
+//	{
+//		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
+//		{
+//			m_pData[i] = std::move(m_pData[i - count]);
+//		}
+//	}
+//
+//	auto it = first;
+//	for (auto i = 0; i < count; i++)
+//	{
+//		new (&m_pData[pos + i]) Type(*(it++));
+//	}
+//
+//	m_Size += count;
+//
+//	return Iterator(m_pData + pos);
+//}
+//
+//template<typename Type>
+//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Type && value)
+//{
+//	auto pos = position - ConstIterator(m_pData);
+//	if (pos > m_Size)
+//	{
+//		pos = m_Size;
+//	}
+//
+//	if (m_Size == m_Capacity)
+//	{
+//		Grow(m_Capacity + 1);
+//	}
+//
+//	if (pos < m_Size)
+//	{
+//		for (auto i = m_Size; i > pos; i--)
+//		{
+//			m_pData[i] = std::move(m_pData[i - 1]);
+//		}
+//	}
+//
+//	new (&m_pData[pos]) Type(std::move(value));
+//	m_Size++;
+//
+//	return Iterator(m_pData + pos);
+//}
+//
+//template<typename Type>
+//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, std::initializer_list<Type> list)
+//{
+//	auto pos = position - ConstIterator(m_pData);
+//	if (pos > m_Size)
+//	{
+//		pos = m_Size;
+//	}
+//
+//	auto count = list.size();
+//	if (m_Size + count > m_Capacity)
+//	{
+//		Grow(m_Size + count + 1);
+//	}
+//
+//	if (pos < m_Size)
+//	{
+//		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
+//		{
+//			m_pData[i] = std::move(m_pData[i - count]);
+//		}
+//	}
+//
+//	auto it = list.begin();
+//	for (auto i = 0; i < count; i++)
+//	{
+//		new (&m_pData[pos + i]) Type(*(it++));
+//	}
+//
+//	m_Size += count;
+//
+//	return Iterator(m_pData + pos);
+//}
 
 
 template<typename Type>
@@ -725,32 +710,76 @@ inline void BvVector<Type>::Clear()
 }
 
 template<typename Type>
+inline void BvVector<Type>::Destroy()
+{
+	Clear();
+
+	if (m_pData)
+	{
+		m_pArena->Free(m_pData);
+		m_pData = nullptr;
+	}
+
+	m_Capacity = 0;
+}
+
+template<typename Type>
 template<class ...Args>
 inline typename BvVector<Type>::Iterator BvVector<Type>::Emplace(ConstIterator position, Args&& ...args)
 {
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		pos = m_Size;
-	}
+	auto index = position - ConstIterator(m_pData);
+	return Emplace(position, std::forward<Args>(args)...);
+}
 
-	if (m_Size == m_Capacity)
+template<typename Type>
+template<class ...Args>
+inline typename BvVector<Type>::Iterator BvVector<Type>::Emplace(size_t index, Args&& ...args)
+{
+	EmplaceBack(std::forward<Args>(args)...);
+	
+	if (index > m_Size)
 	{
-		Grow(CalculateNewContainerSize(m_Capacity));
+		index = m_Size;
 	}
-
-	if (pos < m_Size)
+	else if (index < m_Size - 1)
 	{
-		for (auto i = m_Size; i > pos; i--)
+		Type tmp(std::move(m_pData[m_Size - 1]));
+		for (auto i = m_Size - 1; i > index; --i)
 		{
 			m_pData[i] = std::move(m_pData[i - 1]);
 		}
+		
+		m_pData[index] = std::move(tmp);
 	}
 
-	new (&m_pData[pos]) Type(std::forward<Args>(args)...);
-	m_Size++;
 
-	return Iterator(m_pData + pos);
+	return Iterator(m_pData + index);
+}
+
+template<typename Type>
+template<class ...Args>
+inline typename BvVector<Type>::Iterator BvVector<Type>::EmplaceUnsorted(ConstIterator position, Args&& ...args)
+{
+	auto index = position - cbegin();
+	return EmplaceUnsorted(index, std::forward<Args>(args)...);
+}
+
+template<typename Type>
+template<class ...Args>
+inline typename BvVector<Type>::Iterator BvVector<Type>::EmplaceUnsorted(size_t index, Args&& ...args)
+{
+	auto& item = EmplaceBack(std::forward<Args>(args)...);
+
+	if (index > m_Size)
+	{
+		index = m_Size;
+	}
+	else if (index < m_Size - 1)
+	{
+		std::swap(m_pData[index], m_pData[m_Size - 1]);
+	}
+
+	return Iterator(m_pData + index);
 }
 
 template<typename Type>
@@ -759,12 +788,14 @@ inline Type& BvVector<Type>::EmplaceBack(Args&& ...args)
 {
 	if (m_Size == m_Capacity)
 	{
-		Grow(m_Capacity + (m_Capacity >> 1) + (m_Capacity <= 2));
+		Grow(CalculateNewContainerSize(m_Capacity));
 	}
 
-	new (&m_pData[m_Size]) Type(std::forward<Args>(args)...);
+	auto pVal = new (&m_pData[m_Size++]) Type(std::forward<Args>(args)...);
 
-	return m_pData[m_Size++];
+	Internal::PropagateAllocator(*pVal, m_pArena);
+
+	return *pVal;
 }
 
 template<typename Type>
@@ -778,13 +809,13 @@ size_t BvVector<Type>::Find(const Type& value) const
 		}
 	}
 
-	return kU64Max;
+	return kInvalidPos;
 }
 
 template<typename Type>
 inline bool BvVector<Type>::Contains(const Type& value) const
 {
-	return Find(value) != kU64Max;
+	return Find(value) != kInvalidPos;
 }
 
 template<typename Type>
@@ -811,18 +842,4 @@ inline void BvVector<Type>::Grow(const size_t size)
 		m_pArena->Free(m_pData);
 	}
 	m_pData = pNewData;
-}
-
-template<typename Type>
-inline void BvVector<Type>::Destroy()
-{
-	Clear();
-
-	if (m_pData)
-	{
-		m_pArena->Free(m_pData);
-		m_pData = nullptr;
-	}
-
-	m_Capacity = 0;
 }

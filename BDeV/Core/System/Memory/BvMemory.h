@@ -86,7 +86,7 @@ public:
 namespace Internal
 {
 	template<typename Type>
-	void ConstructArray(Type* pObjs, size_t count)
+	BV_INLINE void ConstructArray(Type* pObjs, size_t count)
 	{
 		// Only call the ctor if needed
 		if constexpr (!IsPodV<Type>)
@@ -102,7 +102,7 @@ namespace Internal
 	}
 
 	template<typename Type>
-	void DestructArray(Type* pObjs, size_t count)
+	BV_INLINE void DestructArray(Type* pObjs, size_t count)
 	{
 		// Only call the dtor if needed
 		if constexpr (!std::is_trivially_destructible_v<Type>)
@@ -462,7 +462,7 @@ public:
 
 		m_MemoryTracking.OnDeallocation(mem.pAsVoidPtr);
 
-		m_Allocator.Free(pMem);
+		m_Allocator.Free(mem.pAsCharPtr);
 
 		m_Lock.Unlock();
 
@@ -521,41 +521,41 @@ IBvMemoryArena* SetDefaultMemoryArena(IBvMemoryArena* pArena);
 #define BV_DEFAULT_MEMORY_ARENA GetDefaultMemoryArena()
 
 
-// Hybrid memory class that uses either stack- or heap-based memory depending on the size.
-// This can avoid stack overflows when doing large allocations as well as unnecessary
-// heap fragmentation when allocating very small values.
-template<size_t N = 128>
-class BvHybridMem final
+// These are helpers for container classes, so we can broadcast an allocator to another sub-container or object
+namespace Internal
 {
-	BV_NOCOPYMOVE(BvHybridMem);
-
-public:
-	BvHybridMem() {}
-	~BvHybridMem()
+	template<typename T>
+	concept HasGetAllocatorMethod = requires(T obj)
 	{
-		if (m_pHeapMem)
+		{ obj.GetAllocator() } -> std::convertible_to<IBvMemoryArena*>;
+	};
+
+
+	template<typename T>
+	concept HasSetAllocatorMethod = requires(T obj, IBvMemoryArena* pArena)
+	{
+		{ obj.SetAllocator(pArena) } -> std::convertible_to<void>;
+	};
+
+	template<typename T>
+	constexpr bool kCanPropagateAllocatorV = HasGetAllocatorMethod<T> && HasSetAllocatorMethod<T>;
+
+	template<typename T>
+	BV_INLINE void PropagateAllocator(T& obj, IBvMemoryArena* pArena)
+	{
+		if constexpr (kCanPropagateAllocatorV<T>)
 		{
-			BV_FREE(m_pHeapMem);
+			auto pDefaultArena = BV_DEFAULT_MEMORY_ARENA;
+			if (pArena != pDefaultArena && obj.GetAllocator() == pDefaultArena)
+			{
+				obj.SetAllocator(pArena);
+			}
 		}
 	}
 
-	void* operator()(size_t bytes, size_t alignment = kDefaultAlignmentSize)
+	template<typename... Args>
+	BV_INLINE void PropagateAllocatorToAll(IBvMemoryArena* pArena, Args&... objs)
 	{
-		if (bytes + alignment <= N)
-		{
-			return BvMemory::AlignMemory(m_StackMem, alignment);
-		}
-		else if (!m_pHeapMem)
-		{
-			m_pHeapMem = BV_ALLOC(bytes, alignment);
-			return m_pHeapMem;
-		}
-
-		BV_ASSERT(false, "Only call Alloc() once");
-
-		return nullptr;
+		(PropagateAllocator(objs, pArena), ...);
 	}
-private:
-	u8 m_StackMem[N];
-	void* m_pHeapMem = nullptr;
-};
+}

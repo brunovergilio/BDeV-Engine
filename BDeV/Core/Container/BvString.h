@@ -92,6 +92,7 @@ public:
 
 	void Resize(u32 size, CharT c = CharT());
 	void Clear();
+	void Destroy();
 
 	void Copy(BvStringT & str) const;
 	void Copy(BvStringT & str, const u32 start, const u32 count) const;
@@ -203,7 +204,6 @@ public:
 
 private:
 	void Grow(u32 size);
-	void Destroy();
 
 protected:
 	CharT * m_pStr = nullptr;
@@ -287,8 +287,12 @@ BvStringT<CharT>::BvStringT(const BvStringT<CharT>& rhs)
 
 template<typename CharT>
 BvStringT<CharT>::BvStringT(BvStringT&& rhs) noexcept
+	: m_pStr(rhs.m_pStr), m_pArena(rhs.m_pArena), m_Size(rhs.m_Size), m_Capacity(rhs.m_Capacity)
 {
-	*this = std::move(rhs);
+	rhs.m_pStr = nullptr;
+	rhs.m_pArena = nullptr;
+	rhs.m_Size = 0;
+	rhs.m_Capacity = 0;
 }
 
 
@@ -311,10 +315,17 @@ BvStringT<CharT>& BvStringT<CharT>::operator=(BvStringT&& rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		std::swap(m_pStr, rhs.m_pStr);
-		std::swap(m_Size, rhs.m_Size);
-		std::swap(m_Capacity, rhs.m_Capacity);
-		std::swap(m_pArena, rhs.m_pArena);
+		Destroy();
+
+		m_pStr = rhs.m_pStr;
+		m_Size = rhs.m_Size;
+		m_Capacity = rhs.m_Capacity;
+		m_pArena = rhs.m_pArena;
+
+		rhs.m_pStr = nullptr;
+		rhs.m_pArena = nullptr;
+		rhs.m_Size = 0;
+		rhs.m_Capacity = 0;
 	}
 
 	return *this;
@@ -424,7 +435,7 @@ void BvStringT<CharT>::Assign(const CharT* const pStr, const u32 start, const u3
 
 	if (m_Capacity <= count)
 	{
-		Grow(count);
+		Grow(CalculateNewContainerSize(count));
 	}
 
 	std::char_traits<CharT>::copy(m_pStr, pStr + start, count);
@@ -474,9 +485,7 @@ void BvStringT<CharT>::Insert(const CharT* const pStr, const u32 start, const u3
 	u32 newSize = count + m_Size;
 	if (m_Capacity <= newSize)
 	{
-		u32 tmp = newSize;
-		u32 newCapacity = tmp + (tmp >> 1) + (tmp <= 2);
-		Grow(newCapacity);
+		Grow(CalculateNewContainerSize(newSize));
 	}
 	m_pStr[newSize] = CharT();
 
@@ -653,8 +662,25 @@ void BvStringT<CharT>::Resize(u32 size, CharT c)
 template<typename CharT>
 void BvStringT<CharT>::Clear()
 {
-	m_pStr[0] = CharT();
+	if (m_pStr)
+	{
+		m_pStr[0] = CharT();
+	}
 	m_Size = 0;
+}
+
+
+template<typename CharT>
+inline void BvStringT<CharT>::Destroy()
+{
+	if (m_pStr)
+	{
+		m_pArena->Free(m_pStr);
+		m_pStr = nullptr;
+	}
+
+	m_Size = 0;
+	m_Capacity = 0;
 }
 
 
@@ -1121,7 +1147,7 @@ inline void BvStringT<CharT>::Grow(u32 size)
 		return;
 	}
 
-	CharT* pNewStr = reinterpret_cast<CharT*>(m_pArena ? BV_MALLOC(*m_pArena, sizeof(CharT) * (size + 1), alignof(CharT)) : BV_ALLOC(sizeof(CharT) * (size + 1), alignof(CharT)));
+	CharT* pNewStr = reinterpret_cast<CharT*>(m_pArena->Allocate(sizeof(CharT) * size + 1, alignof(CharT)));
 	if (m_Size > 0)
 	{
 		std::char_traits<CharT>::copy(pNewStr, m_pStr, m_Size);
@@ -1130,23 +1156,9 @@ inline void BvStringT<CharT>::Grow(u32 size)
 	m_Capacity = size + 1;
 	if (m_pStr)
 	{
-		m_pArena ? BV_MFREE(*m_pArena, m_pStr) : BV_FREE(m_pStr);
+		m_pArena->Free(m_pStr);
 	}
 	m_pStr = pNewStr;
-}
-
-
-template<typename CharT>
-inline void BvStringT<CharT>::Destroy()
-{
-	if (m_pStr)
-	{
-		m_pArena ? BV_MFREE(*m_pArena, m_pStr) : BV_FREE(m_pStr);
-		m_pStr = nullptr;
-	}
-
-	m_Size = 0;
-	m_Capacity = 0;
 }
 
 

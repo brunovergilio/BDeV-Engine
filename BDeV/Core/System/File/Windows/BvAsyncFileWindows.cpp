@@ -97,8 +97,9 @@ BvAsyncFile::BvAsyncFile(const char* const pFilename, BvFileAccessMode mode, BvF
 
 
 BvAsyncFile::BvAsyncFile(BvAsyncFile && rhs) noexcept
+	: m_hFile(rhs.m_hFile)
 {
-	*this = std::move(rhs);
+	rhs.m_hFile = INVALID_HANDLE_VALUE;
 }
 
 
@@ -106,6 +107,8 @@ BvAsyncFile & BvAsyncFile::operator =(BvAsyncFile && rhs) noexcept
 {
 	if (this != &rhs)
 	{
+		Close();
+
 		m_hFile = rhs.m_hFile;
 		rhs.m_hFile = INVALID_HANDLE_VALUE;
 	}
@@ -159,7 +162,7 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 
 	if (m_hFile == INVALID_HANDLE_VALUE)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 		
 		return false;
 	}
@@ -183,7 +186,7 @@ bool BvAsyncFile::Read(BvAsyncFileRequest& request, void* pBuffer, u32 bufferSiz
 		auto error = GetLastError();
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 			return false;
 		}
 	}
@@ -207,7 +210,7 @@ bool BvAsyncFile::Write(BvAsyncFileRequest& request, const void* pBuffer, u32 bu
 		auto error = GetLastError();
 		if (error != ERROR_IO_PENDING && error != ERROR_HANDLE_EOF)
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 			return false;
 		}
 	}
@@ -224,7 +227,7 @@ u64 BvAsyncFile::GetSize() const
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
 	if (!status)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 	}
 
 	return u64(fileSize);
@@ -248,7 +251,7 @@ void BvAsyncFile::Flush()
 	BOOL status = FlushFileBuffers(m_hFile);
 	if (!status)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 	}
 }
 
@@ -260,7 +263,7 @@ bool BvAsyncFile::GetInfo(BvFileInfo& fileInfo)
 	BY_HANDLE_FILE_INFORMATION bhfi;
 	if (!GetFileInformationByHandle(m_hFile, &bhfi))
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 

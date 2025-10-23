@@ -632,11 +632,6 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	deviceInfo.m_QueueFamilyProperties.Resize(queueFamilyCount, { VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
 	vkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queueFamilyCount, deviceInfo.m_QueueFamilyProperties.Data());
 
-	auto hasFlagFn = [](VkQueueFlags queueFlags, VkQueueFlagBits flag)
-		{
-			return (queueFlags & flag);
-		};
-
 	deviceInfo.m_QueueFamilyIndices.Reserve(deviceInfo.m_QueueFamilyProperties.Size());
 	for (auto i = 0; i < deviceInfo.m_QueueFamilyProperties.Size(); ++i)
 	{
@@ -647,11 +642,11 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		}
 		deviceInfo.m_QueueFamilyIndices.EmplaceBack(i);
 
-		bool hasGraphics = hasFlagFn(props.queueFlags, VK_QUEUE_GRAPHICS_BIT);
-		bool hasCompute = hasFlagFn(props.queueFlags, VK_QUEUE_COMPUTE_BIT);
-		bool hasTransfer = hasFlagFn(props.queueFlags, VK_QUEUE_TRANSFER_BIT);
-		bool hasVideoDecode = hasFlagFn(props.queueFlags, VK_QUEUE_VIDEO_DECODE_BIT_KHR);
-		bool hasVideoEncode = hasFlagFn(props.queueFlags, VK_QUEUE_VIDEO_ENCODE_BIT_KHR);
+		bool hasGraphics = bool(props.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+		bool hasCompute = bool(props.queueFlags & VK_QUEUE_COMPUTE_BIT);
+		bool hasTransfer = bool(props.queueFlags & VK_QUEUE_TRANSFER_BIT);
+		bool hasVideoDecode = bool(props.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR);
+		bool hasVideoEncode = bool(props.queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR);
 
 		auto& contextGroup = gpuInfo.m_ContextGroups.EmplaceBack(ContextGroup{});
 		contextGroup.m_GroupIndex = i;

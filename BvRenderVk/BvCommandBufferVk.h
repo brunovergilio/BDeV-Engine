@@ -148,32 +148,35 @@ private:
 	BvFrameDataVk* m_pFrameData = nullptr;
 
 	BvVector<BvSwapChainVk*> m_SwapChains;
-	
-	BvVector<VkWriteDescriptorSetAccelerationStructureKHR> m_ASWriteSets;
-	BvVector<VkWriteDescriptorSet> m_WriteSets;
-	BvVector<VkDescriptorSet> m_DescriptorSets;
-	BvVector<u32> m_DynamicOffsets;
-
-	BvVector<VkBufferImageCopy> m_BufferImageCopyRegions;
-	BvVector<VkImageCopy> m_ImageCopyRegions;
 
 	BvVector<VkImageMemoryBarrier2> m_PreRenderBarriers;
 	BvVector<VkImageMemoryBarrier2> m_PostRenderBarriers;
-	BvVector<VkMemoryBarrier2> m_MemoryBarriers;
-	BvVector<VkBufferMemoryBarrier2> m_BufferBarriers;
-	BvVector<VkImageMemoryBarrier2> m_ImageBarriers;
-
+	
 	const BvGraphicsPipelineStateVk* m_pGraphicsPipeline = nullptr;
 	const BvComputePipelineStateVk* m_pComputePipeline = nullptr;
 	const BvRayTracingPipelineStateVk* m_pRayTracingPipeline = nullptr;
 	const BvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
 
-	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;
-	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 	BvVector<BvQueryVk*> m_MeshQueries;
 
 	VkPipelineBindPoint m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_MAX_ENUM;
 
 	State m_CurrentState = State::kRecording;
 	bool m_HasDebugUtils = false;
+
+	// TODO: All these objects should be temporary, only used inside a function call
+	BvVector<VkWriteDescriptorSetAccelerationStructureKHR> m_ASWriteSets;
+	BvVector<VkWriteDescriptorSet> m_WriteSets;
+	BvVector<u32> m_DynamicOffsets;
+	BvVector<VkDescriptorSet> m_DescriptorSets;
+
+	BvVector<VkBufferImageCopy> m_BufferImageCopyRegions;
+	BvVector<VkImageCopy> m_ImageCopyRegions;
+
+	BvVector<VkMemoryBarrier2> m_MemoryBarriers;
+	BvVector<VkBufferMemoryBarrier2> m_BufferBarriers;
+	BvVector<VkImageMemoryBarrier2> m_ImageBarriers;
+
+	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;
+	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 };

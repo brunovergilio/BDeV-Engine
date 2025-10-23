@@ -104,12 +104,12 @@ void BvGeometryGenerator::GenerateGeoSphere(f32 radius, u32 numSubDivisions)
 	for (auto i = 0; i < m_Data.m_Vertices.Size(); ++i)
 	{
 		auto& vertex = m_Data.m_Vertices[i];
-		auto p = Load3(vertex.m_Position.v);
-		auto n = Vector3Normalize(p);
+		auto p = XMLoadFloat3(&vertex.m_Position);
+		auto n = XMVector3Normalize(p);
 		p = (n * radius);
 	
-		Store3(p, vertex.m_Position.v);
-		Store3(n, vertex.m_Normal.v);
+		XMStoreFloat3(&vertex.m_Position, p);
+		XMStoreFloat3(&vertex.m_Normal, n);
 		
 		f32 u = std::atan2f(vertex.m_Position.z, vertex.m_Position.x);
 		if (u < 0.0f)
@@ -118,24 +118,24 @@ void BvGeometryGenerator::GenerateGeoSphere(f32 radius, u32 numSubDivisions)
 		}
 		
 		f32 v = std::acosf(vertex.m_Position.y * invRadius);
-		vertex.m_UV = Float2(u * k1Div2Pi, v * k1DivPi);
+		vertex.m_UV = XMFLOAT2(u * k1Div2Pi, v * k1DivPi);
 
 		f32 su = sinf(u);
 		f32 sv = sinf(v);
 		f32 cu = cosf(u);
 		f32 cv = cosf(v);
 
-		vertex.m_Tangent = Float3(-radius * su * sv, 0.0f, radius * cu * sv);
-		vertex.m_Bitangent = Float3(radius * cu * cv, radius * su * cv, -radius * sv);
+		vertex.m_Tangent = XMFLOAT3(-radius * su * sv, 0.0f, radius * cu * sv);
+		vertex.m_Bitangent = XMFLOAT3(radius * cu * cv, radius * su * cv, -radius * sv);
 	}
 }
 
 
 void BvGeometryGenerator::GenerateGrid(f32 xSize, f32 zSize, u32 xDiv, u32 zDiv)
 {
-	Float3 normal{ 0.0f, 1.0f, 0.0f };
-	Float3 tangent{ 1.0f, 0.0f, 0.0f };
-	Float3 bitangent{ 0.0f, 0.0f, -1.0f };
+	XMFLOAT3 normal{ 0.0f, 1.0f, 0.0f };
+	XMFLOAT3 tangent{ 1.0f, 0.0f, 0.0f };
+	XMFLOAT3 bitangent{ 0.0f, 0.0f, -1.0f };
 
 	f32 xStep = xSize / f32(i32(xDiv));
 	f32 zStep = zSize / f32(i32(zDiv));
@@ -189,23 +189,23 @@ void BvGeometryGenerator::GenerateGrid(f32 xSize, f32 zSize, u32 xDiv, u32 zDiv)
 //		auto& vertex = m_Data.m_Vertices[i];
 //		if (posOffset != -1)
 //		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + posOffset) = vertex.m_Position;
+//			*reinterpret_cast<XMFLOAT3*>(mem.pAsCharPtr + posOffset) = vertex.m_Position;
 //		}
 //		if (uvOffset != -1)
 //		{
-//			*reinterpret_cast<Float2*>(mem.pAsCharPtr + uvOffset) = vertex.m_UV;
+//			*reinterpret_cast<XMFLOAT2*>(mem.pAsCharPtr + uvOffset) = vertex.m_UV;
 //		}
 //		if (normalOffset != -1)
 //		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + normalOffset) = vertex.m_Normal;
+//			*reinterpret_cast<XMFLOAT3*>(mem.pAsCharPtr + normalOffset) = vertex.m_Normal;
 //		}
 //		if (tangentOffset != -1)
 //		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + tangentOffset) = vertex.m_Tangent;
+//			*reinterpret_cast<XMFLOAT3*>(mem.pAsCharPtr + tangentOffset) = vertex.m_Tangent;
 //		}
 //		if (bitangentOffset != -1)
 //		{
-//			*reinterpret_cast<Float3*>(mem.pAsCharPtr + bitangentOffset) = vertex.m_Bitangent;
+//			*reinterpret_cast<XMFLOAT3*>(mem.pAsCharPtr + bitangentOffset) = vertex.m_Bitangent;
 //		}
 //	}
 //}
@@ -247,27 +247,27 @@ void BvGeometryGenerator::Subdivide()
 
 BvGeometryGenerator::Vertex BvGeometryGenerator::GetMidPoint(const Vertex& v0, const Vertex& v1)
 {
-	auto p0 = Load3(v0.m_Position.v);
-	auto p1 = Load3(v1.m_Position.v);
+	auto p0 = XMLoadFloat3(&v0.m_Position);
+	auto p1 = XMLoadFloat3(&v1.m_Position);
 
-	auto uv0 = Load2(v0.m_UV.v);
-	auto uv1 = Load2(v1.m_UV.v);
+	auto uv0 = XMLoadFloat2(&v0.m_UV);
+	auto uv1 = XMLoadFloat2(&v1.m_UV);
 
-	auto n0 = Load3(v0.m_Normal.v);
-	auto n1 = Load3(v1.m_Normal.v);
+	auto n0 = XMLoadFloat3(&v0.m_Normal);
+	auto n1 = XMLoadFloat3(&v1.m_Normal);
 
-	auto t0 = Load3(v0.m_Tangent.v);
-	auto t1 = Load3(v1.m_Tangent.v);
+	auto t0 = XMLoadFloat3(&v0.m_Tangent);
+	auto t1 = XMLoadFloat3(&v1.m_Tangent);
 
-	auto b0 = Load3(v0.m_Bitangent.v);
-	auto b1 = Load3(v1.m_Bitangent.v);
+	auto b0 = XMLoadFloat3(&v0.m_Bitangent);
+	auto b1 = XMLoadFloat3(&v1.m_Bitangent);
 
 	Vertex v;
-	Store3(0.5f * (p0 + p1), v.m_Position.v);
-	Store2(0.5f * (uv0 + uv1), v.m_UV.v);
-	Store3(Vector3Normalize(0.5f * (n0 + n1)), v.m_Normal.v);
-	Store3(Vector3Normalize(0.5f * (t0 + t1)), v.m_Tangent.v);
-	Store3(Vector3Normalize(0.5f * (b0 + b1)), v.m_Bitangent.v);
+	XMStoreFloat3(&v.m_Position, 0.5f * (p0 + p1));
+	XMStoreFloat2(&v.m_UV, 0.5f * (uv0 + uv1));
+	XMStoreFloat3(&v.m_Normal, XMVector3Normalize(0.5f * (n0 + n1)));
+	XMStoreFloat3(&v.m_Tangent, XMVector3Normalize(0.5f * (t0 + t1)));
+	XMStoreFloat3(&v.m_Bitangent, XMVector3Normalize(0.5f * (b0 + b1)));
 
 	return v;
 }

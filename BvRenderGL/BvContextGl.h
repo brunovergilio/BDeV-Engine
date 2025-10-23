@@ -22,6 +22,7 @@ private:
 	void Destroy();
 
 private:
+	BvWindow* m_pWindow = nullptr;
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 	HDC m_hDC = nullptr;
 	HGLRC m_hRC = nullptr;

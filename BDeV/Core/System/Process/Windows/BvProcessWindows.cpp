@@ -77,7 +77,7 @@ void FillUpSystemInfo(BvSystemInfo& systemInfo)
 		}
 		else
 		{
-			BV_WIN_FATAL();
+			BV_SYS_FATAL();
 		}
 
 		//BV_DELETE_ARRAY(pBufferData);

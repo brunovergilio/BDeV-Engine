@@ -2,7 +2,7 @@
 
 
 #include "BDeV/Core/BvCore.h"
-#include "BDeV/Core/RenderAPI/BvColor.h"
+#include "BDeV/Core/Utils/BvColor.h"
 
 
 class BvConsole
@@ -222,6 +222,7 @@ namespace Internal
 
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#define BV_WIN_ERROR(errorCode) BV_ERROR("System", Internal::GetWindowsErrorMessage(errorCode))
-#define BV_WIN_FATAL(errorCode) BV_FATAL("System", Internal::GetWindowsErrorMessage(errorCode))
+#define BV_SYS_ERROR(errorCode) BV_ERROR("System", Internal::GetWindowsErrorMessage(errorCode))
+#define BV_SYS_FATAL(errorCode) BV_FATAL("System", Internal::GetWindowsErrorMessage(errorCode))
+#else
 #endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)

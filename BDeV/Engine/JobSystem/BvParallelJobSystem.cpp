@@ -358,11 +358,10 @@ void BvParallelJobSystem::Initialize(const JobSystemDesc& desc)
 
 	m_WorkerCount = desc.m_NumWorkerThreadDescs;
 	m_pWorkers = reinterpret_cast<BvParallelJobSystemWorker*>(BV_MALLOC(*m_pMemoryArena, sizeof(BvParallelJobSystemWorker) * m_WorkerCount, alignof(BvParallelJobSystemWorker)));
-	char tmpBuffer[48]{};
 	for (auto i = 0u; i < m_WorkerCount; i++)
 	{
 		u32 processorIndex = JobSystemDesc::kAutoSelectProcessor;
-		const char* pName = tmpBuffer;
+		const char* pName = nullptr;
 		BvParallelJobList::CategoryFlags categoryFlags = BvParallelJobList::CategoryFlags::kAny;
 		if (desc.m_pWorkerThreadDescs)
 		{
@@ -370,10 +369,6 @@ void BvParallelJobSystem::Initialize(const JobSystemDesc& desc)
 			processorIndex = workerDesc.m_LogicalProcessorIndex;
 			pName = workerDesc.m_pName;
 			categoryFlags = workerDesc.m_CategoryFlags;
-		}
-		else
-		{
-			snprintf(tmpBuffer, 48, "Parallel Job System - Worker Thread %u", i);
 		}
 
 		if (processorIndex == JobSystemDesc::kAutoSelectProcessor)

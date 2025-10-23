@@ -24,7 +24,7 @@ public:
 
 	// Allocator
 	IBvMemoryArena* GetAllocator() const;
-	void SetAllocator(IBvMemoryArena* pArena, size_t reserveSize = 0);
+	void SetAllocator(IBvMemoryArena* pArena);
 
 	void PushBack(const Type& value);
 	void PushBack(Type&& value);
@@ -53,11 +53,11 @@ public:
 	bool IsEmpty() const;
 
 	void Clear();
+	void Destroy();
 	void Reserve(u32 size);
 
 private:
 	void Grow(u32 size);
-	void Destroy();
 
 private:
 	Type* m_pData = nullptr;
@@ -90,12 +90,12 @@ template<typename Type>
 BvQueue<Type>::BvQueue(std::initializer_list<Type> list, IBvMemoryArena* pArena)
 	: m_pArena(pArena)
 {
-	Grow(list.size());
+	auto size = list.size();
+	Grow(size);
 
-	m_Size = list.size();
-	for (auto i = 0; i < m_Size; i++)
+	for (auto i = 0; i < size; i++)
 	{
-		new (&m_pData[i]) Type(list[i]);
+		EmplaceBack(list[i]);
 	}
 }
 
@@ -106,18 +106,22 @@ BvQueue<Type>::BvQueue(const BvQueue& rhs)
 {
 	Grow(rhs.m_Size);
 
-	m_Size = rhs.m_Size;
-	for (auto i = 0; i < m_Size; i++)
+	for (auto i = 0; i < rhs.m_Size; i++)
 	{
-		new (&m_pData[i]) Type(rhs.m_pData[(rhs.m_Front + i) % rhs.m_Capacity]);
+		EmplaceBack(rhs.m_pData[(rhs.m_Front + i) % rhs.m_Capacity]);
 	}
 }
 
 
 template<typename Type>
 BvQueue<Type>::BvQueue(BvQueue&& rhs) noexcept
+	: m_pData(rhs.m_pData), m_pArena(rhs.m_pArena), m_Size(rhs.m_Size), m_Capacity(rhs.m_Capacity), m_Front(rhs.m_Front)
 {
-	*this = std::move(rhs);
+	rhs.m_pData = nullptr;
+	rhs.m_pArena = nullptr;
+	rhs.m_Size = 0;
+	rhs.m_Capacity = 0;
+	rhs.m_Front = 0;
 }
 
 
@@ -130,10 +134,9 @@ BvQueue<Type>& BvQueue<Type>::operator =(const BvQueue& rhs)
 		SetAllocator(rhs.m_pArena);
 		Grow(rhs.m_Size);
 
-		m_Size = rhs.m_Size;
-		for (auto i = 0; i < m_Size; i++)
+		for (auto i = 0; i < rhs.m_Size; i++)
 		{
-			new (&m_pData[i]) Type(rhs.m_pData[(rhs.m_Front + i) % rhs.m_Capacity]);
+			EmplaceBack(rhs.m_pData[(rhs.m_Front + i) % rhs.m_Capacity]);
 		}
 	}
 
@@ -146,11 +149,19 @@ BvQueue<Type>& BvQueue<Type>::operator =(BvQueue&& rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		std::swap(m_pData, rhs.m_pData);
-		std::swap(m_pArena, rhs.m_pArena);
-		std::swap(m_Size, rhs.m_Size);
-		std::swap(m_Capacity, rhs.m_Capacity);
-		std::swap(m_Front, rhs.m_Front);
+		Destroy();
+
+		m_pData = rhs.m_pData;
+		m_pArena = rhs.m_pArena;
+		m_Size = rhs.m_Size;
+		m_Capacity = rhs.m_Capacity;
+		m_Front = rhs.m_Front;
+
+		rhs.m_pData = nullptr;
+		rhs.m_pArena = nullptr;
+		rhs.m_Size = 0;
+		rhs.m_Capacity = 0;
+		rhs.m_Front = 0;
 	}
 
 	return *this;
@@ -165,10 +176,9 @@ BvQueue<Type>& BvQueue<Type>::operator =(std::initializer_list<Type> list)
 	auto size = list.size();
 	Grow(size);
 
-	m_Size = size;
-	for (auto i = 0; i < m_Size; i++)
+	for (auto i = 0; i < size; i++)
 	{
-		new (&m_pData[(m_Front + i) % m_Capacity]) Type(list[i]);
+		EmplaceBack(list[i]);
 	}
 
 	return *this;
@@ -190,7 +200,7 @@ inline IBvMemoryArena* BvQueue<Type>::GetAllocator() const
 
 
 template<typename Type>
-inline void BvQueue<Type>::SetAllocator(IBvMemoryArena* pArena, size_t reserveSize)
+inline void BvQueue<Type>::SetAllocator(IBvMemoryArena* pArena)
 {
 	BV_ASSERT(pArena != nullptr, "Memory arena can't be nullptr");
 	BV_ASSERT(m_pData == nullptr, "Can't change allocators after allocations have been made");
@@ -213,10 +223,6 @@ inline void BvQueue<Type>::SetAllocator(IBvMemoryArena* pArena, size_t reserveSi
 	//}
 
 	m_pArena = pArena;
-	if (reserveSize)
-	{
-		Reserve(reserveSize);
-	}
 }
 
 
@@ -245,6 +251,7 @@ Type& BvQueue<Type>::EmplaceBack(Args&&... args)
 
 	auto backIndex = (m_Front + m_Size++) % m_Capacity;
 	new (&m_pData[backIndex]) Type(std::forward<Args>(args)...);
+	Internal::PropagateAllocator(m_pData[backIndex], m_pArena);
 
 	return m_pData[backIndex];
 }
@@ -275,6 +282,7 @@ Type& BvQueue<Type>::EmplaceFront(Args&&... args)
 
 	m_Front = (m_Front - 1 + m_Capacity) % m_Capacity;
 	new (&m_pData[m_Front]) Type(std::forward<Args>(args)...);
+	Internal::PropagateAllocator(m_pData[m_Front], m_pArena);
 	++m_Size;
 
 	return m_pData[m_Front];
@@ -424,6 +432,21 @@ inline void BvQueue<Type>::Clear()
 
 
 template<typename Type>
+inline void BvQueue<Type>::Destroy()
+{
+	Clear();
+
+	if (m_pData)
+	{
+		m_pArena->Free(m_pData);
+		m_pData = nullptr;
+	}
+
+	m_Capacity = 0;
+}
+
+
+template<typename Type>
 void BvQueue<Type>::Reserve(u32 size)
 {
 	Grow(size);
@@ -443,7 +466,10 @@ inline void BvQueue<Type>::Grow(u32 size)
 	{
 		auto curr = (m_Front + i) % m_Capacity;
 		new (&pNewData[i]) Type(std::move(m_pData[curr]));
-		m_pData[curr].~Type();
+		if constexpr (!std::is_trivially_destructible_v<Type>)
+		{
+			m_pData[curr].~Type();
+		}
 	}
 
 	m_Capacity = size;
@@ -453,15 +479,4 @@ inline void BvQueue<Type>::Grow(u32 size)
 	}
 	m_pData = pNewData;
 	m_Front = 0;
-}
-
-
-template<typename Type>
-inline void BvQueue<Type>::Destroy()
-{
-	Clear();
-	if (m_pData)
-	{
-		m_pArena->Free(m_pData);
-	}
 }

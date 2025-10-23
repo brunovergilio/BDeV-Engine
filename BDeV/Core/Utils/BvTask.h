@@ -75,14 +75,14 @@ public:
 		Reset();
 
 		new(m_Data) FnType(std::forward<Fn>(fn));
-		m_Func = [](void* data)
+		m_Func = [](void* pData)
 			{
-				(*reinterpret_cast<FnType*>(data))();
+				(*reinterpret_cast<FnType*>(pData))();
 			};
 
-		m_Dtor = [](void* data)
+		m_Dtor = [](void* pData)
 			{
-				reinterpret_cast<FnType*>(data)->~FnType();
+				reinterpret_cast<FnType*>(pData)->~FnType();
 			};
 	}
 
@@ -91,10 +91,10 @@ public:
 		if (m_Dtor)
 		{
 			m_Dtor(m_Data);
-		}
 
-		m_Func = nullptr;
-		m_Dtor = nullptr;
+			m_Func = nullptr;
+			m_Dtor = nullptr;
+		}
 	}
 
 	void operator()()
@@ -123,28 +123,37 @@ class BvMTask : public Internal::BvTaskData<true, false>
 public:
 	BvMTask() = default;
 
-	BvMTask(BvMTask&& other) noexcept
+	BvMTask(BvMTask&& rhs) noexcept
 	{
-		if (other.m_Move)
+		if (rhs.m_Move)
 		{
-			other.m_Move(m_Data, other.m_Data);
-			m_Func = other.m_Func;
-			m_Dtor = other.m_Dtor;
-			m_Move = other.m_Move;
+			rhs.m_Move(m_Data, rhs.m_Data);
+			m_Func = rhs.m_Func;
+			m_Dtor = rhs.m_Dtor;
+			m_Move = rhs.m_Move;
+
+			rhs.m_Func = nullptr;
+			rhs.m_Dtor = nullptr;
+			rhs.m_Move = nullptr;
 		}
 	}
 
-	BvMTask& operator=(BvMTask&& other) noexcept
+	BvMTask& operator=(BvMTask&& rhs) noexcept
 	{
-		if (this != &other)
+		if (this != &rhs)
 		{
-			if (other.m_Move)
+			Reset();
+
+			if (rhs.m_Move)
 			{
-				Reset();
-				other.m_Move(m_Data, other.m_Data);
-				m_Func = other.m_Func;
-				m_Dtor = other.m_Dtor;
-				m_Move = other.m_Move;
+				rhs.m_Move(m_Data, rhs.m_Data);
+				m_Func = rhs.m_Func;
+				m_Dtor = rhs.m_Dtor;
+				m_Move = rhs.m_Move;
+
+				rhs.m_Func = nullptr;
+				rhs.m_Dtor = nullptr;
+				rhs.m_Move = nullptr;
 			}
 		}
 		return *this;
@@ -171,19 +180,19 @@ public:
 		Reset();
 
 		new(m_Data) FnType(std::forward<Fn>(fn));
-		m_Func = [](void* data)
+		m_Func = [](void* pData)
 			{
-				(*reinterpret_cast<FnType*>(data))();
+				(*reinterpret_cast<FnType*>(pData))();
 			};
 
-		m_Dtor = [](void* data)
+		m_Dtor = [](void* pData)
 			{
-				reinterpret_cast<FnType*>(data)->~FnType();
+				reinterpret_cast<FnType*>(pData)->~FnType();
 			};
 
-		m_Move = [](void* dst, void* src)
+		m_Move = [](void* pDst, void* pSrc)
 			{
-				new(dst) FnType(std::move(*reinterpret_cast<FnType*>(src)));
+				new(pDst) FnType(std::move(*reinterpret_cast<FnType*>(pSrc)));
 			};
 	}
 
@@ -192,11 +201,11 @@ public:
 		if (m_Dtor)
 		{
 			m_Dtor(m_Data);
-		}
 
-		m_Func = nullptr;
-		m_Dtor = nullptr;
-		m_Move = nullptr;
+			m_Func = nullptr;
+			m_Dtor = nullptr;
+			m_Move = nullptr;
+		}
 	}
 
 	void operator()()
@@ -233,59 +242,71 @@ public:
 		Set(std::forward<Fn>(fn));
 	}
 
-	BvCMTask(const BvCMTask& other)
+	BvCMTask(const BvCMTask& rhs)
 	{
-		if (other.m_Copy)
+		if (rhs.m_Copy)
 		{
-			other.m_Copy(m_Data, other.m_Data);
-			m_Func = other.m_Func;
-			m_Dtor = other.m_Dtor;
-			m_Copy = other.m_Copy;
-			m_Move = other.m_Move;
+			rhs.m_Copy(m_Data, rhs.m_Data);
+			m_Func = rhs.m_Func;
+			m_Dtor = rhs.m_Dtor;
+			m_Copy = rhs.m_Copy;
+			m_Move = rhs.m_Move;
 		}
 	}
 
-	BvCMTask(BvCMTask&& other) noexcept
+	BvCMTask(BvCMTask&& rhs) noexcept
 	{
-		if (other.m_Move)
+		if (rhs.m_Move)
 		{
-			other.m_Move(m_Data, other.m_Data);
-			m_Func = other.m_Func;
-			m_Dtor = other.m_Dtor;
-			m_Copy = other.m_Copy;
-			m_Move = other.m_Move;
+			rhs.m_Move(m_Data, rhs.m_Data);
+			m_Func = rhs.m_Func;
+			m_Dtor = rhs.m_Dtor;
+			m_Copy = rhs.m_Copy;
+			m_Move = rhs.m_Move;
+
+			rhs.m_Func = nullptr;
+			rhs.m_Dtor = nullptr;
+			rhs.m_Copy = nullptr;
+			rhs.m_Move = nullptr;
 		}
 	}
 
-	BvCMTask& operator=(const BvCMTask& other)
+	BvCMTask& operator=(const BvCMTask& rhs)
 	{
-		if (this != &other)
+		if (this != &rhs)
 		{
-			if (other.m_Copy)
+			Reset();
+
+			if (rhs.m_Copy)
 			{
-				Reset();
-				other.m_Copy(m_Data, other.m_Data);
-				m_Func = other.m_Func;
-				m_Dtor = other.m_Dtor;
-				m_Copy = other.m_Copy;
-				m_Move = other.m_Move;
+				rhs.m_Copy(m_Data, rhs.m_Data);
+				m_Func = rhs.m_Func;
+				m_Dtor = rhs.m_Dtor;
+				m_Copy = rhs.m_Copy;
+				m_Move = rhs.m_Move;
 			}
 		}
 		return *this;
 	}
 
-	BvCMTask& operator=(BvCMTask&& other) noexcept
+	BvCMTask& operator=(BvCMTask&& rhs) noexcept
 	{
-		if (this != &other)
+		if (this != &rhs)
 		{
-			if (other.m_Move)
+			Reset();
+
+			if (rhs.m_Move)
 			{
-				Reset();
-				other.m_Move(m_Data, other.m_Data);
-				m_Func = other.m_Func;
-				m_Dtor = other.m_Dtor;
-				m_Copy = other.m_Copy;
-				m_Move = other.m_Move;
+				rhs.m_Move(m_Data, rhs.m_Data);
+				m_Func = rhs.m_Func;
+				m_Dtor = rhs.m_Dtor;
+				m_Copy = rhs.m_Copy;
+				m_Move = rhs.m_Move;
+
+				rhs.m_Func = nullptr;
+				rhs.m_Dtor = nullptr;
+				rhs.m_Copy = nullptr;
+				rhs.m_Move = nullptr;
 			}
 		}
 		return *this;
@@ -301,24 +322,24 @@ public:
 		Reset();
 
 		new(m_Data) FnType(std::forward<Fn>(fn));
-		m_Func = [](void* data)
+		m_Func = [](void* pData)
 			{
-				(*reinterpret_cast<FnType*>(data))();
+				(*reinterpret_cast<FnType*>(pData))();
 			};
 
-		m_Dtor = [](void* data)
+		m_Dtor = [](void* pData)
 			{
-				reinterpret_cast<FnType*>(data)->~FnType();
+				reinterpret_cast<FnType*>(pData)->~FnType();
 			};
 
-		m_Copy = [](void* dst, const void* src)
+		m_Copy = [](void* pDst, const void* pSrc)
 			{
-				new(dst) FnType(*reinterpret_cast<const FnType*>(src));
+				new(pDst) FnType(*reinterpret_cast<const FnType*>(pSrc));
 			};
 
-		m_Move = [](void* dst, void* src)
+		m_Move = [](void* pDst, void* pSrc)
 			{
-				new(dst) FnType(std::move(*reinterpret_cast<FnType*>(src)));
+				new(pDst) FnType(std::move(*reinterpret_cast<FnType*>(pSrc)));
 			};
 	}
 
@@ -327,12 +348,12 @@ public:
 		if (m_Dtor)
 		{
 			m_Dtor(m_Data);
-		}
 
-		m_Func = nullptr;
-		m_Dtor = nullptr;
-		m_Copy = nullptr;
-		m_Move = nullptr;
+			m_Func = nullptr;
+			m_Dtor = nullptr;
+			m_Copy = nullptr;
+			m_Move = nullptr;
+		}
 	}
 
 	void operator()()

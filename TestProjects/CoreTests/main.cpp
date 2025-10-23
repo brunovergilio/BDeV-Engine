@@ -6,6 +6,7 @@
 #include <BDeV/Engine/JobSystem/BvParallelJobSystem.h>
 #include <span>
 #include <source_location>
+#include <format>
 
 char stack[1024];
 char stack2[1024];
@@ -127,59 +128,79 @@ BvMutex mm;
 
 int main()
 {
-	JobSystemDesc jsDesc;
-	jsDesc.m_NumWorkerThreadDescs = 4;
+	//int n = rand();
+	//char p[32];
+	//scanf("%s", p);
+	//char buf[64];
+	//auto f = std::format_to_n(buf, 63, "Trying out {1} times to {0}", n, p);
+	//*f.out = 0;
+	//return 0;
 
-	BvParallelJobSystem js;
-	js.Initialize(jsDesc);
-	auto pJobList1 = js.AllocJobList(50, 2);
-	for (auto i = 0; i < 50; ++i)
+	auto hh = TypeInfo<u64>::GetHash();
+
 	{
-		pJobList1->AddJob([i]()
-			{
-				BvConsole::Print(BvColorI::BrightYellow, "JobList #1's Job %d on processor %u\n", i, GetCurrentProcessorNumber());
-				//BvRandom32 r;
-				//BvThread::Sleep(r.Next(50, 100));
-			});
-
-		if (i == 5 || i == 40)
-		{
-			pJobList1->AddSyncPoint();
-		}
+		BvMemoryArena<BvGrowableFreeListAllocator, BvNoLock, BvSimpleBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker, BvNoMemoryLogger> alloc;
+		alloc.GetAllocator().Set(8_kb);
+		BvVector<BvVector<i32>> abc1, abc2;
+		Internal::PropagateAllocatorToAll(&alloc, abc1, abc2);
+		BvVector<BvVector<i32>> abc(&alloc, 10);
+		abc.EmplaceBack();
 	}
-
-	auto pJobList2 = js.AllocJobList(20, 1);
-	for (auto i = 0; i < 20; ++i)
-	{
-		pJobList2->AddJob([i]()
-			{
-				BvConsole::Print(BvColorI::BrightMagenta, "JobList #2's Job %d on processor %u\n", i, GetCurrentProcessorNumber());
-				//BvRandom32 r;
-				//BvThread::Sleep(r.Next(50, 100));
-			});
-
-		if (i == 10)
-		{
-			pJobList2->AddJobListDependency(pJobList1);
-		}
-	}
-
-	pJobList1->Submit();
-	pJobList2->Submit();
-	js.Wait();
-
-	for (auto i = 0; i < jsDesc.m_NumWorkerThreadDescs; ++i)
-	{
-		auto& stats = js.GetStats(i);
-		BvConsole::Print("Worker %d -> ", i);
-		//BvConsole::Print("Running Time: %llu:\n", stats.m_TotalRunningTimeUs);
-		BvConsole::Print("Active Time [%llu ms] | ", stats.m_ActiveTimeUs);
-		BvConsole::Print("Job Time [%llu ms, %.2f%%] | ", stats.m_TotalJobTimeUs, 100.0 * double(stats.m_TotalJobTimeUs) / double(stats.m_ActiveTimeUs));
-		BvConsole::Print("Jobs Run: %u:\n", stats.m_JobsRun);
-	}
-	js.Shutdown();
-
 	return 0;
+
+	//JobSystemDesc jsDesc;
+	//jsDesc.m_NumWorkerThreadDescs = 4;
+
+	//BvParallelJobSystem js;
+	//js.Initialize(jsDesc);
+	//auto pJobList1 = js.AllocJobList(50, 2);
+	//for (auto i = 0; i < 50; ++i)
+	//{
+	//	pJobList1->AddJob([i]()
+	//		{
+	//			BvConsole::Print(BvColorI::BrightYellow, "JobList #1's Job %d on processor %u\n", i, GetCurrentProcessorNumber());
+	//			//BvRandom32 r;
+	//			//BvThread::Sleep(r.Next(50, 100));
+	//		});
+
+	//	if (i == 5 || i == 40)
+	//	{
+	//		pJobList1->AddSyncPoint();
+	//	}
+	//}
+
+	//auto pJobList2 = js.AllocJobList(20, 1);
+	//for (auto i = 0; i < 20; ++i)
+	//{
+	//	pJobList2->AddJob([i]()
+	//		{
+	//			BvConsole::Print(BvColorI::BrightMagenta, "JobList #2's Job %d on processor %u\n", i, GetCurrentProcessorNumber());
+	//			//BvRandom32 r;
+	//			//BvThread::Sleep(r.Next(50, 100));
+	//		});
+
+	//	if (i == 10)
+	//	{
+	//		pJobList2->AddJobListDependency(pJobList1);
+	//	}
+	//}
+
+	//pJobList1->Submit();
+	//pJobList2->Submit();
+	//js.Wait();
+
+	//for (auto i = 0; i < jsDesc.m_NumWorkerThreadDescs; ++i)
+	//{
+	//	auto& stats = js.GetStats(i);
+	//	BvConsole::Print("Worker %d -> ", i);
+	//	//BvConsole::Print("Running Time: %llu:\n", stats.m_TotalRunningTimeUs);
+	//	BvConsole::Print("Active Time [%llu ms] | ", stats.m_ActiveTimeUs);
+	//	BvConsole::Print("Job Time [%llu ms, %.2f%%] | ", stats.m_TotalJobTimeUs, 100.0 * double(stats.m_TotalJobTimeUs) / double(stats.m_ActiveTimeUs));
+	//	BvConsole::Print("Jobs Run: %u:\n", stats.m_JobsRun);
+	//}
+	//js.Shutdown();
+
+	//return 0;
 	//BvFiber& mfb = BvThread::ConvertToFiber();
 
 	//BvSignal s;

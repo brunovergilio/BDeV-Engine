@@ -6,6 +6,11 @@
 
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 #include <Windows.h>
+#include <WinSock2.h>
+#include <MSWSock.h>
+#include <ws2tcpip.h>
+
+#pragma comment(lib, "ws2_32.lib")
 
 #ifdef CreateFile
 #undef CreateFile
@@ -61,7 +66,7 @@ using OSFiberHandle = void*;
 using OSSharedLibHandle = HMODULE;
 using OSWindowHandle = HWND;
 using OSMonitorHandle = HMONITOR;
-#endif
+using OSSocketHandle = SOCKET;
 
 
 const OSFileHandle kNullOSFileHandle = INVALID_HANDLE_VALUE;
@@ -70,3 +75,8 @@ constexpr OSFiberHandle kNullOSFiberHandle = {};
 constexpr OSSharedLibHandle kNullOSSharedLibHandle = nullptr;
 constexpr OSWindowHandle kNullOSWindowHandle = nullptr;
 constexpr OSMonitorHandle kNullOSMonitorHandle = nullptr;
+const OSSocketHandle kNullOSSocketHandle = INVALID_SOCKET;
+
+#define BV_SOCKET_ERROR_CODE WSAGetLastError()
+
+#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)

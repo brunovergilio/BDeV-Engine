@@ -16,7 +16,7 @@ extern "C"
 }
 
 
-LPCSTR g_TempContextClassName = "OpenGLContextName";
+LPCSTR g_TempContextClassName = "OpenGL Temp Context";
 
 
 LRESULT TempWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -26,7 +26,7 @@ LRESULT TempWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 
 BvContextGl::BvContextGl(BvWindow* pWindow)
-	: m_hDC(pWindow->GetDC())
+	: m_pWindow(pWindow)
 {
 	Create();
 }
@@ -48,13 +48,22 @@ void BvContextGl::SwapBuffers(i32 swapInterval)
 
 	if (!::SwapBuffers(m_hDC))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 	}
 }
 
 
 void BvContextGl::Create()
 {
+	if (m_pWindow)
+	{
+		m_hDC = ::GetDC(m_pWindow->GetHandle());
+	}
+	else
+	{
+
+	}
+
 	constexpr auto kMaxPixelFormatAttribs = 23; // Increase as needed
 	BvFixedVector<i32, kMaxPixelFormatAttribs> pixelFormatAttribs;
 	pixelFormatAttribs.EmplaceBack(WGL_DRAW_TO_WINDOW_ARB); pixelFormatAttribs.EmplaceBack(GL_TRUE);
@@ -85,17 +94,17 @@ void BvContextGl::Create()
 	wglChoosePixelFormatARB(m_hDC, pixelFormatAttribs.Data(), 0, 1, &pixelFormat, &numFormats);
 	if (!numFormats)
 	{
-		BV_ERROR("Failed to choose the pixel format.\n");
+		BV_ERROR("WGL", "Failed to choose the pixel format.\n");
 	}
 
 	PIXELFORMATDESCRIPTOR pfd;
 	if (!DescribePixelFormat(m_hDC, pixelFormat, sizeof(pfd), &pfd))
 	{
-		BV_ERROR("Failed to describe the pixel format.\n");
+		BV_ERROR("WGL", "Failed to describe the pixel format.\n");
 	}
 	if (!SetPixelFormat(m_hDC, pixelFormat, &pfd))
 	{
-		BV_ERROR("Failed to set the pixel format.\n");
+		BV_ERROR("WGL", "Failed to set the pixel format.\n");
 	}
 
 	auto majorVersion = 0;
@@ -133,10 +142,10 @@ void BvContextGl::Create()
 		{
 			switch (glGetError())
 			{
-			case GL_INVALID_OPERATION:			BV_ERROR("Couldn't create an extended OpenGL context!\n"); break;
-			case ERROR_INVALID_VERSION_ARB:		//BV_ERROR("ERROR_INVALID_VERSION_ARB\n"); break;
-			case ERROR_INVALID_PROFILE_ARB:		//BV_ERROR("ERROR_INVALID_PROFILE_ARB\n"); break;
-			case ERROR_INVALID_PIXEL_TYPE_ARB:	//BV_ERROR("ERROR_INVALID_PIXEL_TYPE_ARB\n"); break;
+			case GL_INVALID_OPERATION:			BV_ERROR("WGL", "Couldn't create an extended OpenGL context!\n"); break;
+			case ERROR_INVALID_VERSION_ARB:		//BV_ERROR("WGL", "ERROR_INVALID_VERSION_ARB\n"); break;
+			case ERROR_INVALID_PROFILE_ARB:		//BV_ERROR("WGL", "ERROR_INVALID_PROFILE_ARB\n"); break;
+			case ERROR_INVALID_PIXEL_TYPE_ARB:	//BV_ERROR("WGL", "ERROR_INVALID_PIXEL_TYPE_ARB\n"); break;
 			default:
 				break;
 			}
@@ -145,13 +154,13 @@ void BvContextGl::Create()
 
 	if (!m_hRC)
 	{
-		BV_ERROR("OpenGL 4.0+ not supported");
+		BV_ERROR("WGL", "OpenGL 4.0+ not supported");
 		return;
 	}
 
 	if (!wglMakeCurrent(m_hDC, m_hRC))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 	}
 }
 
@@ -178,8 +187,8 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 //	auto hInstance = GetModuleHandle("BvRenderGl.dll");
 //#endif
 
-	WNDCLASS dummyClass;
-	memset(&dummyClass, 0, sizeof(WNDCLASS));
+	WNDCLASSA dummyClass;
+	memset(&dummyClass, 0, sizeof(WNDCLASSA));
 	dummyClass.style = CS_OWNDC;
 	dummyClass.hInstance = hInstance;
 	dummyClass.lpfnWndProc = TempWndProc;
@@ -189,7 +198,7 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 	HWND hTempWnd = CreateWindowA(g_TempContextClassName, g_TempContextClassName, 0, 0, 0, 32, 32, 0, 0, hInstance, 0);
 	if (!hTempWnd)
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
@@ -210,13 +219,13 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 	auto pixelFormat = ChoosePixelFormat(hTempDC, &pfd);
 	if (!pixelFormat)
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 	auto pixelFormatResult = SetPixelFormat(hTempDC, pixelFormat, &pfd);
 	if (!pixelFormatResult)
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
@@ -225,13 +234,13 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 	HGLRC hTempContext = wglCreateContext(hTempDC);
 	if (!hTempContext)
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
 	if (!wglMakeCurrent(hTempDC, hTempContext))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
@@ -239,13 +248,13 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 	auto glewResult = glewInit();
 	if (glewResult != GLEW_OK)
 	{
-		BV_ERROR("Failed to initialize GLEW");
+		BV_ERROR("WGL", "Failed to initialize GLEW");
 		return false;
 	}
 
 	if (!WGLEW_ARB_create_context)
 	{
-		BV_ERROR("OpenGL 4.0+ not supported");
+		BV_ERROR("WGL", "OpenGL 4.0+ not supported");
 		return false;
 	}
 
@@ -280,31 +289,31 @@ bool InitializeOpenGL(BvGPUInfoGl& gpuInfo)
 
 	if (!wglMakeCurrent(nullptr, nullptr))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
 	if (!wglDeleteContext(hTempContext))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
 	if (!ReleaseDC(hTempWnd, hTempDC))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
 	if (!DestroyWindow(hTempWnd))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
 	if (!UnregisterClassA(g_TempContextClassName, hInstance))
 	{
-		BV_OS_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 

@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/Utils/BvHash.h"
 
 
 template<typename T>
@@ -34,6 +34,16 @@ struct TypeInfo
 #else
 		return "";
 #endif
+	}
+
+	static BV_INLINE u64 GetHash()
+	{
+		static u64 hash = [pName = TypeInfo<T>::GetName()]()
+			{
+				return MurmurHash64A(pName, strlen(pName));
+			}();
+
+		return hash;
 	}
 };
 

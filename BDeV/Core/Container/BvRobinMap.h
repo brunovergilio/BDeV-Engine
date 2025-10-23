@@ -58,6 +58,7 @@ public:
 	bool HasKey(const Key& key) const;
 
 	void Clear();
+	void Destroy();
 
 	Value & operator[] (const Key & key);
 	Value & operator[] (Key && key);
@@ -65,16 +66,15 @@ public:
 	Value & At(const Key & key);
 	const Value & At(const Key & key) const;
 
-	BV_INLINE const size_t Size() const { return m_Size; }
-	BV_INLINE const size_t Capacity() const { return m_Capacity; }
-	BV_INLINE const bool Empty() const { return m_Size == 0; }
+	const size_t Size() const { return m_Size; }
+	const size_t Capacity() const { return m_Capacity; }
+	const bool Empty() const { return m_Size == 0; }
 
 private:
 	template<typename KeyType, typename ...Args>
 	size_t EmplaceInternal(KeyValue* const pData, size_t* const pHashes, KeyType&& key, Args&&... args);
-	void Destroy();
-	BV_INLINE const size_t HashPos(const u32 hash) const { return hash % m_Capacity; };
-	BV_INLINE const size_t Hash(const Key & key) const;
+	const size_t HashPos(const u32 hash) const { return hash % m_Capacity; };
+	const size_t Hash(const Key & key) const;
 
 private:
 	KeyValue * m_pData = nullptr;
@@ -130,8 +130,13 @@ inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap(const BvRobinMap& rhs)
 
 template<typename Key, typename Value, typename Hash, typename Comparer>
 inline BvRobinMap<Key, Value, Hash, Comparer>::BvRobinMap(BvRobinMap&& rhs) noexcept
+	: m_pData(rhs.m_pData), m_pHashes(rhs.m_pHashes), m_pArena(rhs.m_pArena), m_Size(rhs.m_Size), m_Capacity(rhs.m_Capacity)
 {
-	*this = std::move(rhs);
+	rhs.m_pData = nullptr;
+	rhs.m_pHashes = nullptr;
+	rhs.m_pArena = nullptr;
+	rhs.m_Size = 0;
+	rhs.m_Capacity = 0;
 }
 
 
@@ -159,11 +164,19 @@ inline BvRobinMap<Key, Value, Hash, Comparer>& BvRobinMap<Key, Value, Hash, Comp
 {
 	if (this->m_pHashes != rhs.m_pHashes)
 	{
-		std::swap(m_pData, rhs.m_pData);
-		std::swap(m_pHashes, rhs.m_pHashes);
-		std::swap(m_pArena, rhs.m_pArena);
-		std::swap(m_Size, rhs.m_Size);
-		std::swap(m_Capacity, rhs.m_Capacity);
+		Destroy();
+
+		m_pData = rhs.m_pData;
+		m_pHashes = rhs.m_pHashes;
+		m_pArena = rhs.m_pArena;
+		m_Size = rhs.m_Size;
+		m_Capacity = rhs.m_Capacity;
+
+		rhs.m_pData = nullptr;
+		rhs.m_pHashes = nullptr;
+		rhs.m_pArena = nullptr;
+		rhs.m_Size = 0;
+		rhs.m_Capacity = 0;
 	}
 
 	return *this;
@@ -329,6 +342,7 @@ inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool
 			m_pData[index].second.~Value();
 		}
 		new (&m_pData[index].second) Value(std::forward<Args>(args)...);
+		Internal::PropagateAllocator(m_pData[index].second, m_pArena);
 		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
 	}
 
@@ -357,6 +371,7 @@ inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool
 			m_pData[index].second.~Value();
 		}
 		new (&m_pData[index].second) Value(std::forward<Args>(args)...);
+		Internal::PropagateAllocator(m_pData[index].second, m_pArena);
 		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
 	}
 
@@ -496,6 +511,23 @@ void BvRobinMap<Key, Value, Hash, Comparer>::Clear()
 
 
 template<typename Key, typename Value, typename Hash, typename Comparer>
+void BvRobinMap<Key, Value, Hash, Comparer>::Destroy()
+{
+	Clear();
+
+	if (m_pData)
+	{
+		m_pArena->Free(m_pData);
+		m_pArena->Free(m_pHashes);
+		m_pData = nullptr;
+		m_pHashes = nullptr;
+	}
+
+	m_Capacity = 0;
+}
+
+
+template<typename Key, typename Value, typename Hash, typename Comparer>
 inline Value & BvRobinMap<Key, Value, Hash, Comparer>::operator[](const Key & key)
 {
 	auto iter = FindKey(key);
@@ -553,6 +585,8 @@ inline size_t BvRobinMap<Key, Value, Hash, Comparer>::EmplaceInternal(KeyValue* 
 	size_t newElemInsertedPosition = kU64Max;
 
 	KeyValue newItem(std::piecewise_construct, std::forward_as_tuple(std::forward<KeyType>(key)), std::forward_as_tuple(std::forward<Args>(args)...));
+	Internal::PropagateAllocator(newItem.first, m_pArena);
+	Internal::PropagateAllocator(newItem.second, m_pArena);
 
 	for (; distFromDesiredPos < m_Capacity; distFromDesiredPos++, currPos = (currPos + 1) % m_Capacity)
 	{
@@ -586,23 +620,6 @@ inline size_t BvRobinMap<Key, Value, Hash, Comparer>::EmplaceInternal(KeyValue* 
 	}
 
 	return newElemInsertedPosition;
-}
-
-
-template<typename Key, typename Value, typename Hash, typename Comparer>
-void BvRobinMap<Key, Value, Hash, Comparer>::Destroy()
-{
-	Clear();
-
-	m_Capacity = 0;
-
-	if (m_pData)
-	{
-		m_pArena->Free(m_pData);
-		m_pArena->Free(m_pHashes);
-		m_pData = nullptr;
-		m_pHashes = nullptr;
-	}
 }
 
 

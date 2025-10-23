@@ -89,7 +89,7 @@ public:
 	friend RandomReverseIterator operator+(const size_t n, const RandomReverseIterator & rhs) { RandomReverseIterator it; it.m_pData = rhs.m_pData - n; return it; }
 	friend RandomReverseIterator operator-(const size_t n, const RandomReverseIterator & rhs) { RandomReverseIterator it; it.m_pData = rhs.m_pData + n; return it; }
 
-	friend size_t operator-(const RandomReverseIterator & lhs, const RandomReverseIterator & rhs) { return rhs.m_pData - lhs.m_pData; }
+	friend size_t operator-(const RandomReverseIterator & lhs, const RandomReverseIterator & rhs) { return reinterpret_cast<size_t>(rhs.m_pData - lhs.m_pData); }
 
 	operator RandomReverseIterator<const Type>() { return RandomReverseIterator<const Type>(m_pData); }
 

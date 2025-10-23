@@ -16,8 +16,9 @@ BvSharedLib::BvSharedLib(const char * pFilename)
 
 
 BvSharedLib::BvSharedLib(BvSharedLib && rhs) noexcept
+	: m_hLib(rhs.m_hLib)
 {
-	*this = std::move(rhs);
+	rhs.m_hLib = kNullOSSharedLibHandle;
 }
 
 
@@ -25,7 +26,10 @@ BvSharedLib & BvSharedLib::operator=(BvSharedLib && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		std::swap(m_hLib, rhs.m_hLib);
+		Close();
+
+		m_hLib = rhs.m_hLib;
+		rhs.m_hLib = kNullOSSharedLibHandle;
 	}
 
 	return *this;
@@ -46,7 +50,7 @@ bool BvSharedLib::Open(const char* pFilename)
 	m_hLib = LoadLibraryW(pFilenameW);
 	if (!m_hLib)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 

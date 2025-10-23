@@ -83,8 +83,8 @@ BvPath& BvPath::operator=(const BvString& path)
 
 
 BvPath::BvPath(BvPath&& rhs) noexcept
+	: m_Path(std::move(rhs.m_Path))
 {
-	*this = std::move(rhs);
 }
 
 
@@ -108,7 +108,7 @@ BvPath BvPath::FromCurrentDirectory()
 	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
 	if (!sizeNeeded)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 
 		return BvPath();
 	}
@@ -119,7 +119,7 @@ BvPath BvPath::FromCurrentDirectory()
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 
 			return BvPath();
 		}
@@ -138,7 +138,7 @@ BvPath BvPath::FromCurrentDrive()
 	auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
 	if (!sizeNeeded)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 
 		return BvPath();
 	}
@@ -149,7 +149,7 @@ BvPath BvPath::FromCurrentDrive()
 
 		if (!GetCurrentDirectoryW(sizeNeeded, pFilenameW))
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 
 			return BvPath();
 		}
@@ -284,7 +284,7 @@ BvPath BvPath::GetAbsolutePath() const
 		sizeNeeded = GetFullPathNameW(pPathNameW, 0, nullptr, nullptr);
 		if (sizeNeeded == 0)
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 			return BvPath();
 		}
 
@@ -293,7 +293,7 @@ BvPath BvPath::GetAbsolutePath() const
 		GetFullPathNameW(pPathNameW, sizeNeeded, &fullPath[0], nullptr);
 		if (sizeNeeded == 0)
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 			return BvPath();
 		}
 		
@@ -542,7 +542,7 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 		DWORD error = GetLastError();
 		if (error != ERROR_FILE_NOT_FOUND)
 		{
-			BV_WIN_FATAL();
+			BV_SYS_FATAL();
 		}
 		return;
 	}
@@ -570,13 +570,13 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 	DWORD error = GetLastError();
 	if (error != ERROR_NO_MORE_FILES)
 	{
-		BV_WIN_FATAL();
+		BV_SYS_FATAL();
 		return;
 	}
 
 	if (!FindClose(hFind))
 	{
-		BV_WIN_FATAL();
+		BV_SYS_FATAL();
 	}
 }
 

@@ -85,7 +85,7 @@ void BvAccelerationStructureVk::WriteTopLevelInstances(IBvBuffer* pStagingBuffer
 		dstInstance.mask = srcInstance.m_InstanceMask;
 		dstInstance.instanceShaderBindingTableRecordOffset = srcInstance.m_ShaderBindingTableIndex;
 		dstInstance.flags = GetVkGeometryInstanceFlags(srcInstance.m_Flags);
-		memcpy(dstInstance.transform.matrix, srcInstance.m_Transform.m, sizeof(VkTransformMatrixKHR));
+		memcpy(dstInstance.transform.matrix, &srcInstance.m_Transform, sizeof(VkTransformMatrixKHR));
 	}
 	pStagingBuffer->Flush();
 }

@@ -2075,7 +2075,8 @@ struct TLASDesc
 
 struct TLASInstanceDesc
 {
-	Float34 m_Transform{ Float4(1.0f, 0.0f, 0.0f, 0.0f), Float4(0.0f, 1.0f, 0.0f, 0.0f), Float4(0.0f, 0.0f, 1.0f, 0.0f) };
+	f32 m_Transform[12] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
+	//Float34 m_Transform{ Float4(1.0f, 0.0f, 0.0f, 0.0f), Float4(0.0f, 1.0f, 0.0f, 0.0f), Float4(0.0f, 0.0f, 1.0f, 0.0f) };
 	u32 m_InstanceId = 0;
 	u32 m_InstanceMask = 0;
 	u32 m_ShaderBindingTableIndex = 0;

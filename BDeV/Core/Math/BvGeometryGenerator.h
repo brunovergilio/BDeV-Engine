@@ -11,14 +11,14 @@ class BvGeometryGenerator
 public:
 	struct Vertex
 	{
-		Float3 m_Position;
-		Float2 m_UV;
-		Float3 m_Normal;
-		Float3 m_Tangent;
-		Float3 m_Bitangent;
+		XMFLOAT3 m_Position;
+		XMFLOAT2 m_UV;
+		XMFLOAT3 m_Normal;
+		XMFLOAT3 m_Tangent;
+		XMFLOAT3 m_Bitangent;
 
 		constexpr Vertex() {}
-		constexpr Vertex(const Float3& position, const Float2& uv, const Float3& normal, const Float3& tangent, const Float3& bitangent)
+		constexpr Vertex(const XMFLOAT3& position, const XMFLOAT2& uv, const XMFLOAT3& normal, const XMFLOAT3& tangent, const XMFLOAT3& bitangent)
 			: m_Position(position), m_UV(uv), m_Normal(normal), m_Tangent(tangent), m_Bitangent(bitangent) {}
 	};
 
@@ -68,13 +68,13 @@ void BvVertexUtilities::CalculateTangent(void* pVertices, u32 vertexCount, u32 v
 		auto pV1 = mem.pAsCharPtr + vertexStride * pIndices[i + 1];
 		auto pV2 = mem.pAsCharPtr + vertexStride * pIndices[i + 2];
 
-		BvVec3 p0(*reinterpret_cast<Float3*>(pV0 + PosOffset));
-		BvVec3 p1(*reinterpret_cast<Float3*>(pV1 + PosOffset));
-		BvVec3 p2(*reinterpret_cast<Float3*>(pV2 + PosOffset));
+		BvVec3 p0(*reinterpret_cast<XMFLOAT3*>(pV0 + PosOffset));
+		BvVec3 p1(*reinterpret_cast<XMFLOAT3*>(pV1 + PosOffset));
+		BvVec3 p2(*reinterpret_cast<XMFLOAT3*>(pV2 + PosOffset));
 
-		BvVec2 uv0(*reinterpret_cast<Float2*>(pV0 + UVOffset));
-		BvVec2 uv1(*reinterpret_cast<Float2*>(pV1 + UVOffset));
-		BvVec2 uv2(*reinterpret_cast<Float2*>(pV2 + UVOffset));
+		BvVec2 uv0(*reinterpret_cast<XMFLOAT2*>(pV0 + UVOffset));
+		BvVec2 uv1(*reinterpret_cast<XMFLOAT2*>(pV1 + UVOffset));
+		BvVec2 uv2(*reinterpret_cast<XMFLOAT2*>(pV2 + UVOffset));
 
 		auto deltaPos1 = p1 - p0;
 		auto deltaPos2 = p2 - p0;
@@ -86,9 +86,9 @@ void BvVertexUtilities::CalculateTangent(void* pVertices, u32 vertexCount, u32 v
 		auto tangent = (deltaPos1 * deltaUV2.GetY() - deltaPos2 * deltaUV1.GetY()) * r;
 		auto bitangent = (deltaPos2 * deltaUV1.GetX() - deltaPos1 * deltaUV2.GetX()) * r;
 
-		auto& tg0 = *reinterpret_cast<Float3*>(pV0 + TangentOffset);
-		auto& tg1 = *reinterpret_cast<Float3*>(pV1 + TangentOffset);
-		auto& tg2 = *reinterpret_cast<Float3*>(pV2 + TangentOffset);
+		auto& tg0 = *reinterpret_cast<XMFLOAT3*>(pV0 + TangentOffset);
+		auto& tg1 = *reinterpret_cast<XMFLOAT3*>(pV1 + TangentOffset);
+		auto& tg2 = *reinterpret_cast<XMFLOAT3*>(pV2 + TangentOffset);
 
 		BvVec3 t0(tg0);
 		BvVec3 t1(tg1);
@@ -103,9 +103,9 @@ void BvVertexUtilities::CalculateTangent(void* pVertices, u32 vertexCount, u32 v
 
 		if constexpr (BitangentOffset != -1)
 		{
-			auto& bt0 = *reinterpret_cast<Float3*>(pV0 + BitangentOffset);
-			auto& bt1 = *reinterpret_cast<Float3*>(pV1 + BitangentOffset);
-			auto& bt2 = *reinterpret_cast<Float3*>(pV2 + BitangentOffset);
+			auto& bt0 = *reinterpret_cast<XMFLOAT3*>(pV0 + BitangentOffset);
+			auto& bt1 = *reinterpret_cast<XMFLOAT3*>(pV1 + BitangentOffset);
+			auto& bt2 = *reinterpret_cast<XMFLOAT3*>(pV2 + BitangentOffset);
 
 			BvVec3 b0(bt0);
 			BvVec3 b1(bt1);
@@ -123,7 +123,7 @@ void BvVertexUtilities::CalculateTangent(void* pVertices, u32 vertexCount, u32 v
 	mem.pAsVoidPtr = pVertices;
 	for (auto i = 0; i < vertexCount; ++i)
 	{
-		auto& tg = *reinterpret_cast<Float3*>(mem.pAsCharPtr + vertexStride * i + TangentOffset);
+		auto& tg = *reinterpret_cast<XMFLOAT3*>(mem.pAsCharPtr + vertexStride * i + TangentOffset);
 
 		BvVec3 t(tg);
 		t.Normalize();
@@ -131,7 +131,7 @@ void BvVertexUtilities::CalculateTangent(void* pVertices, u32 vertexCount, u32 v
 	
 		if constexpr (BitangentOffset != -1)
 		{
-			auto& bt = *reinterpret_cast<Float3*>(mem.pAsCharPtr + vertexStride * i + BitangentOffset);
+			auto& bt = *reinterpret_cast<XMFLOAT3*>(mem.pAsCharPtr + vertexStride * i + BitangentOffset);
 
 			BvVec3 b(bt);
 			b.Normalize();

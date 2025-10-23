@@ -10,10 +10,15 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 	#define BV_PLATFORM BV_PLATFORM_WIN32
+	#define BV_PLATFORM_IS_WIN32 1
 #elif defined(__APPLE__)
 	#define BV_PLATFORM BV_PLATFORM_MACOS
+	#define BV_PLATFORM_IS_WIN32 0
 #elif defined(__linux__)
 	#define BV_PLATFORM BV_PLATFORM_LINUX
+	#define BV_PLATFORM_IS_WIN32 0
+#else
+	#define BV_PLATFORM_IS_WIN32 0
 #endif
 
 
@@ -131,6 +136,7 @@
 #include <new>
 #include <type_traits>
 #include <source_location>
+#include <bit>
 
 using i8	= std::int8_t;
 using i16	= std::int16_t;
@@ -193,13 +199,14 @@ constexpr const auto kF64Min = kMin<f64>;
 constexpr const auto kF64Max = kMax<f64>;
 
 template<typename Type>
-inline constexpr bool IsPodV = std::is_trivial_v<Type> && std::is_standard_layout_v<Type>;
+constexpr bool IsPodV = std::is_trivial_v<Type> && std::is_standard_layout_v<Type>;
 
 constexpr size_t kCacheLineSize = std::hardware_destructive_interference_size;
 
 constexpr size_t kPointerSize = sizeof(void*);
 constexpr size_t kDefaultAlignmentSize = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
+constexpr size_t kInvalidPos = kU64Max;
 
 constexpr u64 operator""_kb(size_t bytes)
 {
@@ -219,13 +226,16 @@ constexpr u64 operator""_gb(size_t bytes)
 }
 
 
-template<typename T, auto V>
-constexpr size_t OffsetOfPtr()
+namespace Internal
 {
-	return ((size_t)&reinterpret_cast<char const volatile&>((((T*)0)->*V)));
+	template<typename T, auto V>
+	constexpr size_t OffsetOfPtr()
+	{
+		return ((size_t)&reinterpret_cast<char const volatile&>((((T*)0)->*V)));
+	}
 }
 
-#define BV_OFFSETOF(t, v) OffsetOfPtr<t, &t::v>()
+#define BV_OFFSETOF(t, v) Internal::OffsetOfPtr<t, &t::v>()
 
 
 struct BvTrackedAllocationInfo
@@ -240,3 +250,6 @@ struct BvTrackedAllocationInfo
 #if (BV_PLATFORM == BV_PLATFORM_WIN32)
 #define BV_STACK_ALLOC(size) _alloca(size)
 #endif
+
+
+static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big, "Endianess must be little or big");

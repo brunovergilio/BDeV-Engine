@@ -15,8 +15,9 @@ BvFile::BvFile(const char* pFilename, BvFileAccessMode mode, BvFileAction action
 
 
 BvFile::BvFile(BvFile && rhs) noexcept
+	: m_hFile(rhs.m_hFile)
 {
-	*this = std::move(rhs);
+	rhs.m_hFile = INVALID_HANDLE_VALUE;
 }
 
 
@@ -24,7 +25,10 @@ BvFile & BvFile::operator =(BvFile && rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		std::swap(m_hFile, rhs.m_hFile);
+		Close();
+
+		m_hFile = rhs.m_hFile;
+		rhs.m_hFile = INVALID_HANDLE_VALUE;
 	}
 
 	return *this;
@@ -68,7 +72,7 @@ bool BvFile::Open(const char* pFilename, BvFileAccessMode mode, BvFileAction act
 
 	if (m_hFile == INVALID_HANDLE_VALUE)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 
@@ -89,7 +93,7 @@ bool BvFile::Read(void* pBuffer, u32 bufferSize, u32* pBytesProcessed)
 		u32 bytesRead = 0;
 		if (!ReadFile(m_hFile, pMem + totalBytesRead, bufferSize - totalBytesRead, reinterpret_cast<LPDWORD>(&bytesRead), nullptr))
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 			return false;
 		}
 
@@ -123,7 +127,7 @@ bool BvFile::Write(const void* pBuffer, u32 bufferSize, u32* pBytesProcessed)
 		u32 bytesWritten = 0;
 		if (!WriteFile(m_hFile, pMem + totalBytesWritten, bufferSize - totalBytesWritten, reinterpret_cast<LPDWORD>(&bytesWritten), nullptr))
 		{
-			BV_WIN_ERROR();
+			BV_SYS_ERROR();
 			return false;
 		}
 
@@ -192,7 +196,7 @@ u64 BvFile::GetSize() const
 	BOOL status = GetFileSizeEx(m_hFile, reinterpret_cast<PLARGE_INTEGER>(&fileSize));
 	if (!status)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 	}
 
 	return u64(fileSize);
@@ -216,7 +220,7 @@ void BvFile::Flush()
 	BOOL status = FlushFileBuffers(m_hFile);
 	if (!status)
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 	}
 }
 
@@ -228,7 +232,7 @@ bool BvFile::GetInfo(BvFileInfo& fileInfo)
 	BY_HANDLE_FILE_INFORMATION bhfi;
 	if (!GetFileInformationByHandle(m_hFile, &bhfi))
 	{
-		BV_WIN_ERROR();
+		BV_SYS_ERROR();
 		return false;
 	}
 

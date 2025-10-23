@@ -34,6 +34,96 @@ constexpr u32 ArraySize(Type(&)[N])
 }
 
 
+template<typename T>
+concept IntegerType = std::is_integral_v<T>;
+
+
+namespace Internal
+{
+	constexpr u16 SwapBytes2(u16 value)
+	{
+		return (value >> 8) | (value << 8);
+	}
+
+	constexpr u32 SwapBytes4(u32 value)
+	{
+		return
+			((value >> 24)) |
+			((value >> 8) & 0x0000ff00) |
+			((value << 8) & 0x00ff0000) |
+			((value << 24));
+	}
+
+	constexpr u64 SwapBytes8(u64 value)
+	{
+		return
+			((value >> 56)) |
+			((value >> 40) & 0x000000000000ff00) |
+			((value >> 24) & 0x0000000000ff0000) |
+			((value >> 8) & 0x00000000ff000000) |
+			((value << 8) & 0x000000ff00000000) |
+			((value << 24) & 0x0000ff0000000000) |
+			((value << 40) & 0x00ff000000000000) |
+			((value << 56));
+	}
+}
+
+
+template<IntegerType T>
+constexpr T SwapBytes(T value)
+{
+	constexpr auto size = sizeof(T);
+	if constexpr (size == 1)
+	{
+		return value;
+	}
+	else if constexpr (size == 2)
+	{
+		return static_cast<T>(Internal::SwapBytes2(static_cast<u16>(value)));
+	}
+	else if constexpr (size == 4)
+	{
+		return static_cast<T>(Internal::SwapBytes4(static_cast<u32>(value)));
+	}
+	else if constexpr (size == 8)
+	{
+		return static_cast<T>(Internal::SwapBytes8(static_cast<u64>(value)));
+	}
+	else
+	{
+		return value;
+	}
+}
+
+
+template<IntegerType T>
+constexpr T ToLittleEndian(T value)
+{
+	if constexpr (std::endian::native == std::endian::little)
+	{
+		return value;
+	}
+	else
+	{
+		return SwapBytes(value);
+	}
+}
+
+
+template<IntegerType T>
+constexpr T ToBigEndian(T value)
+{
+	if constexpr (std::endian::native == std::endian::big)
+	{
+		return value;
+	}
+	else
+	{
+		return SwapBytes(value);
+	}
+}
+
+
 template<typename Type1, typename Type2>
 constexpr std::conditional_t<(sizeof(Type1) >= sizeof(Type2)), Type1, Type2> RoundToNearestPowerOf2(Type1 value, Type2 multiple)
 {

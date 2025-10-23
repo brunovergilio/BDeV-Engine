@@ -144,7 +144,7 @@ BvRCRef<IBvShader> SampleBase::CompileShader(const char* pSource, size_t length,
 	if (!m_SpvCompiler->Compile(shaderDesc, &compiledShader, &error))
 	{
 		const char* pErr = (const char*)error->GetBufferPointer();
-		BV_ASSERT(false, "Check shader error!");
+		BV_ASSERT(false, "Shader error: %s", pErr);
 	}
 	shaderDesc.m_pByteCode = (const u8*)compiledShader->GetBufferPointer();
 	shaderDesc.m_ByteCodeSize = compiledShader->GetBufferSize();

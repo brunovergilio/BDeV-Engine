@@ -24,7 +24,7 @@
 #include "BDeV/Core/RenderAPI/BvPipelineState.h"
 #include "BDeV/Core/RenderAPI/BvQuery.h"
 #include "BDeV/Core/RenderAPI/BvCommandContext.h"
-#include "BDeV/Core/RenderAPI/BvColor.h"
+#include "BDeV/Core/Utils/BvColor.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 #include "BDeV/Core/RenderAPI/BvShaderCompiler.h"
 

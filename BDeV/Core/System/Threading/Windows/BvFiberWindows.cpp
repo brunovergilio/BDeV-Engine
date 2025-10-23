@@ -113,8 +113,10 @@ BvFiber::BvFiber()
 
 
 BvFiber::BvFiber(BvFiber&& rhs) noexcept
+	: m_hFiber(rhs.m_hFiber), m_Task(std::move(rhs.m_Task)), m_IsThreadSetup(rhs.m_IsThreadSetup)
 {
-	*this = std::move(rhs);
+	rhs.m_hFiber = kNullOSFiberHandle;
+	rhs.m_IsThreadSetup = false;
 }
 
 
@@ -122,9 +124,14 @@ BvFiber& BvFiber::operator=(BvFiber&& rhs) noexcept
 {
 	if (this != &rhs)
 	{
-		std::swap(m_hFiber, rhs.m_hFiber);
-		std::swap(m_Task, rhs.m_Task);
-		//std::swap(m_IsThreadSetup, rhs.m_IsThreadSetup);
+		Destroy();
+
+		m_hFiber = rhs.m_hFiber;
+		m_Task = std::move(rhs.m_Task);
+		m_IsThreadSetup = rhs.m_IsThreadSetup;
+
+		rhs.m_hFiber = kNullOSFiberHandle;
+		rhs.m_IsThreadSetup = false;
 	}
 
 	return *this;

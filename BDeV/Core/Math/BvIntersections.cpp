@@ -1,6 +1,7 @@
 #include "BvIntersections.h"
 #include <utility>
 
+
 vf32 SignedDistanceToPlane(const BvPlane& plane, cvf32 point)
 {
 	return Vector4Dot(Load4(plane.m_Normal.v), VectorSetW(point, 1.0f));

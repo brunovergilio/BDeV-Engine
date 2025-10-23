@@ -114,4 +114,4 @@ struct BvRenderDeviceCreateDescVk : BvRenderDeviceCreateDesc
 #define BV_VK_DEVICE_RES_DECL void SelfDestroy() override;
 #define BV_VK_DEVICE_RES_DEF(Type) void Type::SelfDestroy() { m_pDevice->DestroyResource(this); }
 
-#define BV_VK_IS_TYPE_VALID(uuid, Type) uuid == BV_OBJECT_ID(I##Type) || uuid == BV_OBJECT_ID(Type##Vk)
+#define BV_VK_IS_TYPE_VALID(uuid, Type) (uuid == BV_OBJECT_ID(I##Type) || uuid == BV_OBJECT_ID(Type##Vk))
