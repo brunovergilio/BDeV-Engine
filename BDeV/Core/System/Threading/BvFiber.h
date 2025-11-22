@@ -41,14 +41,14 @@ private:
 	void Create(size_t stackSize);
 	void Destroy();
 
-#if BV_PLATFORM == BV_PLATFORM_WIN32
+#if BV_PLATFORM_WIN32
 #if !defined(BV_USE_ASM_FIBERS)
 	static void CALLBACK FiberEntryPoint(void* pData);
 #else
 	static void FiberEntryPoint(void* pData);
 	static void FiberExitPoint();
 #endif // !defined(BV_USE_ASM_FIBERS)
-#endif // BV_PLATFORM == BV_PLATFORM_WIN32
+#endif // BV_PLATFORM_WIN32
 
 private:
 	static constexpr auto kTaskSize = 24;

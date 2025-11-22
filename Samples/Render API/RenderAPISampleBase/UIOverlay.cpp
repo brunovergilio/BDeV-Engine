@@ -227,6 +227,33 @@ void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRen
 
 bool UIOverlay::Update(f32 dt, BvWindow* pWindow)
 {
+	auto currFrameIndex = m_Context->GetCurrentFrameIndex();
+	for (auto it = m_VBsToDelete.begin(); it != m_VBsToDelete.end();)
+	{
+		if (it->m_FrameIndex == currFrameIndex)
+		{
+			it->m_Buffer.Reset();
+			it = m_VBsToDelete.Erase(it);
+		}
+		else
+		{
+			it++;
+		}
+	}
+
+	for (auto it = m_IBsToDelete.begin(); it != m_IBsToDelete.end();)
+	{
+		if (it->m_FrameIndex == currFrameIndex)
+		{
+			it->m_Buffer.Reset();
+			it = m_IBsToDelete.Erase(it);
+		}
+		else
+		{
+			it++;
+		}
+	}
+
 	BvKeyboard keyboard;
 	auto inputCount = keyboard.GetCharInputs();
 	m_OverlayTimer -= dt;
@@ -294,7 +321,6 @@ void UIOverlay::Render(bool msaa)
 	// Vertex buffer
 	if ((!m_VB) || (m_VertexCount < pImDrawData->TotalVtxCount))
 	{
-		m_VB.Reset();
 		CreateVB(vertexBufferSize, m_VertexCount);
 		m_VertexCount = pImDrawData->TotalVtxCount;
 	}
@@ -302,7 +328,6 @@ void UIOverlay::Render(bool msaa)
 	// Index buffer
 	if ((!m_IB) || (m_IndexCount < pImDrawData->TotalIdxCount))
 	{
-		m_IB.Reset();
 		CreateIB(indexBufferSize, m_IndexCount);
 		m_IndexCount = pImDrawData->TotalIdxCount;
 	}
@@ -333,7 +358,7 @@ void UIOverlay::Render(bool msaa)
 	//m_PC.scale = Float2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
 	//m_PC.translate = Float2(-1.0f, -1.0f);
 
-	Store44(MatrixOrthographicOffCenterLH_DX(io.DisplaySize.x, 0.0f, 0.0f, io.DisplaySize.y, 0.0f, 1.0f), m_PC.wvp.m);
+	XMStoreFloat4x4(&m_PC.wvp, BvMatrix::OrthographicOffCenterLH_DX(io.DisplaySize.x, 0.0f, 0.0f, io.DisplaySize.y, 0.0f, 1.0f));
 
 	m_Context->SetShaderConstantsT<PushConstBlock>(m_PC, 0, 0);
 
@@ -383,6 +408,11 @@ void UIOverlay::Shutdown()
 
 void UIOverlay::CreateVB(u64 size, u32 count)
 {
+	if (m_VB)
+	{
+		m_VBsToDelete.PushBack({ std::move(m_VB), m_Context->GetCurrentFrameIndex() });
+	}
+
 	BufferDesc desc;
 	desc.m_MemoryType = MemoryType::kUpload;
 	desc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
@@ -394,6 +424,11 @@ void UIOverlay::CreateVB(u64 size, u32 count)
 
 void UIOverlay::CreateIB(u64 size, u32 count)
 {
+	if (m_IB)
+	{
+		m_IBsToDelete.PushBack({ std::move(m_IB), m_Context->GetCurrentFrameIndex() });
+	}
+
 	BufferDesc desc;
 	desc.m_MemoryType = MemoryType::kUpload;
 	desc.m_CreateFlags = BufferCreateFlags::kCreateMapped;

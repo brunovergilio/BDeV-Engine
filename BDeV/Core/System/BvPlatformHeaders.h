@@ -4,7 +4,7 @@
 #include "BDeV/Core/BvCore.h"
 
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #include <Windows.h>
 #include <WinSock2.h>
 #include <MSWSock.h>
@@ -79,4 +79,4 @@ const OSSocketHandle kNullOSSocketHandle = INVALID_SOCKET;
 
 #define BV_SOCKET_ERROR_CODE WSAGetLastError()
 
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#endif // #if BV_PLATFORM_WIN32

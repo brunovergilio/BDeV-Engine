@@ -3,6 +3,7 @@
 #include "BvShaderResourceLayoutD3D12.h"
 #include "BvTypeConversionsD3D12.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
+#include "BDeV/Core/RenderAPI/BvShader.h"
 
 
 BV_D3D12_DEVICE_RES_DEF(BvGraphicsPipelineStateD3D12);

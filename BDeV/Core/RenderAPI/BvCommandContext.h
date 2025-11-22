@@ -11,23 +11,6 @@ class IBvShaderResourceParams;
 class IBvQuery;
 
 
-class BvGPUOp
-{
-public:
-	BvGPUOp() = default;
-	BV_INLINE BvGPUOp(IBvGPUFence* pFence, u64 signalValue)
-		: m_pFence(pFence), m_SignalValue(signalValue) {}
-	BV_DEFAULTCOPYMOVE(BvGPUOp);
-
-	BV_INLINE bool IsDone() { return m_pFence->IsDone(m_SignalValue); }
-	BV_INLINE bool Wait(u64 timeout = kU64Max) { return m_pFence->Wait(m_SignalValue, timeout); }
-
-private:
-	IBvGPUFence* m_pFence = nullptr;
-	u64 m_SignalValue = 0;
-};
-
-
 BV_OBJECT_DEFINE_ID(IBvCommandContext, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
 class IBvCommandContext : public BvRCObj
 {
@@ -36,13 +19,13 @@ class IBvCommandContext : public BvRCObj
 public:
 	virtual u32 GetGroupIndex() const = 0;
 	virtual u32 GetIndex() const = 0;
+	virtual u32 GetCurrentFrameIndex() const = 0;
 
-	virtual BvGPUOp Execute() = 0;
-	virtual BvGPUOp Execute(u64 value) = 0;
-	virtual void Execute(IBvGPUFence* pFence, u64 value) = 0;
-	virtual void ExecuteAndWait() = 0;
-	virtual void Wait(IBvCommandContext* pCommandContext, u64 value) = 0;
 	virtual void NewCommandList() = 0;
+	virtual void AddSignalFence(IBvGPUFence* pFence, u64 value) = 0;
+	virtual void AddWaitFence(IBvGPUFence* pFence, u64 value) = 0;
+	virtual void Execute() = 0;
+	virtual void ExecuteAndWait() = 0;
 	virtual void FlushFrame() = 0;
 
 	virtual void BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets) = 0;

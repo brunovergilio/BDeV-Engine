@@ -223,7 +223,6 @@ BvFramebufferManagerGl::~BvFramebufferManagerGl()
 
 BvFramebufferGl* BvFramebufferManagerGl::GetFramebuffer(const FramebufferDesc& desc)
 {
-	BvScopedLock lock(m_Lock);
 	decltype(auto) pFramebuffer = m_Framebuffers[desc];
 
 	if (pFramebuffer == nullptr)
@@ -237,7 +236,6 @@ BvFramebufferGl* BvFramebufferManagerGl::GetFramebuffer(const FramebufferDesc& d
 
 void BvFramebufferManagerGl::RemoveFramebuffer(const BvTextureViewGl* const pTextureView)
 {
-	BvScopedLock lock(m_Lock);
 	for (const auto& pFramebuffer : m_Framebuffers)
 	{
 		const auto& desc = pFramebuffer.first;

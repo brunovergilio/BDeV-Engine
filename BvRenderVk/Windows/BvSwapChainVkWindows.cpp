@@ -5,7 +5,7 @@
 #include "BvRenderVk/BvRenderEngineVk.h"
 
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 
 
 void BvSwapChainVk::CreateSurface()

@@ -2,7 +2,6 @@
 
 
 #include "BDeV/Core/BvCore.h"
-#include "BDeV/Core/System/Memory/BvMemory.h"
 #include "BDeV/Core/Utils/BvUUID.h"
 #include <atomic>
 
@@ -571,3 +570,43 @@ private:
 
 
 using BvRCCreateFn = bool(*)(const BvUUID&, void**);
+
+
+namespace Internal
+{
+	template<typename T>
+	constexpr bool IsObjectValueTypeV = std::is_fundamental_v<T> || std::is_pointer_v<T>;
+
+	template<typename T>
+	constexpr bool IsObjectRefType = !IsObjectValueTypeV<T>;
+}
+
+
+struct BvObjectCreateFlags
+{
+	u32 m_Flag;
+	const void* m_pValue;
+};
+
+
+template<size_t MaxFlags>
+class BvObjectCreateFlagsBuilder
+{
+	template<typename T>
+	void Add(u32 flag, const T& value)
+	{
+		if constexpr (Internal::IsObjectValueTypeV<T>)
+		{
+			m_CreateFlags.PushBack({ flag, (const void*)value });
+		}
+		else
+		{
+			m_CreateFlags.PushBack({ flag, (const void*)&value});
+		}
+	}
+
+	BV_INLINE operator BvObjectCreateFlags*() const { return m_CreateFlags.Data(); }
+
+private:
+	BvObjectCreateFlags m_CreateFlags[MaxFlags]{};
+};

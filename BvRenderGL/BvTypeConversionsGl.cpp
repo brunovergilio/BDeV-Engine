@@ -438,3 +438,24 @@ GLenum GetGlBlendFactor(BlendFactor blendFactor)
 
 	return kBlendFactors[(u8)blendFactor];
 }
+
+
+GLbitfield GetGlResourceState(ResourceState state)
+{
+	constexpr GLbitfield bits[] =
+	{
+		0,
+		GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT,
+		GL_ELEMENT_ARRAY_BARRIER_BIT,
+		GL_COMMAND_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT,
+		GL_UNIFORM_BARRIER_BIT,
+		GL_TEXTURE_FETCH_BARRIER_BIT,
+		GL_TEXTURE_FETCH_BARRIER_BIT,
+		GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT,
+		0,
+		GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	};
+
+	return bits[u32(state)];
+}

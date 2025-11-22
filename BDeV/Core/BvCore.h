@@ -4,53 +4,40 @@
 // =================================
 // Platform definitions
 // =================================
-#define BV_PLATFORM_WIN32 1
-#define BV_PLATFORM_MACOS 2
-#define BV_PLATFORM_LINUX 3
-
 #if defined(_WIN32) || defined(_WIN64)
-	#define BV_PLATFORM BV_PLATFORM_WIN32
-	#define BV_PLATFORM_IS_WIN32 1
-#elif defined(__APPLE__)
-	#define BV_PLATFORM BV_PLATFORM_MACOS
-	#define BV_PLATFORM_IS_WIN32 0
+	#define BV_PLATFORM_WIN32 1
 #elif defined(__linux__)
-	#define BV_PLATFORM BV_PLATFORM_LINUX
-	#define BV_PLATFORM_IS_WIN32 0
+	#define BV_PLATFORM_LINUX 1
+#elif defined(__APPLE__)
+	#define BV_PLATFORM_MACOS 1
 #else
-	#define BV_PLATFORM_IS_WIN32 0
+	#error "Unknown Platform"
 #endif
 
 
 // =================================
 // Compiler definitions
 // =================================
-#define BV_COMPILER_MSVC 1
-
 #if defined(_MSC_VER)
-	#define BV_COMPILER BV_COMPILER_MSVC
+	#define BV_COMPILER_MSVC 1
 #else
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #error "Currently only MSVC compiler is supported for Windows"
 #endif
 #endif
 
 
-#define BV_MATH_INSTRUCTION_AVX 1
-#define BV_MATH_INSTRUCTION_FPU 2
-
-
 #if defined(__AVX__) || defined(__AVX2__)
-#define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_AVX
+#define BV_MATH_INSTRUCTION_AVX 1
 #else
-#define BV_MATH_INSTRUCTION BV_MATH_INSTRUCTION_FPU
+#define BV_MATH_INSTRUCTION_FPU 1
 #endif
 
 
 // =================================
 // Platform-dependent stuff
 // =================================
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 	#ifndef STRICT
 	#define STRICT
 	#endif
@@ -74,7 +61,7 @@
 // =================================
 // Compiler-dependent stuff
 // =================================
-#if (BV_COMPILER == BV_COMPILER_MSVC)
+#if BV_COMPILER_MSVC
 	#define BV_COMPILER_VERSION _MSC_VER
 	
 	#if (_MSC_VER >= 1915)
@@ -126,8 +113,6 @@
 
 #if defined(_DEBUG) || defined(DEBUG)
 	#define BV_DEBUG 1
-#else
-	#define BV_DEBUG 0
 #endif
 
 
@@ -247,9 +232,10 @@ struct BvTrackedAllocationInfo
 };
 
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #define BV_STACK_ALLOC(size) _alloca(size)
 #endif
 
 
 static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big, "Endianess must be little or big");
+static_assert(kPointerSize == 8, "Engine only operates on 64-bit mode");

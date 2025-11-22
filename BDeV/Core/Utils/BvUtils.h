@@ -2,6 +2,9 @@
 
 
 #include "BDeV/Core/BvCore.h"
+#include <iterator>
+#include <string_view>
+#include <format>
 
 
 #define BV_NOCOPY(className)					  		\
@@ -143,6 +146,75 @@ template<typename Type>
 constexpr Type CalculateNewContainerSize(Type value)
 {
 	return value + (value >> 1) + Type(value <= 2);
+}
+
+
+namespace Internal
+{
+	// Simple iterator class to be used with std::vformat_to().
+	// Should be safe even with negative numbers.
+	struct BvStrOutputIterator
+	{
+		BvStrOutputIterator() = default;
+
+		BvStrOutputIterator(char* pBuf, i32 maxSize)
+			: m_pBuf(pBuf), m_MaxSize(maxSize)
+		{
+		}
+
+		template<i32 Size>
+		BvStrOutputIterator(char(&buf)[Size])
+			: m_pBuf(buf), m_MaxSize(Size)
+		{
+		}
+
+		void push_back(char c)
+		{
+			auto pos = m_Curr++;
+			if (pos < m_MaxSize - 1 && m_pBuf)
+			{
+				m_pBuf[pos] = c;
+			}
+		}
+
+		~BvStrOutputIterator()
+		{
+			auto pos = m_Curr < m_MaxSize ? m_Curr : m_MaxSize - 1;
+			if (m_pBuf && pos >= 0)
+			{
+				m_pBuf[pos] = 0;
+			}
+		}
+
+		using value_type = char;
+
+		auto GetBackInserter() { return std::back_inserter(*this); }
+
+		auto Count() { return m_Curr; }
+
+		char* m_pBuf = nullptr;
+		i32 m_MaxSize = 0;
+		i32 m_Curr = 0;
+	};
+}
+
+template<typename... Args>
+i32 SPrint(char* pBuf, size_t size, const std::string_view& fmt, Args&&... args)
+{
+	Internal::BvStrOutputIterator bb(pBuf, size);
+	std::vformat_to(bb.GetBackInserter(), fmt, std::make_format_args(args...));
+
+	return bb.Count();
+}
+
+
+template<size_t Size, typename... Args>
+i32 SPrint(char(&buf)[Size], const std::string_view& fmt, Args&&... args)
+{
+	Internal::BvStrOutputIterator bb(buf);
+	std::vformat_to(bb.GetBackInserter(), fmt, std::make_format_args(args...));
+
+	return bb.Count();
 }
 
 

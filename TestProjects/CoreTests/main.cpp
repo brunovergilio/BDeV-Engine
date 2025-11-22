@@ -1,12 +1,10 @@
 ﻿#include "BDeV/BDeV.h"
-#include <iostream>
-#include <fstream>
 #include "BDeV/Core/Utils/BvRTTI.h"
 #include <format>
 #include <BDeV/Engine/JobSystem/BvParallelJobSystem.h>
 #include <span>
 #include <source_location>
-#include <format>
+#include <print>
 
 char stack[1024];
 char stack2[1024];
@@ -128,24 +126,27 @@ BvMutex mm;
 
 int main()
 {
+	BvConsole::Print(BvColorI(0, 100, 182), BvColorI(0, 0, 0), "fasf {}\n", 123);
+	BvConsole::Print(BvColorI(0, 255, 0), "fasf {}\n", 123);
+	BvConsole::Println("afasfsf {} {}", 123, 545);
+	//std::print("\033[38;2;{};{};{}m", 0, 172, 0);
+	//std::println("fabf");
+	//std::print("\033[0m");
 	//int n = rand();
 	//char p[32];
 	//scanf("%s", p);
 	//char buf[64];
 	//auto f = std::format_to_n(buf, 63, "Trying out {1} times to {0}", n, p);
 	//*f.out = 0;
-	//return 0;
 
-	auto hh = TypeInfo<u64>::GetHash();
-
-	{
-		BvMemoryArena<BvGrowableFreeListAllocator, BvNoLock, BvSimpleBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker, BvNoMemoryLogger> alloc;
-		alloc.GetAllocator().Set(8_kb);
-		BvVector<BvVector<i32>> abc1, abc2;
-		Internal::PropagateAllocatorToAll(&alloc, abc1, abc2);
-		BvVector<BvVector<i32>> abc(&alloc, 10);
-		abc.EmplaceBack();
-	}
+	// Use the custom function
+	//my_vformat_to(buffer.begin(), "Hello, {}! This is {}", 1, 2);
+	//my_vformat_to(bb, "Hello, {}! This is {}", 1, 2);
+	srand(time(nullptr));
+	auto ii = rand();
+	BvDebug::Println("Hello, {}! This is {}", 2, ii);
+	ii = rand();
+	BvDebug::Print("Hello, {}! This is {}", 1, ii);
 	return 0;
 
 	//JobSystemDesc jsDesc;

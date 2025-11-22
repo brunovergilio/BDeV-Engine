@@ -2,7 +2,7 @@
 
 
 #include "BvCommonGl.h"
-#include "BDeV/Utils/BvUtils.h"
+#include "BDeV/Core/Utils/BvUtils.h"
 
 
 class BvDebugReportGl

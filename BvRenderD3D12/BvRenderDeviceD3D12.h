@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BvRenderEngineD3D12.h"
+#include "BDeV/Core/RenderAPI/BvRenderDevice.h"
 #include "BDeV/Core/Container/BvRobinSet.h"
 
 
@@ -21,6 +22,8 @@ class BvCommandContextD3D12;
 class BvGPUFenceD3D12;
 class BvAccelerationStructureD3D12;
 class BvShaderBindingTableD3D12;
+class BvGPUDescriptorHeapD3D12;
+class BvCPUDescriptorHeapD3D12;
 
 
 struct BvRenderDeviceCreateDescD3D12 : BvRenderDeviceCreateDesc
@@ -34,23 +37,23 @@ public:
 	BvRenderDeviceD3D12(BvRenderEngineD3D12* pEngine, IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12* pDeviceInfo, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescD3D12& deviceDesc);
 	~BvRenderDeviceD3D12();
 
-	IBvSwapChain* CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext) override;
-	IBvBuffer* CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData) override;
-	IBvBufferView* CreateBufferViewImpl(const BufferViewDesc& desc) override;
-	IBvTexture* CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData) override;
-	IBvTextureView* CreateTextureViewImpl(const TextureViewDesc& desc) override;
-	IBvSampler* CreateSamplerImpl(const SamplerDesc& desc) override;
-	IBvRenderPass* CreateRenderPassImpl(const RenderPassDesc& renderPassDesc) override;
-	IBvShaderResourceLayout* CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc) override;
-	IBvShader* CreateShaderImpl(const ShaderCreateDesc& shaderDesc) override;
-	IBvGraphicsPipelineState* CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc) override;
-	IBvComputePipelineState* CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc) override;
-	IBvRayTracingPipelineState* CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc) override;
-	IBvQuery* CreateQueryImpl(QueryType queryType) override;
-	IBvGPUFence* CreateFenceImpl(u64 value) override;
-	IBvAccelerationStructure* CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc) override;
-	IBvShaderBindingTable* CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext) override;
-	IBvCommandContext* CreateCommandContextImpl(const CommandContextDesc& commandContextDesc) override;
+	bool CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj) override;
+	bool CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData, const BvUUID& objId, void** ppObj) override;
+	bool CreateBufferViewImpl(const BufferViewDesc& desc, const BvUUID& objId, void** ppObj) override;
+	bool CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData, const BvUUID& objId, void** ppObj) override;
+	bool CreateTextureViewImpl(const TextureViewDesc& desc, const BvUUID& objId, void** ppObj) override;
+	bool CreateSamplerImpl(const SamplerDesc& desc, const BvUUID& objId, void** ppObj) override;
+	bool CreateRenderPassImpl(const RenderPassDesc& renderPassDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateShaderImpl(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateQueryImpl(QueryType queryType, const BvUUID& objId, void** ppObj) override;
+	bool CreateFenceImpl(u64 value, const BvUUID& objId, void** ppObj) override;
+	bool CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj) override;
+	bool CreateCommandContextImpl(const CommandContextDesc& commandContextDesc, const BvUUID& objId, void** ppObj) override;
 
 	void WaitIdle() const override;
 
@@ -65,6 +68,11 @@ public:
 	BV_INLINE D3D12MA::Allocator* GetAllocator() const { return m_Allocator.Get(); }
 	BV_INLINE const BvDeviceInfoD3D12* GetDeviceInfo() const { return m_pDeviceInfo; }
 	BV_INLINE BvRenderEngineD3D12* GetEngine() const { return m_pEngine; }
+	BV_INLINE BvGPUDescriptorHeapD3D12* GetGPUShaderHeap() const { return m_pGPUShaderHeap; }
+	BV_INLINE BvGPUDescriptorHeapD3D12* GetGPUSamplerHeap() const { return m_pGPUSamplerHeap; }
+	BV_INLINE BvCPUDescriptorHeapD3D12* GetCPUShaderHeap() const { return m_pCPUShaderHeap; }
+	BV_INLINE BvCPUDescriptorHeapD3D12* GetCPUSamplerHeap() const { return m_pCPUSamplerHeap; }
+
 	BV_INLINE bool IsValid() const { return m_Device; }
 
 	template<typename T, typename... Args>
@@ -89,6 +97,7 @@ private:
 
 	void CreateAllocator();
 	void DestroyAllocator();
+	void CreateDescriptorHeaps();
 	void SetupSupportedDisplayFormats();
 	void CreateCommandSignatures();
 
@@ -100,6 +109,10 @@ private:
 	BvVector<BvCommandContextD3D12*> m_ComputeContexts;
 	BvVector<BvCommandContextD3D12*> m_TransferContexts;
 	BvRobinSet<IBvResourceD3D12*> m_DeviceObjects;
+	BvGPUDescriptorHeapD3D12* m_pGPUShaderHeap = nullptr;
+	BvGPUDescriptorHeapD3D12* m_pGPUSamplerHeap = nullptr;
+	BvCPUDescriptorHeapD3D12* m_pCPUShaderHeap = nullptr;
+	BvCPUDescriptorHeapD3D12* m_pCPUSamplerHeap = nullptr;
 	ComPtr<D3D12MA::Allocator> m_Allocator = nullptr;
 	ComPtr<ID3D12CommandSignature> m_DrawIndirectSig;
 	ComPtr<ID3D12CommandSignature> m_DrawIndexedIndirectSig;

@@ -218,7 +218,7 @@ i32 BvNetSocket::WaitForSockets(i32 count, BvNetSocket* pSockets, u32 timeoutMs)
 	for (auto i = 0; i < count; ++i)
 	{
 		FD_SET(pSockets[i].m_Socket, &set);
-#if !BV_PLATFORM_IS_WIN32
+#if !BV_PLATFORM_WIN32
 		maxSocket = std::max(maxSocket, pSockets[i].m_Socket);
 #endif
 	}
@@ -263,7 +263,7 @@ void BvNetSocket::Close()
 {
 	if (m_Socket != kNullOSSocketHandle)
 	{
-#if BV_PLATFORM_IS_WIN32
+#if BV_PLATFORM_WIN32
 		if (closesocket(m_Socket) == SOCKET_ERROR)
 #else
 		if (close(m_Socket) == SOCKET_ERROR)
@@ -304,7 +304,7 @@ bool BvNetSocket::GetLocalAddress(BvNetAddress& address)
 
 void BvNetSocket::SetNonBlocking(bool enable)
 {
-#if BV_PLATFORM_IS_WIN32
+#if BV_PLATFORM_WIN32
 	u_long val = enable ? 1 : 0;
 	if (ioctlsocket(m_Socket, FIONBIO, &val) == SOCKET_ERROR)
 	{
@@ -379,7 +379,7 @@ i32 BvNetSocket::GetSendBufferSize() const
 
 void BvNetSocket::SetRecvTimeout(u32 timeoutInMs)
 {
-#if BV_PLATFORM_IS_WIN32
+#if BV_PLATFORM_WIN32
 	if (SetSocketOption(m_Socket, SO_RCVTIMEO, timeoutInMs) == SOCKET_ERROR)
 	{
 		BV_SYS_ERROR(BV_SOCKET_ERROR_CODE);
@@ -390,7 +390,7 @@ void BvNetSocket::SetRecvTimeout(u32 timeoutInMs)
 
 void BvNetSocket::SetSendTimeout(u32 timeoutInMs)
 {
-#if BV_PLATFORM_IS_WIN32
+#if BV_PLATFORM_WIN32
 	if (SetSocketOption(m_Socket, SO_SNDTIMEO, timeoutInMs) == SOCKET_ERROR)
 	{
 		BV_SYS_ERROR(BV_SOCKET_ERROR_CODE);

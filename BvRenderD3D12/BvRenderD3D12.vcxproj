@@ -94,10 +94,14 @@
   <ItemGroup>
     <ClInclude Include="BvBufferD3D12.h" />
     <ClInclude Include="BvBufferViewD3D12.h" />
+    <ClInclude Include="BvCommandAllocatorD3D12.h" />
     <ClInclude Include="BvCommandContextD3D12.h" />
+    <ClInclude Include="BvCommandListD3D12.h" />
     <ClInclude Include="BvCommonD3D12.h" />
+    <ClInclude Include="BvDescriptorHeapD3D12.h" />
     <ClInclude Include="BvGPUFenceD3D12.h" />
     <ClInclude Include="BvPipelineStateD3D12.h" />
+    <ClInclude Include="BvQueryD3D12.h" />
     <ClInclude Include="BvRenderDeviceD3D12.h" />
     <ClInclude Include="BvRenderEngineD3D12.h" />
     <ClInclude Include="BvRenderPassD3D12.h" />
@@ -113,10 +117,14 @@
   <ItemGroup>
     <ClCompile Include="BvBufferD3D12.cpp" />
     <ClCompile Include="BvBufferViewD3D12.cpp" />
+    <ClCompile Include="BvCommandAllocatorD3D12.cpp" />
     <ClCompile Include="BvCommandContextD3D12.cpp" />
+    <ClCompile Include="BvCommandListD3D12.cpp" />
     <ClCompile Include="BvCommonD3D12.cpp" />
+    <ClCompile Include="BvDescriptorHeapD3D12.cpp" />
     <ClCompile Include="BvGPUFenceD3D12.cpp" />
     <ClCompile Include="BvPipelineStateD3D12.cpp" />
+    <ClCompile Include="BvQueryD3D12.cpp" />
     <ClCompile Include="BvRenderDeviceD3D12.cpp" />
     <ClCompile Include="BvRenderEngineD3D12.cpp" />
     <ClCompile Include="BvRenderPassD3D12.cpp" />

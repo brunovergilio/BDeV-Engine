@@ -2,9 +2,9 @@
 
 
 #include "BvCommonGl.h"
-#include "BDeV/Container/BvRobinMap.h"
-#include "BDeV/Container/BvFixedVector.h"
-#include "BDeV/System/Threading/BvSync.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
+#include "BDeV/Core/Container/BvFixedVector.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
 
 
 class BvTextureViewGl;
@@ -97,5 +97,4 @@ public:
 
 private:
 	BvRobinMap<FramebufferDesc, BvFramebufferGl*> m_Framebuffers;
-	BvSpinlock m_Lock;
 };

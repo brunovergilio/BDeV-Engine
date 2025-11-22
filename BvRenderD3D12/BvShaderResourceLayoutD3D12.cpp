@@ -1,6 +1,7 @@
 #include "BvShaderResourceLayoutD3D12.h"
 #include "BvRenderDeviceD3D12.h"
 #include "BvTypeConversionsD3D12.h"
+#include "BDeV/Core/RenderAPI/BvSampler.h"
 
 
 BV_D3D12_DEVICE_RES_DEF(BvShaderResourceLayoutD3D12)

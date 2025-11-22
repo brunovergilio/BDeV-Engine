@@ -8,10 +8,11 @@
 class BvRenderDeviceD3D12;
 
 
+BV_OBJECT_DEFINE_ID(BvBufferD3D12, "2b3dc85f-6ac1-4916-a990-41f2cf739614");
 class BvBufferD3D12 : public IBvBuffer, public IBvResourceD3D12
 {
 	BV_NOCOPYMOVE(BvBufferD3D12);
-	//BV_D3D12_DEVICE_RES_DECL;
+	BV_D3D12_DEVICE_RES_DECL;
 
 public:
 	BvBufferD3D12(BvRenderDeviceD3D12* pDevice, const BufferDesc& bufferDesc, const BufferInitData* pInitData);
@@ -42,6 +43,7 @@ private:
 	void* m_pMapped = nullptr;
 	D3D12_RANGE m_Range{};
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvBufferD3D12);
 
 
 BV_CREATE_CAST_TO_D3D12(BvBuffer)

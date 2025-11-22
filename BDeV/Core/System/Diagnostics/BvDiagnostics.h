@@ -3,31 +3,117 @@
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvColor.h"
+#include "BDeV/Core/Utils/BvUtils.h"
 
 
 class BvConsole
 {
+	// Default message size for console messages
+	static constexpr i32 kMessageBufferSize = 2_kb;
+
 public:
 	// Default white text and black background printf
-	static void Print(const char* pFormat, ...);
+	static void Printf(const char* pFormat, ...);
 	// Custom color text and black background printf
-	static void Print(const BvColorI& textColor, const char* pFormat, ...);
+	static void Printf(const BvColorI& textColor, const char* pFormat, ...);
 	// Custom color text and custom color background printf
-	static void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
+	static void Printf(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...);
+
+	template<typename... Args>
+	static void Print(const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		SPrint(buffer, fmt, std::forward<Args>(args)...);
+		printf("%s", buffer);
+	}
+
+	template<typename... Args>
+	static void Print(const BvColorI& textColor, const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		auto count = SPrint(buffer, "\033[38;2;{};{};{}m", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+		count += SPrint(buffer + count, kMessageBufferSize - count, fmt, std::forward<Args>(args)...);
+		SPrint(buffer + count, kMessageBufferSize - count, "\033[0m");
+		printf("%s", buffer);
+	}
+
+	template<typename... Args>
+	static void Print(const BvColorI& textColor, const BvColorI& backGroundColor, const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		auto count = SPrint(buffer, "\033[38;2;{};{};{}m", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+		count += SPrint(buffer + count, kMessageBufferSize - count, "\033[48;2;{};{};{}m", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
+		count += SPrint(buffer + count, kMessageBufferSize - count, fmt, std::forward<Args>(args)...);
+		SPrint(buffer + count, kMessageBufferSize - count, "\033[0m");
+		printf("%s", buffer);
+	}
+
+	template<typename... Args>
+	static void Println(const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		SPrint(buffer, fmt, std::forward<Args>(args)...);
+		printf("%s\n", buffer);
+	}
+
+	template<typename... Args>
+	static void Println(const BvColorI& textColor, const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		auto count = SPrint(buffer, "\033[38;2;{};{};{}m", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+		count += SPrint(buffer + count, kMessageBufferSize - count, fmt, std::forward<Args>(args)...);
+		SPrint(buffer + count, kMessageBufferSize - count, "\033[0m");
+		printf("%s\n", buffer);
+	}
+
+	template<typename... Args>
+	static void Println(const BvColorI& textColor, const BvColorI& backGroundColor, const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		auto count = SPrint(buffer, "\033[38;2;{};{};{}m", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
+		count += SPrint(buffer + count, kMessageBufferSize - count, "\033[48;2;{};{};{}m", backGroundColor.m_Red, backGroundColor.m_Green, backGroundColor.m_Blue);
+		count += SPrint(buffer + count, kMessageBufferSize - count, fmt, std::forward<Args>(args)...);
+		SPrint(buffer + count, kMessageBufferSize - count, "\033[0m");
+		printf("%s\n", buffer);
+	}
 };
 
 
 class BvDebug
 {
+	// Default message size for debug messages
+	static constexpr i32 kMessageBufferSize = 512;
+
 public:
 	// Same as printf but to the debug window (if one exists)
-	static void Print(const char* pFormat, ...);
+	static void Printf(const char* pFormat, ...);
+
+	template<typename... Args>
+	static void Print(const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		SPrint(buffer, fmt, std::forward<Args>(args)...);
+		PrintInternal(buffer);
+	}
+
+	template<typename... Args>
+	static void Println(const std::string_view& fmt, Args&&... args)
+	{
+		char buffer[kMessageBufferSize];
+		auto count = SPrint(buffer, fmt, std::forward<Args>(args)...);
+		// SPrint is safe even if count exceeds kMessageBufferSize
+		SPrint(buffer + count, kMessageBufferSize - count, "\n");
+		PrintInternal(buffer);
+	}
 
 	// To force code breaks when debugging (should be used with macros)
 	static void Break();
 
 	// Asserts a condition (should be used with macros)
 	static void Assert(const char* pCondition, const std::source_location& sourceInfo, const char* pFormat, ...);
+
+private:
+	static void PrintInternal(const char* pMessage);
 };
 
 
@@ -183,20 +269,14 @@ private:
 
 namespace Logging
 {
-	// This method sets the current logger manager to be used (not thread-safe). Since the engine project is only built
-	// as a static library, for dll projects that use it, consider having an exported method in the other project to
-	// allow setting the logger manager instead of calling this function directly from inside the dll, as it
-	// will have another instance of the underlying static variables.
-	void SetLoggerManager(BvLoggerManager* pLoggerManager);
-
 	// Used by macros to dispatch information to multiple loggers
-	void Dispatch(const char* pChannel, u32 level, u32 verbosity, const std::source_location& sourceInfo, const char* pMessage, ...);
+	void Dispatch(BvLoggerManager* pLoggerManager, const char* pChannel, u32 level, u32 verbosity, const std::source_location& sourceInfo, const char* pMessage, ...);
 }
 
 
 #define BV_LOG(channel, level, verbosity, message, ...) do												\
 {																										\
-	Logging::Dispatch(channel, level, verbosity, std::source_location::current(), message __VA_OPT__(, ) __VA_ARGS__);	\
+	Logging::Dispatch(nullptr, channel, level, verbosity, std::source_location::current(), message __VA_OPT__(, ) __VA_ARGS__);	\
 } while (0)
 
 
@@ -204,25 +284,25 @@ namespace Internal
 {
 	void ReportFatalError(const char* pMessage);
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 	const char* GetWindowsErrorMessage(u32 errorCode = kU32Max);
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#endif // #if BV_PLATFORM_WIN32
 }
 
 
-#define BV_TRACE(channel, message, ...) BV_LOG(channel, 0, 0, message __VA_OPT__(, ) __VA_ARGS__)
-#define BV_INFO(channel, message, ...) BV_LOG(channel, 1, 0, message __VA_OPT__(, ) __VA_ARGS__)
-#define BV_WARNING(channel, message, ...) BV_LOG(channel, 2, 0, message __VA_OPT__(, ) __VA_ARGS__)
-#define BV_ERROR(channel, message, ...) BV_LOG(channel, 3, 0, message __VA_OPT__(, ) __VA_ARGS__)
-#define BV_FATAL(channel, message, ...) do						\
+#define BV_LOG_TRACE(channel, message, ...) BV_LOG(channel, 0, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_LOG_INFO(channel, message, ...) BV_LOG(channel, 1, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_LOG_WARNING(channel, message, ...) BV_LOG(channel, 2, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_LOG_ERROR(channel, message, ...) BV_LOG(channel, 3, 0, message __VA_OPT__(, ) __VA_ARGS__)
+#define BV_LOG_FATAL(channel, message, ...) do						\
 {																\
 	BV_LOG(channel, 4, 0, message __VA_OPT__(, ) __VA_ARGS__);	\
 	Internal::ReportFatalError(message);						\
 } while (0)
 
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
-#define BV_SYS_ERROR(errorCode) BV_ERROR("System", Internal::GetWindowsErrorMessage(errorCode))
-#define BV_SYS_FATAL(errorCode) BV_FATAL("System", Internal::GetWindowsErrorMessage(errorCode))
+#if BV_PLATFORM_WIN32
+#define BV_SYS_ERROR(errorCode) BV_LOG_ERROR("System", Internal::GetWindowsErrorMessage(errorCode))
+#define BV_SYS_FATAL(errorCode) BV_LOG_FATAL("System", Internal::GetWindowsErrorMessage(errorCode))
 #else
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#endif // #if BV_PLATFORM_WIN32

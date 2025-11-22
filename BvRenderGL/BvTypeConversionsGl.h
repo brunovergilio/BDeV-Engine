@@ -2,10 +2,10 @@
 
 
 #include "BvCommonGl.h"
-#include "BDeV/RenderAPI/BvBuffer.h"
-#include "BDeV/RenderAPI/BvTexture.h"
-#include "BDeV/RenderAPI/BvSampler.h"
-#include "BDeV/RenderAPI/BvPipelineState.h"
+#include "BDeV/Core/RenderAPI/BvBuffer.h"
+#include "BDeV/Core/RenderAPI/BvTexture.h"
+#include "BDeV/Core/RenderAPI/BvSampler.h"
+#include "BDeV/Core/RenderAPI/BvPipelineState.h"
 
 
 struct FormatMapGl
@@ -33,3 +33,4 @@ GLenum GetGlFrontFace(FrontFace frontFace);
 GLenum GetGlStencilOp(StencilOp stencilOp);
 GLenum GetGlBlendOp(BlendOp blendOp);
 GLenum GetGlBlendFactor(BlendFactor blendFactor);
+GLbitfield GetGlResourceState(ResourceState);

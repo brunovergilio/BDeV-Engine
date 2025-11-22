@@ -2,7 +2,7 @@
 
 
 #include "BDeV/Core/RenderAPI/BvBufferView.h"
-#include "BvBufferD3D12.h"
+#include "BvCommonD3D12.h"
 
 
 class BvRenderDeviceD3D12;

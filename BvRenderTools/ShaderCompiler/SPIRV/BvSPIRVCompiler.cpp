@@ -1,7 +1,7 @@
 #include "BvSPIRVCompiler.h"
 #include "BvRenderTools/ShaderCompiler/BvShaderBlob.h"
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
+#if (BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
 #pragma warning(push)
 #pragma warning(disable:26451 26495)
 #endif
@@ -504,6 +504,6 @@ namespace BvRenderTools
 	}
 }
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
+#if (BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
 #pragma warning(pop)
 #endif

@@ -1,5 +1,6 @@
 #include "BvRenderDeviceD3D12.h"
 #include "BvTypeConversionsD3D12.h"
+#include "BvDescriptorHeapD3D12.h"
 
 
 BvRenderDeviceD3D12::BvRenderDeviceD3D12(BvRenderEngineD3D12* pEngine, IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12* pDeviceInfo, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescD3D12& deviceDesc)
@@ -15,103 +16,103 @@ BvRenderDeviceD3D12::~BvRenderDeviceD3D12()
 }
 
 
-IBvSwapChain* BvRenderDeviceD3D12::CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext)
+bool BvRenderDeviceD3D12::CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& swapChainDesc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvBuffer* BvRenderDeviceD3D12::CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData)
+bool BvRenderDeviceD3D12::CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvBufferView* BvRenderDeviceD3D12::CreateBufferViewImpl(const BufferViewDesc& desc)
+bool BvRenderDeviceD3D12::CreateBufferViewImpl(const BufferViewDesc& desc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvTexture* BvRenderDeviceD3D12::CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData)
+bool BvRenderDeviceD3D12::CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvTextureView* BvRenderDeviceD3D12::CreateTextureViewImpl(const TextureViewDesc& desc)
+bool BvRenderDeviceD3D12::CreateTextureViewImpl(const TextureViewDesc& desc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvSampler* BvRenderDeviceD3D12::CreateSamplerImpl(const SamplerDesc& desc)
+bool BvRenderDeviceD3D12::CreateSamplerImpl(const SamplerDesc& desc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvRenderPass* BvRenderDeviceD3D12::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc)
+bool BvRenderDeviceD3D12::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvShaderResourceLayout* BvRenderDeviceD3D12::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc)
+bool BvRenderDeviceD3D12::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvShader* BvRenderDeviceD3D12::CreateShaderImpl(const ShaderCreateDesc& shaderDesc)
+bool BvRenderDeviceD3D12::CreateShaderImpl(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvGraphicsPipelineState* BvRenderDeviceD3D12::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc)
+bool BvRenderDeviceD3D12::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvComputePipelineState* BvRenderDeviceD3D12::CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc)
+bool BvRenderDeviceD3D12::CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvRayTracingPipelineState* BvRenderDeviceD3D12::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc)
+bool BvRenderDeviceD3D12::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvQuery* BvRenderDeviceD3D12::CreateQueryImpl(QueryType queryType)
+bool BvRenderDeviceD3D12::CreateQueryImpl(QueryType queryType, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvGPUFence* BvRenderDeviceD3D12::CreateFenceImpl(u64 value)
+bool BvRenderDeviceD3D12::CreateFenceImpl(u64 value, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvAccelerationStructure* BvRenderDeviceD3D12::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc)
+bool BvRenderDeviceD3D12::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvShaderBindingTable* BvRenderDeviceD3D12::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext)
+bool BvRenderDeviceD3D12::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj)
 {
-	return nullptr;
+	return false;
 }
 
 
-IBvCommandContext* BvRenderDeviceD3D12::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc)
+bool BvRenderDeviceD3D12::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc, const BvUUID& objId, void** ppObj)
 {
 	D3D12_COMMAND_QUEUE_DESC cqd{};
 	if (commandContextDesc.m_CommandType != CommandType::kNone)
@@ -131,7 +132,7 @@ IBvCommandContext* BvRenderDeviceD3D12::CreateCommandContextImpl(const CommandCo
 		// TODO: Handle error
 	}
 
-	return nullptr;
+	return false;
 }
 
 
@@ -255,6 +256,7 @@ void BvRenderDeviceD3D12::Create(const BvRenderDeviceCreateDescD3D12& deviceCrea
 		return;
 	}
 
+	CreateDescriptorHeaps();
 	SetupSupportedDisplayFormats();
 	CreateCommandSignatures();
 }
@@ -264,6 +266,10 @@ void BvRenderDeviceD3D12::Destroy()
 {
 	if (m_Device)
 	{
+		BV_DELETE(m_pGPUShaderHeap);
+		BV_DELETE(m_pGPUSamplerHeap);
+		BV_DELETE(m_pCPUShaderHeap);
+		BV_DELETE(m_pCPUSamplerHeap);
 		m_Device = nullptr;
 	}
 }
@@ -287,6 +293,16 @@ void BvRenderDeviceD3D12::CreateAllocator()
 void BvRenderDeviceD3D12::DestroyAllocator()
 {
 	m_Allocator = nullptr;
+}
+
+
+void BvRenderDeviceD3D12::CreateDescriptorHeaps()
+{
+	m_pGPUShaderHeap = BV_NEW(BvGPUDescriptorHeapD3D12)(this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1000000);
+	m_pGPUSamplerHeap = BV_NEW(BvGPUDescriptorHeapD3D12)(this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 2048);
+
+	m_pCPUShaderHeap = BV_NEW(BvCPUDescriptorHeapD3D12)(this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1000);
+	m_pCPUSamplerHeap = BV_NEW(BvCPUDescriptorHeapD3D12)(this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 64);
 }
 
 

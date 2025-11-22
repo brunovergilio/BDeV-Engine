@@ -42,7 +42,7 @@ void BvSwapChainVk::AcquireImage()
 		return;
 	}
 
-	auto& fenceData = m_Fences[m_CurrImageIndex];
+	auto& fenceData = m_Fences[m_CurrSemaphoreIndex];
 	if (fenceData.m_pFence)
 	{
 		fenceData.m_pFence->Wait(fenceData.m_Value);
@@ -274,7 +274,7 @@ bool BvSwapChainVk::Create()
 
 	VkSurfaceFullScreenExclusiveInfoEXT surfaceFS{ VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
 	surfaceFS.fullScreenExclusive = GetVkFullScreenExclusiveEXTMode(m_SwapChainDesc.m_WindowMode);
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 	VkSurfaceFullScreenExclusiveWin32InfoEXT surfaceFSWin32{ VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT };
 	if (supportsTrueFullscreen)
 	{
@@ -355,10 +355,10 @@ bool BvSwapChainVk::Create()
 	}
 
 	// Determine the number of images
-	// Ask for at least minImageCount + 1, so if less was specified, change it
-	if (m_SwapChainDesc.m_SwapChainImageCount <= surfCaps.minImageCount)
+	// Ask for at least minImageCount, so if less was specified, change it
+	if (m_SwapChainDesc.m_SwapChainImageCount < surfCaps.minImageCount)
 	{
-		m_SwapChainDesc.m_SwapChainImageCount = surfCaps.minImageCount + 1;
+		m_SwapChainDesc.m_SwapChainImageCount = surfCaps.minImageCount;
 	}
 	// If there's a maximum limit and we went over it, clamp it
 	if ((surfCaps.maxImageCount > 0) && (m_SwapChainDesc.m_SwapChainImageCount > surfCaps.maxImageCount))

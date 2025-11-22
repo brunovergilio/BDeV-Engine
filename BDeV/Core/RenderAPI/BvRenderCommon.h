@@ -644,9 +644,15 @@ struct SwapChainDesc
 {
 	u32 m_SwapChainImageCount = 3;
 	Format m_Format = Format::kUnknown;
-	bool m_VSync = false;
 	bool m_PreferHDR = false;
+	bool m_VSync = false;
 	SwapChainMode m_WindowMode = SwapChainMode::kWindowed;
+};
+
+
+struct SwapChainCreateDesc : SwapChainDesc
+{
+
 };
 
 

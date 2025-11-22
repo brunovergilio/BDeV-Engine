@@ -159,7 +159,7 @@ void BvRenderEngineVk::Create()
 	constexpr const BvExtensionLayerVk kExtensions[] =
 	{
 		{ VK_KHR_SURFACE_EXTENSION_NAME, true },
-	#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+	#if BV_PLATFORM_WIN32
 		{ VK_KHR_WIN32_SURFACE_EXTENSION_NAME, true },
 	#endif
 		{ VK_EXT_DEBUG_UTILS_EXTENSION_NAME, false },

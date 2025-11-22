@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvTextureView.h"
+#include "BDeV/Core/RenderAPI/BvTextureView.h"
 #include "BvTextureGl.h"
 
 

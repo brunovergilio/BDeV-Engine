@@ -41,7 +41,7 @@ private:
 BvRenderEngineD3D12* BvRenderEngineD3D12Helper::s_pEngine = nullptr;
 
 
-IBvRenderDevice* BvRenderEngineD3D12::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc)
+bool BvRenderEngineD3D12::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj)
 {
 	BvRenderDeviceCreateDescD3D12 descD3D12;
 	memcpy(&descD3D12, &deviceCreateDesc, sizeof(BvRenderDeviceCreateDesc));

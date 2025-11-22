@@ -10,6 +10,7 @@ class BvSwapChainD3D12;
 class BvCommandContextD3D12;
 
 
+BV_OBJECT_DEFINE_ID(BvTextureD3D12, "1a570a6f-508b-4dad-aeb8-538df7a06f75");
 class BvTextureD3D12 final : public IBvTexture, public IBvResourceD3D12
 {
 	BV_NOCOPYMOVE(BvTextureD3D12);
@@ -41,6 +42,7 @@ protected:
 	BvSwapChainD3D12* m_pSwapChain = nullptr;
 	TextureDesc m_TextureDesc;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvTextureD3D12);
 
 
 BV_CREATE_CAST_TO_D3D12(BvTexture)

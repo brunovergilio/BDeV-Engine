@@ -61,7 +61,7 @@ void BvGPUFenceD3D12::Destroy()
 {
 	if (m_Fence)
 	{
-		m_Fence = nullptr;
+		m_Fence.Reset();
 		CloseHandle(m_Event);
 	}
 }

@@ -37,3 +37,5 @@ D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const BufferViewDesc& viewDesc);
 D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const BufferViewDesc& viewDesc);
 D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const TextureViewDesc& viewDesc);
 D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const TextureViewDesc& viewDesc);
+D3D12_QUERY_HEAP_TYPE GetD3D12QueryHeapType(QueryType queryType);
+D3D12_QUERY_TYPE GetD3D12QueryType(QueryType queryType);

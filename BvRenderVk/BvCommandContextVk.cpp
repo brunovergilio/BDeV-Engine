@@ -143,10 +143,9 @@ VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResou
 }
 
 
-void BvFrameDataVk::UpdateSignalIndex(u64 value)
+void BvFrameDataVk::UpdateSignalIndex()
 {
-	BV_ASSERT(value > m_SignaValueIndex.second, "Signal value must be greater than the previous one");
-	m_SignaValueIndex.second = value;
+	m_SignaValueIndex.second++;
 }
 
 
@@ -228,13 +227,33 @@ BvCommandContextVk::~BvCommandContextVk()
 }
 
 
-BvGPUOp BvCommandContextVk::Execute()
+void BvCommandContextVk::NewCommandList()
 {
-	return Execute(m_Frames[m_ActiveFrameIndex].GetSemaphoreValueIndex().second + 1);
+	if (m_pCurrCommandBuffer)
+	{
+		m_pCurrCommandBuffer->End();
+	}
+
+	// Get command buffer
+	m_pCurrCommandBuffer = m_Frames[m_ActiveFrameIndex].RequestCommandBuffer();
 }
 
 
-BvGPUOp BvCommandContextVk::Execute(u64 value)
+void BvCommandContextVk::AddWaitFence(IBvGPUFence* pFence, u64 value)
+{
+	// Add a wait semaphore and its value
+	m_Queue.AddWaitSemaphore(TO_VK(pFence)->GetHandle(), value);
+}
+
+
+void BvCommandContextVk::AddSignalFence(IBvGPUFence* pFence, u64 value)
+{
+	// Add a signal semaphore and its value
+	m_Queue.AddSignalSemaphore(TO_VK(pFence)->GetHandle(), value);
+}
+
+
+void BvCommandContextVk::Execute()
 {
 	// Submit active command buffers
 	if (m_pCurrCommandBuffer)
@@ -243,7 +262,7 @@ BvGPUOp BvCommandContextVk::Execute(u64 value)
 	}
 	
 	// Update semaphore value
-	m_Frames[m_ActiveFrameIndex].UpdateSignalIndex(value);
+	m_Frames[m_ActiveFrameIndex].UpdateSignalIndex();
 	auto [signalValue, index] = m_Frames[m_ActiveFrameIndex].GetSemaphoreValueIndex();
 	auto& commandBuffers = m_Frames[m_ActiveFrameIndex].GetCommandBuffers();
 	auto pFence = m_Frames[m_ActiveFrameIndex].GetGPUFence();
@@ -254,17 +273,6 @@ BvGPUOp BvCommandContextVk::Execute(u64 value)
 	m_Frames[m_ActiveFrameIndex].UpdateQueryData();
 
 	m_pCurrCommandBuffer = nullptr;
-
-	return BvGPUOp(pFence, value);
-}
-
-
-void BvCommandContextVk::Execute(IBvGPUFence* pFence, u64 value)
-{
-	auto pFenceVk = TO_VK(pFence);
-	m_Queue.AddSignalSemaphore(pFenceVk->GetHandle(), value);
-
-	Execute();
 }
 
 
@@ -277,26 +285,6 @@ void BvCommandContextVk::ExecuteAndWait()
 	m_Frames[m_ActiveFrameIndex].UpdateSignalValue();
 
 	m_Frames[m_ActiveFrameIndex].Reset(false);
-}
-
-
-void BvCommandContextVk::Wait(IBvCommandContext* pCommandContext, u64 value)
-{
-	// Add a wait semaphore and its value
-	auto pContextVk = reinterpret_cast<BvCommandContextVk*>(pCommandContext);
-	m_Queue.AddWaitSemaphore(pContextVk->GetCurrentGPUFence()->GetHandle(), value);
-}
-
-
-void BvCommandContextVk::NewCommandList()
-{
-	if (m_pCurrCommandBuffer)
-	{
-		m_pCurrCommandBuffer->End();
-	}
-
-	// Get command buffer
-	m_pCurrCommandBuffer = m_Frames[m_ActiveFrameIndex].RequestCommandBuffer();
 }
 
 

@@ -80,6 +80,7 @@ private:
 	// Make sure only one image has been acquired per presentation / frame
 	bool m_IsReady = false;
 	bool m_FullscreenAcquired = false;
+	UINT m_PresentFlags = 0;
 };
 
 

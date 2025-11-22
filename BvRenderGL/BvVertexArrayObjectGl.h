@@ -99,5 +99,4 @@ public:
 
 private:
 	BvRobinMap<VAODesc, BvVertexArrayObjectGl*> m_VAOs;
-	BvSpinlock m_Lock;
 };

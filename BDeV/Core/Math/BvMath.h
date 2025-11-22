@@ -204,7 +204,7 @@ constexpr f32 kPiDiv16 = kPi / 16.0f; //0.196349546313285827637f;
 //};
 //
 //
-//#if (BV_COMPILER == BV_COMPILER_MSVC)
+//#if BV_COMPILER_MSVC
 //#define BV_VCALL __vectorcall
 //#else
 //#define BV_VCALL

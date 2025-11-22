@@ -77,7 +77,7 @@ void Camera::Roll(f32 rad)
 
 void Camera::RotateX(f32 rad)
 {
-	BvQuat r(BvVec3(VectorUnitX()), rad);
+	BvQuat r(BvVec3::UnitX(), rad);
 
 	m_Right *= r;
 	m_Up *= r;
@@ -89,7 +89,7 @@ void Camera::RotateX(f32 rad)
 
 void Camera::RotateY(f32 rad)
 {
-	BvQuat r(BvVec3(VectorUnitY()), rad);
+	BvQuat r(BvVec3::UnitY(), rad);
 
 	m_Right *= r;
 	m_Up *= r;
@@ -101,7 +101,7 @@ void Camera::RotateY(f32 rad)
 
 void Camera::RotateZ(f32 rad)
 {
-	BvQuat r(BvVec3(VectorUnitZ()), rad);
+	BvQuat r(BvVec3::UnitZ(), rad);
 
 	m_Right *= r;
 	m_Up *= r;
@@ -118,7 +118,7 @@ void Camera::SetPerspective(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 	m_AspectRatio = aspectRatio;
 	m_FovY = fovY;
 
-	m_Proj = m_FlipViewportY ? BvMatrix::PerspectiveLH_VK(m_NearZ, m_FarZ, m_AspectRatio, m_FovY)
+	m_Proj = m_FlipViewportY ? BvMatrix::PerspectiveLH_DX(m_NearZ, m_FarZ, m_AspectRatio, m_FovY)
 		: BvMatrix::PerspectiveLH_DX(m_NearZ, m_FarZ, m_AspectRatio, m_FovY);
 }
 
@@ -150,7 +150,7 @@ void Camera::Update()
 	m_View.SetX(BvVec4(r, 0.0f));
 	m_View.SetY(BvVec4(u, 0.0f));
 	m_View.SetZ(BvVec4(l, 0.0f));
-	m_View.SetW(BvVec4(VectorZero()));
+	m_View.SetW(BvVec4::Zero());
 	m_View.SetTranspose();
 
 	m_View.SetW(BvVec4(x, y, z, 1.0f));

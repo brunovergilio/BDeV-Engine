@@ -7,7 +7,7 @@
 #include <functional>
 
 
-class BvRenderDeviceGl;
+class BvContextGl;
 class IBvTextureView;
 class BvTextureViewGl;
 class BvFramebufferGl;
@@ -18,9 +18,10 @@ class BvRenderContextStateGl
 	BV_NOCOPYMOVE(BvRenderContextStateGl);
 
 public:
-	BvRenderContextStateGl(const BvRenderDeviceGl& device);
+	BvRenderContextStateGl(BvContextGl* pContext);
 	~BvRenderContextStateGl();
 
+	void SetCurrentContext(BvContextGl* pContext);
 	void SetRenderTargets(const u32 renderTargetCount, IBvTextureView* const* const pRenderTargets, const ClearColorValue* const pClearColors, IBvTextureView* const pDepthStencilTarget, const ClearColorValue& depthClear, const ClearFlags clearFlags);
 	void SetPipeline(IBvGraphicsPipelineState* pPipeline);
 

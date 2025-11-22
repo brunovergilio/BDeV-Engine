@@ -21,6 +21,10 @@
     <ClInclude Include="BvSwapChainD3D12.h" />
     <ClInclude Include="BvTextureViewD3D12.h" />
     <ClInclude Include="BvCommandContextD3D12.h" />
+    <ClInclude Include="BvDescriptorHeapD3D12.h" />
+    <ClInclude Include="BvCommandListD3D12.h" />
+    <ClInclude Include="BvQueryD3D12.h" />
+    <ClInclude Include="BvCommandAllocatorD3D12.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvCommonD3D12.cpp" />
@@ -40,5 +44,9 @@
     <ClCompile Include="BvSwapChainD3D12.cpp" />
     <ClCompile Include="BvTextureViewD3D12.cpp" />
     <ClCompile Include="BvCommandContextD3D12.cpp" />
+    <ClCompile Include="BvDescriptorHeapD3D12.cpp" />
+    <ClCompile Include="BvCommandListD3D12.cpp" />
+    <ClCompile Include="BvQueryD3D12.cpp" />
+    <ClCompile Include="BvCommandAllocatorD3D12.cpp" />
   </ItemGroup>
 </Project>

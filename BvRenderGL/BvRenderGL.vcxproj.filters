@@ -21,12 +21,12 @@
     <ClInclude Include="BvShaderResourceGl.h" />
     <ClInclude Include="BvDebugReportGl.h" />
     <ClInclude Include="BvSemaphoreGl.h" />
-    <ClInclude Include="BvGPUInfoGl.h" />
     <ClInclude Include="BvFramebufferGl.h" />
     <ClInclude Include="BvVertexArrayObjectGl.h" />
     <ClInclude Include="BvRenderContextStateGl.h" />
     <ClInclude Include="Third Party\GL\glew.h" />
     <ClInclude Include="Third Party\GL\wglew.h" />
+    <ClInclude Include="BvCommandContextGl.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvRenderEngineGl.cpp" />

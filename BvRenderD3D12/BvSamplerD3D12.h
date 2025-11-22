@@ -27,6 +27,7 @@ public:
 
 private:
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
+	CD3DX12_CPU_DESCRIPTOR_HANDLE m_Sampler;
 	SamplerDesc m_SamplerDesc;
 };
 

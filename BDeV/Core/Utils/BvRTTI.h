@@ -15,7 +15,7 @@ struct TypeInfo
 
 	static BV_INLINE const char* GetName()
 	{
-		#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+		#if BV_PLATFORM_WIN32
 			constexpr u32 kFunctionFrontSize = sizeof("TypeInfo<") - 1u;
 			constexpr u32 kFunctionBackSize = sizeof(">::GetName") - 1u;
 		#else

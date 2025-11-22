@@ -2,11 +2,14 @@
 #include "BvTypeConversionsGl.h"
 
 
-BvTextureGl::BvTextureGl(const BvRenderDeviceGl& device, const TextureDesc& textureDesc)
-	: IBvTexture(textureDesc), m_Device(device), m_InternalFormat(GetGlFormat(m_TextureDesc.m_Format)), m_Target(GetGlTextureTarget(m_TextureDesc))
+BvTextureGl::BvTextureGl(BvRenderDeviceGl* pDevice, const TextureDesc& textureDesc, bool isSwapChain = false)
+	: m_TextureDesc(textureDesc), m_pDevice(pDevice), m_InternalFormat(GetGlFormat(m_TextureDesc.m_Format)), m_Target(GetGlTextureTarget(m_TextureDesc))
 {
 	BV_ASSERT(m_InternalFormat != 0, "Format not supported for OpenGL");
-	Create();
+	if (!isSwapChain)
+	{
+		Create();
+	}
 }
 
 

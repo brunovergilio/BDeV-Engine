@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvSampler.h"
+#include "BDeV/Core/RenderAPI/BvSampler.h"
 #include "BvCommonGl.h"
 
 

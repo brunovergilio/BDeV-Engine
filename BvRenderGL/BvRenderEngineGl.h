@@ -1,54 +1,48 @@
 #pragma once
 
 
-#include "BDeV/RenderAPI/BvRenderEngine.h"
+#include "BDeV/Core/RenderAPI/BvRenderEngine.h"
 #include "BvGPUInfoGl.h"
 
 
+class BvRenderDeviceGl;
 class BvDebugReportGl;
 
 
+BV_OBJECT_DEFINE_ID(BvRenderEngineGl, "dfe816d7-ebc5-466c-963d-c14d2f6ed846");
 class BvRenderEngineGl final : public IBvRenderEngine
 {
 	BV_NOCOPYMOVE(BvRenderEngineGl);
 
 public:
+	const GPUList& GetGPUs() const override;
+	bool CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj) override;
+
+private:
+	friend class BvRenderEngineGlHelper;
+
 	BvRenderEngineGl();
 	~BvRenderEngineGl();
 
-	void GetGPUInfo(const u32 index, BvGPUInfo& info) const override final;
-	IBvRenderDevice* const CreateRenderDevice(const DeviceCreateDesc& deviceDesc, u32 gpuIndex) override final;
-
-	BV_INLINE const char* const GetEngineName() const override final { return "BvRenderGl"; }
-
-	bool IsExtensionSupported(const char* const pExtension);
-
-private:
 	void Create();
 	void Destroy();
+	void SelfDestroy() override;
 
 private:
-	IBvRenderDevice* m_pDevice = nullptr;
 #if defined(BV_DEBUG)
 	BvDebugReportGl* m_pDebugReport = nullptr;
 #endif
-	BvGPUInfoGl m_GPUInfo{};
+	BvRenderDeviceGl* m_pDevice = nullptr;
+	BvDeviceInfoGl m_GPUInfo{};
+	GPUList m_GPUs;
 };
+BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderEngineGl);
 
 
 namespace BvRenderGl
 {
-#if defined (BV_STATIC_LIB)
-	BV_PLUGIN_API IBvRenderEngine* GetRenderEngine();
-#else
-#if defined(BV_PLUGIN_DLL_EXPORT)
-	BV_EXTERN_C
-#endif
-	BV_PLUGIN_API IBvRenderEngine* CreateRenderEngine();
-
-#if defined(BV_PLUGIN_DLL_EXPORT)
-	BV_EXTERN_C
-#endif
-	BV_PLUGIN_API void DestroyRenderEngine();
-#endif
+	extern "C"
+	{
+		BV_API bool CreateRenderEngine(const BvUUID& objId, void** ppObj);
+	}
 }

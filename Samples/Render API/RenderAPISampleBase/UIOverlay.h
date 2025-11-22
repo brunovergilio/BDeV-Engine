@@ -39,12 +39,20 @@ private:
 	BvRCRef<IBvShader> m_VS;
 	BvRCRef<IBvShader> m_PS;
 
+	struct UnusedBufferData
+	{
+		BvRCRef<IBvBuffer> m_Buffer;
+		u32 m_FrameIndex;
+	};
+	BvVector<UnusedBufferData> m_VBsToDelete;
+	BvVector<UnusedBufferData> m_IBsToDelete;
+
 	u32 m_VertexCount = 0;
 	u32 m_IndexCount = 0;
 
 	struct PushConstBlock
 	{
-		Float44 wvp;
+		XMFLOAT4X4 wvp;
 	} m_PC;
 
 	f32 m_OverlayTimer = 0.0f;

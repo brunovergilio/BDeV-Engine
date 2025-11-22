@@ -2,7 +2,6 @@
 
 
 #include "BDeV/Core/RenderAPI/BvRenderEngine.h"
-#include "BDeV/Core/System/Library/BvSharedLib.h"
 #include "BvCommonD3D12.h"
 
 
@@ -32,7 +31,7 @@ struct BvDeviceInfoD3D12
 class BvRenderEngineD3D12 final : public IBvRenderEngine
 {
 public:
-	IBvRenderDevice* CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc) override;
+	bool CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj) override;
 	void OnDeviceDestroyed(u32 index);
 	BV_INLINE const GPUList& GetGPUs() const override { return m_GPUs; }
 

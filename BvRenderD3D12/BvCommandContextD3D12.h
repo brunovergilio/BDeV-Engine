@@ -79,18 +79,18 @@ class BvCommandContextD3D12 final : public IBvCommandContext, public IBvResource
 	BV_D3D12_DEVICE_RES_DECL;
 
 public:
-	BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 frameCount, u32 queueFamilyIndex, u32 queueIndex);
+	BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 frameCount, ID3D12CommandQueue* pQueue);
 	~BvCommandContextD3D12();
 
 	BV_INLINE u32 GetGroupIndex() const override { return m_ContextGroupIndex; }
 	BV_INLINE u32 GetIndex() const override { return m_ContextIndex; }
+	BV_INLINE u32 GetCurrentFrameIndex() const override { return m_ActiveFrameIndex; }
 
-	BvGPUOp Execute() override;
-	BvGPUOp Execute(u64 value) override;
-	void Execute(IBvGPUFence* pFence, u64 value) override;
-	void ExecuteAndWait() override;
-	void Wait(IBvCommandContext* pCommandContext, u64 value) override;
 	void NewCommandList() override;
+	void AddSignalFence(IBvGPUFence* pFence, u64 value) override;
+	void AddWaitFence(IBvGPUFence* pFence, u64 value) override;
+	void Execute() override;
+	void ExecuteAndWait() override;
 	void FlushFrame() override;
 
 	void BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets) override;

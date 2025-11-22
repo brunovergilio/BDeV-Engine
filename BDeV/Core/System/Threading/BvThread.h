@@ -76,7 +76,7 @@ private:
 	void Create(const CreateInfo& createInfo);
 	void Destroy();
 
-#if BV_PLATFORM == BV_PLATFORM_WIN32
+#if BV_PLATFORM_WIN32
 	static u32 CALLBACK ThreadEntryPoint(void* pData);
 #endif
 

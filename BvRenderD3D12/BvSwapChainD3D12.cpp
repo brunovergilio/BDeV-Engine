@@ -24,12 +24,13 @@ BvSwapChainD3D12::~BvSwapChainD3D12()
 
 void BvSwapChainD3D12::AcquireImage()
 {
-	m_CurrImageIndex = m_SwapChain->get()
+	m_CurrImageIndex = m_SwapChain->GetCurrentBackBufferIndex();
 }
 
 
 void BvSwapChainD3D12::Present(bool vSync)
 {
+	m_SwapChain->Present(vSync ? 1 : 0, m_PresentFlags);
 }
 
 
@@ -80,6 +81,8 @@ bool BvSwapChainD3D12::Create()
 			if (SUCCEEDED(hr) && allowTearing)
 			{
 				scd.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+				factory2->MakeWindowAssociation(m_pWindow->GetHandle(), DXGI_MWA_NO_ALT_ENTER);
 			}
 		}
 	}
@@ -91,9 +94,14 @@ bool BvSwapChainD3D12::Create()
 	scfd.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 	scfd.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 
+	if (m_SwapChainDesc.m_WindowMode != SwapChainMode::kFullscreen)
+	{
+		m_PresentFlags = DXGI_PRESENT_ALLOW_TEARING;
+	}
+
 	ComPtr<IDXGISwapChain1> swapChain1;
 	auto hWnd = m_pWindow->GetHandle();
-	hr = factory2->CreateSwapChainForHwnd(m_pCommandContext->GetCommandQueue(), hWnd, &scd, &scfd, nullptr, &swapChain1);
+	hr = factory2->CreateSwapChainForHwnd(m_pCommandContext->GetCommandQueue(), hWnd, &scd, nullptr/*&scfd*/, nullptr, &swapChain1);
 	if (FAILED(hr))
 	{
 		// TODO: Handle error
@@ -175,6 +183,26 @@ void BvSwapChainD3D12::Resize()
 		return;
 	}
 
-	SetTrueFullscreen(false);
-	Create();
+	BOOL fs;
+	if (SUCCEEDED(m_SwapChain->GetFullscreenState(&fs, nullptr) && fs))
+	{
+		m_SwapChain->SetFullscreenState(false, nullptr);
+	}
+
+	auto [w, h] = m_pWindow->GetSize();
+	DXGI_SWAP_CHAIN_DESC1 scd{};
+	m_SwapChain->GetDesc1(&scd);
+	m_SwapChain->ResizeBuffers1(scd.BufferCount, w, h, scd.Format, scd.Flags, nullptr, nullptr);
+	//Create();
+}
+
+
+void BvSwapChainD3D12::SetTrueFullscreen(bool value)
+{
+	if (m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen && value)
+	{
+		return;
+	}
+
+	m_SwapChain->SetFullscreenState(value, nullptr);
 }

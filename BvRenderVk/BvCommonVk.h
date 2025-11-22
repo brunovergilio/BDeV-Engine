@@ -6,12 +6,12 @@
 #include "BDeV/Core/Container/BvVector.h"
 
 // Platform-dependent stuff
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
 #define BV_VULKAN_DLL_NAME "vulkan-1.dll"
 #else
 	// Other platforms
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#endif // #if BV_PLATFORM_WIN32
 
 
 // Defines for the Vulkan Memory Allocator so it uses functions loaded from Volk
@@ -25,9 +25,9 @@
 
 // Have to re-include this again because the CreateSemaphore macro
 // conflicts with the BvRenderEngine::CreateSemaphore function
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #include "BDeV/Core/System/BvPlatformHeaders.h"
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#endif // #if BV_PLATFORM_WIN32
 
 
 #define BV_CREATE_CAST_TO_VK(Type) namespace Internal \
@@ -81,7 +81,7 @@ struct BvDeviceInfoVk
 	{
 		bool hasSurface2Caps = false;
 		VkSurfaceCapabilitiesFullScreenExclusiveEXT fullScreenExclusiveCaps{ VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT };
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 		VkSurfaceFullScreenExclusiveWin32InfoEXT fullScreenExclusiveInfoWin32{ VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT };
 #endif
 	} m_ExtendedSurfaceCaps;

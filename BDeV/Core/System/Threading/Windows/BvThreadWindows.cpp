@@ -169,7 +169,7 @@ void BvThread::SetAffinity(u32 logicalProcessorIndexCount, const u32* pLogicalPr
 
 void BvThread::SetName(const char* pThreadName) const
 {
-#if (BV_COMPILER == BV_COMPILER_MSVC) && BV_COMPILER_VERSION >= 1913
+#if BV_COMPILER_MSVC && BV_COMPILER_VERSION >= 1913
 	HRESULT hr = S_OK;
 	{
 		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pThreadName, 0, nullptr, 0);

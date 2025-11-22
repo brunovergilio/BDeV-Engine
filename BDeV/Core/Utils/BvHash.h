@@ -4,7 +4,7 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #define BV_SUPRESS_HASH_WARNING	 \
 __pragma(warning(suppress:4307)) \
 __pragma(warning(suppress:4100))

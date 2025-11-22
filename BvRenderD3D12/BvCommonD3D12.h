@@ -3,6 +3,7 @@
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
+#include "BDeV/Core/Container/BvVector.h"
 
 
 #include <dxgi.h>
@@ -15,7 +16,7 @@
 using Microsoft::WRL::ComPtr;
 
 
-#if (BV_COMPILER == BV_COMPILER_MSVC)
+#if BV_COMPILER_MSVC
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d12.lib")
 #endif
@@ -27,9 +28,9 @@ using Microsoft::WRL::ComPtr;
 
 // Have to re-include this again because the CreateSemaphore macro
 // conflicts with the BvRenderEngine::CreateSemaphore function
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #include "BDeV/Core/System/BvPlatformHeaders.h"
-#endif // #if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#endif // #if BV_PLATFORM_WIN32
 
 
 #define BV_CREATE_CAST_TO_D3D12(Type) namespace Internal \

@@ -5,7 +5,7 @@
 // using aligned sector-sized blocks for read/write operations
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/System/File/BvFileCommon.h"
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #include "BDeV/Core/System/File/Windows/BvAsyncFileWindows.h"
 #endif
 

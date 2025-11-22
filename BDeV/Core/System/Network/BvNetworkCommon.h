@@ -22,7 +22,7 @@ enum class SocketType : u8
 };
 
 
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 #include "BDeV/Core/System/Network/Windows/BvNetworkWindows.h"
 #define BV_NETWORK_INIT Internal::BvWinsockInitializer::GetInstance()
 #else

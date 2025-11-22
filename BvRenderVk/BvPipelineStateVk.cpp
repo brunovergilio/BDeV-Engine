@@ -526,7 +526,7 @@ VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShade
 {
 	VkShaderModuleCreateInfo shaderCI{};
 	shaderCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	shaderCI.pCode = reinterpret_cast<const u32 *>(pShaderCode);
+	shaderCI.pCode = reinterpret_cast<const u32*>(pShaderCode);
 	shaderCI.codeSize = size;
 
 	VkShaderModule shaderModule = VK_NULL_HANDLE;

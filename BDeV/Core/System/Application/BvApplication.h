@@ -33,7 +33,7 @@ public:
 	void RemoveMessageHandler(BvApplicationMessageHandler* pMessageHandler);
 
 private:
-#if (BV_PLATFORM == BV_PLATFORM_WIN32)
+#if BV_PLATFORM_WIN32
 	static LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 #endif
 

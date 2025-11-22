@@ -819,8 +819,8 @@ void RayTracing5::CreateBLAS()
 	compactedSizes[0] = pValues[0];
 	compactedSizes[1] = pValues[1];
 
-	BvConsole::Print("Size Diff: %llu | %llu\n", blas[0]->GetSize(), compactedSizes[0]);
-	BvConsole::Print("Size Diff: %llu | %llu\n", blas[1]->GetSize(), compactedSizes[1]);
+	BvConsole::Printf("Size Diff: %llu | %llu\n", blas[0]->GetSize(), compactedSizes[0]);
+	BvConsole::Printf("Size Diff: %llu | %llu\n", blas[1]->GetSize(), compactedSizes[1]);
 
 	{
 		auto blasDesc = blas[0]->GetDesc();

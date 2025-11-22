@@ -59,7 +59,7 @@ void ConsoleHelper()
 }
 
 
-void BvConsole::Print(const char* pFormat, ...)
+void BvConsole::Printf(const char* pFormat, ...)
 {
 	ConsoleHelper();
 	va_list argList;
@@ -69,7 +69,7 @@ void BvConsole::Print(const char* pFormat, ...)
 }
 
 
-void BvConsole::Print(const BvColorI& textColor, const char* pFormat, ...)
+void BvConsole::Printf(const BvColorI& textColor, const char* pFormat, ...)
 {
 	ConsoleHelper();
 	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
@@ -81,7 +81,7 @@ void BvConsole::Print(const BvColorI& textColor, const char* pFormat, ...)
 }
 
 
-void BvConsole::Print(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
+void BvConsole::Printf(const BvColorI& textColor, const BvColorI& backGroundColor, const char* pFormat, ...)
 {
 	ConsoleHelper();
 	printf("\033[38;2;%d;%d;%dm", textColor.m_Red, textColor.m_Green, textColor.m_Blue);
@@ -101,17 +101,17 @@ char* GetMessageBuffer()
 }
 
 
-void BvDebug::Print(const char* pFormat, ...)
+void BvDebug::Printf(const char* pFormat, ...)
 {
-	auto pErrorMessage = GetMessageBuffer();
+	auto pMessage = GetMessageBuffer();
 	va_list args;
 	va_start(args, pFormat);
-	u32 charsWritten = std::min(u32(vsnprintf(pErrorMessage, kMaxMessageSize, pFormat, args)) + 1, kMaxMessageSize);
+	u32 charsWritten = std::min(u32(vsnprintf(pMessage, kMaxMessageSize, pFormat, args)) + 1, kMaxMessageSize);
 	va_end(args);
 
-	wchar_t errorMessageW[kMaxMessageSize];
-	BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
-	OutputDebugStringW(errorMessageW);
+	//wchar_t messageW[kMaxMessageSize];
+	//BvTextUtilities::ConvertUTF8CharToWideChar(pMessage, charsWritten, messageW, kMaxMessageSize);
+	PrintInternal(pMessage);
 }
 
 
@@ -156,6 +156,12 @@ void BvDebug::Assert(const char* pCondition, const std::source_location& sourceI
 		return;
 	}
 #endif
+}
+
+
+void BvDebug::PrintInternal(const char* pMessage)
+{
+	OutputDebugStringA(pMessage);
 }
 
 
