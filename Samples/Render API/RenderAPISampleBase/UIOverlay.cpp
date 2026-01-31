@@ -2,6 +2,39 @@
 
 
 constexpr const char* pVS =
+#if defined (USE_D3D12)
+R"raw(
+struct VSInput
+{
+	float2 inPos : POSITION;
+	float2 inUV : TEXCOORD0;
+	float4 inColor : COLOR0;
+};
+
+struct PSInput
+{
+	float4 position : SV_POSITION;
+	float4 color : COLOR0;
+	float2 uv : TEXCOORD0;
+};
+
+cbuffer pushConstants : register(b0)
+{
+	float4x4 wvp;
+};
+
+PSInput main(VSInput input)
+{
+	PSInput result;
+
+	result.position = mul(wvp, float4(input.inPos, 0.0f, 1.0f));
+	result.color = input.inColor;
+	result.uv = input.inUV;
+
+	return result;
+}
+)raw";
+#else
 R"raw(
 #version 450
 
@@ -19,9 +52,9 @@ layout (push_constant) uniform PushConstants
 layout (location = 0) out vec2 outUV;
 layout (location = 1) out vec4 outColor;
 
-out gl_PerVertex 
+out gl_PerVertex
 {
-	vec4 gl_Position;   
+	vec4 gl_Position;
 };
 
 void main() 
@@ -32,15 +65,35 @@ void main()
 	gl_Position = pushConstants.wvp * vec4(inPos, 0.0, 1.0);
 }
 )raw";
+#endif
 constexpr u32 vsSize = std::char_traits<char>::length(pVS);
 
 
+
 constexpr const char* pPS =
+#if defined (USE_D3D12)
+R"raw(
+struct PSInput
+{
+	float4 position : SV_POSITION;
+	float4 color : COLOR0;
+	float2 uv : TEXCOORD0;
+};
+
+Texture2D g_texture : register(t1);
+SamplerState g_sampler : register(s0, space1);
+
+float4 main(PSInput input) : SV_TARGET
+{
+	return input.color * g_texture.Sample(g_sampler, input.uv);
+}
+)raw";
+#else
 R"raw(
 #version 450
 
 layout (binding = 1) uniform texture2D fontTexture;
-layout (binding = 2) uniform sampler fontSampler;
+layout (binding = 0, set = 1) uniform sampler fontSampler;
 
 layout (location = 0) in vec2 inUV;
 layout (location = 1) in vec4 inColor;
@@ -52,6 +105,7 @@ void main()
 	outColor = inColor * texture(sampler2D(fontTexture, fontSampler), inUV);
 }
 )raw";
+#endif
 constexpr u32 psSize = std::char_traits<char>::length(pPS);
 
 
@@ -104,7 +158,6 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	texDesc.m_Size = { u32(w), u32(h), 1 };
 	texDesc.m_Format = Format::kRGBA8_UNorm;
 	texDesc.m_UsageFlags = TextureUsage::kShaderResource;
-	texDesc.m_ResourceState = ResourceState::kShaderResource;
 
 	SubresourceData texSubRes;
 	texSubRes.m_pData = pFontData;
@@ -115,7 +168,8 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	texData.m_SubresourceCount = 1;
 	texData.m_pSubresources = &texSubRes;
 	texData.m_pContext = pContext;
-	m_Device->CreateTexture(texDesc, &texData, &m_Texture);
+	texData.m_ResourceState = ResourceState::kShaderResource;
+	m_Device->CreateTexture(texDesc, texData, &m_Texture);
 	
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = texDesc.m_Format;
@@ -128,51 +182,40 @@ void UIOverlay::Initialize(IBvRenderDevice* pDevice, IBvCommandContext* pContext
 	SamplerDesc samDesc;
 	samDesc.m_AddressModeU = samDesc.m_AddressModeV = samDesc.m_AddressModeW = AddressMode::kClamp;
 	m_Device->CreateSampler(samDesc, &m_Sampler);
-
-	ShaderResourceDesc resources[] =
-	{
-		ShaderResourceDesc::AsTexture(1, ShaderStage::kPixelOrFragment),
-		ShaderResourceDesc::AsSampler(2, ShaderStage::kPixelOrFragment)
-	};
-
-	ShaderResourceConstantDesc resConstant{};
-	resConstant.m_ShaderStages = ShaderStage::kVertex;
-	resConstant.m_Size = sizeof(PushConstBlock);
 	
-	ShaderResourceSetDesc setDesc{};
-	setDesc.m_ResourceCount = 2;
-	setDesc.m_pResources = resources;
-	setDesc.m_ConstantCount = 1;
-	setDesc.m_pConstants = &resConstant;
+	ShaderResourceLayoutCreateDesc srlDesc;
+	ShaderResourceSetDesc& setDesc = srlDesc.m_ShaderResourceSets.EmplaceBack();
+	setDesc.AddTexture(1, ShaderStage::kPixelOrFragment)
+		.AddConstant<PushConstBlock>(ShaderStage::kVertex);
+	ShaderResourceSetDesc& setDesc2 = srlDesc.m_ShaderResourceSets.EmplaceBack();
+	setDesc2.SetIndex(1)
+		.AddSampler(0, ShaderStage::kPixelOrFragment);
 
-	ShaderResourceLayoutDesc srlDesc;
-	srlDesc.m_ShaderResourceSetCount = 1;
-	srlDesc.m_pShaderResourceSets = &setDesc;
 	m_Device->CreateShaderResourceLayout(srlDesc, &m_SRL);
 
-	ShaderCreateDesc vsDesc;
+	ShaderSourceDesc vsDesc;
 	vsDesc.m_ShaderStage = ShaderStage::kVertex;
-	vsDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
+	vsDesc.m_ShaderLanguage = kShaderLanguage;
 	vsDesc.m_pSourceCode = pVS;
 	vsDesc.m_SourceCodeSize = vsSize;
 	BvRCRef<IBvShaderBlob> vsBlob;
-	m_Compiler->Compile(vsDesc, &vsBlob);
+	BvRCRef<IBvShaderBlob> vsErrorBlob;
+	m_Compiler->Compile(vsDesc, &vsBlob, &vsErrorBlob);
 
-	ShaderCreateDesc psDesc;
+	ShaderSourceDesc psDesc;
 	psDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
-	psDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
+	psDesc.m_ShaderLanguage = kShaderLanguage;
 	psDesc.m_pSourceCode = pPS;
 	psDesc.m_SourceCodeSize = psSize;
 	BvRCRef<IBvShaderBlob> psBlob;
-	m_Compiler->Compile(psDesc, &psBlob);
+	BvRCRef<IBvShaderBlob> psErrorBlob;
+	m_Compiler->Compile(psDesc, &psBlob, &psErrorBlob);
 
-	vsDesc.m_pByteCode = (const u8*)vsBlob->GetBufferPointer();
-	vsDesc.m_ByteCodeSize = vsBlob->GetBufferSize();
-	m_Device->CreateShader(vsDesc, &m_VS);
+	ShaderDesc desc((const u8*)vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), ShaderStage::kVertex);
+	m_Device->CreateShader(desc, &m_VS);
 
-	psDesc.m_pByteCode = (const u8*)psBlob->GetBufferPointer();
-	psDesc.m_ByteCodeSize = psBlob->GetBufferSize();
-	m_Device->CreateShader(psDesc, &m_PS);
+	desc = ShaderDesc((const u8*)psBlob->GetBufferPointer(), psBlob->GetBufferSize(), ShaderStage::kPixelOrFragment);
+	m_Device->CreateShader(desc, &m_PS);
 }
 
 
@@ -191,34 +234,26 @@ void UIOverlay::SetupPipeline(IBvRenderPass* pRenderPass, u32 subpassIndex, u32 
 void UIOverlay::SetupPipeline(Format swapChainFormat, Format depthFormat, IBvRenderPass* pRenderPass, u32 subpassIndex, u32 sampleCount)
 {
 	GraphicsPipelineStateDesc psoDesc;
-	psoDesc.m_Shaders[0] = m_VS;
-	psoDesc.m_Shaders[1] = m_PS;
-	psoDesc.m_InputAssemblyStateDesc.m_Topology = Topology::kTriangleList;
-	auto& blendState = psoDesc.m_BlendStateDesc.m_BlendAttachments[0];
-	blendState.m_BlendEnable = true;
-	blendState.m_SrcBlend = BlendFactor::kSrcAlpha;
-	blendState.m_DstBlend = BlendFactor::kInvkSrcAlpha;
-	blendState.m_SrcBlendAlpha = BlendFactor::kInvkSrcAlpha;
-	blendState.m_DstBlendAlpha = BlendFactor::kZero;
-	psoDesc.m_pShaderResourceLayout = m_SRL;
-	psoDesc.m_RenderTargetFormats[0] = swapChainFormat;
-	psoDesc.m_DepthStencilFormat = depthFormat;
-	psoDesc.m_pRenderPass = pRenderPass;
-	psoDesc.m_SubpassIndex = subpassIndex;
-
-	VertexInputDesc inputDescs[3];
-	inputDescs[0].m_Format = Format::kRG32_Float;
-	inputDescs[1].m_Format = Format::kRG32_Float;
-	inputDescs[2].m_Format = Format::kRGBA8_UNorm;
-	psoDesc.m_VertexInputDescCount = 3;
-	psoDesc.m_pVertexInputDescs = inputDescs;
+	psoDesc.AddShader(m_VS)
+		.AddShader(m_PS)
+		.SetInputAssemblyState(Topology::kTriangleList)
+		.AddRenderTarget(swapChainFormat, true, BlendFactor::kSrcAlpha, BlendFactor::kInvkSrcAlpha, BlendOp::kAdd,
+			BlendFactor::kInvkSrcAlpha, BlendFactor::kZero, BlendOp::kAdd)
+		.SetShaderResourceLayoutPtr(m_SRL).SetDepthStencilFormat(depthFormat)
+		.SetRenderPassPtr(pRenderPass)
+		.SetSubpassIndex(subpassIndex)
+		.AddVertexInput("POSITION", 0, Format::kRG32_Float)
+		.AddVertexInput("TEXCOORD", 0, Format::kRG32_Float)
+		.AddVertexInput("COLOR", 0, Format::kRGBA8_UNorm);
 
 	if (sampleCount == 1)
 	{
+		m_Pipeline.Reset();
 		m_Device->CreateGraphicsPipeline(psoDesc, &m_Pipeline);
 	}
 	else
 	{
+		m_PipelineMSAA.Reset();
 		psoDesc.m_SampleCount = sampleCount;
 		m_Device->CreateGraphicsPipeline(psoDesc, &m_PipelineMSAA);
 	}
@@ -353,17 +388,20 @@ void UIOverlay::Render(bool msaa)
 
 	m_Context->SetGraphicsPipeline(msaa ? m_PipelineMSAA : m_Pipeline);
 	m_Context->SetTexture(m_TextureView, 0, 1);
-	m_Context->SetSampler(m_Sampler, 0, 2);
+	m_Context->SetSampler(m_Sampler, 1, 0);
 
 	//m_PC.scale = Float2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
 	//m_PC.translate = Float2(-1.0f, -1.0f);
 
-	XMStoreFloat4x4(&m_PC.wvp, BvMatrix::OrthographicOffCenterLH_DX(io.DisplaySize.x, 0.0f, 0.0f, io.DisplaySize.y, 0.0f, 1.0f));
+	XMStoreFloat4x4(&m_PC.wvp, BvMatrix::OrthographicOffCenterLH_DX(0.0f, io.DisplaySize.x, 0.0f, io.DisplaySize.y, 0.0f, 1.0f));
 
 	m_Context->SetShaderConstantsT<PushConstBlock>(m_PC, 0, 0);
 
 	m_Context->SetVertexBufferView(m_VB, sizeof(ImDrawVert));
 	m_Context->SetIndexBufferView(m_IB, IndexFormat::kU16);
+
+	ImVec2 clipOff = pImDrawData->DisplayPos;
+	ImVec2 clipScale = pImDrawData->FramebufferScale;
 
 	for (auto i = 0; i < pImDrawData->CmdListsCount; i++)
 	{
@@ -372,10 +410,14 @@ void UIOverlay::Render(bool msaa)
 		{
 			const ImDrawCmd* pcmd = &pDrawList->CmdBuffer[j];
 			Rect scissorRect;
-			scissorRect.x = std::max((i32)(pcmd->ClipRect.x), 0);
-			scissorRect.y = std::max((i32)(pcmd->ClipRect.y), 0);
-			scissorRect.width = (u32)(pcmd->ClipRect.z - pcmd->ClipRect.x);
-			scissorRect.height = (u32)(pcmd->ClipRect.w - pcmd->ClipRect.y);
+
+			ImVec2 clipMin((pcmd->ClipRect.x - clipOff.x) * clipScale.x, (pcmd->ClipRect.y - clipOff.y) * clipScale.y);
+			ImVec2 clipMax((pcmd->ClipRect.z - clipOff.x) * clipScale.x, (pcmd->ClipRect.w - clipOff.y) * clipScale.y);
+
+			scissorRect.m_Left = clipMin.x;
+			scissorRect.m_Top = clipMin.y;
+			scissorRect.m_Right = clipMax.x;
+			scissorRect.m_Bottom = clipMax.y;
 			m_Context->SetScissor(scissorRect);
 			m_Context->DrawIndexed(pcmd->ElemCount, 1, indexOffset, vertexOffset, 0);
 			indexOffset += pcmd->ElemCount;

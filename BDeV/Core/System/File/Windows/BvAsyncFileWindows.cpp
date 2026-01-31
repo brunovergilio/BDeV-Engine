@@ -8,39 +8,39 @@
 
 BvAsyncFileRequest::BvAsyncFileRequest()
 {
-	m_AsyncFileData.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	m_AsyncFileData.hEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	IsDone(true);
 }
 
 
 BvAsyncFileRequest::~BvAsyncFileRequest()
 {
-	CloseHandle(m_AsyncFileData.hEvent);
+	::CloseHandle(m_AsyncFileData.hEvent);
 }
 
 
 bool BvAsyncFileRequest::IsDone()
 {
-	return m_AsyncFileData.m_IsDone.load(std::memory_order::acquire) || WaitForSingleObject(m_AsyncFileData.hEvent, 0) == WAIT_OBJECT_0;
+	return m_AsyncFileData.m_IsDone.load(std::memory_order::acquire) || ::WaitForSingleObject(m_AsyncFileData.hEvent, 0) == WAIT_OBJECT_0;
 }
 
 
-u32 BvAsyncFileRequest::GetResult(bool wait)
+u32 BvAsyncFileRequest::GetResult(bool wait, u32 waitTimeInMs)
 {
 	if (m_AsyncFileData.m_IsDone.load(std::memory_order::acquire))
 	{
 		return m_AsyncFileData.m_TotalBytesProcessed.load(std::memory_order::relaxed);
 	}
 
-	DWORD waitResult = WaitForSingleObject(m_AsyncFileData.hEvent, wait ? INFINITE : 0);
+	DWORD waitResult = ::WaitForSingleObject(m_AsyncFileData.hEvent, wait ? waitTimeInMs : 0);
 	if (waitResult == WAIT_OBJECT_0)
 	{
 		bool exp = false;
 		if (m_AsyncFileData.m_Flag.compare_exchange_strong(exp, true, std::memory_order::acquire))
 		{
 			DWORD bytesTransferred = 0;
-			BOOL result = GetOverlappedResult(m_AsyncFileData.m_hFile, &m_AsyncFileData, &bytesTransferred, FALSE);
-			m_AsyncFileData.m_TotalBytesProcessed.store(result * bytesTransferred, std::memory_order::relaxed);
+			BOOL result = ::GetOverlappedResult(m_AsyncFileData.m_hFile, &m_AsyncFileData, &bytesTransferred, FALSE);
+			m_AsyncFileData.m_TotalBytesProcessed.store(bytesTransferred, std::memory_order::relaxed);
 			IsDone(true);
 		}
 
@@ -48,6 +48,12 @@ u32 BvAsyncFileRequest::GetResult(bool wait)
 	}
 	else
 	{
+		if (waitResult == WAIT_FAILED)
+		{
+			BV_SYS_ERROR();
+			IsDone(true);
+		}
+
 		// Operation is still pending
 		return 0;
 	}
@@ -58,7 +64,14 @@ void BvAsyncFileRequest::Cancel()
 {
 	if (!IsDone())
 	{
-		CancelIoEx(m_AsyncFileData.m_hFile, &m_AsyncFileData);
+		if (!::CancelIoEx(m_AsyncFileData.m_hFile, &m_AsyncFileData))
+		{
+			auto error = ::GetLastError();
+			if (error != ERROR_OPERATION_ABORTED && error != ERROR_NOT_FOUND)
+			{
+				BV_SYS_ERROR(error);
+			}
+		}
 	}
 }
 
@@ -71,17 +84,21 @@ void BvAsyncFileRequest::IsDone(bool done)
 
 void BvAsyncFileRequest::Reset(HANDLE hFile, u64 position)
 {
+	// Make sure any previous operations have finished
+	GetResult();
+
 	auto hEvent = m_AsyncFileData.hEvent;
 	// We use sizeof(OVERLAPPED) intentionally here
 	ZeroMemory(&m_AsyncFileData, sizeof(OVERLAPPED));
 	m_AsyncFileData.hEvent = hEvent;
+	m_AsyncFileData.Pointer = reinterpret_cast<PVOID>(position);
 
 	m_AsyncFileData.m_hFile = hFile;
-	m_AsyncFileData.Pointer = reinterpret_cast<PVOID>(position);
 	m_AsyncFileData.m_TotalBytesProcessed.store(0, std::memory_order::relaxed);
 	m_AsyncFileData.m_Flag.store(false, std::memory_order::release);
+
 	IsDone(false);
-	ResetEvent(m_AsyncFileData.hEvent);
+	::ResetEvent(m_AsyncFileData.hEvent);
 }
 
 

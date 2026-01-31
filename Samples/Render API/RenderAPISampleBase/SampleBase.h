@@ -42,13 +42,13 @@ protected:
 	BvApplication m_App;
 	BvSharedLib m_RenderLib;
 	BvSharedLib m_ToolsLib;
-	BvRenderDeviceCreateDesc m_RenderDeviceDesc;
+	RenderDeviceDesc m_RenderDeviceDesc;
 	BvWindow* m_pWindow = nullptr;
 	BvRCRef<IBvRenderEngine> m_pEngine;
 	BvRCRef<IBvRenderDevice> m_Device;
 	BvRCRef<IBvCommandContext> m_Context;
 	BvRCRef<IBvSwapChain> m_SwapChain;
-	BvRCRef<IBvShaderCompiler> m_SpvCompiler;
+	BvRCRef<IBvShaderCompiler> m_ShaderCompiler;
 	BvRCRef<IBvTextureLoader> m_TextureLoader;
 	UIOverlay m_Overlay;
 	Camera m_Camera;

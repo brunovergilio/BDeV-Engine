@@ -3,7 +3,6 @@
 
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Container/BvVector.h"
 
 // Platform-dependent stuff
 #if BV_PLATFORM_WIN32
@@ -85,6 +84,27 @@ struct BvDeviceInfoVk
 		VkSurfaceFullScreenExclusiveWin32InfoEXT fullScreenExclusiveInfoWin32{ VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT };
 #endif
 	} m_ExtendedSurfaceCaps;
+
+	struct 
+	{
+		bool vertexAttributeDivisor : 1;
+		bool fragmentShading : 1;
+		bool meshShader : 1;
+		bool accelerationStructure : 1;
+		bool rayTracingPipeline : 1;
+		bool rayQuery : 1;
+		bool conservativeRasterization : 1;
+		bool customBorderColor : 1;
+		bool memoryBudget : 1;
+		bool deferredHostOperations : 1;
+		bool deviceAddress : 1;
+		bool predication : 1;
+		bool depthClipEnable : 1;
+		bool trueFullScreen : 1;
+		bool globalQueuePriority : 1;
+		bool depthBiasControl : 1;
+	} m_FeatureFlags;
+
 	bool m_HasDebugUtils = false;
 
 	BvVector<VkExtensionProperties> m_SupportedExtensions;
@@ -104,14 +124,3 @@ protected:
 	IBvResourceVk() {}
 	virtual ~IBvResourceVk() {}
 };
-
-
-struct BvRenderDeviceCreateDescVk : BvRenderDeviceCreateDesc
-{
-};
-
-
-#define BV_VK_DEVICE_RES_DECL void SelfDestroy() override;
-#define BV_VK_DEVICE_RES_DEF(Type) void Type::SelfDestroy() { m_pDevice->DestroyResource(this); }
-
-#define BV_VK_IS_TYPE_VALID(uuid, Type) (uuid == BV_OBJECT_ID(I##Type) || uuid == BV_OBJECT_ID(Type##Vk))

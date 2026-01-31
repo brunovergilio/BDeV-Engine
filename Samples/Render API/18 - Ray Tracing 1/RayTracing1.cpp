@@ -207,7 +207,7 @@ void RayTracing1::CreateShaderResourceLayout()
 		setDesc.m_ConstantCount = 1;
 		setDesc.m_pConstants = &constDesc;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 
@@ -225,7 +225,7 @@ void RayTracing1::CreateShaderResourceLayout()
 		setDesc.m_ResourceCount = 2;
 		setDesc.m_pResources = resourceDescs;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 

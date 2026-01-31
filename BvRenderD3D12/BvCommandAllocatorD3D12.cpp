@@ -4,36 +4,10 @@
 #include "BvCommandListD3D12.h"
 
 
-BvCommandAllocatorD3D12::BvCommandAllocatorD3D12()
-{
-}
-
-
 BvCommandAllocatorD3D12::BvCommandAllocatorD3D12(BvRenderDeviceD3D12* pDevice, CommandType commandType)
 	: m_pDevice(pDevice), m_CommandType(commandType)
 {
 	Create();
-}
-
-
-BvCommandAllocatorD3D12::BvCommandAllocatorD3D12(BvCommandAllocatorD3D12&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvCommandAllocatorD3D12& BvCommandAllocatorD3D12::operator=(BvCommandAllocatorD3D12&& rhs) noexcept
-{
-	if (this != &rhs)
-	{
-		std::swap(m_pDevice, rhs.m_pDevice);
-		std::swap(m_CommandAllocator, rhs.m_CommandAllocator);
-		std::swap(m_CommandLists, rhs.m_CommandLists);
-		std::swap(m_ActiveCommandBufferCount, rhs.m_ActiveCommandBufferCount);
-		std::swap(m_CommandType, rhs.m_CommandType);
-	}
-
-	return *this;
 }
 
 
@@ -66,26 +40,27 @@ void BvCommandAllocatorD3D12::Destroy()
 
 BvCommandListD3D12* BvCommandAllocatorD3D12::GetCommandList(BvFrameDataD3D12* pFrameData)
 {
+	BvCommandListD3D12* pCommandList = nullptr;
 	if (m_ActiveCommandBufferCount < m_CommandLists.Size())
 	{
-		auto pCommandList = m_CommandLists[m_ActiveCommandBufferCount++];
+		pCommandList = m_CommandLists[m_ActiveCommandBufferCount++];
 		pCommandList->Reset();
-		pCommandList->Begin();
-		return pCommandList;
 	}
-
-	ComPtr<ID3D12GraphicsCommandList> commandList;
-	auto hr = m_pDevice->GetHandle()->CreateCommandList(0, GetD3D12CommandListType(m_CommandType), m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&commandList));
-	if (FAILED(hr))
+	else
 	{
-		// TODO: Handle error
-		return nullptr;
+		ComPtr<ID3D12GraphicsCommandList> commandList;
+		auto hr = m_pDevice->GetHandle()->CreateCommandList(0, GetD3D12CommandListType(m_CommandType), m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&commandList));
+		if (FAILED(hr))
+		{
+			// TODO: Handle error
+			return nullptr;
+		}
+
+		pCommandList = m_CommandLists.EmplaceBack(BV_NEW(BvCommandListD3D12)(m_pDevice, m_CommandAllocator.Get(), commandList.Get(), pFrameData));
 	}
 
-	auto pCommandList = m_CommandLists.EmplaceBack(new BvCommandListD3D12(m_pDevice, commandList, pFrameData));
-	pCommandList->Reset();
-	pCommandList->Begin();
 	++m_ActiveCommandBufferCount;
+	pCommandList->Begin();
 
 	return pCommandList;
 }

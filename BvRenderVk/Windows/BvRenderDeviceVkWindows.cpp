@@ -16,7 +16,7 @@ void BvRenderDeviceVk::SetupSupportedDisplayFormats()
 
 	RegisterClassW(&wc);
 
-	auto instance = GetEngine()->GetHandle();
+	auto instance = m_Instance;
 	HWND hWnd = nullptr;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	do

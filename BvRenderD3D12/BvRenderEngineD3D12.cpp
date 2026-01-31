@@ -9,16 +9,17 @@ bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvG
 class BvRenderEngineD3D12Helper
 {
 public:
-	static BvRenderEngineD3D12* Create()
+	static BvRenderEngineD3D12* Create(const RenderEngineDesc& renderEngineDesc)
 	{
 		static bool initialized = false;
 		if (!initialized)
 		{
 			initialized = true;
-			s_pEngine = BV_NEW(BvRenderEngineD3D12)();
+			s_pEngine = BV_RC_CREATE_IN_PLACE(*BV_DEFAULT_MEMORY_ARENA, BvRenderEngineD3D12, renderEngineDesc);
+			s_pEngine->SetMemoryArena(BV_DEFAULT_MEMORY_ARENA);
 			if (s_pEngine->GetGPUs().Size() == 0)
 			{
-				BV_DELETE(s_pEngine);
+				s_pEngine->Release();
 				s_pEngine = nullptr;
 			}
 		}
@@ -30,9 +31,9 @@ public:
 		return s_pEngine;
 	}
 
-	static void Destroy()
+	static void OnDeviceDestroyed(u32 index)
 	{
-		BV_DELETE(s_pEngine);
+		s_pEngine->OnDeviceDestroyed(index);
 	}
 
 private:
@@ -41,11 +42,20 @@ private:
 BvRenderEngineD3D12* BvRenderEngineD3D12Helper::s_pEngine = nullptr;
 
 
-bool BvRenderEngineD3D12::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj)
+void OnD3D12DeviceDestroyed(u32 index)
 {
-	BvRenderDeviceCreateDescD3D12 descD3D12;
-	memcpy(&descD3D12, &deviceCreateDesc, sizeof(BvRenderDeviceCreateDesc));
-	u32 gpuIndex = descD3D12.m_GPUIndex;
+	BvRenderEngineD3D12Helper::OnDeviceDestroyed(index);
+}
+
+
+bool BvRenderEngineD3D12::CreateRenderDeviceImpl(const RenderDeviceDesc& renderDeviceDesc, void** ppObj)
+{
+	if (!ppObj)
+	{
+		return false;
+	}
+
+	u32 gpuIndex = renderDeviceDesc.m_GPUIndex;
 	if (gpuIndex >= m_GPUs.Size())
 	{
 		gpuIndex = 0;
@@ -64,13 +74,14 @@ bool BvRenderEngineD3D12::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc&
 	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
 	if (!pDevice)
 	{
-		pDevice = BV_NEW(BvRenderDeviceD3D12)(this, deviceData.m_Adapter.Get(), deviceData.m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], descD3D12);
+		pDevice = BV_NEW(BvRenderDeviceD3D12)(this, deviceData.m_Adapter.Get(), deviceData.m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], renderDeviceDesc);
 		if (!pDevice->IsValid())
 		{
 			pDevice->Release();
 			pDevice = nullptr;
 		}
 	}
+	*ppObj = pDevice;
 
 	return pDevice;
 }
@@ -78,11 +89,11 @@ bool BvRenderEngineD3D12::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc&
 
 void BvRenderEngineD3D12::OnDeviceDestroyed(u32 index)
 {
-
+	m_Devices[index]->m_pDevice = nullptr;
 }
 
 
-BvRenderEngineD3D12::BvRenderEngineD3D12()
+BvRenderEngineD3D12::BvRenderEngineD3D12(const RenderEngineDesc& renderEngineDesc)
 {
 	Create();
 }
@@ -166,6 +177,11 @@ void BvRenderEngineD3D12::Create()
 			}
 		}
 	}
+
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&m_DebugController))))
+	{
+		m_DebugController->EnableDebugLayer();
+	}
 }
 
 
@@ -185,12 +201,6 @@ void BvRenderEngineD3D12::Destroy()
 
 		m_Factory = nullptr;
 	}
-}
-
-
-void BvRenderEngineD3D12::SelfDestroy()
-{
-	BvRenderEngineD3D12Helper::Destroy();
 }
 
 
@@ -336,14 +346,16 @@ namespace BvRenderD3D12
 {
 	extern "C"
 	{
-		BV_API IBvRenderEngine* CreateRenderEngine()
+		BV_API bool CreateRenderEngine(const RenderEngineDesc& renderEngineDesc, void** ppObj)
 		{
-			return BvRenderEngineD3D12Helper::Create();
-		}
+			if (!ppObj)
+			{
+				return false;
+			}
 
-		BV_API BvRenderEngineD3D12* CreateRenderEngineD3D12()
-		{
-			return BvRenderEngineD3D12Helper::Create();
+			*ppObj = BvRenderEngineD3D12Helper::Create(renderEngineDesc);
+
+			return *ppObj != nullptr;
 		}
 	}
 }

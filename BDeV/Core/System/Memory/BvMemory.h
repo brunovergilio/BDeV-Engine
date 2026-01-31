@@ -393,6 +393,9 @@ public:
 	virtual void SetName(const char* pName) = 0;
 };
 
+template<typename T>
+concept BvMemoryArenaType = std::is_base_of_v<IBvMemoryArena, T>;
+
 #if BV_DEBUG
 #define BV_USE_MEMORY_ARENA_NAME
 #endif

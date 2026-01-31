@@ -13,13 +13,11 @@
 #include "BvDescriptorSetVk.h"
 #include "BvTextureVk.h"
 #include "BvSwapChainVk.h"
-#include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
 #include "BvSamplerVk.h"
 #include "BvQueryVk.h"
 #include "BvCommandQueueVk.h"
 #include "BvCommandContextVk.h"
-#include "BvShaderResourceVk.h"
 #include "BvAccelerationStructureVk.h"
 #include "BvShaderBindingTableVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
@@ -42,6 +40,7 @@ void BvCommandBufferVk::Reset()
 	m_SwapChains.Clear();
 	m_pGraphicsPipeline = nullptr;
 	m_pComputePipeline = nullptr;
+	m_pRayTracingPipeline = nullptr;
 	m_pShaderResourceLayout = nullptr;
 	m_DescriptorSets.Clear();
 	m_CurrentState = State::kRecording;
@@ -92,8 +91,8 @@ void BvCommandBufferVk::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 re
 		}
 		auto& viewDesc = viewVk->GetDesc();
 		auto& desc = viewDesc.m_pTexture->GetDesc();
-		fbDesc.m_Width = std::min(desc.m_Size.width, fbDesc.m_Width);
-		fbDesc.m_Height = std::min(desc.m_Size.height, fbDesc.m_Height);
+		fbDesc.m_Width = std::min(desc.m_Size.m_Width, fbDesc.m_Width);
+		fbDesc.m_Height = std::min(desc.m_Size.m_Height, fbDesc.m_Height);
 		fbDesc.m_LayerCount = std::min((viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_ArraySize : viewDesc.m_SubresourceDesc.layerCount)
 			- viewDesc.m_SubresourceDesc.firstLayer, fbDesc.m_LayerCount);
 
@@ -186,8 +185,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 
 		layerCount = std::min(layerCount, (viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_ArraySize : viewDesc.m_SubresourceDesc.layerCount)
 			 - viewDesc.m_SubresourceDesc.firstLayer);
-		renderArea.width = std::min(renderArea.width, desc.m_Size.width);
-		renderArea.height = std::min(renderArea.height, desc.m_Size.height);
+		renderArea.width = std::min(renderArea.width, desc.m_Size.m_Width);
+		renderArea.height = std::min(renderArea.height, desc.m_Size.m_Height);
 
 		auto loadOp = GetVkAttachmentLoadOp(renderTarget.m_LoadOp);
 		auto storeOp = GetVkAttachmentStoreOp(renderTarget.m_StoreOp);
@@ -390,12 +389,12 @@ void BvCommandBufferVk::SetViewports(u32 viewportCount, const Viewport* pViewpor
 	VkViewport vps[kMaxViewports];
 	for (auto i = 0u; i < viewportCount; ++i)
 	{
-		vps[i].x = pViewports[i].x;
-		vps[i].y = pViewports[i].y + pViewports[i].height; // Flip viewport
-		vps[i].width = pViewports[i].width;
-		vps[i].height = -pViewports[i].height; // Flip viewport
-		vps[i].minDepth = pViewports[i].minDepth;
-		vps[i].maxDepth = pViewports[i].maxDepth;
+		vps[i].x = pViewports[i].m_X;
+		vps[i].y = pViewports[i].m_Y + pViewports[i].m_Height; // Flip viewport
+		vps[i].width = pViewports[i].m_Width;
+		vps[i].height = -pViewports[i].m_Height; // Flip viewport
+		vps[i].minDepth = pViewports[i].m_MinDepth;
+		vps[i].maxDepth = pViewports[i].m_MaxDepth;
 	}
 	
 	vkCmdSetViewportWithCount(m_CommandBuffer, viewportCount, vps);
@@ -409,10 +408,10 @@ void BvCommandBufferVk::SetScissors(u32 scissorCount, const Rect* pScissors)
 	VkRect2D scissors[kMaxScissors];
 	for (auto i = 0u; i < scissorCount; ++i)
 	{
-		scissors[i].offset.x = pScissors[i].x;
-		scissors[i].offset.y = pScissors[i].y;
-		scissors[i].extent.width = pScissors[i].width;
-		scissors[i].extent.height = pScissors[i].height;
+		scissors[i].offset.x = std::max(pScissors[i].m_Left, 0);
+		scissors[i].offset.y = std::max(pScissors[i].m_Top, 0);
+		scissors[i].extent.width = u32(pScissors[i].m_Right - pScissors[i].m_Left);
+		scissors[i].extent.height = u32(pScissors[i].m_Bottom - pScissors[i].m_Top);
 	}
 
 	vkCmdSetScissorWithCount(m_CommandBuffer, scissorCount, scissors);
@@ -508,33 +507,24 @@ void BvCommandBufferVk::SetRWStructuredBuffers(u32 count, const IBvBufferView* c
 	}
 }
 
-void BvCommandBufferVk::SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
-	for (auto i = 0; i < count; ++i)
-	{
-		bindingState.SetResource(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, TO_VK(ppResources[i]), set, binding, startIndex + i, pOffsets[i]);
-	}
+	bindingState.SetResource(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, TO_VK(pResource), set, binding, 0, offset);
 }
 
 
-void BvCommandBufferVk::SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
-	for (auto i = 0; i < count; ++i)
-	{
-		bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, TO_VK(ppResources[i]), set, binding, startIndex + i, pOffsets[i]);
-	}
+	bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, TO_VK(pResource), set, binding, 0, offset);
 }
 
 
-void BvCommandBufferVk::SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+void BvCommandBufferVk::SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
-	for (auto i = 0; i < count; ++i)
-	{
-		bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, TO_VK(ppResources[i]), set, binding, startIndex + i, pOffsets[i]);
-	}
+	bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, TO_VK(pResource), set, binding, 0, offset);
 }
 
 
@@ -820,8 +810,8 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 	auto& srcDesc = pSrcTexture->GetDesc();
 	auto& dstDesc = pDstTexture->GetDesc();
 
-	if ((srcDesc.m_Format != dstDesc.m_Format && srcDesc.m_Format != GetFormatInfo(dstDesc.m_Format).m_SRGBOrLinearVariant) || srcDesc.m_Size != dstDesc.m_Size
-		|| srcDesc.m_MipLevels != dstDesc.m_MipLevels || srcDesc.m_ArraySize != dstDesc.m_ArraySize)
+	if ((srcDesc.m_Format != dstDesc.m_Format && srcDesc.m_Format != BvRenderUtils::GetFormatInfo(dstDesc.m_Format).m_SRGBOrLinearVariant) || srcDesc.m_Size != dstDesc.m_Size
+		|| srcDesc.m_MipLevels != dstDesc.m_MipLevels || srcDesc.m_ArraySize != dstDesc.m_ArraySize || srcDesc.m_ImageType != dstDesc.m_ImageType)
 	{
 		return;
 	}
@@ -843,9 +833,9 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 
 			imageCopyRegion.extent =
 			{
-				std::max(1u, srcDesc.m_Size.width >> mip),
-				std::max(1u, srcDesc.m_Size.height >> mip),
-				std::max(1u, srcDesc.m_Size.depth >> mip)
+				std::max(1u, srcDesc.m_Size.m_Width >> mip),
+				std::max(1u, srcDesc.m_Size.m_Depth >> mip),
+				std::max(1u, srcDesc.m_Size.m_Depth >> mip)
 			};
 		}
 	}
@@ -872,16 +862,16 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 	VkImageCopy imageCopyRegion{};
 	imageCopyRegion.srcOffset =
 	{
-		copyDesc.m_SrcTextureOffset.x,
-		copyDesc.m_SrcTextureOffset.y,
-		copyDesc.m_SrcTextureOffset.z
+		copyDesc.m_SrcTextureOffset.m_X,
+		copyDesc.m_SrcTextureOffset.m_Y,
+		copyDesc.m_SrcTextureOffset.m_Z
 	};
 	
 	imageCopyRegion.dstOffset =
 	{
-		copyDesc.m_DstTextureOffset.x,
-		copyDesc.m_DstTextureOffset.y,
-		copyDesc.m_DstTextureOffset.z
+		copyDesc.m_DstTextureOffset.m_X,
+		copyDesc.m_DstTextureOffset.m_Y,
+		copyDesc.m_DstTextureOffset.m_Z
 	};
 
 	auto& srcDesc = pSrcTexture->GetDesc();
@@ -899,9 +889,9 @@ void BvCommandBufferVk::CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* p
 
 	imageCopyRegion.extent =
 	{
-		std::min(copyDesc.m_Size.width, std::min(srcDesc.m_Size.width, dstDesc.m_Size.width)),
-		std::min(copyDesc.m_Size.height, std::min(srcDesc.m_Size.height, dstDesc.m_Size.height)),
-		std::min(copyDesc.m_Size.depth, std::min(srcDesc.m_Size.depth, dstDesc.m_Size.depth))
+		std::min(copyDesc.m_Size.m_Width, std::min(srcDesc.m_Size.m_Width, dstDesc.m_Size.m_Width)),
+		std::min(copyDesc.m_Size.m_Height, std::min(srcDesc.m_Size.m_Height, dstDesc.m_Size.m_Height)),
+		std::min(copyDesc.m_Size.m_Depth, std::min(srcDesc.m_Size.m_Depth, dstDesc.m_Size.m_Depth))
 	};
 
 	auto pSrc = TO_VK(pSrcTexture);
@@ -934,11 +924,11 @@ void BvCommandBufferVk::CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvText
 	m_BufferImageCopyRegions.Resize(copyCount, {});
 	for (auto i = 0u; i < copyCount; ++i)
 	{
-		m_BufferImageCopyRegions[i].bufferOffset = pCopyDescs[i].m_BufferOffset;
+		m_BufferImageCopyRegions[i].bufferOffset = pCopyDescs[i].m_SubresourceFootprint.m_Offset;
 		//m_BufferImageCopyRegions[i].bufferImageHeight = 0;
 		//m_BufferImageCopyRegions[i].bufferRowLength = 0;
-		m_BufferImageCopyRegions[i].imageExtent = { pCopyDescs[i].m_TextureSize.width, pCopyDescs[i].m_TextureSize.height, pCopyDescs[i].m_TextureSize.depth };
-		m_BufferImageCopyRegions[i].imageOffset = { pCopyDescs[i].m_TextureOffset.x, pCopyDescs[i].m_TextureOffset.y, pCopyDescs[i].m_TextureOffset.z };
+		m_BufferImageCopyRegions[i].imageExtent = { pCopyDescs[i].m_TextureSize.m_Width, pCopyDescs[i].m_TextureSize.m_Height, pCopyDescs[i].m_TextureSize.m_Depth };
+		m_BufferImageCopyRegions[i].imageOffset = { pCopyDescs[i].m_TextureOffset.m_X, pCopyDescs[i].m_TextureOffset.m_Y, pCopyDescs[i].m_TextureOffset.m_Z };
 		m_BufferImageCopyRegions[i].imageSubresource.aspectMask = GetVkFormatMap(pDst->GetDesc().m_Format).aspectFlags;
 		m_BufferImageCopyRegions[i].imageSubresource.mipLevel = pCopyDescs[i].m_Mip;
 		m_BufferImageCopyRegions[i].imageSubresource.baseArrayLayer = pCopyDescs[i].m_Layer;
@@ -968,11 +958,11 @@ void BvCommandBufferVk::CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBu
 	m_BufferImageCopyRegions.Resize(copyCount, {});
 	for (auto i = 0u; i < copyCount; ++i)
 	{
-		m_BufferImageCopyRegions[i].bufferOffset = pCopyDescs[i].m_BufferOffset;
+		m_BufferImageCopyRegions[i].bufferOffset = pCopyDescs[i].m_SubresourceFootprint.m_Offset;
 		//m_BufferImageCopyRegions[i].bufferImageHeight = 0;
 		//m_BufferImageCopyRegions[i].bufferRowLength = 0;
-		m_BufferImageCopyRegions[i].imageExtent = { pCopyDescs[i].m_TextureSize.width, pCopyDescs[i].m_TextureSize.height, pCopyDescs[i].m_TextureSize.depth };
-		m_BufferImageCopyRegions[i].imageOffset = { pCopyDescs[i].m_TextureOffset.x, pCopyDescs[i].m_TextureOffset.y, pCopyDescs[i].m_TextureOffset.z };
+		m_BufferImageCopyRegions[i].imageExtent = { pCopyDescs[i].m_TextureSize.m_Width, pCopyDescs[i].m_TextureSize.m_Height, pCopyDescs[i].m_TextureSize.m_Depth };
+		m_BufferImageCopyRegions[i].imageOffset = { pCopyDescs[i].m_TextureOffset.m_X, pCopyDescs[i].m_TextureOffset.m_Y, pCopyDescs[i].m_TextureOffset.m_Z };
 		m_BufferImageCopyRegions[i].imageSubresource.aspectMask = GetVkFormatMap(pSrc->GetDesc().m_Format).aspectFlags;
 		m_BufferImageCopyRegions[i].imageSubresource.mipLevel = pCopyDescs[i].m_Mip;
 		m_BufferImageCopyRegions[i].imageSubresource.baseArrayLayer = pCopyDescs[i].m_Layer;
@@ -1009,18 +999,19 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 	VkDependencyFlags dependencyFlags = 0;
 	for (auto i = 0u; i < barrierCount; i++)
 	{
-		if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kMemory)
+		bool isResourceOwnershipTransfer = pBarriers[i].m_pSrcContext && pBarriers[i].m_pDstContext;
+		if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kMemory && pBarriers[i].m_pBuffer == nullptr && pBarriers[i].m_pTexture == nullptr)
 		{
 			auto& barrier = m_MemoryBarriers.EmplaceBack(VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
+			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
 
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
+			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
 		else if (pBarriers[i].m_pBuffer)
@@ -1032,7 +1023,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.size = VK_WHOLE_SIZE;
 			//barrier.offset = 0;
 
-			if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kStateTransition)
+			if (!isResourceOwnershipTransfer)
 			{
 				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1041,7 +1032,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			{
 				auto pSrcContext = TO_VK(pBarriers[i].m_pSrcContext);
 				auto pDstContext = TO_VK(pBarriers[i].m_pDstContext);
-				BV_ASSERT(pSrcContext != pDstContext, "Command Types must be different for transition acquire/release");
+				BV_ASSERT(pSrcContext->GetGroupIndex() != pDstContext->GetGroupIndex(), "Command Types must be different for acquire/release transitions");
 				barrier.srcQueueFamilyIndex = pSrcContext->GetGroupIndex();
 				barrier.dstQueueFamilyIndex = pDstContext->GetGroupIndex();
 
@@ -1050,12 +1041,12 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
+			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
 
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
+			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
 		else if (pBarriers[i].m_pTexture)
@@ -1069,7 +1060,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.subresourceRange.baseArrayLayer = pBarriers[i].m_Subresource.firstLayer;
 			barrier.subresourceRange.layerCount = pBarriers[i].m_Subresource.layerCount;
 
-			if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kStateTransition)
+			if (!isResourceOwnershipTransfer)
 			{
 				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1078,7 +1069,7 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			{
 				auto pSrcContext = TO_VK(pBarriers[i].m_pSrcContext);
 				auto pDstContext = TO_VK(pBarriers[i].m_pDstContext);
-				BV_ASSERT(pSrcContext != pDstContext, "Command Types must be different for transition acquire/release");
+				BV_ASSERT(pSrcContext->GetGroupIndex() != pDstContext->GetGroupIndex(), "Command Types must be different for acquire/release transitions");
 				barrier.srcQueueFamilyIndex = pSrcContext->GetGroupIndex();
 				barrier.dstQueueFamilyIndex = pDstContext->GetGroupIndex();
 
@@ -1090,12 +1081,12 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.srcStageMask |= pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
+			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
 
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-			barrier.dstStageMask |= pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
+			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
 				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
 	}
@@ -1241,16 +1232,16 @@ void BvCommandBufferVk::SetMarker(const char* pName, const BvColor& color)
 
 void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
 {
-	if (desc.m_GeometryCount > desc.m_pBLAS->GetDesc().m_BLAS.m_GeometryCount)
+	if (desc.m_Geometries.Size() > desc.m_pBLAS->GetDesc().m_BLAS.m_Geometries.Size())
 	{
 		return;
 	}
 
 	auto pAS = TO_VK(desc.m_pBLAS);
 	auto& geoms = pAS->GetGeometries();
-	for (auto i = 0u; i < desc.m_GeometryCount; ++i)
+	for (auto i = 0u; i < desc.m_Geometries.Size(); ++i)
 	{
-		auto& srcGeometry = desc.m_pGeometries[i];
+		auto& srcGeometry = desc.m_Geometries[i];
 
 		// Try to find an index through the id; if not found,
 		// revert back to the current index in the loop
@@ -1315,7 +1306,7 @@ void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDe
 	barriers[0].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
 	barriers[0].srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 	barriers[0].dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-	barriers[0].buffer = TO_VK(pAS->GetBuffer())->GetHandle();
+	barriers[0].buffer = TO_VK(pAS)->GetBuffer();
 	barriers[0].size = VK_WHOLE_SIZE;
 
 	if (pPostBuildDesc && pPostBuildDesc->m_pDstBuffer)
@@ -1459,15 +1450,15 @@ void BvCommandBufferVk::FlushDescriptorSets()
 
 	u64 hashSeed = 0;
 	auto& srlDesc = m_pShaderResourceLayout->GetDesc();
-	for (auto i = 0u; i < srlDesc.m_ShaderResourceSetCount; ++i)
+	for (auto i = 0u; i < srlDesc.m_ShaderResourceSets.Size(); ++i)
 	{
-		auto& resourceSet = srlDesc.m_pShaderResourceSets[i];
+		auto& resourceSet = srlDesc.m_ShaderResourceSets[i];
 		u32 set = resourceSet.m_Index;
 		bool isSetDirty = rbs.IsDirty(set);
 
-		for (auto j = 0u; j < resourceSet.m_ResourceCount; ++j)
+		for (auto j = 0u; j < resourceSet.m_Resources.Size(); ++j)
 		{
-			auto& resource = resourceSet.m_pResources[j];
+			auto& resource = resourceSet.m_Resources[j];
 			for (auto arrayIndex = 0u; arrayIndex < resource.m_Count; arrayIndex++)
 			{
 				ResourceIdVk resId{ set, resource.m_Binding, arrayIndex };

@@ -112,7 +112,7 @@ void Fullscreen::OnShutdown()
 
 void Fullscreen::CreateShaderResourceLayout()
 {
-	ShaderResourceLayoutDesc layoutDesc{};
+	ShaderResourceLayoutCreateDesc layoutDesc{};
 	m_SRL = m_Device->CreateShaderResourceLayout(layoutDesc);
 }
 

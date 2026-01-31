@@ -13,7 +13,7 @@
     <ClInclude Include="Third Party\D3D12MemAlloc.h" />
     <ClInclude Include="BvTextureD3D12.h" />
     <ClInclude Include="BvBufferViewD3D12.h" />
-    <ClInclude Include="BvShaderResourceLayoutD3D12.h" />
+    <ClInclude Include="BvShaderResourceD3D12.h" />
     <ClInclude Include="BvPipelineStateD3D12.h" />
     <ClInclude Include="BvRenderPassD3D12.h" />
     <ClInclude Include="BvSamplerD3D12.h" />
@@ -25,6 +25,8 @@
     <ClInclude Include="BvCommandListD3D12.h" />
     <ClInclude Include="BvQueryD3D12.h" />
     <ClInclude Include="BvCommandAllocatorD3D12.h" />
+    <ClInclude Include="BvCommandQueueD3D12.h" />
+    <ClInclude Include="BvUtilsD3D12.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvCommonD3D12.cpp" />
@@ -36,7 +38,7 @@
     <ClCompile Include="Third Party\D3D12MemAlloc.cpp" />
     <ClCompile Include="BvTextureD3D12.cpp" />
     <ClCompile Include="BvBufferViewD3D12.cpp" />
-    <ClCompile Include="BvShaderResourceLayoutD3D12.cpp" />
+    <ClCompile Include="BvShaderResourceD3D12.cpp" />
     <ClCompile Include="BvPipelineStateD3D12.cpp" />
     <ClCompile Include="BvRenderPassD3D12.cpp" />
     <ClCompile Include="BvSamplerD3D12.cpp" />
@@ -48,5 +50,7 @@
     <ClCompile Include="BvCommandListD3D12.cpp" />
     <ClCompile Include="BvQueryD3D12.cpp" />
     <ClCompile Include="BvCommandAllocatorD3D12.cpp" />
+    <ClCompile Include="BvCommandQueueD3D12.cpp" />
+    <ClCompile Include="BvUtilsD3D12.cpp" />
   </ItemGroup>
 </Project>

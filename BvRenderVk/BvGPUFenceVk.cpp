@@ -1,14 +1,11 @@
 #include "BvGPUFenceVk.h"
 #include "BvRenderDeviceVk.h"
+#include "BvUtilsVk.h"
 
 
-BV_VK_DEVICE_RES_DEF(BvGPUFenceVk)
-
-
-BvGPUFenceVk::BvGPUFenceVk(BvRenderDeviceVk* pDevice, u64 initialValue, bool isTimeline)
-	: m_pDevice(pDevice)
+BvGPUFenceVk::BvGPUFenceVk(BvRenderDeviceVk* pDevice, VkSemaphore semaphore)
+	: m_pDevice(pDevice), m_Semaphore(semaphore)
 {
-	Create(initialValue, isTimeline);
 }
 
 
@@ -26,12 +23,17 @@ void BvGPUFenceVk::Signal(u64 value)
 	signalInfo.semaphore = m_Semaphore;
 	signalInfo.value = value;
 
-	vkSignalSemaphore(m_pDevice->GetHandle(), &signalInfo);
+	vkSignalSemaphore(*m_pDevice, &signalInfo);
 }
 
 
 bool BvGPUFenceVk::Wait(u64 value, u64 timeout /*= kU64Max*/)
 {
+	if (IsDone(value))
+	{
+		return true;
+	}
+
 	VkSemaphoreWaitInfo waitInfo{};
 	waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
 	//waitInfo.pNext = nullptr;
@@ -40,7 +42,7 @@ bool BvGPUFenceVk::Wait(u64 value, u64 timeout /*= kU64Max*/)
 	waitInfo.pSemaphores = &m_Semaphore;
 	waitInfo.pValues = &value;
 
-	auto result = vkWaitSemaphores(m_pDevice->GetHandle(), &waitInfo, timeout);
+	auto result = vkWaitSemaphores(*m_pDevice, &waitInfo, timeout);
 
 	return result == VK_SUCCESS ? true : false;
 }
@@ -55,27 +57,9 @@ bool BvGPUFenceVk::IsDone(u64 value)
 u64 BvGPUFenceVk::GetCompletedValue()
 {
 	u64 value{};
-	auto result = vkGetSemaphoreCounterValue(m_pDevice->GetHandle(), m_Semaphore, &value);
+	auto result = vkGetSemaphoreCounterValue(*m_pDevice, m_Semaphore, &value);
 
 	return value;
-}
-
-
-void BvGPUFenceVk::Create(u64 initialValue, bool isTimelineSemaphore)
-{
-	VkSemaphoreTypeCreateInfo timelineCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
-	if (isTimelineSemaphore) [[likely]]
-	{
-		//timelineCreateInfo.pNext = nullptr;
-		timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-		timelineCreateInfo.initialValue = initialValue;
-	}
-
-	VkSemaphoreCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	createInfo.pNext = isTimelineSemaphore ? &timelineCreateInfo : nullptr;
-
-	auto result = vkCreateSemaphore(m_pDevice->GetHandle(), &createInfo, nullptr, &m_Semaphore);
 }
 
 
@@ -83,7 +67,7 @@ void BvGPUFenceVk::Destroy()
 {
 	if (m_Semaphore)
 	{
-		vkDestroySemaphore(m_pDevice->GetHandle(), m_Semaphore, nullptr);
+		VkHelpers::DestroyDeviceObject(*m_pDevice, m_Semaphore);
 		m_Semaphore = VK_NULL_HANDLE;
 	}
 }

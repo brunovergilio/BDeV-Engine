@@ -93,6 +93,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Common.h" />
     <ClInclude Include="FPSCounter.h" />
     <ClInclude Include="SampleBase.h" />
     <ClInclude Include="Third Party\imconfig.h" />

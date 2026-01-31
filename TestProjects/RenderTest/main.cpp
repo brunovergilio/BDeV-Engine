@@ -100,7 +100,7 @@ int main()
 	pFNCreateRenderEngine engineFn = renderDxLib.GetProcAddressT<pFNCreateRenderEngine>("CreateRenderEngine");
 
 	IBvRenderEngine* pEngine = engineFn();
-	IBvRenderDevice* pDevice = pEngine->CreateRenderDevice(BvRenderDeviceCreateDesc());
+	IBvRenderDevice* pDevice = pEngine->CreateRenderDevice(RenderDeviceDesc());
 
 	BvKeyboard keyboard;
 	auto pKeyboard = &keyboard;
@@ -125,7 +125,7 @@ int main()
 	setDesc.m_Index = 0;
 	setDesc.m_ResourceCount = 1;
 	setDesc.m_pResources = &resourceDesc;
-	ShaderResourceLayoutDesc layoutDesc;
+	ShaderResourceLayoutCreateDesc layoutDesc;
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
 	IBvShaderResourceLayout* pShaderResourceLayout = pDevice->CreateShaderResourceLayout(layoutDesc);
@@ -259,7 +259,7 @@ int main()
 
 IBvShader* GetVS(IBvRenderDevice* pDevice)
 {
-	ShaderCreateDesc shaderDesc;
+	ShaderSourceDesc shaderDesc;
 	shaderDesc.m_ShaderStage = ShaderStage::kVertex;
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	shaderDesc.m_pSourceCode = pVSShader2;
@@ -279,7 +279,7 @@ IBvShader* GetVS(IBvRenderDevice* pDevice)
 
 IBvShader* GetPS(IBvRenderDevice* pDevice)
 {
-	ShaderCreateDesc shaderDesc;
+	ShaderSourceDesc shaderDesc;
 	shaderDesc.m_ShaderStage = ShaderStage::kPixelOrFragment;
 	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
 	shaderDesc.m_pSourceCode = pPSShader2;

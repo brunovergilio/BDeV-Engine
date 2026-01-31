@@ -26,13 +26,14 @@ public:
 	explicit BvVector(IBvMemoryArena* pArena, size_t reserveSize = 0); // Allocator
 	explicit BvVector(const size_t size, const Type & val = Type(), IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Fill
 	explicit BvVector(Iterator start, Iterator end, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Range
+	explicit BvVector(size_t size, const Type* pElements, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Range
 	BvVector(std::initializer_list<Type> list, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Initializer List
-	BvVector(const BvVector & rhs); // Copy
-	BvVector(BvVector && rhs) noexcept; // Move
+	BvVector(const BvVector& rhs); // Copy
+	BvVector(BvVector&& rhs) noexcept; // Move
 
-	BvVector& operator =(const BvVector & rhs); // Copy Assignment
-	BvVector& operator =(BvVector && rhs) noexcept; // Move Assignment
-	BvVector& operator =(std::initializer_list<Type> list); // Copy Assignment
+	BvVector& operator=(const BvVector& rhs); // Copy Assignment
+	BvVector& operator=(BvVector&& rhs) noexcept; // Move Assignment
+	BvVector& operator=(std::initializer_list<Type> list); // Copy Assignment
 
 	~BvVector();
 
@@ -77,6 +78,7 @@ public:
 
 	// Modifiers
 	void Assign(Iterator start, Iterator end); // Range
+	void Assign(size_t size, const Type* pElements); // Range
 	void Assign(const size_t size, const Type & val); // Fill
 	void Assign(std::initializer_list<Type> list); // Initializer List
 	Type& PushBack(const Type & value);
@@ -107,6 +109,8 @@ public:
 	Type& EmplaceBack(Args&&... args);
 	size_t Find(const Type& value) const;
 	bool Contains(const Type& value) const;
+	friend bool operator==(const BvVector& lhs, const BvVector& rhs);
+	friend bool operator!=(const BvVector& lhs, const BvVector& rhs) { return !(lhs == rhs); }
 
 private:
 	void Grow(const size_t size);
@@ -152,6 +156,13 @@ inline BvVector<Type>::BvVector(Iterator start, Iterator end, IBvMemoryArena* pA
 	Assign(start, end);
 }
 
+template<typename Type>
+inline BvVector<Type>::BvVector(size_t size, const Type* pElements, IBvMemoryArena* pArena)
+	: m_pArena(pArena)
+{
+	Assign(size, pElements);
+}
+
 
 template<typename Type>
 inline BvVector<Type>::BvVector(std::initializer_list<Type> list, IBvMemoryArena* pArena)
@@ -162,7 +173,7 @@ inline BvVector<Type>::BvVector(std::initializer_list<Type> list, IBvMemoryArena
 
 
 template<typename Type>
-inline BvVector<Type>::BvVector(const BvVector & rhs)
+inline BvVector<Type>::BvVector(const BvVector& rhs)
 	: m_pArena(rhs.m_pArena)
 {
 	Grow(rhs.m_Size);
@@ -175,7 +186,7 @@ inline BvVector<Type>::BvVector(const BvVector & rhs)
 
 
 template<typename Type>
-inline BvVector<Type>::BvVector(BvVector && rhs) noexcept
+inline BvVector<Type>::BvVector(BvVector&& rhs) noexcept
 	: m_pData(rhs.m_pData), m_pArena(rhs.m_pArena), m_Size(rhs.m_Size), m_Capacity(rhs.m_Capacity)
 {
 	rhs.m_pData = nullptr;
@@ -186,7 +197,7 @@ inline BvVector<Type>::BvVector(BvVector && rhs) noexcept
 
 
 template<typename Type>
-inline BvVector<Type>& BvVector<Type>::operator=(const BvVector & rhs)
+inline BvVector<Type>& BvVector<Type>::operator=(const BvVector& rhs)
 {
 	if (this != &rhs)
 	{
@@ -205,7 +216,7 @@ inline BvVector<Type>& BvVector<Type>::operator=(const BvVector & rhs)
 
 
 template<typename Type>
-inline BvVector<Type>& BvVector<Type>::operator=(BvVector && rhs) noexcept
+inline BvVector<Type>& BvVector<Type>::operator=(BvVector&& rhs) noexcept
 {
 	if (this != &rhs)
 	{
@@ -415,6 +426,21 @@ inline void BvVector<Type>::Assign(Iterator start, Iterator end)
 	for (auto it = start; it != end; it++)
 	{
 		PushBack(*it);
+	}
+}
+
+template<typename Type>
+inline void BvVector<Type>::Assign(size_t size, const Type* pElements)
+{
+	BV_ASSERT(pElements, "Invalid pointer");
+
+	Clear();
+
+	Grow(size);
+
+	for (auto i = 0; i < size; ++i)
+	{
+		PushBack(pElements[i]);
 	}
 }
 
@@ -816,6 +842,25 @@ template<typename Type>
 inline bool BvVector<Type>::Contains(const Type& value) const
 {
 	return Find(value) != kInvalidPos;
+}
+
+template<typename Type>
+bool operator==(const BvVector<Type>& lhs, const BvVector<Type>& rhs)
+{
+	if (lhs.Size() != rhs.Size())
+	{
+		return false;
+	}
+
+	for (auto i = 0; i < lhs.Size(); ++i)
+	{
+		if (lhs[i] != rhs[i])
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 template<typename Type>

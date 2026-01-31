@@ -15,13 +15,8 @@ BvDDSTextureLoader::~BvDDSTextureLoader()
 }
 
 
-IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromFile(const char* pFilename, const BvUUID& objId, void** ppObj)
+IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromFileImpl(const char* pFilename, void** ppObj)
 {
-	if (!ppObj || (objId != BV_OBJECT_ID(BvTextureBlob) && objId != BV_OBJECT_ID(IBvTextureBlob)))
-	{
-		return IBvTextureLoader::Result::kBadPointer;
-	}
-
 	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
@@ -44,7 +39,7 @@ IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromFile(const char* pFi
 }
 
 
-IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromMemory(const void* pBuffer, u64 bufferSize, const BvUUID& objId, void** ppObj)
+IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureFromMemoryImpl(const void* pBuffer, u64 bufferSize, void** ppObj)
 {
 	if (!ppObj)
 	{
@@ -73,16 +68,10 @@ IBvTextureLoader::Result BvDDSTextureLoader::LoadTextureInternal(BvVector<u8>& b
 	auto result = LoadDDSTexture(buffer.Data(), buffer.Size(), textureInfo, subresources);
 	if (result == IBvTextureLoader::Result::kOk)
 	{
-		pTextureBlob = BV_NEW(BvTextureBlob)(buffer, textureInfo, subresources);
+		pTextureBlob = BV_RC_CREATE(BvTextureBlob, buffer, textureInfo, subresources);
 	}
 
 	return result;
-}
-
-
-void BvDDSTextureLoader::SelfDestroy()
-{
-	BV_DELETE(this);
 }
 
 
@@ -90,14 +79,9 @@ namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API bool CreateDDSTextureLoader(const BvUUID& objId, void** ppObj)
+		BV_API bool CreateDDSTextureLoader(void** ppObj)
 		{
-			if (!ppObj || (objId != BV_OBJECT_ID(BvDDSTextureLoader) && objId != BV_OBJECT_ID(IBvTextureLoader)))
-			{
-				return false;
-			}
-
-			*ppObj = BV_NEW(BvDDSTextureLoader)();
+			*ppObj = BV_RC_CREATE(BvDDSTextureLoader);
 			return true;
 		}
 	}

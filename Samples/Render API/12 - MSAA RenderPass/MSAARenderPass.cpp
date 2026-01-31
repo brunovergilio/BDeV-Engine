@@ -184,7 +184,7 @@ void MSAARenderPass::CreateShaderResourceLayout()
 	setDesc.m_ResourceCount = 1;
 	setDesc.m_pResources = &resourceDesc;
 
-	ShaderResourceLayoutDesc layoutDesc{};
+	ShaderResourceLayoutCreateDesc layoutDesc{};
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
 

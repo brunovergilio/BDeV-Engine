@@ -76,22 +76,6 @@ BV_ROBJECT() class TestStruct2 : public TestStruct
 	int f;
 };
 
-
-BV_RENUM() enum abc
-{
-	kConst1,
-	kConst2
-};
-
-
-struct bcd
-{
-	const char* p1;
-};
-void bcdf1(bcd& b) { b.p1 = BV_FUNCTION; }
-void bcdf2(bcd& b) { b.p1 = BV_FUNCTION; }
-
-
 struct A
 {
 	A() {}
@@ -106,9 +90,9 @@ struct alignas(64) MyStruct
 	char c[64];
 };
 
-constexpr BvUUID fa1 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a562ba2b");
-constexpr BvUUID fa2 = MakeUUIDv4("7b134b6e-b092-465f-9c00-a127a562ba2b");
-constexpr BvUUID fa3 = MakeUUIDv4("7b134b6e-b092-465f-9c00-af77a5cdba2b");
+constexpr BvUUID fa1 = MakeUUID("7b134b6e-b092-465f-9c00-af77a562ba2b");
+constexpr BvUUID fa2 = MakeUUID("7b134b6e-b092-465f-9c00-a127a562ba2b");
+constexpr BvUUID fa3 = MakeUUID("7b134b6e-b092-465f-9c00-af77a5cdba2b");
 
 
 #include <iostream>
@@ -124,15 +108,17 @@ BvAdaptiveMutex am;
 BvMutex mm;
 
 
+
 int main()
 {
-	BvConsole::Print(BvColorI(0, 100, 182), BvColorI(0, 0, 0), "fasf {}\n", 123);
+	srand(time(nullptr));
+	int n = rand();
+	BvConsole::Print(BvColorI(0, 100, 182), BvColorI(0, 0, 0), "fasf {}\n", n);
 	BvConsole::Print(BvColorI(0, 255, 0), "fasf {}\n", 123);
 	BvConsole::Println("afasfsf {} {}", 123, 545);
 	//std::print("\033[38;2;{};{};{}m", 0, 172, 0);
 	//std::println("fabf");
 	//std::print("\033[0m");
-	//int n = rand();
 	//char p[32];
 	//scanf("%s", p);
 	//char buf[64];

@@ -3,13 +3,10 @@
 #include "BvTypeConversionsD3D12.h"
 
 
-BV_D3D12_DEVICE_RES_DEF(BvBufferD3D12);
-
-
-BvBufferD3D12::BvBufferD3D12(BvRenderDeviceD3D12* pDevice, const BufferDesc& bufferDesc, const BufferInitData* pInitData)
-	: m_pDevice(pDevice), m_BufferDesc(bufferDesc)
+BvBufferD3D12::BvBufferD3D12(BvRenderDeviceD3D12* pDevice, const BufferDesc& bufferDesc, ComPtr<ID3D12Resource>& resource,
+	ComPtr<D3D12MA::Allocation>& allocation, void* pMappedMemory)
+	: m_pDevice(pDevice), m_BufferDesc(bufferDesc), m_Buffer(std::move(resource)), m_Allocation(std::move(allocation)), m_pMapped(pMappedMemory)
 {
-	Create(pInitData);
 }
 
 
@@ -51,76 +48,6 @@ void BvBufferD3D12::Unmap()
 }
 
 
-void BvBufferD3D12::Create(const BufferInitData* pInitData)
-{
-	HRESULT hr = S_OK;
-
-	u64 alignedSize = m_BufferDesc.m_Size;
-	if (EHasFlag(m_BufferDesc.m_UsageFlags, BufferUsage::kConstantBuffer))
-	{
-		alignedSize = RoundToNearestPowerOf2(alignedSize, u64(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
-	}
-
-	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize, GetD3D12ResourceFlags(m_BufferDesc.m_UsageFlags));
-
-	D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_COMMON;
-
-	D3D12MA::ALLOCATION_DESC allocationDesc{};
-	allocationDesc.HeapType = GetD3D12HeapType(m_BufferDesc.m_MemoryType);
-	if (allocationDesc.HeapType == D3D12_HEAP_TYPE_UPLOAD)
-	{
-		resourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
-	}
-	else if (allocationDesc.HeapType == D3D12_HEAP_TYPE_READBACK)
-	{
-		resourceState = D3D12_RESOURCE_STATE_COPY_DEST;
-		resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-	}
-
-	auto pAllocator = m_pDevice->GetAllocator();
-	auto pDevice = m_pDevice->GetHandle();
-	D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = pDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
-	hr = pAllocator->AllocateMemory(&allocationDesc, &allocationInfo, &m_Allocation);
-	if (FAILED(hr))
-	{
-		// TODO: Handle error
-	}
-
-	hr = pDevice->CreatePlacedResource(m_Allocation->GetHeap(), m_Allocation->GetOffset(), &resourceDesc, resourceState, nullptr, IID_PPV_ARGS(&m_Buffer));
-	if (FAILED(hr))
-	{
-		m_Allocation = nullptr;
-		// TODO: Handle error
-	}
-
-	if (m_BufferDesc.m_MemoryType != MemoryType::kDevice)
-	{
-		if (EHasFlag(m_BufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped))
-		{
-			Map(alignedSize, 0);
-		}
-
-		if (pInitData)
-		{
-			if (!m_pMapped)
-			{
-				Map(alignedSize, 0);
-			}
-			memcpy(m_pMapped, pInitData->m_pData, std::min(alignedSize, pInitData->m_Size));
-
-			if (!EHasFlag(m_BufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped))
-			{
-				Unmap();
-			}
-		}
-	}
-	else
-	{
-		CopyInitDataToGPU(pInitData);
-	}
-}
-
-
 void BvBufferD3D12::Destroy()
 {
 	if (m_Buffer)
@@ -128,10 +55,4 @@ void BvBufferD3D12::Destroy()
 		m_Buffer = nullptr;
 		m_Allocation = nullptr;
 	}
-}
-
-
-void BvBufferD3D12::CopyInitDataToGPU(const BufferInitData* pInitData)
-{
-	BV_ASSERT(false, "Not implemented");
 }

@@ -9,59 +9,32 @@
 #include "BvShaderBindingTableVk.h"
 #include "BvBufferVk.h"
 #include "BvTextureVk.h"
-
-
-BvFrameDataVk::BvFrameDataVk()
-{
-}
+#include "BvUtilsVk.h"
 
 
 BvFrameDataVk::BvFrameDataVk(BvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData)
 	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_FrameIndex(frameIndex),
 	m_pContextData(pContextData)
 {
-	pDevice->CreateFence(0, &m_pFence);
-	BV_ASSERT(m_pFence->IsValid(), "Fence has to be valid");
-}
+	auto result = VkHelpers::CreateSemaphore(pDevice, {});
+	BV_ASSERT(result.first == VK_SUCCESS, "Couldn't create fence for BvFrameDataVk");
 
-
-BvFrameDataVk::BvFrameDataVk(BvFrameDataVk&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvFrameDataVk& BvFrameDataVk::operator=(BvFrameDataVk&& rhs) noexcept
-{
-	m_pDevice = rhs.m_pDevice;
-	std::swap(m_CommandPool, rhs.m_CommandPool);
-	std::swap(m_CommandBuffers, rhs.m_CommandBuffers);
-	std::swap(m_pContextData, rhs.m_pContextData);
-	m_pFence = rhs.m_pFence;
-	std::swap(m_Queries, rhs.m_Queries);
-	m_SignaValueIndex = rhs.m_SignaValueIndex;
-	m_FrameIndex = rhs.m_FrameIndex;
-
-	return *this;
+	auto pFence = BV_RC_CREATE(BvGPUFenceVk, pDevice, result.second);
+	m_pFence.Attach(pFence);
 }
 
 
 BvFrameDataVk::~BvFrameDataVk()
 {
-	if (m_pFence)
-	{
-		m_pFence->Release();
-		m_pFence = nullptr;
-	}
 }
 
 
-void BvFrameDataVk::Reset(bool resetQueries)
+void BvFrameDataVk::Reset(bool newFrame)
 {
-	m_pFence->Wait(m_SignaValueIndex.first);
-
-	if (resetQueries)
+	if (newFrame)
 	{
+		m_pFence->Wait(m_FenceValue);
+
 		if (m_Queries.Size() > 0)
 		{
 			m_pContextData->m_pQueryHeapManager->Reset(m_FrameIndex);
@@ -92,7 +65,7 @@ BvCommandBufferVk* BvFrameDataVk::RequestCommandBuffer()
 
 VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless)
 {
-	auto srlHash = MurmurHash64A(&pLayout->GetSetLayoutHandles().At(set), sizeof(VkDescriptorSetLayout));
+	auto srlHash = (u64)pLayout->GetSetLayoutHandles()[set];
 	auto& pool = m_pContextData->m_DescriptorPools[srlHash];
 	if (!pool.IsValid())
 	{
@@ -103,19 +76,19 @@ VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResou
 
 	if (bindless)
 	{
-		auto result = m_pContextData->m_BindlessDescriptorSets.Emplace(srlHash, BvDescriptorSetVk());
+		auto result = m_pContextData->m_BindlessDescriptorSets.Emplace(srlHash, VK_NULL_HANDLE);
 		if (result.second)
 		{
-			result.first->second = BvDescriptorSetVk(m_pDevice, pool.Allocate());
+			result.first->second = pool.Allocate();
 		}
 
 		for (auto& writeSet : writeSets)
 		{
-			writeSet.dstSet = result.first->second.GetHandle();
+			writeSet.dstSet = result.first->second;
 		}
-		result.first->second.Update(writeSets);
+		vkUpdateDescriptorSets(m_pDevice->GetHandle(), (u32)writeSets.Size(), writeSets.Data(), 0, nullptr);
 
-		descriptorSet = result.first->second.GetHandle();
+		descriptorSet = result.first->second;
 	}
 	else
 	{
@@ -125,34 +98,23 @@ VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResou
 			HashCombine(descriptorSetHash, writeSet);
 		}
 
-		auto result = m_pContextData->m_DescriptorSets.Emplace(descriptorSetHash, BvDescriptorSetVk());
+		auto result = m_pContextData->m_DescriptorSets.Emplace(descriptorSetHash, VK_NULL_HANDLE);
 		if (result.second)
 		{
-			result.first->second = BvDescriptorSetVk(m_pDevice, pool.Allocate());
+			result.first->second = pool.Allocate();
+			
 			for (auto& writeSet : writeSets)
 			{
-				writeSet.dstSet = result.first->second.GetHandle();
+				writeSet.dstSet = result.first->second;
 			}
-			result.first->second.Update(writeSets);
+			vkUpdateDescriptorSets(m_pDevice->GetHandle(), (u32)writeSets.Size(), writeSets.Data(), 0, nullptr);
 		}
 
-		descriptorSet = result.first->second.GetHandle();
+
+		descriptorSet = result.first->second;
 	}
 
 	return descriptorSet;
-}
-
-
-void BvFrameDataVk::UpdateSignalIndex()
-{
-	m_SignaValueIndex.second++;
-}
-
-
-void BvFrameDataVk::UpdateSignalValue()
-{
-	m_SignaValueIndex.first += m_SignaValueIndex.second;
-	m_SignaValueIndex.second = 0;
 }
 
 
@@ -182,44 +144,46 @@ void BvFrameDataVk::RemoveFramebuffers(VkImageView view)
 
 void BvFrameDataVk::UpdateQueryData()
 {
-	auto value = m_SignaValueIndex.first + m_SignaValueIndex.second;
 	for (auto i = m_UpdatedQueries; i < m_Queries.Size(); ++i, ++m_UpdatedQueries)
 	{
-		m_Queries[i]->SetFenceData(m_pFence, value);
+		m_Queries[i]->SetFenceData(m_pFence, m_FenceValue);
 		m_Queries[i]->SetLatestFrameIndex(m_FrameIndex);
 	}
 }
 
 
-BV_VK_DEVICE_RES_DEF(BvCommandContextVk)
-
-
 BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, u32 queueFamilyIndex, u32 queueIndex)
-	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyIndex, queueIndex), m_ContextGroupIndex(queueFamilyIndex), m_ContextIndex(queueIndex)
+	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyIndex, queueIndex), m_ContextGroupIndex(queueFamilyIndex), m_ContextIndex(queueIndex),
+	m_FrameCount(frameCount)
 {
-	u32 querySizes[kQueryTypeCount];
-	for (auto& querySize : querySizes)
-	{
-		querySize = 2;
-	}
+	auto pQuerySizes = m_pDevice->GetQueryPoolSizes();
 	m_pContextData = BV_NEW(ContextDataVk)();
-	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, querySizes, frameCount);
+	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, pQuerySizes, frameCount);
+
 	if (pDevice->GetGPUInfo().m_ContextGroups[queueFamilyIndex].SupportsCommandType(CommandType::kGraphics))
 	{
+		auto asQueryPoolSize = m_pDevice->GetAccelerationStructureQueryPoolSize();
 		m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
-		m_pContextData->m_pASQueries = BV_NEW(BvQueryASVk)(pDevice, querySizes[0], frameCount, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR);
+		m_pContextData->m_pASQueries = BV_NEW(BvQueryASVk)(pDevice, asQueryPoolSize, frameCount, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR);
 	}
 
-	m_Frames.Reserve(frameCount);
-	for (auto i = 0; i < frameCount; ++i)
+	auto pFrameData = reinterpret_cast<u8*>(BV_ALLOC(sizeof(BvFrameDataVk) * m_FrameCount, alignof(BvFrameDataVk)));
+	for (auto i = 0; i < m_FrameCount; ++i)
 	{
-		m_Frames.EmplaceBack(pDevice, queueFamilyIndex, i, m_pContextData);
+		new(pFrameData + i * sizeof(BvFrameDataVk)) BvFrameDataVk(pDevice, queueFamilyIndex, i, m_pContextData);
 	}
+	m_pFrames = reinterpret_cast<BvFrameDataVk*>(pFrameData);
 }
 
 
 BvCommandContextVk::~BvCommandContextVk()
 {
+	for (auto i = 0; i < m_FrameCount; ++i)
+	{
+		m_pFrames[i].~BvFrameDataVk();
+	}
+	BV_FREE(m_pFrames);
+
 	BV_DELETE(m_pContextData->m_pFramebufferManager);
 	BV_DELETE(m_pContextData->m_pQueryHeapManager);
 	BV_DELETE(m_pContextData->m_pASQueries);
@@ -235,7 +199,7 @@ void BvCommandContextVk::NewCommandList()
 	}
 
 	// Get command buffer
-	m_pCurrCommandBuffer = m_Frames[m_ActiveFrameIndex].RequestCommandBuffer();
+	m_pCurrCommandBuffer = m_pFrames[m_ActiveFrameIndex].RequestCommandBuffer();
 }
 
 
@@ -261,16 +225,13 @@ void BvCommandContextVk::Execute()
 		m_pCurrCommandBuffer->End();
 	}
 	
-	// Update semaphore value
-	m_Frames[m_ActiveFrameIndex].UpdateSignalIndex();
-	auto [signalValue, index] = m_Frames[m_ActiveFrameIndex].GetSemaphoreValueIndex();
-	auto& commandBuffers = m_Frames[m_ActiveFrameIndex].GetCommandBuffers();
-	auto pFence = m_Frames[m_ActiveFrameIndex].GetGPUFence();
-	auto semaphoreValue = signalValue + index;
+	auto& commandBuffers = m_pFrames[m_ActiveFrameIndex].GetCommandBuffers();
+	auto pFence = m_pFrames[m_ActiveFrameIndex].GetGPUFence();
+	auto semaphoreValue = m_pFrames[m_ActiveFrameIndex].UpdateFenceValue();
 	m_Queue.Submit(commandBuffers, pFence->GetHandle(), semaphoreValue);
 
-	m_Frames[m_ActiveFrameIndex].ClearActiveCommandBuffers();
-	m_Frames[m_ActiveFrameIndex].UpdateQueryData();
+	m_pFrames[m_ActiveFrameIndex].ClearActiveCommandBuffers();
+	m_pFrames[m_ActiveFrameIndex].UpdateQueryData();
 
 	m_pCurrCommandBuffer = nullptr;
 }
@@ -282,9 +243,7 @@ void BvCommandContextVk::ExecuteAndWait()
 
 	m_Queue.WaitIdle();
 
-	m_Frames[m_ActiveFrameIndex].UpdateSignalValue();
-
-	m_Frames[m_ActiveFrameIndex].Reset(false);
+	m_pFrames[m_ActiveFrameIndex].Reset(false);
 }
 
 
@@ -293,9 +252,6 @@ void BvCommandContextVk::FlushFrame()
 	// Sanity check
 	BV_ASSERT(m_pCurrCommandBuffer == nullptr, "All command buffers must have been submitted");
 
-	// Update the signal value
-	m_Frames[m_ActiveFrameIndex].UpdateSignalValue();
-
 	// Update swap chains' fences
 	for (auto& pSwapChain : m_SwapChains)
 	{
@@ -303,10 +259,10 @@ void BvCommandContextVk::FlushFrame()
 	}
 
 	// Get next frame
-	m_ActiveFrameIndex = (m_ActiveFrameIndex + 1) % (u32)m_Frames.Size();
+	m_ActiveFrameIndex = (m_ActiveFrameIndex + 1) % m_FrameCount;
 
 	// Wait for frame's signal value
-	m_Frames[m_ActiveFrameIndex].Reset();
+	m_pFrames[m_ActiveFrameIndex].Reset();
 
 	// Get swap chains ready
 	for (auto& pSwapChain : m_SwapChains)
@@ -393,21 +349,21 @@ void BvCommandContextVk::SetRWStructuredBuffers(u32 count, const IBvBufferView* 
 }
 
 
-void BvCommandContextVk::SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+void BvCommandContextVk::SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
-	m_pCurrCommandBuffer->SetDynamicConstantBuffers(count, ppResources, pOffsets, set, binding, startIndex);
+	m_pCurrCommandBuffer->SetDynamicConstantBuffer(pResource, offset, set, binding);
 }
 
 
-void BvCommandContextVk::SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+void BvCommandContextVk::SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
-	m_pCurrCommandBuffer->SetDynamicStructuredBuffers(count, ppResources, pOffsets, set, binding, startIndex);
+	m_pCurrCommandBuffer->SetDynamicStructuredBuffer(pResource, offset, set, binding);
 }
 
 
-void BvCommandContextVk::SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex)
+void BvCommandContextVk::SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
-	m_pCurrCommandBuffer->SetDynamicRWStructuredBuffers(count, ppResources, pOffsets, set, binding, startIndex);
+	m_pCurrCommandBuffer->SetDynamicRWStructuredBuffer(pResource, offset, set, binding);
 }
 
 
@@ -483,9 +439,9 @@ void BvCommandContextVk::SetStencilRef(u32 stencilRef)
 }
 
 
-void BvCommandContextVk::SetBlendConstants(const float(pColors[4]))
+void BvCommandContextVk::SetBlendConstants(const float(&colors)[4])
 {
-	m_pCurrCommandBuffer->SetBlendConstants(pColors);
+	m_pCurrCommandBuffer->SetBlendConstants(colors);
 }
 
 
@@ -755,9 +711,9 @@ void BvCommandContextVk::RemoveSwapChain(BvSwapChainVk* pSwapChain)
 
 void BvCommandContextVk::RemoveFramebuffers(VkImageView view)
 {
-	for (auto& frame : m_Frames)
+	for (auto i = 0; i < m_FrameCount; ++i)
 	{
-		frame.RemoveFramebuffers(view);
+		m_pFrames[i].RemoveFramebuffers(view);
 	}
 }
 

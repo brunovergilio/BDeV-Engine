@@ -28,6 +28,9 @@ enum class WindowActivationType : u8
 };
 
 
+class BvMonitor;
+
+
 struct WindowDesc
 {
 	const char* m_pText = nullptr;
@@ -46,5 +49,5 @@ struct WindowDesc
 	//bool m_HasTransparency = true;
 	bool m_Fullscreen = false;
 	WindowState m_WindowState = WindowState::kDefault;
-	class BvMonitor* m_pMonitor = nullptr;
+	BvMonitor* m_pMonitor = nullptr;
 };

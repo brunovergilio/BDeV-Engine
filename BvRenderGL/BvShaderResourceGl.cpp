@@ -1,7 +1,7 @@
 #include "BvShaderResourceGl.h"
 
 
-BvShaderResourceLayoutGl::BvShaderResourceLayoutGl(const BvRenderDeviceGl& device, const ShaderResourceLayoutDesc& shaderResourceLayoutDesc)
+BvShaderResourceLayoutGl::BvShaderResourceLayoutGl(const BvRenderDeviceGl& device, const ShaderResourceLayoutCreateDesc& shaderResourceLayoutDesc)
 	: IBvShaderResourceLayout(shaderResourceLayoutDesc), m_Device(device)
 {
 }

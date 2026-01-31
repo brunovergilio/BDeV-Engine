@@ -23,12 +23,8 @@ struct QueryDataD3D12
 };
 
 
-BV_OBJECT_DEFINE_ID(BvQueryD3D12, "842f2026-34c0-471f-a6fc-4f3a639bdab9");
 class BvQueryD3D12 final : public IBvQuery, public IBvResourceD3D12
 {
-	BV_NOCOPYMOVE(BvQueryD3D12);
-	BV_D3D12_DEVICE_RES_DECL;
-
 public:
 	BvQueryD3D12(BvRenderDeviceD3D12* pDevice, QueryType queryType, u32 frameCount);
 	~BvQueryD3D12();
@@ -51,9 +47,7 @@ private:
 	QueryType m_QueryType = QueryType::kTimestamp;
 	u32 m_LatestResultIndex = 0;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvQueryD3D12);
-
-
+BV_OBJECT_DEFINE_ID(BvQueryD3D12, "842f2026-34c0-471f-a6fc-4f3a639bdab9");
 BV_CREATE_CAST_TO_D3D12(BvQuery)
 
 

@@ -5,9 +5,9 @@
 
 struct Vertex
 {
-	Float3 pos;
-	Float4 color;
-	Float3 normal;
+	XMFLOAT3 pos;
+	XMFLOAT4 color;
+	XMFLOAT3 normal;
 };
 
 
@@ -92,8 +92,7 @@ void Buffers::OnUpdate()
 	{
 		angleZ = 0.0f;
 	}
-	Store44(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ)
-		* m_Camera.GetViewProj(), m_pWVP->m);
+	XMStoreFloat4x4(m_pWVP, XMMatrixRotationX(angleX) * XMMatrixRotationY(angleY) * XMMatrixRotationZ(angleZ) * m_Camera.GetViewProj());
 }
 
 
@@ -101,6 +100,7 @@ void Buffers::OnRender()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
+
 	RenderTargetDesc targets[] =
 	{
 		RenderTargetDesc::AsSwapChain(m_SwapChain->GetCurrentTextureView(), { 0.1f, 0.1f, 0.3f }),
@@ -123,6 +123,11 @@ void Buffers::OnRender()
 
 	m_SwapChain->Present(false);
 
+	if (m_Depth->GetDesc().m_Size != Extent3D{ width, height, 1 })
+	{
+		CreateRenderTargets();
+	}
+
 	m_Context->FlushFrame();
 }
 
@@ -143,15 +148,8 @@ void Buffers::OnShutdown()
 
 void Buffers::CreateShaderResourceLayout()
 {
-	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
-
-	ShaderResourceSetDesc setDesc{};
-	setDesc.m_ResourceCount = 1;
-	setDesc.m_pResources = &resourceDesc;
-
-	ShaderResourceLayoutDesc layoutDesc{};
-	layoutDesc.m_ShaderResourceSetCount = 1;
-	layoutDesc.m_pShaderResourceSets = &setDesc;
+	ShaderResourceLayoutCreateDesc layoutDesc;
+	layoutDesc.AddResourceSet(0).AddConstantBuffer(0, ShaderStage::kVertex);
 
 	m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 }
@@ -162,8 +160,7 @@ void Buffers::CreatePipeline()
 	auto vs = CompileShader(g_pVSShader, g_VSSize, ShaderStage::kVertex);
 	auto ps = CompileShader(g_pPSShader, g_PSSize, ShaderStage::kPixelOrFragment);
 	GraphicsPipelineStateDesc pipelineDesc;
-	pipelineDesc.m_Shaders[0] = vs;
-	pipelineDesc.m_Shaders[1] = ps;
+	pipelineDesc.AddShader(vs).AddShader(ps);
 	pipelineDesc.m_RenderTargetFormats[0] = m_SwapChain->GetDesc().m_Format;
 	pipelineDesc.m_DepthStencilFormat = m_DepthView->GetDesc().m_Format;
 	pipelineDesc.m_DepthStencilDesc.m_DepthTestEnable = true;
@@ -171,12 +168,7 @@ void Buffers::CreatePipeline()
 	pipelineDesc.m_DepthStencilDesc.m_DepthOp = CompareOp::kLessEqual;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-	VertexInputDesc inputDescs[2];
-	inputDescs[0].m_Format = Format::kRGB32_Float;
-	inputDescs[1].m_Format = Format::kRGBA32_Float;
-
-	pipelineDesc.m_VertexInputDescCount = 2;
-	pipelineDesc.m_pVertexInputDescs = inputDescs;
+	pipelineDesc.AddVertexInput(nullptr, 0, Format::kRGB32_Float).AddVertexInput(nullptr, 0, Format::kRGBA32_Float);
 
 	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 }
@@ -194,7 +186,7 @@ void Buffers::CreateBuffers()
 	for (auto i = 0u; i < vertices.Size(); ++i)
 	{
 		vertices[i].pos = data.m_Vertices[i].m_Position;
-		vertices[i].color = Float4(rand.NextF<f32>(), rand.NextF<f32>(), rand.NextF<f32>(), 1.0f);
+		vertices[i].color = XMFLOAT4(rand.NextF<f32>(), rand.NextF<f32>(), rand.NextF<f32>(), 1.0f);
 	}
 
 	BufferDesc bufferDesc;
@@ -206,32 +198,35 @@ void Buffers::CreateBuffers()
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = vertices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_VB);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_VB);
 
 	bufferDesc.m_Size = sizeof(u32) * data.m_Indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kIndexBuffer;
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = data.m_Indices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_IB);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_IB);
 
-	bufferDesc.m_Size = sizeof(Float44);
+	bufferDesc.m_Size = sizeof(XMFLOAT4X4);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_UB);
+	m_Device->CreateBuffer(bufferDesc, &m_UB);
 
 	viewDesc.m_pBuffer = m_UB;
-	viewDesc.m_Stride = sizeof(Float44);
+	viewDesc.m_Stride = sizeof(XMFLOAT4X4);
 	viewDesc.m_ElementCount = 1;
 	m_Device->CreateBufferView(viewDesc, &m_UBView);
 
-	m_pWVP = m_UB->GetMappedDataAsT<Float44>();
+	m_pWVP = m_UB->GetMappedDataAsT<XMFLOAT4X4>();
 }
 
 
 void Buffers::CreateRenderTargets()
 {
+	m_DepthView.Reset();
+	m_Depth.Reset();
+
 	auto w = m_pWindow->GetWidth();
 	auto h = m_pWindow->GetHeight();
 

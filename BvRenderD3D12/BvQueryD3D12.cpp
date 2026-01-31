@@ -5,9 +5,6 @@
 #include "BvGPUFenceD3D12.h"
 
 
-BV_D3D12_DEVICE_RES_DEF(BvQueryD3D12)
-
-
 BvQueryD3D12::BvQueryD3D12(BvRenderDeviceD3D12* pDevice, QueryType queryType, u32 frameCount)
 	: m_pDevice(pDevice), m_QueryType(queryType), m_QueryData(frameCount, {})
 {

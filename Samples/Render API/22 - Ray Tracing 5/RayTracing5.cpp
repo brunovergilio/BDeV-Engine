@@ -535,7 +535,7 @@ void RayTracing5::CreateShaderResourceLayout()
 
 		ShaderResourceSetDesc setDescs[] = { setDesc, setDesc1 };
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 2;
 		layoutDesc.m_pShaderResourceSets = setDescs;
 
@@ -553,7 +553,7 @@ void RayTracing5::CreateShaderResourceLayout()
 		setDesc.m_ResourceCount = 2;
 		setDesc.m_pResources = resourceDescs;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 

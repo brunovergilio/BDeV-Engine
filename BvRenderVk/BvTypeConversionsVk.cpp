@@ -228,14 +228,11 @@ VkImageAspectFlags GetVkImageAspectFlags(Format format, u32 planeSlice)
 	auto info = GetVkFormatMap(format);
 	if (info.aspectFlags & VK_IMAGE_ASPECT_PLANE_0_BIT)
 	{
-		switch (planeSlice)
-		{
-		case 0: return VK_IMAGE_ASPECT_PLANE_0_BIT;
-		case 1: return VK_IMAGE_ASPECT_PLANE_1_BIT;
-		case 2: return VK_IMAGE_ASPECT_PLANE_2_BIT;
-		default:
-			break;
-		}
+		return VK_IMAGE_ASPECT_PLANE_0_BIT << planeSlice;
+	}
+	else if (info.aspectFlags & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+	{
+		return planeSlice == 0 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_STENCIL_BIT;
 	}
 	
 	return info.aspectFlags;
@@ -259,8 +256,9 @@ VkBufferUsageFlags GetVkBufferUsageFlags(const BufferUsage usageFlags, bool form
 	if (EHasFlag(usageFlags, BufferUsage::kIndirectBuffer		))	{ bufferUsageFlags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT; }
 	if (EHasFlag(usageFlags, BufferUsage::kRayTracing			))
 	{
-		bufferUsageFlags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
-			| VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+		bufferUsageFlags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+			| VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
+			| ((bufferUsageFlags & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR : 0);
 	}
 
 	return bufferUsageFlags | (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
@@ -816,18 +814,38 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage)
 }
 
 
-VkQueryType GetVkQueryType(QueryType queryHeapType)
+VkQueryType GetVkQueryType(QueryType queryHeapType, bool meshPrimitivesPool)
 {
 	switch (queryHeapType)
 	{
 	case QueryType::kTimestamp: return VK_QUERY_TYPE_TIMESTAMP;
 	case QueryType::kOcclusion:
 	case QueryType::kOcclusionBinary: return VK_QUERY_TYPE_OCCLUSION;
-	case QueryType::kPipelineStatistics:
-	case QueryType::kMeshPipelineStatistics: return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+	case QueryType::kPipelineStatistics: return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+	case QueryType::kMeshPipelineStatistics: return !meshPrimitivesPool ? VK_QUERY_TYPE_PIPELINE_STATISTICS : VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT;
 	}
 
 	return VK_QUERY_TYPE_MAX_ENUM;
+}
+
+
+VkQueryPipelineStatisticFlags GetVkQueryPipelineFlags(bool geometryShader, bool tessellationShader, bool meshShader)
+{
+	auto flags = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
+		| VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
+		| VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
+		| (geometryShader ? (VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT) : 0)
+		| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT
+		| VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
+		| VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
+		| (tessellationShader ? (VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT
+			| VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT) : 0)
+		| VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT
+		| (meshShader ? (VK_QUERY_PIPELINE_STATISTIC_TASK_SHADER_INVOCATIONS_BIT_EXT
+			| VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT) : 0);
+
+	return flags;
 }
 
 

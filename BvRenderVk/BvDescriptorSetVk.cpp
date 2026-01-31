@@ -2,6 +2,7 @@
 #include "BvRenderDeviceVk.h"
 #include "BvTypeConversionsVk.h"
 #include "BvShaderResourceVk.h"
+#include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
 #include "BvTextureViewVk.h"
 #include "BvSamplerVk.h"
@@ -143,25 +144,6 @@ BvResourceBindingStateVk::BvResourceBindingStateVk()
 }
 
 
-BvResourceBindingStateVk::BvResourceBindingStateVk(BvResourceBindingStateVk&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvResourceBindingStateVk& BvResourceBindingStateVk::operator=(BvResourceBindingStateVk&& rhs) noexcept
-{
-	if (this != &rhs)
-	{
-		std::swap(m_Bindings, rhs.m_Bindings);
-		std::swap(m_Resources, rhs.m_Resources);
-		std::swap(m_DirtySets, rhs.m_DirtySets);
-	}
-
-	return *this;
-}
-
-
 BvResourceBindingStateVk::~BvResourceBindingStateVk()
 {
 }
@@ -245,46 +227,6 @@ std::pair<ResourceDataVk*, bool> BvResourceBindingStateVk::AddOrRetrieveResource
 }
 
 
-BvDescriptorSetVk::BvDescriptorSetVk()
-{
-}
-
-
-BvDescriptorSetVk::BvDescriptorSetVk(BvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet)
-	: m_pDevice(pDevice), m_DescriptorSet(descriptorSet)
-{
-}
-
-
-BvDescriptorSetVk::BvDescriptorSetVk(BvDescriptorSetVk&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvDescriptorSetVk& BvDescriptorSetVk::operator=(BvDescriptorSetVk&& rhs) noexcept
-{
-	if (this != &rhs)
-	{
-		m_pDevice = rhs.m_pDevice;
-		std::swap(m_DescriptorSet, rhs.m_DescriptorSet);
-	}
-
-	return *this;
-}
-
-
-BvDescriptorSetVk::~BvDescriptorSetVk()
-{
-}
-
-
-void BvDescriptorSetVk::Update(const BvVector<VkWriteDescriptorSet>& writeSets)
-{
-	vkUpdateDescriptorSets(m_pDevice->GetHandle(), (u32)writeSets.Size(), writeSets.Data(), 0, nullptr);
-}
-
-
 BvDescriptorPoolVk::BvDescriptorPoolVk()
 {
 }
@@ -299,9 +241,9 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(BvRenderDeviceVk* pDevice, const BvShader
 
 	m_IsBindless = pSet->m_Bindless;
 	m_Layout = m_pLayout->GetSetLayoutHandles().At(m_SetIndex);
-	for (auto i = 0u; i < pSet->m_ResourceCount; ++i)
+	for (auto i = 0u; i < pSet->m_Resources.Size(); ++i)
 	{
-		auto& resource = pSet->m_pResources[i];
+		auto& resource = pSet->m_Resources[i];
 		auto& poolSize = poolSizes[GetVkDescriptorType(resource.m_ShaderResourceType)];
 		poolSize += resource.m_Count;
 	}
@@ -315,8 +257,10 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(BvRenderDeviceVk* pDevice, const BvShader
 
 
 BvDescriptorPoolVk::BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs) noexcept
+	: m_pDevice(rhs.m_pDevice), m_pLayout(rhs.m_pLayout), m_Layout(rhs.m_Layout), m_DescriptorPools(std::move(rhs.m_DescriptorPools)),
+	m_PoolSizes(std::move(rhs.m_PoolSizes)), m_SetIndex(rhs.m_SetIndex), m_MaxAllocationsPerPool(rhs.m_MaxAllocationsPerPool),
+	m_CurrPoolIndex(rhs.m_CurrPoolIndex), m_IsBindless(rhs.m_IsBindless)
 {
-	*this = std::move(rhs);
 }
 
 
@@ -325,11 +269,14 @@ BvDescriptorPoolVk& BvDescriptorPoolVk::operator=(BvDescriptorPoolVk&& rhs) noex
 	if (this != &rhs)
 	{
 		m_pDevice = rhs.m_pDevice;
-		std::swap(m_Layout, rhs.m_Layout);
-		std::swap(m_CurrPoolIndex, rhs.m_CurrPoolIndex);
-		std::swap(m_MaxAllocationsPerPool, rhs.m_MaxAllocationsPerPool);
-		std::swap(m_DescriptorPools, rhs.m_DescriptorPools);
-		std::swap(m_PoolSizes, rhs.m_PoolSizes);
+		m_pLayout = rhs.m_pLayout;
+		m_Layout = rhs.m_Layout;
+		m_DescriptorPools = std::move(rhs.m_DescriptorPools);
+		m_PoolSizes = std::move(rhs.m_PoolSizes);
+		m_SetIndex = rhs.m_SetIndex;
+		m_MaxAllocationsPerPool = rhs.m_MaxAllocationsPerPool;
+		m_CurrPoolIndex = rhs.m_CurrPoolIndex;
+		m_IsBindless = rhs.m_IsBindless;
 	}
 
 	return *this;
@@ -393,7 +340,7 @@ VkDescriptorSet BvDescriptorPoolVk::Allocate()
 	VkDescriptorSet descriptorSet;
 	auto result = vkAllocateDescriptorSets(m_pDevice->GetHandle(), &allocateInfo, &descriptorSet);
 
-	++m_DescriptorPools[m_CurrPoolIndex].currAllocationCount;
+	m_DescriptorPools[m_CurrPoolIndex].currAllocationCount++;
 
 	return descriptorSet;
 }

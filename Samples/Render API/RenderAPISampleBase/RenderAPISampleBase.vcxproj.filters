@@ -11,6 +11,7 @@
     <ClInclude Include="Third Party\imstb_truetype.h" />
     <ClInclude Include="FPSCounter.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Common.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SampleBase.cpp" />

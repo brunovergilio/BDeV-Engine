@@ -965,18 +965,18 @@ public:
 	BV_INLINE static BvMatrix Translation(const BvVec3& v) { return BvMatrix(XMMatrixTranslationFromVector(v)); }
 	BV_INLINE static BvMatrix LookAtLH(const BvVec3& eyePos, const BvVec3& lookPos, const BvVec3& upVec) { return BvMatrix(XMMatrixLookAtLH(eyePos, lookPos, upVec)); }
 	BV_INLINE static BvMatrix LookAtRH(const BvVec3& eyePos, const BvVec3& lookPos, const BvVec3& upVec) { return BvMatrix(XMMatrixLookAtRH(eyePos, lookPos, upVec)); }
-	BV_INLINE static BvMatrix PerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(XMMatrixPerspectiveLH(nearZ, farZ, aspectRatio, fovY)); }
-	BV_INLINE static BvMatrix PerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(XMMatrixPerspectiveRH(nearZ, farZ, aspectRatio, fovY)); }
+	BV_INLINE static BvMatrix PerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(XMMatrixPerspectiveFovLH(fovY, aspectRatio, nearZ, farZ)); }
+	BV_INLINE static BvMatrix PerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(XMMatrixPerspectiveFovRH(fovY, aspectRatio, nearZ, farZ)); }
 	//BV_INLINE static BvMatrix PerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveLH_GL(nearZ, farZ, aspectRatio, fovY)); }
 	//BV_INLINE static BvMatrix PerspectiveRH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveRH_GL(nearZ, farZ, aspectRatio, fovY)); }
 	//BV_INLINE static BvMatrix PerspectiveLH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveLH_VK(nearZ, farZ, aspectRatio, fovY)); }
 	//BV_INLINE static BvMatrix PerspectiveRH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { return BvMatrix(MatrixPerspectiveRH_VK(nearZ, farZ, aspectRatio, fovY)); }
-	BV_INLINE static BvMatrix OrthographicOffCenterLH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(XMMatrixOrthographicOffCenterLH(right, left, top, bottom, nearZ, farZ)); }
-	BV_INLINE static BvMatrix OrthographicOffCenterRH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(XMMatrixOrthographicOffCenterRH(right, left, top, bottom, nearZ, farZ)); }
-	//BV_INLINE static BvMatrix OrthographicOffCenterLH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterLH_GL(right, left, top, bottom, nearZ, farZ)); }
-	//BV_INLINE static BvMatrix OrthographicOffCenterRH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterRH_GL(right, left, top, bottom, nearZ, farZ)); }
-	//BV_INLINE static BvMatrix OrthographicOffCenterLH_VK(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterLH_VK(right, left, top, bottom, nearZ, farZ)); }
-	//BV_INLINE static BvMatrix OrthographicOffCenterRH_VK(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterRH_VK(right, left, top, bottom, nearZ, farZ)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterLH_DX(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(XMMatrixOrthographicOffCenterLH(left, right, bottom, top, nearZ, farZ)); }
+	BV_INLINE static BvMatrix OrthographicOffCenterRH_DX(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(XMMatrixOrthographicOffCenterRH(left, right, bottom, top, nearZ, farZ)); }
+	//BV_INLINE static BvMatrix OrthographicOffCenterLH_GL(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterLH_GL(left, right, bottom, top, nearZ, farZ)); }
+	//BV_INLINE static BvMatrix OrthographicOffCenterRH_GL(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterRH_GL(left, right, bottom, top, nearZ, farZ)); }
+	//BV_INLINE static BvMatrix OrthographicOffCenterLH_VK(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterLH_VK(left, right, bottom, top, nearZ, farZ)); }
+	//BV_INLINE static BvMatrix OrthographicOffCenterRH_VK(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { return BvMatrix(MatrixOrthographicOffCenterRH_VK(left, right, bottom, top, nearZ, farZ)); }
 
 	BV_INLINE void SetIdentity() { m_Mat = XMMatrixIdentity(); }
 	BV_INLINE void SetScale(f32 x, f32 y, f32 z) { m_Mat = XMMatrixScaling(x, y, z); }
@@ -989,14 +989,14 @@ public:
 	BV_INLINE void SetTranslation(const BvVec3& v) { m_Mat = XMMatrixTranslationFromVector(v); }
 	BV_INLINE void SetLookAtLH(const BvVec3& eyePos, const BvVec3& lookPos, const BvVec3& upVec) { m_Mat = XMMatrixLookAtLH(eyePos, lookPos, upVec); }
 	BV_INLINE void SetLookAtRH(const BvVec3& eyePos, const BvVec3& lookPos, const BvVec3& upVec) { m_Mat = XMMatrixLookAtRH(eyePos, lookPos, upVec); }
-	BV_INLINE void SetPerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = XMMatrixPerspectiveLH(nearZ, farZ, aspectRatio, fovY); }
-	BV_INLINE void SetPerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = XMMatrixPerspectiveRH(nearZ, farZ, aspectRatio, fovY); }
+	BV_INLINE void SetPerspectiveLH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = XMMatrixPerspectiveFovLH(fovY, aspectRatio, nearZ, farZ); }
+	BV_INLINE void SetPerspectiveRH_DX(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = XMMatrixPerspectiveFovRH(fovY, aspectRatio, nearZ, farZ); }
 	//BV_INLINE void SetPerspectiveLH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveLH_GL(nearZ, farZ, aspectRatio, fovY); }
 	//BV_INLINE void SetPerspectiveRH_GL(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveRH_GL(nearZ, farZ, aspectRatio, fovY); }
 	//BV_INLINE void SetPerspectiveLH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveLH_VK(nearZ, farZ, aspectRatio, fovY); }
 	//BV_INLINE void SetPerspectiveRH_VK(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY) { m_Mat = MatrixPerspectiveRH_VK(nearZ, farZ, aspectRatio, fovY); }
-	BV_INLINE void SetOrthographicOffCenterLH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = XMMatrixOrthographicOffCenterLH(right, left, top, bottom, nearZ, farZ); }
-	BV_INLINE void SetOrthographicOffCenterRH_DX(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = XMMatrixOrthographicOffCenterRH(right, left, top, bottom, nearZ, farZ); }
+	BV_INLINE void SetOrthographicOffCenterLH_DX(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = XMMatrixOrthographicOffCenterLH(left, right, bottom, top, nearZ, farZ); }
+	BV_INLINE void SetOrthographicOffCenterRH_DX(f32 left, f32 right, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = XMMatrixOrthographicOffCenterRH(left, right, bottom, top, nearZ, farZ); }
 	//BV_INLINE void SetOrthographicOffCenterLH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterLH_GL(right, left, top, bottom, nearZ, farZ); }
 	//BV_INLINE void SetOrthographicOffCenterRH_GL(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterRH_GL(right, left, top, bottom, nearZ, farZ); }
 	//BV_INLINE void SetOrthographicOffCenterLH_VK(f32 right, f32 left, f32 top, f32 bottom, f32 nearZ, f32 farZ) { m_Mat = MatrixOrthographicOffCenterLH_VK(right, left, top, bottom, nearZ, farZ); }

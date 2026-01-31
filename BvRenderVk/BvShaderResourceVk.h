@@ -8,7 +8,6 @@
 class BvRenderDeviceVk;
 
 
-BV_OBJECT_DEFINE_ID(BvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
 class BvShaderResourceLayoutVk final : public IBvShaderResourceLayout, public IBvResourceVk
 {
 	struct ResourceId
@@ -41,39 +40,31 @@ class BvShaderResourceLayoutVk final : public IBvShaderResourceLayout, public IB
 		u32 m_Offset;
 	};
 
-	BV_VK_DEVICE_RES_DECL;
-
 public:
-	BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutDesc& srlDesc);
+	BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutCreateDesc& srlDesc, BvVector<VkDescriptorSetLayout>& layouts,
+		VkPipelineLayout pipelineLayout);
 	~BvShaderResourceLayoutVk();
 
-	BV_INLINE const ShaderResourceLayoutDesc& GetDesc() const override { return m_ShaderResourceLayoutDesc; }
-	BV_INLINE const BvRobinMap<u32, VkDescriptorSetLayout>& GetSetLayoutHandles() const { return m_Layouts; }
+	BV_INLINE const ShaderResourceLayoutCreateDesc& GetDesc() const override { return m_ShaderResourceLayoutDesc; }
+	BV_INLINE const auto& GetSetLayoutHandles() const { return m_Layouts; }
 	BV_INLINE VkPipelineLayout GetPipelineLayoutHandle() const { return m_PipelineLayout; }
 	BV_INLINE bool IsValid() const { return m_PipelineLayout != VK_NULL_HANDLE; }
 	const ShaderResourceSetDesc* GetResourceSet(u32 set) const;
 	const ShaderResourceDesc* GetResource(u32 binding, u32 set) const;
 	PushConstantData* GetPushConstantData(u32 size, u32 binding, u32 set) const;
 
-	//BV_OBJECT_IMPL_INTERFACE(IBvShaderResourceLayoutVk, IBvShaderResourceLayout, IBvRenderDeviceObject);
-
 private:
-	void Create();
 	void Destroy();
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
-	ShaderResourceLayoutDesc m_ShaderResourceLayoutDesc;
-	BvRobinMap<u32, VkDescriptorSetLayout> m_Layouts{};
+	ShaderResourceLayoutCreateDesc m_ShaderResourceLayoutDesc;
+	BvVector<VkDescriptorSetLayout> m_Layouts{};
 	VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
-	ShaderResourceDesc* m_pShaderResources = nullptr;
-	ShaderResourceConstantDesc* m_pShaderConstants = nullptr;
-	ShaderResourceSetDesc* m_pShaderResourceSets = nullptr;
-	IBvSampler** m_ppStaticSamplers = nullptr;
 	BvRobinMap<ResourceId, const ShaderResourceDesc*> m_Resources;
 	BvRobinMap<PushConstantId, PushConstantData> m_PushConstantOffsets;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvShaderResourceLayoutVk);
+BV_OBJECT_DEFINE_ID(BvShaderResourceLayoutVk, "66b68f82-ff43-4f16-877a-e005b07d5e0c");
 
 
 class BvShaderResourceParamsVk final : public IBvShaderResourceParams
@@ -95,7 +86,7 @@ public:
 	void Bind() override;
 
 	BV_INLINE const BvShaderResourceLayoutVk* GetLayout() const { return m_pLayout; }
-	BV_INLINE VkDescriptorSet GetHandle() const { return m_DescriptorSet.GetHandle(); }
+	BV_INLINE VkDescriptorSet GetHandle() const { return m_DescriptorSet; }
 	BV_INLINE u32 GetSetIndex() const { return m_Set; }
 
 private:
@@ -106,7 +97,7 @@ private:
 	BvRenderDeviceVk* m_pDevice;
 	const BvShaderResourceLayoutVk* m_pLayout;
 	BvDescriptorPoolVk m_DescriptorPool;
-	BvDescriptorSetVk m_DescriptorSet;
+	VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;
 	struct SetData
 	{
 		BvVector<VkWriteDescriptorSet> m_WriteSets;
@@ -116,7 +107,7 @@ private:
 		BvVector<VkDescriptorImageInfo> m_ImageInfos;
 		BvVector<VkBufferView> m_BufferViews;
 		BvVector<VkAccelerationStructureKHR> m_AccelerationStructures;
-	} * m_pSetData = nullptr;
+	} *m_pSetData = nullptr;
 	u32 m_Set = 0;
 };
 

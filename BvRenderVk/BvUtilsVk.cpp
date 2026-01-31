@@ -3,11 +3,17 @@
 
 #include "BDeV/Core/System/Window/BvWindow.h"
 #include "BDeV/Core/System/Window/BvMonitor.h"
-#include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 
 #include "BvRenderDeviceVk.h"
+#include "BvBufferVk.h"
+#include "BvTextureVk.h"
 #include "BvSamplerVk.h"
 #include "BvShaderVk.h"
+#include "BvRenderPassVk.h"
+#include "BvShaderResourceVk.h"
+#include "BvPipelineStateVk.h"
+#include "BvCommandContextVk.h"
+#include "BvCommandBufferVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
@@ -88,31 +94,22 @@ bool IsDepthOrStencilFormat(Format format)
 }
 
 
-bool QueueSupportsPresent(VkPhysicalDevice physicalDevice, u32 index)
-{
-#if BV_PLATFORM_WIN32
-	if (vkGetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice, index))
-	{
-		return true;
-	}
-#endif
-
-	return false;
-}
-
 namespace VkHelpers
 {
-	VkShaderModule CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode)
+	VkObj<VkShaderModule> CreateShaderModule(VkDevice device, size_t size, const u8* pShaderCode)
 	{
+		VkObj<VkShaderModule> shaderObj;
+		auto& result = shaderObj.first;
+		auto& shaderModule = shaderObj.second;
+
 		VkShaderModuleCreateInfo shaderCI{};
 		shaderCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		shaderCI.pCode = reinterpret_cast<const u32*>(pShaderCode);
 		shaderCI.codeSize = size;
 
-		VkShaderModule shaderModule = VK_NULL_HANDLE;
-		vkCreateShaderModule(device, &shaderCI, nullptr, &shaderModule);
+		result = vkCreateShaderModule(device, &shaderCI, nullptr, &shaderModule);
 
-		return shaderModule;
+		return shaderObj;
 	}
 
 	VkObj<VkSurfaceKHR> CreateSurface(VkInstance instance, BvRenderDeviceVk* pDevice, BvWindow* pWindow)
@@ -132,17 +129,32 @@ namespace VkHelpers
 	}
 
 
-	VkObj<VkSwapchainKHR> CreateSwapChain(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex, VkSwapchainKHR oldSwapChain,
+	VkObj<VkSwapChainObj> CreateSwapChain(BvRenderDeviceVk* pDevice, VkInstance instance, u32 queueFamilyIndex, VkSwapchainKHR oldSwapChain,
 		VkSurfaceKHR surface, SwapChainDesc& swapChainDesc, BvWindow* pWindow)
 	{
-		VkResult result;
-		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+		VkObj<VkSwapChainObj> scObj;
+		auto& result = scObj.first;
+		auto& swapChain = scObj.second.m_SwapChain;
+		auto& images = scObj.second.m_Images;
+		auto& extents = scObj.second.m_Extents;
 
 		auto device = pDevice->GetHandle();
 		auto physicalDevice = pDevice->GetPhysicalDeviceHandle();
 
 		do 
 		{
+			if (surface == VK_NULL_HANDLE)
+			{
+				auto surfaceObj = CreateSurface(instance, pDevice, pWindow);
+				if (surfaceObj.first != VK_SUCCESS)
+				{
+					break;
+				}
+				surface = surfaceObj.second;
+			}
+
+			scObj.second.m_Surface = surface;
+
 			VkBool32 presentationSupported = VK_FALSE;
 			result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, &presentationSupported);
 
@@ -317,6 +329,7 @@ namespace VkHelpers
 			{
 				swapchainExtent = surfCaps.maxImageExtent;
 			}
+			extents = swapchainExtent;
 
 			// Select a present mode for the swapchain
 
@@ -342,12 +355,9 @@ namespace VkHelpers
 				}
 			}
 
-			// Determine the number of images
-			// Ask for at least minImageCount + 1, so if less was specified, change it
-			if (swapChainDesc.m_SwapChainImageCount <= surfCaps.minImageCount)
-			{
-				swapChainDesc.m_SwapChainImageCount = surfCaps.minImageCount + 1;
-			}
+			// Determine the number of images - ask for at least minImageCount, so if less was specified, change it
+			swapChainDesc.m_SwapChainImageCount = std::max(swapChainDesc.m_SwapChainImageCount, surfCaps.minImageCount);
+			
 			// If there's a maximum limit and we went over it, clamp it
 			if ((surfCaps.maxImageCount > 0) && (swapChainDesc.m_SwapChainImageCount > surfCaps.maxImageCount))
 			{
@@ -386,8 +396,7 @@ namespace VkHelpers
 				}
 			}
 
-			VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
-			swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+			VkSwapchainCreateInfoKHR swapchainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 			swapchainCreateInfo.pNext = supportsTrueFullscreen ? &surfaceFS : nullptr;
 			swapchainCreateInfo.surface = surface;
 			swapchainCreateInfo.minImageCount = swapChainDesc.m_SwapChainImageCount;
@@ -408,11 +417,6 @@ namespace VkHelpers
 			swapchainCreateInfo.clipped = VK_TRUE;
 			swapchainCreateInfo.compositeAlpha = compositeAlpha;
 
-			TextureDesc textureDesc;
-			textureDesc.m_Size = { swapchainExtent.width, swapchainExtent.height, 1 };
-			textureDesc.m_Format = swapChainDesc.m_Format;
-			textureDesc.m_UsageFlags = TextureUsage::kRenderTarget;
-
 			// Enable transfer source on swap chain images if supported
 			if (surfCaps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
 			{
@@ -426,17 +430,52 @@ namespace VkHelpers
 			}
 
 			result = vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapChain);
+			if (result != VK_SUCCESS && swapChainDesc.m_WindowMode == SwapChainMode::kFullscreen)
+			{
+				swapChainDesc.m_WindowMode = SwapChainMode::kBorderlessFullscreen;
+				swapchainCreateInfo.pNext = nullptr;
+
+				// If creating a full screen swap chain fails, try a regular one
+				result = vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapChain);
+			}
+
+			if (result != VK_SUCCESS)
+			{
+				break;
+			}
+
+			DestroyDeviceObject(device, oldSwapChain);
+
+			u32 imageCount = 0;
+			result = vkGetSwapchainImagesKHR(*pDevice, swapChain, &imageCount, nullptr);
+			if (result != VK_SUCCESS)
+			{
+				DestroyDeviceObject(device, swapChain);
+				break;
+			}
+
+			// Get the swap chain images
+			images.Resize(imageCount);
+			result = vkGetSwapchainImagesKHR(*pDevice, swapChain, &imageCount, images.Data());
+			if (result != VK_SUCCESS)
+			{
+				DestroyDeviceObject(device, swapChain);
+			}
 		} while (false);
 
-		return std::make_pair(result, swapChain);
+		return scObj;
 	}
 
 
 	VkObj<VkBufferObj> CreateBuffer(BvRenderDeviceVk* pDevice, const BufferDesc& bufferDesc)
 	{
-		VkResult result;
-		VkBuffer buffer = VK_NULL_HANDLE;
-		VmaAllocation vmaA = VK_NULL_HANDLE;
+		VkObj<VkBufferObj> bufferObj;
+		auto& result = bufferObj.first;
+		auto& buffer = bufferObj.second.m_Buffer;
+		auto& vmaA = bufferObj.second.m_Memory;
+		auto& deviceAddress = bufferObj.second.m_DeviceAddress;
+		auto& pMappedMemory = bufferObj.second.m_pMappedMemory;
+		auto& needsFlush = bufferObj.second.m_NeedsFlush;
 
 		VkBufferCreateInfo bufferCreateInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		//bufferCreateInfo.pNext = nullptr;
@@ -455,43 +494,76 @@ namespace VkHelpers
 
 		do
 		{
-			result = vkCreateBuffer(device, &bufferCreateInfo, nullptr, &buffer);
-			BV_ASSERT(result == VK_SUCCESS, "Failed to create buffer");
-			if (result != VK_SUCCESS)
-			{
-				break;
-			}
-
 			auto vma = pDevice->GetAllocator();
 			VmaAllocationCreateInfo vmaACI = {};
 			vmaACI.requiredFlags = GetVkMemoryPropertyFlags(bufferDesc.m_MemoryType);
 			vmaACI.preferredFlags = vmaACI.requiredFlags | GetPreferredVkMemoryPropertyFlags(bufferDesc.m_MemoryType);
+			if (EHasFlag(bufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped))
+			{
+				vmaACI.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			}
+			VmaAllocationInfo vmaAI{};
 
-			VmaAllocationInfo vmaAI;
-			result = vmaAllocateMemoryForBuffer(vma, buffer, &vmaACI, &vmaA, &vmaAI);
-			BV_ASSERT(result == VK_SUCCESS, "Failed to allocate memory for buffer");
+			result = vmaCreateBuffer(vma, &bufferCreateInfo, &vmaACI, &buffer, &vmaA, &vmaAI);
 			if (result != VK_SUCCESS)
 			{
-				vkDestroyBuffer(device, buffer, nullptr);
 				break;
 			}
 
-			result = vkBindBufferMemory(device, buffer, vmaAI.deviceMemory, vmaAI.offset);
-			BV_ASSERT(result == VK_SUCCESS, "Failed to bind memory for buffer");
-			if (result != VK_SUCCESS)
+			//result = vkCreateBuffer(device, &bufferCreateInfo, nullptr, &buffer);
+			//BV_ASSERT(result == VK_SUCCESS, "Failed to create buffer");
+			//if (result != VK_SUCCESS)
+			//{
+			//	break;
+			//}
+
+			//result = vmaAllocateMemoryForBuffer(vma, buffer, &vmaACI, &vmaA, &vmaAI);
+			//BV_ASSERT(result == VK_SUCCESS, "Failed to allocate memory for buffer");
+			//if (result != VK_SUCCESS)
+			//{
+			//	DestroyDeviceObject(device, buffer);
+			//	break;
+			//}
+
+			//result = vkBindBufferMemory(device, buffer, vmaAI.deviceMemory, vmaAI.offset);
+			//BV_ASSERT(result == VK_SUCCESS, "Failed to bind memory for buffer");
+			//if (result != VK_SUCCESS)
+			//{
+			//	DestroyDeviceObject(device, buffer, vma, vmaA);
+			//	break;
+			//}
+
+			pMappedMemory = vmaAI.pMappedData;
+
+			if (bufferCreateInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
 			{
-				vmaFreeMemory(vma, vmaA);
-				vkDestroyBuffer(device, buffer, nullptr);
+				VkBufferDeviceAddressInfo addressInfo{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, nullptr, buffer };
+				deviceAddress = vkGetBufferDeviceAddress(device, &addressInfo);
+			}
+
+			const auto& memoryType = pDevice->GetDeviceInfo()->m_DeviceMemoryProperties.memoryProperties.memoryTypes[vmaAI.memoryType];
+			needsFlush = ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0);
+			if (needsFlush)
+			{
+				auto& bd = const_cast<BufferDesc&>(bufferDesc);
+				if (bd.m_MemoryType == MemoryType::kReadBack)
+				{
+					bd.m_MemoryType = MemoryType::kReadBackNC;
+				}
+				else if (bd.m_MemoryType == MemoryType::kUpload)
+				{
+					bd.m_MemoryType = MemoryType::kUploadNC;
+				}
 			}
 		} while (false);
 
-		return std::make_pair(result, VkBufferObj{ buffer, vmaA });
+		return bufferObj;
 	}
 
 
-	VkObj<VkBufferView> CreateBufferView(BvRenderDeviceVk* pDevice, VkBuffer buffer, const BufferViewDesc& bufferViewDesc)
+	VkObj<VkBufferView> CreateBufferView(BvRenderDeviceVk* pDevice, const BufferViewDesc& bufferViewDesc)
 	{
-		VkResult result;
+		VkResult result = VK_SUCCESS;
 		VkBufferView bufferView = VK_NULL_HANDLE;
 
 		if (bufferViewDesc.m_Format != Format::kUnknown)
@@ -500,7 +572,7 @@ namespace VkHelpers
 			bufferViewCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
 			//bufferViewCreateInfo.pNext = nullptr;
 			//bufferViewCreateInfo.flags = 0;
-			bufferViewCreateInfo.buffer = buffer;
+			bufferViewCreateInfo.buffer = TO_VK(bufferViewDesc.m_pBuffer)->GetHandle();
 			bufferViewCreateInfo.format = GetVkFormat(bufferViewDesc.m_Format);
 			bufferViewCreateInfo.offset = bufferViewDesc.m_Offset;
 			bufferViewCreateInfo.range = bufferViewDesc.m_ElementCount * bufferViewDesc.m_Stride;
@@ -512,7 +584,7 @@ namespace VkHelpers
 	}
 
 
-	VkObj<VkTextureObj> CreateTexture(BvRenderDeviceVk* pDevice, TextureDesc& textureDesc)
+	VkObj<VkTextureObj> CreateTexture(BvRenderDeviceVk* pDevice, const TextureDesc& textureDesc, u32 mutableFormatCount, const Format* pMutableFormats)
 	{
 		VkResult result;
 		VkImage texture = VK_NULL_HANDLE;
@@ -524,10 +596,39 @@ namespace VkHelpers
 			imageCreateFlags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		}
 
-		u32 mipCount = textureDesc.m_MipLevels;
-		if (textureDesc.m_MipLevels == 1 && EHasFlag(textureDesc.m_CreateFlags, TextureCreateFlags::kReserveMips))
+		VkImageFormatListCreateInfo iflCI{ VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
+		bool useMultiFormat = false;
+		constexpr u32 kMaxMutableFormatCount = 8; // Should be enough
+		VkFormat mutableVkFormats[kMaxMutableFormatCount];
+
+		// Thanks to turanszkij for his article - https://wickedengine.net/2022/11/graphics-api-secrets-format-casting/
+		auto fi = BvRenderUtils::GetFormatInfo(textureDesc.m_Format);
+		if ((fi.m_IsPlanar && !fi.m_IsDepth) || fi.m_IsTypeless)
 		{
-			textureDesc.m_MipLevels = GetMipCount(textureDesc.m_Size.width, textureDesc.m_Size.height, textureDesc.m_Size.depth);
+			imageCreateFlags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+			if (fi.m_IsTypeless)
+			{
+				if (!mutableFormatCount || !pMutableFormats)
+				{
+					mutableFormatCount = kMaxMutableFormatCount;
+					pMutableFormats = fi.m_pCastableFormats;
+				}
+
+				u32 numMutableFormats = 0;
+				for (; numMutableFormats < mutableFormatCount && pMutableFormats[numMutableFormats] != Format::kUnknown; ++numMutableFormats)
+				{
+					mutableVkFormats[numMutableFormats] = GetVkFormat(pMutableFormats[numMutableFormats]);
+				}
+
+				iflCI.viewFormatCount = numMutableFormats;
+				iflCI.pViewFormats = mutableVkFormats;
+				useMultiFormat = true;
+			}
+		}
+
+		if (EHasFlag(textureDesc.m_UsageFlags, TextureUsage::kUnorderedAccess) && fi.m_IsSRGBFormat)
+		{
+			imageCreateFlags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
 		}
 
 		VkImageCreateInfo imageCreateInfo{};
@@ -536,7 +637,7 @@ namespace VkHelpers
 		imageCreateInfo.flags = imageCreateFlags;
 		imageCreateInfo.imageType = GetVkImageType(textureDesc.m_ImageType);
 		imageCreateInfo.format = GetVkFormat(textureDesc.m_Format);
-		imageCreateInfo.extent = { textureDesc.m_Size.width, textureDesc.m_Size.height, textureDesc.m_Size.depth };
+		imageCreateInfo.extent = { textureDesc.m_Size.m_Width, textureDesc.m_Size.m_Height, textureDesc.m_Size.m_Depth };
 		imageCreateInfo.mipLevels = textureDesc.m_MipLevels;
 		imageCreateInfo.arrayLayers = textureDesc.m_ArraySize;
 		imageCreateInfo.samples = GetVkSampleCountFlagBits(textureDesc.m_SampleCount);
@@ -558,39 +659,40 @@ namespace VkHelpers
 
 		do 
 		{
-			result = vkCreateImage(device, &imageCreateInfo, nullptr, &texture);
-			if (result != VK_SUCCESS)
-			{
-				break;
-			}
-
 			auto vma = pDevice->GetAllocator();
 			VmaAllocationCreateInfo vmaACI = {};
 			vmaACI.requiredFlags = GetVkMemoryPropertyFlags(textureDesc.m_MemoryType);
 			vmaACI.preferredFlags = GetPreferredVkMemoryPropertyFlags(textureDesc.m_MemoryType) | extraMemoryFlags;
+			VmaAllocationInfo vmaAI{};
 
-			VmaAllocationInfo vmaAI;
-			result = vmaAllocateMemoryForImage(vma, texture, &vmaACI, &vmaA, &vmaAI);
-			BV_ASSERT(result == VK_SUCCESS, "Failed to allocate memory for image");
-			if (result != VK_SUCCESS)
-			{
-				vkDestroyImage(device, texture, nullptr);
-				break;
-			}
+			result = vmaCreateImage(vma, &imageCreateInfo, &vmaACI, &texture, &vmaA, &vmaAI);
 
-			result = vkBindImageMemory(device, texture, vmaAI.deviceMemory, vmaAI.offset);
-			if (result != VK_SUCCESS)
-			{
-				vkDestroyImage(device, texture, nullptr);
-				vmaFreeMemory(vma, vmaA);
-			}
+			//result = vkCreateImage(device, &imageCreateInfo, nullptr, &texture);
+			//if (result != VK_SUCCESS)
+			//{
+			//	break;
+			//}
+
+			//result = vmaAllocateMemoryForImage(vma, texture, &vmaACI, &vmaA, &vmaAI);
+			//BV_ASSERT(result == VK_SUCCESS, "Failed to allocate memory for image");
+			//if (result != VK_SUCCESS)
+			//{
+			//	DestroyDeviceObject(device, texture);
+			//	break;
+			//}
+
+			//result = vkBindImageMemory(device, texture, vmaAI.deviceMemory, vmaAI.offset);
+			//if (result != VK_SUCCESS)
+			//{
+			//	DestroyDeviceObject(device, texture, vma, vmaA);
+			//}
 		} while (false);
 
 		return std::make_pair(result, VkTextureObj{ texture, vmaA });
 	}
 
 
-	VkObj<VkImageView> CreateTextureView(BvRenderDeviceVk* pDevice, VkImage texture, TextureViewDesc& textureViewDesc)
+	VkObj<VkImageView> CreateTextureView(BvRenderDeviceVk* pDevice, const TextureViewDesc& textureViewDesc)
 	{
 		VkResult result;
 		VkImageView textureView = VK_NULL_HANDLE;
@@ -598,7 +700,7 @@ namespace VkHelpers
 		BV_ASSERT(textureViewDesc.m_pTexture != nullptr, "Invalid texture handle");
 
 		auto& vkFormatMap = GetVkFormatMap(textureViewDesc.m_Format);
-		do 
+		do
 		{
 			if (vkFormatMap.format == VK_FORMAT_UNDEFINED)
 			{
@@ -616,21 +718,25 @@ namespace VkHelpers
 			}
 			else if (vkFormatMap.aspectFlags & (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT))
 			{
-				switch (textureViewDesc.m_SubresourceDesc.planeSlice)
-				{
-				case 0: aspectFlags = VK_IMAGE_ASPECT_PLANE_0_BIT; break;
-				case 1: aspectFlags = VK_IMAGE_ASPECT_PLANE_1_BIT; break;
-				case 2: aspectFlags = VK_IMAGE_ASPECT_PLANE_2_BIT; break;
-				default:
-					BV_ASSERT(textureViewDesc.m_SubresourceDesc.planeSlice > 2, "Invalid plane slice");
-				}
+				BV_ASSERT(textureViewDesc.m_SubresourceDesc.planeSlice <= 2, "Invalid plane slice");
+				aspectFlags = (VK_IMAGE_ASPECT_PLANE_0_BIT << textureViewDesc.m_SubresourceDesc.planeSlice);
+			}
+
+			// Thanks to turanszkij for his article - https://wickedengine.net/2022/11/graphics-api-secrets-format-casting/
+			VkImageViewUsageCreateInfo viewUCI{ VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+			auto fi = BvRenderUtils::GetFormatInfo(textureViewDesc.m_Format);
+			auto& textureDesc = textureViewDesc.m_pTexture->GetDesc();
+			bool removeStorageBit = fi.m_IsSRGBFormat && EHasFlag(textureDesc.m_UsageFlags, TextureUsage::kUnorderedAccess);
+			if (removeStorageBit)
+			{
+				viewUCI.usage = GetVkImageUsageFlags(textureDesc.m_UsageFlags) & (~VK_IMAGE_USAGE_STORAGE_BIT);
 			}
 
 			VkImageViewCreateInfo imageViewCreateInfo{};
 			imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			imageViewCreateInfo.pNext = nullptr;
 			imageViewCreateInfo.flags = 0;
-			imageViewCreateInfo.image = texture;
+			imageViewCreateInfo.image = TO_VK(textureViewDesc.m_pTexture)->GetHandle();
 			imageViewCreateInfo.viewType = GetVkImageViewType(textureViewDesc.m_ViewType);
 			imageViewCreateInfo.format = vkFormatMap.format;
 			imageViewCreateInfo.components = vkFormatMap.componentMapping;
@@ -732,10 +838,10 @@ namespace VkHelpers
 
 	VkObj<VkRenderPass> CreateRenderPass(BvRenderDeviceVk* pDevice, const RenderPassDesc& renderPassDesc)
 	{
-		BvVector<VkAttachmentDescription2> attachments(renderPassDesc.m_AttachmentCount, VkAttachmentDescription2{ VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2 });
-		for (auto i = 0u; i < renderPassDesc.m_AttachmentCount; ++i)
+		BvVector<VkAttachmentDescription2> attachments(renderPassDesc.m_Attachments.Size(), VkAttachmentDescription2{ VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2 });
+		for (auto i = 0u; i < renderPassDesc.m_Attachments.Size(); ++i)
 		{
-			auto& attachment = renderPassDesc.m_pAttachments[i];
+			auto& attachment = renderPassDesc.m_Attachments[i];
 
 			auto& attachmentVk = attachments[i];
 			//attachmentVk.pNext = nullptr;
@@ -758,20 +864,20 @@ namespace VkHelpers
 			attachmentVk.finalLayout = GetVkImageLayout(attachment.m_StateAfter, IsDepthOrStencilFormat(attachment.m_Format));
 		}
 
-		BvVector<VkSubpassDescription2> subpasses(renderPassDesc.m_SubpassCount, VkSubpassDescription2{ VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2 });
+		BvVector<VkSubpassDescription2> subpasses(renderPassDesc.m_Subpasses.Size(), VkSubpassDescription2{ VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2 });
 		BvVector<u32> correlationMasks;
 		BvVector<VkAttachmentReference2> attachmentReferences;
 		BvVector<VkFragmentShadingRateAttachmentInfoKHR> shadingRateRefs;
 		BvVector<VkSubpassDescriptionDepthStencilResolve> depthStencilResolves;
 
-		attachmentReferences.Reserve(renderPassDesc.m_SubpassCount * renderPassDesc.m_AttachmentCount);
+		attachmentReferences.Reserve(renderPassDesc.m_Subpasses.Size() * renderPassDesc.m_Attachments.Size());
 
 		u32 srRefCount = 0;
 		bool usesMultiview = false;
-		for (auto i = 0; i < renderPassDesc.m_SubpassCount; ++i)
+		for (auto i = 0; i < renderPassDesc.m_Subpasses.Size(); ++i)
 		{
-			auto& subpass = renderPassDesc.m_pSubpasses[i];
-			if (subpass.m_pShadingRateAttachment)
+			auto& subpass = renderPassDesc.m_Subpasses[i];
+			if (subpass.m_ShadingRateAttachment.IsValid())
 			{
 				++srRefCount;
 			}
@@ -784,27 +890,27 @@ namespace VkHelpers
 		shadingRateRefs.Reserve(srRefCount);
 		if (usesMultiview)
 		{
-			correlationMasks.Resize(renderPassDesc.m_SubpassCount);
+			correlationMasks.Resize(renderPassDesc.m_Subpasses.Size());
 		}
 
-		for (auto i = 0u; i < renderPassDesc.m_SubpassCount; ++i)
+		for (auto i = 0u; i < renderPassDesc.m_Subpasses.Size(); ++i)
 		{
-			auto& subpass = renderPassDesc.m_pSubpasses[i];
+			auto& subpass = renderPassDesc.m_Subpasses[i];
 
 			auto& subpassVk = subpasses[i];
 			const void** pNext = &subpassVk.pNext;
 
 			subpassVk.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			if (subpass.m_ColorAttachmentCount > 0)
+			if (subpass.m_ColorAttachments.Size() > 0)
 			{
-				subpassVk.colorAttachmentCount = subpass.m_ColorAttachmentCount;
+				subpassVk.colorAttachmentCount = subpass.m_ColorAttachments.Size();
 				auto currIndex = (u32)attachmentReferences.Size();
-				for (auto j = 0u; j < subpass.m_ColorAttachmentCount; ++j)
+				for (auto j = 0u; j < subpass.m_ColorAttachments.Size(); ++j)
 				{
-					auto& ref = subpass.m_pColorAttachments[j];
+					auto& ref = subpass.m_ColorAttachments[j];
 
 					auto& refVk = attachmentReferences.EmplaceBack(VkAttachmentReference2{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 });
-					refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_pAttachments[ref.m_Index].m_Format).aspectFlags;
+					refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_Attachments[ref.m_Index].m_Format).aspectFlags;
 					refVk.attachment = ref.m_Index;
 					refVk.layout = GetVkImageLayout(ref.m_ResourceState);
 				}
@@ -812,28 +918,28 @@ namespace VkHelpers
 				subpassVk.pColorAttachments = &attachmentReferences[currIndex];
 			}
 
-			if (subpass.m_pDepthStencilAttachment)
+			if (subpass.m_DepthStencilAttachment.IsValid())
 			{
-				auto& ref = *subpass.m_pDepthStencilAttachment;
+				auto& ref = subpass.m_DepthStencilAttachment;
 
 				auto& refVk = attachmentReferences.EmplaceBack(VkAttachmentReference2{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 });
-				refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_pAttachments[ref.m_Index].m_Format).aspectFlags;
+				refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_Attachments[ref.m_Index].m_Format).aspectFlags;
 				refVk.attachment = ref.m_Index;
 				refVk.layout = GetVkImageLayout(ref.m_ResourceState);
 
 				subpassVk.pDepthStencilAttachment = &refVk;
 			}
 
-			if (subpass.m_InputAttachmentCount > 0)
+			if (subpass.m_InputAttachments.Size() > 0)
 			{
-				subpassVk.inputAttachmentCount = subpass.m_InputAttachmentCount;
+				subpassVk.inputAttachmentCount = subpass.m_InputAttachments.Size();
 				auto currIndex = (u32)attachmentReferences.Size();
-				for (auto j = 0u; j < subpass.m_InputAttachmentCount; ++j)
+				for (auto j = 0u; j < subpass.m_InputAttachments.Size(); ++j)
 				{
-					auto& ref = subpass.m_pInputAttachments[j];
+					auto& ref = subpass.m_InputAttachments[j];
 
 					auto& refVk = attachmentReferences.EmplaceBack(VkAttachmentReference2{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 });
-					refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_pAttachments[ref.m_Index].m_Format).aspectFlags;
+					refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_Attachments[ref.m_Index].m_Format).aspectFlags;
 					refVk.attachment = ref.m_Index;
 					refVk.layout = GetVkImageLayout(ref.m_ResourceState);
 					if ((refVk.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
@@ -845,12 +951,12 @@ namespace VkHelpers
 				subpassVk.pInputAttachments = &attachmentReferences[currIndex];
 			}
 
-			if (subpass.m_pResolveAttachments)
+			if (subpass.m_ResolveAttachments.Size() > 0)
 			{
 				auto currIndex = (u32)attachmentReferences.Size();
-				for (auto j = 0u; j < subpass.m_ColorAttachmentCount; ++j)
+				for (auto j = 0u; j < subpass.m_ColorAttachments.Size(); ++j)
 				{
-					auto& ref = subpass.m_pResolveAttachments[j];
+					auto& ref = subpass.m_ResolveAttachments[j];
 
 					auto& refVk = attachmentReferences.EmplaceBack(VkAttachmentReference2{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 });
 					refVk.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -861,12 +967,12 @@ namespace VkHelpers
 				subpassVk.pResolveAttachments = &attachmentReferences[currIndex];
 			}
 
-			if (subpass.m_pDepthStencilResolveAttachment)
+			if (subpass.m_DepthStencilResolveAttachment.IsValid())
 			{
-				auto& ref = *subpass.m_pDepthStencilResolveAttachment;
+				auto& ref = subpass.m_DepthStencilResolveAttachment;
 
 				auto& refVk = attachmentReferences.EmplaceBack(VkAttachmentReference2{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 });
-				refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_pAttachments[ref.m_Index].m_Format).aspectFlags;
+				refVk.aspectMask = GetVkFormatMap(renderPassDesc.m_Attachments[ref.m_Index].m_Format).aspectFlags;
 				refVk.attachment = ref.m_Index;
 				refVk.layout = GetVkImageLayout(ref.m_ResourceState);
 
@@ -878,9 +984,9 @@ namespace VkHelpers
 				pNext = &depthStencilResolve.pNext;
 			}
 
-			if (subpass.m_pShadingRateAttachment)
+			if (subpass.m_ShadingRateAttachment.IsValid())
 			{
-				auto& ref = *subpass.m_pShadingRateAttachment;
+				auto& ref = subpass.m_ShadingRateAttachment;
 
 				auto& refVk = attachmentReferences.EmplaceBack(VkAttachmentReference2{ VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2 });
 				refVk.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -888,8 +994,8 @@ namespace VkHelpers
 				refVk.layout = GetVkImageLayout(ref.m_ResourceState);
 
 				auto& shadingRateRef = shadingRateRefs.EmplaceBack(VkFragmentShadingRateAttachmentInfoKHR{ VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR });
-				shadingRateRef.shadingRateAttachmentTexelSize = VkExtent2D{ subpass.m_pShadingRateAttachment->m_TexelSizes[0],
-					subpass.m_pShadingRateAttachment->m_TexelSizes[1] };
+				shadingRateRef.shadingRateAttachmentTexelSize = VkExtent2D{ subpass.m_ShadingRateAttachment.m_TexelSizes[0],
+					subpass.m_ShadingRateAttachment.m_TexelSizes[1] };
 				shadingRateRef.pFragmentShadingRateAttachment = &refVk;
 
 				*pNext = &shadingRateRef;
@@ -905,20 +1011,20 @@ namespace VkHelpers
 
 		auto getVkFlagsFn = [&renderPassDesc](u32 subpassIndex, VkAccessFlags2& accessFlags, VkPipelineStageFlags2& stageFlags)
 			{
-				auto& subpass = renderPassDesc.m_pSubpasses[subpassIndex];
-				if (subpass.m_ColorAttachmentCount > 0)
+				auto& subpass = renderPassDesc.m_Subpasses[subpassIndex];
+				if (subpass.m_ColorAttachments.Size() > 0)
 				{
 					accessFlags |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 				}
-				if (subpass.m_InputAttachmentCount > 0)
+				if (subpass.m_InputAttachments.Size() > 0)
 				{
 					accessFlags |= VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT;
 				}
-				if (subpass.m_pDepthStencilAttachment)
+				if (subpass.m_DepthStencilAttachment.IsValid())
 				{
 					accessFlags |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 				}
-				if (subpass.m_pShadingRateAttachment)
+				if (subpass.m_ShadingRateAttachment.IsValid())
 				{
 					accessFlags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
 				}
@@ -931,13 +1037,13 @@ namespace VkHelpers
 
 		BvVector<VkSubpassDependency2> dependencies;
 		BvVector<VkMemoryBarrier2> barriers;
-		if (renderPassDesc.m_SubpassDependencyCount > 0)
+		if (renderPassDesc.m_SubpassDependencies.Size() > 0)
 		{
-			dependencies.Resize(renderPassDesc.m_SubpassDependencyCount, VkSubpassDependency2{ VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2 });
+			dependencies.Resize(renderPassDesc.m_SubpassDependencies.Size(), VkSubpassDependency2{ VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2 });
 			barriers.Resize(dependencies.Size(), VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 });
-			for (auto i = 0u; i < renderPassDesc.m_SubpassDependencyCount; ++i)
+			for (auto i = 0u; i < renderPassDesc.m_SubpassDependencies.Size(); ++i)
 			{
-				auto& dep = renderPassDesc.m_pSubpassDependencies[i];
+				auto& dep = renderPassDesc.m_SubpassDependencies[i];
 
 				auto& depVk = dependencies[i];
 				auto& barrierVk = barriers[i];
@@ -952,14 +1058,14 @@ namespace VkHelpers
 		}
 		else
 		{
-			dependencies.Resize(renderPassDesc.m_SubpassCount + 1, VkSubpassDependency2{ VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2 });
+			dependencies.Resize(renderPassDesc.m_Subpasses.Size() + 1, VkSubpassDependency2{ VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2 });
 			barriers.Resize(dependencies.Size(), VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 });
 
-			auto lastPassIndex = renderPassDesc.m_SubpassCount - 1;
+			auto lastPassIndex = renderPassDesc.m_Subpasses.Size() - 1;
 			for (auto i = 0u; i < lastPassIndex; ++i)
 			{
-				auto& srcPass = renderPassDesc.m_pSubpasses[i];
-				auto& dstPass = renderPassDesc.m_pSubpasses[i + 1];
+				auto& srcPass = renderPassDesc.m_Subpasses[i];
+				auto& dstPass = renderPassDesc.m_Subpasses[i + 1];
 
 				auto& dep = dependencies[i + 1];
 				auto& barrier = barriers[i + 1];
@@ -988,13 +1094,13 @@ namespace VkHelpers
 			getVkFlagsFn(lastPassIndex,
 				barriers[lastDependencyIndex].srcAccessMask, barriers[lastDependencyIndex].srcStageMask);
 
-			auto& lastSubpass = renderPassDesc.m_pSubpasses[lastPassIndex];
+			auto& lastSubpass = renderPassDesc.m_Subpasses[lastPassIndex];
 			VkAccessFlags2 accessFlags = 0;
 			VkPipelineStageFlags2 stageFlags = 0;
-			for (auto i = 0u; i < lastSubpass.m_ColorAttachmentCount; ++i)
+			for (auto i = 0u; i < lastSubpass.m_ColorAttachments.Size(); ++i)
 			{
-				auto& attachment = lastSubpass.m_pColorAttachments[i];
-				if (renderPassDesc.m_pAttachments[attachment.m_Index].m_StateAfter == ResourceState::kPresent)
+				auto& attachment = lastSubpass.m_ColorAttachments[i];
+				if (renderPassDesc.m_Attachments[attachment.m_Index].m_StateAfter == ResourceState::kPresent)
 				{
 					accessFlags = VK_ACCESS_2_MEMORY_READ_BIT;
 					stageFlags = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
@@ -1042,29 +1148,31 @@ namespace VkHelpers
 	}
 
 
-	VkObj<VkSRLObj> CreateShaderResourceLayout(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutDesc& shaderResourceLayoutDesc)
+	VkObj<VkSRLObj> CreateShaderResourceLayout(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutCreateDesc& shaderResourceLayoutDesc)
 	{
-		VkResult result;
+		VkObj<VkSRLObj> srl{};
+		auto& result = srl.first;
+		auto& layouts = srl.second.m_DescriptorSetLayouts;
+		auto& pipelineLayout = srl.second.m_PipelineLayout;
 
-		BvVector<VkDescriptorSetLayout> layouts(shaderResourceLayoutDesc.m_ShaderResourceSetCount);
+		layouts.Resize(shaderResourceLayoutDesc.m_ShaderResourceSets.Size());
 
 		BvVector<VkDescriptorSetLayoutBinding> bindings;
 		BvVector<VkDescriptorBindingFlags> flags;
 		BvVector<VkSampler> samplers;
 		BvVector<VkPushConstantRange> pushConstants;
-		u32 layoutIndex = 0;
 		u32 currPushConstantOffset = 0;
 		auto device = pDevice->GetHandle();
-		for (auto i = 0u; i < shaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
+		for (auto i = 0u; i < shaderResourceLayoutDesc.m_ShaderResourceSets.Size(); ++i)
 		{
-			auto& set = shaderResourceLayoutDesc.m_pShaderResourceSets[i];
+			auto& set = shaderResourceLayoutDesc.m_ShaderResourceSets[i];
 			u32 currSamplerIndex = 0;
 			bool isBindful = false;
 			bool isBindless = false;
-			for (auto j = 0u; j < set.m_ResourceCount; ++j)
+			for (auto j = 0u; j < set.m_Resources.Size(); ++j)
 			{
-				auto& currResource = set.m_pResources[j];
-				if (currResource.m_ppStaticSamplers == nullptr)
+				auto& currResource = set.m_Resources[j];
+				if (currResource.m_StaticSamplers.Size() == 0)
 				{
 					bindings.PushBack({ currResource.m_Binding, GetVkDescriptorType(currResource.m_ShaderResourceType),
 						currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), nullptr });
@@ -1073,7 +1181,7 @@ namespace VkHelpers
 				{
 					for (auto k = 0; k < currResource.m_Count; ++k)
 					{
-						samplers.PushBack(TO_VK(currResource.m_ppStaticSamplers[k])->GetHandle());
+						samplers.PushBack(TO_VK(currResource.m_StaticSamplers[k])->GetHandle());
 					}
 					bindings.PushBack({ currResource.m_Binding, VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
 						currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), samplers.Data() + currSamplerIndex });
@@ -1094,6 +1202,7 @@ namespace VkHelpers
 			{
 				// I decided to keep these separate for the moment, as dealing with both on the same set would be dreadful
 				BV_ASSERT(false, "Can't have bindful and bindless resources on the same set");
+				result = VK_ERROR_NOT_PERMITTED;
 				break;
 			}
 
@@ -1110,7 +1219,12 @@ namespace VkHelpers
 				layoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
 			}
 
-			result = vkCreateDescriptorSetLayout(device, &layoutCI, nullptr, &layouts[layoutIndex]);
+			if (layouts.Size() <= set.m_Index)
+			{
+				layouts.Resize(set.m_Index + 1, VK_NULL_HANDLE);
+			}
+
+			result = vkCreateDescriptorSetLayout(device, &layoutCI, nullptr, &layouts[set.m_Index]);
 			if (result != VK_SUCCESS)
 			{
 				break;
@@ -1119,15 +1233,14 @@ namespace VkHelpers
 			bindings.Clear();
 			samplers.Clear();
 
-			for (auto j = 0u; j < set.m_ConstantCount; ++j)
+			for (auto j = 0u; j < set.m_Constants.Size(); ++j)
 			{
-				auto& constant = set.m_pConstants[j];
+				auto& constant = set.m_Constants[j];
 				pushConstants.PushBack({ GetVkShaderStageFlags(constant.m_ShaderStages), currPushConstantOffset, constant.m_Size });
 				currPushConstantOffset += constant.m_Size;
 			}
 		}
 
-		VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 		if (result == VK_SUCCESS)
 		{
 			VkPipelineLayoutCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
@@ -1144,18 +1257,45 @@ namespace VkHelpers
 			}
 			result = vkCreatePipelineLayout(device, &pipelineCI, nullptr, &pipelineLayout);
 		}
-		else
+
+		if (result != VK_SUCCESS)
 		{
 			for (auto dsl : layouts)
 			{
 				if (dsl != VK_NULL_HANDLE)
 				{
-					vkDestroyDescriptorSetLayout(device, dsl, nullptr);
+					DestroyDeviceObject(device, dsl);
 				}
+			}
+
+			if (pipelineLayout)
+			{
+				DestroyDeviceObject(device, pipelineLayout);
 			}
 		}
 
-		return std::make_pair(result, VkSRLObj{ std::move(layouts), pipelineLayout });
+		return srl;
+	}
+
+
+	VkObj<VkPipelineCache> CreatePipelineCache(BvRenderDeviceVk* pDevice, const PipelineCacheInitData* pInitData)
+	{
+		VkObj<VkPipelineCache> cacheObj;
+		auto& result = cacheObj.first;
+		auto& pipelineCache = cacheObj.second;
+
+		VkPipelineCacheCreateInfo ci{ VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
+		//ci.pNext = nullptr;
+		//ci.flags = 0;
+		if (pInitData)
+		{
+			ci.initialDataSize = pInitData->m_Size;
+			ci.pInitialData = pInitData->m_pInitData;
+		}
+
+		result = vkCreatePipelineCache(*pDevice, &ci, nullptr, &pipelineCache);
+
+		return cacheObj;
 	}
 
 
@@ -1165,13 +1305,15 @@ namespace VkHelpers
 		BvFixedVector<VkVertexInputBindingDescription, kMaxVertexBindings> bindingDescs;
 		BvFixedVector<VkVertexInputBindingDivisorDescriptionEXT, kMaxVertexBindings> divisorDescs;
 
+		const auto& featureFlags = pDevice->GetDeviceInfo()->m_FeatureFlags;
+
 		{
 			BvFixedVector<u32, kMaxVertexBindings> bindingIndices(kMaxVertexBindings, kU32Max);
 			BvFixedVector<u32, kMaxVertexBindings> bindingElemLocations(kMaxVertexBindings, 0);
-			for (auto i = 0u; i < pipelineStateDesc.m_VertexInputDescCount; i++)
+			for (auto i = 0u; i < pipelineStateDesc.m_VertexInputDescs.Size(); i++)
 			{
-				auto& viDesc = pipelineStateDesc.m_pVertexInputDescs[i];
-				u32 stride = GetFormatInfo(viDesc.m_Format).m_BitsPerPixel >> 3;
+				auto& viDesc = pipelineStateDesc.m_VertexInputDescs[i];
+				u32 stride = BvRenderUtils::GetFormatInfo(viDesc.m_Format).m_BitsPerPixel >> 3;
 
 				// We keep track of each binding that hasn't already been set, and add the elements
 				// when a new one is found (which means bindingIndex == kU32Max)
@@ -1207,7 +1349,7 @@ namespace VkHelpers
 		vertexDivisorStateCI.pVertexBindingDivisors = divisorDescs.Data();
 
 		VkPipelineVertexInputStateCreateInfo vertexCI{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-		vertexCI.pNext = pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME) != kU64Max && divisorDescs.Size() > 0 ? &vertexDivisorStateCI : nullptr;
+		vertexCI.pNext = featureFlags.vertexAttributeDivisor && divisorDescs.Size() > 0 ? &vertexDivisorStateCI : nullptr;
 		if (bindingDescs.Size() > 0)
 		{
 			vertexCI.vertexBindingDescriptionCount = (u32)bindingDescs.Size();
@@ -1240,9 +1382,8 @@ namespace VkHelpers
 		rasterizerCI.lineWidth = 1.0f;
 		const void** ppRasterNext = &rasterizerCI.pNext;
 
-		bool hasDepthBiasControl = pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME) != kU64Max;
 		VkDepthBiasRepresentationInfoEXT dbrI{ VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT };
-		if (hasDepthBiasControl)
+		if (rasterizerCI.depthBiasEnable && featureFlags.depthBiasControl)
 		{
 			dbrI.depthBiasExact = VK_TRUE;
 			*ppRasterNext = &dbrI;
@@ -1254,12 +1395,12 @@ namespace VkHelpers
 			if (dsFormat == Format::kUnknown && pipelineStateDesc.m_pRenderPass)
 			{
 				auto& rpDesc = pipelineStateDesc.m_pRenderPass->GetDesc();
-				for (auto i = 0; i < rpDesc.m_AttachmentCount; ++i)
+				for (auto i = 0; i < rpDesc.m_Attachments.Size(); ++i)
 				{
-					auto fi = GetFormatInfo(rpDesc.m_pAttachments[i].m_Format);
+					auto fi = BvRenderUtils::GetFormatInfo(rpDesc.m_Attachments[i].m_Format);
 					if (fi.m_IsDepthStencil)
 					{
-						dsFormat = rpDesc.m_pAttachments[i].m_Format;
+						dsFormat = rpDesc.m_Attachments[i].m_Format;
 						break;
 					}
 				}
@@ -1279,7 +1420,7 @@ namespace VkHelpers
 		}
 
 		VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeRaster{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
-		if (pipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization && pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME) != kU64Max)
+		if (pipelineStateDesc.m_RasterizerStateDesc.m_EnableConservativeRasterization && featureFlags.conservativeRasterization)
 		{
 			const auto& conservativeRasterProps = pDevice->GetDeviceInfo()->m_ExtendedProperties.convervativeRasterizationProps;
 
@@ -1325,7 +1466,7 @@ namespace VkHelpers
 		msCI.pSampleMask = sampleMask;
 
 		BvFixedVector<VkFormat, kMaxRenderTargets> rtvFormats;
-		for (auto i = 0; i < kMaxRenderTargets && pipelineStateDesc.m_RenderTargetFormats[i] != Format::kUnknown; i++)
+		for (auto i = 0; i < pipelineStateDesc.m_RenderTargetFormats.Size(); i++)
 		{
 			rtvFormats.EmplaceBack(GetVkFormat(pipelineStateDesc.m_RenderTargetFormats[i]));
 		}
@@ -1347,8 +1488,8 @@ namespace VkHelpers
 		auto attachmentCount = rtvFormats.Size();
 		if (!attachmentCount && pipelineStateDesc.m_pRenderPass)
 		{
-			auto& subpass = pipelineStateDesc.m_pRenderPass->GetDesc().m_pSubpasses[pipelineStateDesc.m_SubpassIndex];
-			attachmentCount = subpass.m_ColorAttachmentCount;
+			auto& subpass = pipelineStateDesc.m_pRenderPass->GetDesc().m_Subpasses[pipelineStateDesc.m_SubpassIndex];
+			attachmentCount = subpass.m_ColorAttachments.Size();
 		}
 
 		BvFixedVector<VkPipelineColorBlendAttachmentState, kMaxRenderTargets> blendAttachments(attachmentCount, {});
@@ -1361,7 +1502,7 @@ namespace VkHelpers
 			blendAttachments[i].dstColorBlendFactor = GetVkBlendFactor(pipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_DstBlend);
 			blendAttachments[i].dstAlphaBlendFactor = GetVkBlendFactor(pipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_DstBlendAlpha);
 			blendAttachments[i].alphaBlendOp = GetVkBlendOp(pipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_AlphaBlendOp);
-			blendAttachments[i].colorWriteMask = pipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_RenderTargetWriteMask;
+			blendAttachments[i].colorWriteMask = VkColorComponentFlags(pipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i].m_RenderTargetWriteMask);
 		}
 
 		VkPipelineColorBlendStateCreateInfo blendCI{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
@@ -1376,7 +1517,7 @@ namespace VkHelpers
 		bool hasTessellationShaders = false;
 		bool hasMeshShaders = false;
 		BvFixedVector<VkPipelineShaderStageCreateInfo, kMaxShaderStages> shaderStages;
-		for (auto i = 0u; i < kMaxShaderStages && pipelineStateDesc.m_Shaders[i] != nullptr; i++)
+		for (auto i = 0u; i < pipelineStateDesc.m_Shaders.Size(); i++)
 		{
 			auto& shaderStage = shaderStages.EmplaceBack(VkPipelineShaderStageCreateInfo{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
 			const auto& byteCode = pipelineStateDesc.m_Shaders[i]->GetShaderBlob();
@@ -1390,7 +1531,8 @@ namespace VkHelpers
 			{
 				hasMeshShaders = true;
 			}
-			shaderStage.module = CreateShaderModule(pDevice->GetHandle(), byteCode.Size(), byteCode.Data());
+			auto shaderObj = CreateShaderModule(pDevice->GetHandle(), byteCode.Size(), byteCode.Data());
+			shaderStage.module = shaderObj.second;
 		}
 
 		BV_ASSERT(hasMeshShaders != hasTessellationShaders
@@ -1410,7 +1552,7 @@ namespace VkHelpers
 		{
 			dynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
 		}
-		if (pipelineStateDesc.m_ShadingRateEnabled && pDevice->GetDeviceInfo()->m_EnabledExtensions.Find(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME) != kU64Max)
+		if (pipelineStateDesc.m_ShadingRateEnabled && featureFlags.fragmentShading)
 		{
 			dynamicStates.PushBack(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
 		}
@@ -1447,9 +1589,508 @@ namespace VkHelpers
 
 		for (auto i = 0u; i < shaderStages.Size(); i++)
 		{
-			vkDestroyShaderModule(pDevice->GetHandle(), shaderStages[i].module, nullptr);
+			DestroyDeviceObject(pDevice->GetHandle(), shaderStages[i].module);
 		}
 
 		return std::make_pair(result, pipeline);
+	}
+
+
+	VkObj<VkPipeline> CreateComputePipeline(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache)
+	{
+		auto device = pDevice->GetHandle();
+
+		VkComputePipelineCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+		pipelineCI.layout = TO_VK(pipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
+		pipelineCI.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		pipelineCI.stage.pName = pipelineStateDesc.m_pShader->GetEntryPoint();
+		pipelineCI.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+		auto& blob = pipelineStateDesc.m_pShader->GetShaderBlob();
+		auto shaderObj = CreateShaderModule(device, blob.Size(), blob.Data());
+		pipelineCI.stage.module = shaderObj.second;
+		pipelineCI.basePipelineIndex = -1;
+
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		auto result = vkCreateComputePipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipeline);
+
+		DestroyDeviceObject(device, pipelineCI.stage.module);
+
+		return std::make_pair(result, pipeline);
+	}
+
+
+	VkObj<VkPipeline> CreateRayTracingPipeline(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache)
+	{
+		BvVector<VkPipelineShaderStageCreateInfo> shaderStages(pipelineStateDesc.m_Shaders.Size(), { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
+		BvVector<VkRayTracingShaderGroupCreateInfoKHR> groups(pipelineStateDesc.m_ShaderGroupDescs.Size(), { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR });
+
+		auto device = pDevice->GetHandle();
+		for (auto i = 0u; i < pipelineStateDesc.m_Shaders.Size(); i++)
+		{
+			auto& shaderStage = shaderStages[i];
+			const auto& byteCode = pipelineStateDesc.m_Shaders[i]->GetShaderBlob();
+			shaderStage.pName = pipelineStateDesc.m_Shaders[i]->GetEntryPoint();
+			shaderStage.stage = GetVkShaderStageFlagBits(pipelineStateDesc.m_Shaders[i]->GetShaderStage());
+			auto shaderObj = CreateShaderModule(device, byteCode.Size(), byteCode.Data());
+			shaderStage.module = shaderObj.second;
+		}
+
+		for (auto i = 0u; i < pipelineStateDesc.m_ShaderGroupDescs.Size(); ++i)
+		{
+			auto& groupDesc = pipelineStateDesc.m_ShaderGroupDescs[i];
+			BV_ASSERT(groupDesc.m_Type != ShaderGroupType::kNone, "Shader hit group type can't be kNone");
+
+			auto& group = groups[i];
+			group.type = GetVkRayTracingShaderGroupType(groupDesc.m_Type);
+			group.generalShader = groupDesc.m_General;
+			group.closestHitShader = groupDesc.m_ClosestHit;
+			group.anyHitShader = groupDesc.m_AnyHit;
+			group.intersectionShader = groupDesc.m_Intersection;
+		}
+
+		VkRayTracingPipelineInterfaceCreateInfoKHR pici{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR, nullptr,
+			pipelineStateDesc.m_MaxPayloadSize, pipelineStateDesc.m_MaxAttributeSize };
+
+		VkRayTracingPipelineCreateInfoKHR ci{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
+		ci.groupCount = u32(groups.Size());
+		ci.pGroups = groups.Data();
+		ci.stageCount = u32(shaderStages.Size());
+		ci.pStages = shaderStages.Data();
+		ci.maxPipelineRayRecursionDepth = pipelineStateDesc.m_MaxPipelineRayRecursionDepth;
+		ci.layout = TO_VK(pipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
+		if (pipelineStateDesc.m_ForcePayloadAndAttributeSizes)
+		{
+			ci.pLibraryInterface = &pici;
+		}
+
+		VkPipeline pipeline = VK_NULL_HANDLE;
+		auto result = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, pipelineCache, 1, &ci, nullptr, &pipeline);
+
+		for (auto i = 0u; i < shaderStages.Size(); i++)
+		{
+			DestroyDeviceObject(device, shaderStages[i].module);
+		}
+
+		return std::make_pair(result, pipeline);
+	}
+
+
+	VkObj<VkSemaphore> CreateSemaphore(BvRenderDeviceVk* pDevice, const GPUFenceDesc& fenceDesc, bool isTimelineSemaphore)
+	{
+		VkSemaphoreTypeCreateInfo timelineCreateInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+		if (isTimelineSemaphore) [[likely]]
+		{
+			//timelineCreateInfo.pNext = nullptr;
+			timelineCreateInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+			timelineCreateInfo.initialValue = fenceDesc.m_Value;
+		}
+
+		VkSemaphoreCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		createInfo.pNext = isTimelineSemaphore ? &timelineCreateInfo : nullptr;
+		
+		VkSemaphore semaphore = VK_NULL_HANDLE;
+		auto result = vkCreateSemaphore(pDevice->GetHandle(), &createInfo, nullptr, &semaphore);
+		
+		return std::make_pair(result, semaphore);
+	}
+
+
+	VkObj<VkQueryPool> CreateQueryPool(BvRenderDeviceVk* pDevice, QueryType queryType, u32 queryCount, bool meshPrimitivesPool)
+	{
+		VkQueryPoolCreateInfo qpCI{ VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+		qpCI.queryType = GetVkQueryType(queryType, meshPrimitivesPool);
+		qpCI.queryCount = queryCount;
+		if (qpCI.queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS)
+		{
+			auto pDeviceInfo = pDevice->GetDeviceInfo();
+			bool geometryShader = pDeviceInfo->m_DeviceFeatures.features.geometryShader;
+			bool tessellationShader = pDeviceInfo->m_DeviceFeatures.features.tessellationShader;
+			bool meshShader = pDeviceInfo->m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries;
+			qpCI.pipelineStatistics = GetVkQueryPipelineFlags(geometryShader, tessellationShader, queryType == QueryType::kMeshPipelineStatistics && meshShader);
+		}
+
+		VkQueryPool pool = VK_NULL_HANDLE;
+		auto result = vkCreateQueryPool(pDevice->GetHandle(), &qpCI, nullptr, &pool);
+
+		return std::make_pair(result, pool);
+	}
+
+
+	VkObj<VkASObj> CreateAccelerationStructure(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& asDesc)
+	{
+		VkObj<VkASObj> asObj{};
+		auto& result = asObj.first;
+		auto& as = asObj.second;
+
+		auto& asHandle = as.m_AS;
+		auto& asDeviceAddress = as.m_DeviceAddress;
+		auto& geometries = as.m_Geometries;
+		auto& primitiveCounts = as.m_PrimitiveCounts;
+		auto& buffer = as.m_BufferObj;
+		auto& scratchSizes = as.m_ScratchSizes;
+
+		VkAccelerationStructureBuildSizesInfoKHR sizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR, nullptr, asDesc.m_CompactedSize, 0, 0 };
+		VkAccelerationStructureTypeKHR asType{};
+
+		auto device = pDevice->GetHandle();
+
+		if (asDesc.m_CompactedSize == 0)
+		{
+			if (asDesc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
+			{
+				asType = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+
+				geometries.Resize(asDesc.m_BLAS.m_Geometries.Size(), { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
+				primitiveCounts.Resize(geometries.Size(), 0);
+
+				for (auto i = 0u; i < asDesc.m_BLAS.m_Geometries.Size(); ++i)
+				{
+					if (asDesc.m_BLAS.m_Geometries[i].m_Type == RayTracingGeometryType::kTriangles)
+					{
+						auto& srcGeometry = asDesc.m_BLAS.m_Geometries[i].m_Triangle;
+
+						VkAccelerationStructureGeometryKHR& dstGeometry = geometries[i];
+						//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+						//dstGeometry.pNext = nullptr;
+						dstGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+						dstGeometry.flags = GetVkGeometryFlags(asDesc.m_BLAS.m_Geometries[i].m_Flags);
+
+						VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
+						triangle.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+						//triangle.pNext = nullptr;
+						triangle.vertexFormat = GetVkFormat(srcGeometry.m_VertexFormat);
+						triangle.vertexStride = srcGeometry.m_VertexStride;
+						triangle.maxVertex = srcGeometry.m_VertexCount - 1;
+						triangle.indexType = GetVkIndexType(srcGeometry.m_IndexFormat);
+
+						u32 primitiveCount = srcGeometry.m_IndexCount > 0 ? srcGeometry.m_IndexCount / 3 : srcGeometry.m_VertexCount / 3;
+						primitiveCounts[i] = primitiveCount;
+					}
+					else if (asDesc.m_BLAS.m_Geometries[i].m_Type == RayTracingGeometryType::kAABB)
+					{
+						auto& srcGeometry = asDesc.m_BLAS.m_Geometries[i].m_AABB;
+
+						VkAccelerationStructureGeometryKHR& dstGeometry = geometries[i];
+						//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+						//dstGeometry.pNext = nullptr;
+						dstGeometry.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
+						dstGeometry.flags = GetVkGeometryFlags(asDesc.m_BLAS.m_Geometries[i].m_Flags);
+
+						VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
+						aabb.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+						//aabb.pNext = nullptr;
+						aabb.stride = srcGeometry.m_Stride;
+
+						primitiveCounts[i] = srcGeometry.m_Count;
+					}
+				}
+			}
+			else if (asDesc.m_Type == RayTracingAccelerationStructureType::kTopLevel)
+			{
+				asType = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+
+				geometries.Resize(1, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
+				primitiveCounts.Resize(1, asDesc.m_TLAS.m_InstanceCount);
+
+				VkAccelerationStructureGeometryKHR& dstGeometry = geometries.Back();
+				//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+				//dstGeometry.pNext = nullptr;
+				dstGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+				dstGeometry.flags = GetVkGeometryFlags(asDesc.m_TLAS.m_Flags);
+
+				VkAccelerationStructureGeometryInstancesDataKHR& instances = dstGeometry.geometry.instances;
+				instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+				instances.arrayOfPointers = VK_FALSE;
+			}
+
+			VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+			//buildInfo.pNext = nullptr;
+			buildInfo.type = asType;
+			buildInfo.flags = GetVkBuildAccelerationStructureFlags(asDesc.m_Flags);
+			buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+			buildInfo.geometryCount = u32(geometries.Size());
+			buildInfo.pGeometries = geometries.Data();
+
+			vkGetAccelerationStructureBuildSizesKHR(device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &buildInfo, primitiveCounts.Data(), &sizeInfo);
+
+			scratchSizes.m_Build = sizeInfo.buildScratchSize;
+			scratchSizes.m_Update = sizeInfo.updateScratchSize;
+		}
+
+		BufferDesc bufferDesc;
+		bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
+		bufferDesc.m_MemoryType = MemoryType::kDevice;
+		bufferDesc.m_Size = sizeInfo.accelerationStructureSize;
+		auto bufferObj = CreateBuffer(pDevice, bufferDesc);
+
+		result = bufferObj.first;
+		if (result == VK_SUCCESS)
+		{
+			buffer = bufferObj.second;
+
+			VkAccelerationStructureCreateInfoKHR accelerationStructureCI{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
+			//accelerationStructureCI.createFlags = 0;
+			accelerationStructureCI.buffer = bufferObj.second.m_Buffer;
+			//accelerationStructureCI.offset = 0;
+			accelerationStructureCI.size = sizeInfo.accelerationStructureSize;
+			accelerationStructureCI.type = asType;
+			result = vkCreateAccelerationStructureKHR(device, &accelerationStructureCI, nullptr, &asHandle);
+			if (result == VK_SUCCESS)
+			{
+				VkAccelerationStructureDeviceAddressInfoKHR addressInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR, nullptr, asHandle };
+				asDeviceAddress = vkGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
+			}
+			else
+			{
+				DestroyDeviceObject(*pDevice, buffer.m_Buffer, pDevice->GetAllocator(), buffer.m_Memory);
+				buffer.m_Buffer = VK_NULL_HANDLE;
+				buffer.m_Memory = VK_NULL_HANDLE;
+			}
+		}
+
+		return asObj;
+	}
+
+	VkObj<VkSBTObj> CreateShaderBindingTable(BvRenderDeviceVk* pDevice, const ShaderBindingTableDesc& sbtDesc, BvCommandContextVk* pContext)
+	{
+		VkObj<VkSBTObj> sbtObj;
+		auto& result = sbtObj.first;
+		auto& sbt = sbtObj.second;
+		auto& props = pDevice->GetDeviceInfo()->m_ExtendedProperties.rayTracingPipelineProps;
+		auto handleSize = props.shaderGroupHandleSize;
+		auto groupHandleAlignment = props.shaderGroupHandleAlignment;
+		auto baseGroupAlignment = props.shaderGroupBaseAlignment;
+
+		auto& stages = TO_VK(sbtDesc.m_pPSO)->GetShaderStages();
+		BvVector<u32> groupIndices[4];
+		auto& psoDesc = sbtDesc.m_pPSO->GetDesc();
+		for (auto g = 0; g < psoDesc.m_ShaderGroupDescs.Size(); ++g)
+		{
+			auto index = 0;
+			auto& currGroup = psoDesc.m_ShaderGroupDescs[g];
+			if (currGroup.m_Type == ShaderGroupType::kGeneral)
+			{
+				auto stage = stages[currGroup.m_General];
+				switch (stage)
+				{
+				case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
+					index = 0;
+					break;
+				case VK_SHADER_STAGE_MISS_BIT_KHR:
+					index = 1;
+					break;
+				case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
+					index = 3;
+					break;
+				}
+			}
+			else
+			{
+				index = 2;
+			}
+
+			groupIndices[index].PushBack(g);
+		}
+
+		u32 sbtSize = psoDesc.m_ShaderGroupDescs.Size() * handleSize;
+		BvVector<u8> shaderHandleData(sbtSize);
+
+		result = vkGetRayTracingShaderGroupHandlesKHR(pDevice->GetHandle(), TO_VK(sbtDesc.m_pPSO)->GetHandle(), 0,
+			psoDesc.m_ShaderGroupDescs.Size(), sbtSize, shaderHandleData.Data());
+		if (result != VK_SUCCESS)
+		{
+			return sbtObj;
+		}
+
+		u64 handleSizeAligned = RoundToNearestPowerOf2(handleSize, groupHandleAlignment);
+		sbt.m_Regions[0].stride = RoundToNearestPowerOf2(handleSizeAligned, baseGroupAlignment);
+		sbt.m_Regions[0].size = sbt.m_Regions[0].stride;
+		sbt.m_Regions[1].stride = handleSizeAligned;
+		sbt.m_Regions[1].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[1].Size(), baseGroupAlignment);
+		sbt.m_Regions[2].stride = handleSizeAligned;
+		sbt.m_Regions[2].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[2].Size(), baseGroupAlignment);
+		sbt.m_Regions[3].stride = handleSizeAligned;
+		sbt.m_Regions[3].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[3].Size(), baseGroupAlignment);
+
+		BufferDesc bufferDesc;
+		bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
+		bufferDesc.m_Size = sbt.m_Regions[0].stride * groupIndices[0].Size() + sbt.m_Regions[1].size + sbt.m_Regions[2].size + sbt.m_Regions[3].size;
+
+		BvVector<u8> bufferData(bufferDesc.m_Size);
+		auto pStart = bufferData.Data();
+		u64 currOffset = 0;
+		for (auto g = 0u; g < 4; ++g)
+		{
+			auto pBuffer = pStart + currOffset;
+			auto& group = groupIndices[g];
+			auto stride = sbt.m_Regions[g].stride;
+			for (auto i = 0u; i < group.Size(); ++i)
+			{
+				auto pSrc = shaderHandleData.Data() + (handleSize * group[i]);
+				memcpy(pBuffer, pSrc, handleSize);
+				pBuffer += stride;
+			}
+			currOffset += g == 0 ? sbt.m_Regions[g].stride * groupIndices[g].Size() : sbt.m_Regions[g].size;
+		}
+
+		{
+			auto bufferObj = CreateBuffer(pDevice, bufferDesc);
+			result = bufferObj.first;
+			if (result != VK_SUCCESS)
+			{
+				return sbtObj;
+			}
+
+			sbt.m_BufferObj = bufferObj.second;
+
+			UploadMemoryToGPU(pDevice, sbt.m_BufferObj.m_Buffer, { pContext, bufferData.Data(), bufferData.Size() });
+		}
+
+		currOffset = 0;
+		for (auto g = 0; g < 4; ++g)
+		{
+			if (groupIndices[g].Size() == 0)
+			{
+				sbt.m_Regions[g] = {};
+				continue;
+			}
+
+			sbt.m_Regions[g].deviceAddress = sbt.m_BufferObj.m_DeviceAddress + currOffset;
+			currOffset += g == 0 ? sbt.m_Regions[g].stride * groupIndices[g].Size() : sbt.m_Regions[g].size;
+		}
+
+		return sbtObj;
+	}
+
+	void UploadMemoryToGPU(BvRenderDeviceVk* pDevice, VkBuffer buffer, const BufferInitData& initData)
+	{
+		if (!initData.m_pContext || !initData.m_Size || !initData.m_pData)
+		{
+			return;
+		}
+
+		BufferDesc bufferDesc;
+		bufferDesc.m_MemoryType = MemoryType::kUpload;
+		bufferDesc.m_Size = initData.m_Size;
+		bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
+
+		auto stagingBuffer = CreateBuffer(pDevice, bufferDesc);
+		if (stagingBuffer.first != VK_SUCCESS)
+		{
+			return;
+		}
+		memcpy(stagingBuffer.second.m_pMappedMemory, initData.m_pData, initData.m_Size);
+
+		auto pContext = static_cast<BvCommandContextVk*>(initData.m_pContext);
+		pContext->NewCommandList();
+		pContext->GetCurrentCommandBuffer()->CopyBuffer(stagingBuffer.second.m_Buffer, buffer, { 0, 0, initData.m_Size });
+		pContext->ExecuteAndWait();
+
+		DestroyDeviceObject(*pDevice, stagingBuffer.second.m_Buffer, pDevice->GetAllocator(), stagingBuffer.second.m_Memory);
+	}
+
+	void UploadMemoryToGPU(BvRenderDeviceVk* pDevice, VkImage texture, const TextureDesc& textureDesc, const TextureInitData& initData)
+	{
+		constexpr ResourceState initialState = ResourceState::kCommon;
+
+		// No way to copy and can't stay in VK_IMAGE_LAYOUT_UNDEFINED
+		if (!initData.m_pContext || initData.m_ResourceState == initialState)
+		{
+			return;
+		}
+		
+		ResourceState currState = initialState;
+
+		VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+		//barrier.pNext = nullptr;
+		barrier.image = texture;
+		barrier.subresourceRange.aspectMask = GetVkFormatMap(textureDesc.m_Format).aspectFlags;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+		auto pContext = TO_VK(initData.m_pContext);
+		pContext->NewCommandList();
+
+		VkObj<VkBufferObj> stagingBuffer{};
+		if (initData.m_SubresourceCount && initData.m_pSubresources)
+		{
+			u64 totalBytes = 0;
+			BvVector<VkBufferImageCopy> copyRegions(initData.m_SubresourceCount);
+			BvVector<SubresourceFootprint> footprints(initData.m_SubresourceCount);
+			pDevice->GetCopyableFootprints(textureDesc, initData.m_SubresourceCount, footprints.Data(), &totalBytes, 0, initData.m_FirstSubresource);
+
+			BufferDesc bufferDesc;
+			bufferDesc.m_MemoryType = MemoryType::kUpload;
+			bufferDesc.m_Size = totalBytes;
+			bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
+		
+			stagingBuffer = CreateBuffer(pDevice, bufferDesc);
+			if (stagingBuffer.first != VK_SUCCESS)
+			{
+				return;
+			}
+
+			BvRenderUtils::UpdateSubresources(initData.m_SubresourceCount, initData.m_pSubresources, footprints.Data(), stagingBuffer.second.m_pMappedMemory);
+
+			for (auto i = 0; i < initData.m_SubresourceCount; ++i)
+			{
+				auto subresourceIndex = initData.m_FirstSubresource + i;
+				u32 m, a, p;
+				BvRenderUtils::DecomposeSubresourceIndex(subresourceIndex, textureDesc.m_MipLevels, textureDesc.m_ArraySize, m, a, p);
+
+				auto& copyRegion = copyRegions[i];
+				auto& footprint = footprints[i];
+
+				copyRegion.bufferOffset = footprint.m_Offset;
+
+				// Planar formats may require this to be revised
+				copyRegion.bufferRowLength = 0;
+				copyRegion.bufferImageHeight = 0;
+
+				copyRegion.imageOffset = { 0, 0, 0 };
+				copyRegion.imageExtent = { footprint.m_Subresource.m_Width, footprint.m_Subresource.m_Height, footprint.m_Subresource.m_Detph };
+				copyRegion.imageSubresource.aspectMask = GetVkImageAspectFlags(textureDesc.m_Format, p);
+				copyRegion.imageSubresource.mipLevel = m;
+				copyRegion.imageSubresource.baseArrayLayer = a;
+				copyRegion.imageSubresource.layerCount = 1;
+			}
+
+			currState = ResourceState::kTransferDst;
+
+			barrier.oldLayout = GetVkImageLayout(initialState);
+			barrier.srcAccessMask = GetVkAccessFlags(initialState);
+			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask);
+
+			barrier.newLayout = GetVkImageLayout(currState);
+			barrier.dstAccessMask = GetVkAccessFlags(currState);
+			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask);
+
+			auto pCB = pContext->GetCurrentCommandBuffer();
+			pCB->ResourceBarrier(0, nullptr, 1, &barrier, 0, nullptr);
+			pCB->CopyBufferToTexture(stagingBuffer.second.m_Buffer, texture, (u32)copyRegions.Size(), copyRegions.Data());
+		}
+
+		if (currState != initData.m_ResourceState)
+		{
+			barrier.oldLayout = GetVkImageLayout(currState);
+			barrier.srcAccessMask = GetVkAccessFlags(currState);
+			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask);
+
+			barrier.newLayout = GetVkImageLayout(initData.m_ResourceState);
+			barrier.dstAccessMask = GetVkAccessFlags(initData.m_ResourceState);
+			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask);
+
+			pContext->GetCurrentCommandBuffer()->ResourceBarrier(0, nullptr, 1, &barrier, 0, nullptr);
+		}
+
+		pContext->ExecuteAndWait();
+
+		if (stagingBuffer.second.m_Buffer)
+		{
+			DestroyDeviceObject(*pDevice, stagingBuffer.second.m_Buffer, pDevice->GetAllocator(), stagingBuffer.second.m_Memory);
+		}
 	}
 }

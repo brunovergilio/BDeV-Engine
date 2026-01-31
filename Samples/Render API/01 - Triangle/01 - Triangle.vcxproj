@@ -90,6 +90,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Shaders.h" />
     <ClInclude Include="Triangle.h" />
   </ItemGroup>
   <ItemGroup>

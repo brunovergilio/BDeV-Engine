@@ -5,19 +5,18 @@
 
 
 
-BV_OBJECT_DEFINE_ID(IBvShaderResourceLayout, "79547e0c-dc23-4354-9a51-c1af70d20b83");
 class IBvShaderResourceLayout : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvShaderResourceLayout);
 
 public:
-	virtual const ShaderResourceLayoutDesc& GetDesc() const = 0;
+	virtual const ShaderResourceLayoutCreateDesc& GetDesc() const = 0;
 
 protected:
 	IBvShaderResourceLayout() {}
 	~IBvShaderResourceLayout() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderResourceLayout);
+BV_OBJECT_DEFINE_ID(IBvShaderResourceLayout, "79547e0c-dc23-4354-9a51-c1af70d20b83");
 
 
 class IBvShaderResourceParams
@@ -51,3 +50,4 @@ protected:
 	IBvShaderResourceParams() {}
 	~IBvShaderResourceParams() {}
 };
+BV_OBJECT_DEFINE_ID(IBvShaderResourceParams, "FAAD67B3-B0B3-4D64-AF03-5A94AD6CC4AD");

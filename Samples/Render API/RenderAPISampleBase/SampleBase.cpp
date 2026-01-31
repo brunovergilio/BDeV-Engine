@@ -5,20 +5,22 @@ void SampleBase::Initialize()
 {
 	m_App.Initialize();
 	m_App.RegisterRawInput(true, true);
-	m_RenderLib.Open("BvRenderVk.dll");
+	m_RenderLib.Open(kpRenderLib);
+
 	m_ToolsLib.Open("BvRenderTools.dll");
 
-	using EngineFnType = bool(*)(const BvUUID&, void**);
+	using EngineFnType = bool(*)(const RenderEngineDesc&, void**);
 	auto pFnEngine = m_RenderLib.GetProcAddressT<EngineFnType>("CreateRenderEngine");
-	IBvRenderEngine::Create(pFnEngine, &m_pEngine);
+	RenderEngineDesc engineDesc;
+	pFnEngine(engineDesc, reinterpret_cast<void**>(&m_pEngine));
 
-	using ShaderCompilerFnType = bool(*)(const BvUUID&, void**);
-	ShaderCompilerFnType compilerFn = m_ToolsLib.GetProcAddressT<ShaderCompilerFnType>("CreateSPIRVCompiler");
-	IBvShaderCompiler::Create(compilerFn, &m_SpvCompiler);
+	using ShaderCompilerFnType = bool(*)(void**);
+	ShaderCompilerFnType compilerFn = m_ToolsLib.GetProcAddressT<ShaderCompilerFnType>(kpCompiler);
+	compilerFn(reinterpret_cast<void**>(&m_ShaderCompiler));
 
-	using TextureLoaderFnType = bool(*)(const BvUUID&, void**);
+	using TextureLoaderFnType = bool(*)(void**);
 	auto pFnTextureLoader = m_ToolsLib.GetProcAddressT<TextureLoaderFnType>("CreateDDSTextureLoader");
-	IBvTextureLoader::Create(pFnTextureLoader, &m_TextureLoader);
+	pFnTextureLoader(reinterpret_cast<void**>(&m_TextureLoader));
 
 	CreateDeviceAndContext();
 
@@ -31,7 +33,7 @@ void SampleBase::Initialize()
 	swapChainDesc.m_Format = Format::kRGBA8_UNorm_SRGB;
 	m_Device->CreateSwapChain(m_pWindow, swapChainDesc, m_Context, &m_SwapChain);
 
-	m_Overlay.Initialize(m_Device, m_Context, m_SpvCompiler);
+	m_Overlay.Initialize(m_Device, m_Context, m_ShaderCompiler);
 	OnInitialize();
 	OnInitializeUI();
 	m_Curr = BvTime::GetCurrentTimestampInUs();
@@ -119,6 +121,8 @@ void SampleBase::Render()
 
 void SampleBase::Shutdown()
 {
+	m_Device->WaitIdle();
+
 	OnShutdown();
 
 	m_Overlay.Shutdown();
@@ -134,22 +138,22 @@ void SampleBase::Shutdown()
 
 BvRCRef<IBvShader> SampleBase::CompileShader(const char* pSource, size_t length, ShaderStage stage)
 {
-	ShaderCreateDesc shaderDesc;
-	shaderDesc.m_ShaderLanguage = ShaderLanguage::kGLSL;
+	ShaderSourceDesc shaderDesc;
+	shaderDesc.m_ShaderLanguage = kShaderLanguage;
 	shaderDesc.m_ShaderStage = stage;
 	shaderDesc.m_pSourceCode = pSource;
 	shaderDesc.m_SourceCodeSize = length;
 	BvRCRef<IBvShaderBlob> error;
 	BvRCRef<IBvShaderBlob> compiledShader;
-	if (!m_SpvCompiler->Compile(shaderDesc, &compiledShader, &error))
+	if (!m_ShaderCompiler->Compile(shaderDesc, &compiledShader, &error))
 	{
 		const char* pErr = (const char*)error->GetBufferPointer();
 		BV_ASSERT(false, "Shader error: %s", pErr);
 	}
-	shaderDesc.m_pByteCode = (const u8*)compiledShader->GetBufferPointer();
-	shaderDesc.m_ByteCodeSize = compiledShader->GetBufferSize();
+
+	ShaderDesc desc((const u8*)compiledShader->GetBufferPointer(), compiledShader->GetBufferSize(), stage);
 	BvRCRef<IBvShader> shader;
-	m_Device->CreateShader(shaderDesc, &shader);
+	m_Device->CreateShader(desc, &shader);
 
 	return shader;
 }

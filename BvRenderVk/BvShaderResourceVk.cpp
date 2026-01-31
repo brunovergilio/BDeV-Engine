@@ -3,6 +3,7 @@
 #include "BvTypeConversionsVk.h"
 #include "BvSamplerVk.h"
 #include "BvDescriptorSetVk.h"
+#include "BvBufferVk.h"
 #include "BvBufferViewVk.h"
 #include "BvTextureViewVk.h"
 #include "BvAccelerationStructureVk.h"
@@ -10,114 +11,44 @@
 #include <utility>
 
 
-BV_VK_DEVICE_RES_DEF(BvShaderResourceLayoutVk)
-
-
-BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutDesc& srlDesc)
-	: m_ShaderResourceLayoutDesc(srlDesc), m_pDevice(pDevice)
+BvShaderResourceLayoutVk::BvShaderResourceLayoutVk(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutCreateDesc& srlDesc,
+	BvVector<VkDescriptorSetLayout>& layouts, VkPipelineLayout pipelineLayout)
+	: m_ShaderResourceLayoutDesc(srlDesc), m_pDevice(pDevice), m_Layouts(std::move(layouts)), m_PipelineLayout(pipelineLayout)
 {
-	u32 totalResourceCount = 0;
-	u32 totalSamplerCount = 0;
-	u32 totalConstantCount = 0;
-	// Count all the resources we have so we can make internal copies of them
-	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
+	//std::sort(m_ShaderResourceLayoutDesc.m_ShaderResourceSets.cbegin(), m_ShaderResourceLayoutDesc.m_ShaderResourceSets.cend());
+
+	u32 currPushConstantOffset = 0;
+	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSets.Size(); ++i)
 	{
-		auto& set = m_ShaderResourceLayoutDesc.m_pShaderResourceSets[i];
-		totalResourceCount += set.m_ResourceCount;
-		for (auto j = 0u; j < set.m_ResourceCount; ++j)
+		//std::sort(m_ShaderResourceLayoutDesc.m_ShaderResourceSets[i].m_Resources.cbegin(), m_ShaderResourceLayoutDesc.m_ShaderResourceSets[i].m_Resources.cend());
+		auto& set = m_ShaderResourceLayoutDesc.m_ShaderResourceSets[i];
+		for (auto j = 0u; j < set.m_Resources.Size(); ++j)
 		{
-			auto& res = set.m_pResources[j];
-			if (res.m_ppStaticSamplers != nullptr)
-			{
-				totalSamplerCount += res.m_Count;
-			}
+			auto& resource = set.m_Resources[j];
+			m_Resources.Emplace({ resource.m_Binding, set.m_Index }, &resource);
 		}
-		totalConstantCount += set.m_ConstantCount;
+
+		for (auto j = 0u; j < set.m_Constants.Size(); ++j)
+		{
+			auto& constant = set.m_Constants[j];
+			m_PushConstantOffsets.Emplace({ constant.m_Size, constant.m_Binding, set.m_Index }, PushConstantData{ GetVkShaderStageFlags(constant.m_ShaderStages), currPushConstantOffset });
+			currPushConstantOffset += constant.m_Size;
+		}
 	}
-
-	// Now we allocate space for the objects we need
-	m_pShaderResourceSets = m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount ?
-		BV_NEW_ARRAY(ShaderResourceSetDesc, m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount) : nullptr;
-	m_pShaderResources = totalResourceCount ? BV_NEW_ARRAY(ShaderResourceDesc, totalResourceCount) : nullptr;
-	m_ppStaticSamplers = totalSamplerCount ? BV_NEW_ARRAY(IBvSampler*, totalSamplerCount) : nullptr;
-	m_pShaderConstants = totalConstantCount > 0 ? BV_NEW_ARRAY(ShaderResourceConstantDesc, totalConstantCount) : nullptr;
-
-	// Start moving data
-	u32 currResource = 0;
-	u32 currSampler = 0;
-	u32 currConstant = 0;
-
-	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
-	{
-		auto& set = m_ShaderResourceLayoutDesc.m_pShaderResourceSets[i];
-		u32 firstResource = currResource;
-		for (auto j = 0u; j < set.m_ResourceCount; ++j)
-		{
-			auto& res = m_pShaderResources[currResource];
-			res = set.m_pResources[j];
-
-			if (res.m_ppStaticSamplers != nullptr)
-			{
-				memcpy(&m_ppStaticSamplers[currSampler], res.m_ppStaticSamplers, sizeof(IBvSampler*) * res.m_Count);
-				res.m_ppStaticSamplers = &m_ppStaticSamplers[currSampler];
-				currSampler += res.m_Count;
-			}
-
-			++currResource;
-		}
-		std::sort(m_pShaderResources + firstResource, m_pShaderResources + currResource);
-
-		u32 firstConstant = currConstant;
-		for (auto j = 0u; j < set.m_ConstantCount; ++j)
-		{
-			auto& constant = m_pShaderConstants[currConstant];
-			constant = set.m_pConstants[j];
-			++currConstant;
-		}
-		std::sort(m_pShaderConstants + firstConstant, m_pShaderConstants + currConstant);
-
-		m_pShaderResourceSets[i] = set;
-		m_pShaderResourceSets[i].m_pResources = &m_pShaderResources[firstResource];
-	}
-	std::sort(m_pShaderResourceSets, m_pShaderResourceSets + m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount);
-
-	m_ShaderResourceLayoutDesc.m_pShaderResourceSets = m_pShaderResourceSets;
-
-	Create();
 }
 
 
 BvShaderResourceLayoutVk::~BvShaderResourceLayoutVk()
 {
 	Destroy();
-
-	if (m_pShaderConstants)
-	{
-		BV_DELETE_ARRAY(m_pShaderConstants);
-	}
-
-	if (m_ppStaticSamplers)
-	{
-		BV_DELETE_ARRAY(m_ppStaticSamplers);
-	}
-
-	if (m_pShaderResources)
-	{
-		BV_DELETE_ARRAY(m_pShaderResources);
-	}
-
-	if (m_pShaderResourceSets)
-	{
-		BV_DELETE_ARRAY(m_ShaderResourceLayoutDesc.m_pShaderResourceSets);
-	}
 }
 
 
 const ShaderResourceSetDesc* BvShaderResourceLayoutVk::GetResourceSet(u32 set) const
 {
-	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
+	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSets.Size(); ++i)
 	{
-		auto pSet = &m_ShaderResourceLayoutDesc.m_pShaderResourceSets[i];
+		auto pSet = &m_ShaderResourceLayoutDesc.m_ShaderResourceSets[i];
 		if (pSet->m_Index == set)
 		{
 			return pSet;
@@ -142,124 +73,24 @@ BvShaderResourceLayoutVk::PushConstantData* BvShaderResourceLayoutVk::GetPushCon
 }
 
 
-void BvShaderResourceLayoutVk::Create()
-{
-	BvVector<VkDescriptorSetLayout> layouts(m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount);
-
-	BvVector<VkDescriptorSetLayoutBinding> bindings;
-	BvVector<VkDescriptorBindingFlags> flags;
-	BvVector<VkSampler> samplers;
-	BvVector<VkPushConstantRange> pushConstants;
-	u32 layoutIndex = 0;
-	u32 currPushConstantOffset = 0;
-	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSetCount; ++i)
-	{
-		auto& set = m_ShaderResourceLayoutDesc.m_pShaderResourceSets[i];
-		u32 currSamplerIndex = 0;
-		bool isBindful = false;
-		bool isBindless = false;
-		for (auto j = 0u; j < set.m_ResourceCount; ++j)
-		{
-			auto& currResource = set.m_pResources[j];
-			if (currResource.m_ppStaticSamplers == nullptr)
-			{
-				bindings.PushBack({ currResource.m_Binding, GetVkDescriptorType(currResource.m_ShaderResourceType),
-					currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), nullptr });
-			}
-			else
-			{
-				for (auto k = 0; k < currResource.m_Count; ++k)
-				{
-					samplers.PushBack(TO_VK(currResource.m_ppStaticSamplers[k])->GetHandle());
-				}
-				bindings.PushBack({ currResource.m_Binding, VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
-					currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), samplers.Data() + currSamplerIndex });
-				currSamplerIndex += currResource.m_Count;
-			}
-			if (currResource.m_Bindless)
-			{
-				isBindless = true;
-				flags.EmplaceBack() = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-			}
-			else
-			{
-				isBindful = true;
-			}
-
-			m_Resources.Emplace({ currResource.m_Binding, set.m_Index }, &currResource);
-		}
-
-		if (isBindful && isBindless)
-		{
-			// I decided to keep these separate for the moment, as dealing with both on the same set would be dreadful
-			BV_ASSERT(false, "Can't have bindful and bindless resources on the same set");
-			Destroy();
-			return;
-		}
-
-		VkDescriptorSetLayoutCreateInfo layoutCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-		layoutCI.bindingCount = bindings.Size();
-		layoutCI.pBindings = bindings.Data();
-
-		VkDescriptorSetLayoutBindingFlagsCreateInfo flagsCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
-		if (isBindless)
-		{
-			flagsCI.bindingCount = flags.Size();
-			flagsCI.pBindingFlags = flags.Data();
-			layoutCI.pNext = &flagsCI;
-			layoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-		}
-
-		vkCreateDescriptorSetLayout(m_pDevice->GetHandle(), &layoutCI, nullptr, &layouts[layoutIndex]);
-		m_Layouts[set.m_Index] = layouts[layoutIndex++];
-
-		bindings.Clear();
-		samplers.Clear();
-
-		for (auto j = 0u; j < set.m_ConstantCount; ++j)
-		{
-			auto& constant = set.m_pConstants[j];
-			pushConstants.PushBack({ GetVkShaderStageFlags(constant.m_ShaderStages), currPushConstantOffset, constant.m_Size });
-			m_PushConstantOffsets.Emplace({ constant.m_Size, constant.m_Binding, set.m_Index }, PushConstantData{ pushConstants.Back().stageFlags, currPushConstantOffset });
-			currPushConstantOffset += constant.m_Size;
-		}
-	}
-
-	VkPipelineLayoutCreateInfo pipelineCI{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-	if (layouts.Size() > 0)
-	{
-		pipelineCI.setLayoutCount = u32(layouts.Size());
-		pipelineCI.pSetLayouts = layouts.Data();
-	}
-
-	if (pushConstants.Size() > 0)
-	{
-		pipelineCI.pushConstantRangeCount = u32(pushConstants.Size());
-		pipelineCI.pPushConstantRanges = pushConstants.Data();
-	}
-
-	vkCreatePipelineLayout(m_pDevice->GetHandle(), &pipelineCI, nullptr, &m_PipelineLayout);
-}
-
-
 void BvShaderResourceLayoutVk::Destroy()
 {
 	if (m_PipelineLayout)
 	{
-		vkDestroyPipelineLayout(m_pDevice->GetHandle(), m_PipelineLayout, nullptr);
+		VkHelpers::DestroyDeviceObject(*m_pDevice, m_PipelineLayout);
 		m_PipelineLayout = VK_NULL_HANDLE;
-	}
 
-	for (auto& layout : m_Layouts)
-	{
-		vkDestroyDescriptorSetLayout(m_pDevice->GetHandle(), layout.second, nullptr);
+		for (auto layout : m_Layouts)
+		{
+			VkHelpers::DestroyDeviceObject(*m_pDevice, layout);
+		}
+		m_Layouts.Clear();
 	}
-	m_Layouts.Clear();
 }
 
 
 BvShaderResourceParamsVk::BvShaderResourceParamsVk(BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set)
-	: m_pDevice(pDevice), m_pLayout(pLayout), m_Set(set), m_DescriptorPool(pDevice, pLayout, set, 1), m_DescriptorSet(pDevice, m_DescriptorPool.Allocate())
+	: m_pDevice(pDevice), m_pLayout(pLayout), m_Set(set), m_DescriptorPool(pDevice, pLayout, set, 1), m_DescriptorSet(m_DescriptorPool.Allocate())
 {
 	auto pSet = m_pLayout->GetResourceSet(set);
 	BV_ASSERT(pSet != nullptr, "Set not found in current Shader Resource Layout");
@@ -267,9 +98,9 @@ BvShaderResourceParamsVk::BvShaderResourceParamsVk(BvRenderDeviceVk* pDevice, co
 	u32 imageInfoCount = 0;
 	u32 bufferViewCount = 0;
 
-	for (auto i = 0u; i < pSet->m_ResourceCount; ++i)
+	for (auto i = 0u; i < pSet->m_Resources.Size(); ++i)
 	{
-		auto& res = pSet->m_pResources[i];
+		auto& res = pSet->m_Resources[i];
 		switch (res.m_ShaderResourceType)
 		{
 		case ShaderResourceType::kConstantBuffer:
@@ -463,7 +294,7 @@ void BvShaderResourceParamsVk::Bind()
 		}
 	}
 
-	m_DescriptorSet.Update(m_pSetData->m_WriteSets);
+	vkUpdateDescriptorSets(*m_pDevice, m_pSetData->m_WriteSets.Size(), m_pSetData->m_WriteSets.Data(), 0, nullptr);
 	m_pSetData->m_WriteSets.Clear();
 	m_pSetData->m_WriteSetDataIndices.Clear();
 }
@@ -478,7 +309,7 @@ VkWriteDescriptorSet& BvShaderResourceParamsVk::PrepareWriteSet(VkDescriptorType
 
 	m_pSetData->m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
 	auto& writeSet = m_pSetData->m_WriteSets.Back();
-	writeSet.dstSet = m_DescriptorSet.GetHandle();
+	writeSet.dstSet = m_DescriptorSet;
 	writeSet.descriptorType = descriptorType;
 	writeSet.dstBinding = binding;
 	writeSet.dstArrayElement = startIndex;

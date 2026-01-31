@@ -198,7 +198,7 @@ void StencilBuffer::CreateShaderResourceLayout()
 		setDesc.m_ResourceCount = 1;
 		setDesc.m_pResources = &resourceDesc;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 
@@ -215,7 +215,7 @@ void StencilBuffer::CreateShaderResourceLayout()
 		setDesc.m_ConstantCount = 1;
 		setDesc.m_pConstants = &constantDesc;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 		

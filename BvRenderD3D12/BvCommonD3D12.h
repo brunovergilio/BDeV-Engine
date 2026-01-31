@@ -1,9 +1,8 @@
 #pragma once
 
 
-#include "BDeV/Core/BvCore.h"
+#include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Container/BvVector.h"
 
 
 #include <dxgi.h>
@@ -11,6 +10,7 @@
 #include <wrl/client.h>
 #include "d3dx12.h"
 #include "d3d12video.h"
+#include <pix.h>
 
 
 using Microsoft::WRL::ComPtr;
@@ -51,7 +51,3 @@ protected:
 	IBvResourceD3D12() {}
 	virtual ~IBvResourceD3D12() {}
 };
-
-
-#define BV_D3D12_DEVICE_RES_DECL void SelfDestroy() override;
-#define BV_D3D12_DEVICE_RES_DEF(Type) void Type::SelfDestroy() { m_pDevice->DestroyResource(this); }

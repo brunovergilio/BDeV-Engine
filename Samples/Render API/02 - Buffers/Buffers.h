@@ -31,5 +31,5 @@ private:
 	BvRCRef<IBvBufferView> m_UBView;
 	BvRCRef<IBvTexture> m_Depth;
 	BvRCRef<IBvTextureView> m_DepthView;
-	Float44* m_pWVP = nullptr;
+	XMFLOAT4X4* m_pWVP = nullptr;
 };

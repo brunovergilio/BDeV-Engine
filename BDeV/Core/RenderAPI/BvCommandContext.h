@@ -11,7 +11,6 @@ class IBvShaderResourceParams;
 class IBvQuery;
 
 
-BV_OBJECT_DEFINE_ID(IBvCommandContext, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");
 class IBvCommandContext : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvCommandContext);
@@ -50,7 +49,12 @@ public:
 	BV_INLINE void SetScissor(const Rect& scissor) { SetScissors(1, &scissor); }
 	BV_INLINE void SetScissor(u32 width, u32 height)
 	{
-		Rect scissor{ 0, 0, width, height };
+		Rect scissor{ 0, 0, i32(width), i32(height) };
+		SetScissors(1, &scissor);
+	}
+	BV_INLINE void SetScissor(i32 left, i32 top, i32 right, i32 bottom)
+	{
+		Rect scissor{ left, top, right, bottom };
 		SetScissors(1, &scissor);
 	}
 
@@ -62,9 +66,9 @@ public:
 	virtual void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
-	virtual void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) = 0;
-	virtual void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) = 0;
-	virtual void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) = 0;
+	virtual void SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) = 0;
+	virtual void SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) = 0;
+	virtual void SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) = 0;
 	virtual void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
 	virtual void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) = 0;
@@ -78,9 +82,6 @@ public:
 	BV_INLINE void SetConstantBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetConstantBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetStructuredBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetStructuredBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetRWStructuredBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWStructuredBuffers(1, &pResource, set, binding, startIndex); }
-	BV_INLINE void SetDynamicConstantBuffer(const IBvBufferView* pResource, u32 offset, u32 set, u32 binding, u32 startIndex = 0) { SetDynamicConstantBuffers(1, &pResource, &offset, set, binding, startIndex); }
-	BV_INLINE void SetDynamicStructuredBuffer(const IBvBufferView* pResource, u32 offset, u32 set, u32 binding, u32 startIndex = 0) { SetDynamicStructuredBuffers(1, &pResource, &offset, set, binding, startIndex); }
-	BV_INLINE void SetDynamicRWStructuredBuffer(const IBvBufferView* pResource, u32 offset, u32 set, u32 binding, u32 startIndex = 0) { SetDynamicRWStructuredBuffers(1, &pResource, &offset, set, binding, startIndex); }
 	BV_INLINE void SetFormattedBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetFormattedBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetRWFormattedBuffer(const IBvBufferView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetRWFormattedBuffers(1, &pResource, set, binding, startIndex); }
 	BV_INLINE void SetTexture(const IBvTextureView* pResource, u32 set, u32 binding, u32 startIndex = 0) { SetTextures(1, &pResource, set, binding, startIndex); }
@@ -94,19 +95,19 @@ public:
 	BV_INLINE void SetVertexBufferView(const VertexBufferView& vertexBufferView, u32 firstBinding = 0) { SetVertexBufferViews(1, &vertexBufferView, firstBinding); }
 	BV_INLINE void SetVertexBufferView(IBvBuffer* pBuffer, u32 stride, u64 offset = 0, u32 firstBinding = 0)
 	{
-		VertexBufferView vb{ pBuffer, offset, stride };
+		VertexBufferView vb(pBuffer, stride, offset);
 		SetVertexBufferViews(1, &vb, firstBinding);
 	}
 	virtual void SetIndexBufferView(const IndexBufferView& indexBufferView) = 0;
 	BV_INLINE void SetIndexBufferView(IBvBuffer* pBuffer, IndexFormat format, u64 offset = 0)
 	{
-		IndexBufferView ib{ pBuffer, offset, format };
+		IndexBufferView ib(pBuffer, format, offset);
 		SetIndexBufferView(ib);
 	}
 
 	virtual void SetDepthBounds(f32 min, f32 max) = 0;
 	virtual void SetStencilRef(u32 stencilRef) = 0;
-	virtual void SetBlendConstants(const float(pColors[4])) = 0;
+	virtual void SetBlendConstants(const float(&colors)[4]) = 0;
 	BV_INLINE void SetBlendConstants(f32 r, f32 g, f32 b, f32 a = 1.0f)
 	{
 		f32 colors[]{ r, g, b, a };
@@ -188,4 +189,4 @@ protected:
 	IBvCommandContext() {}
 	~IBvCommandContext() = 0 {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvCommandContext);
+BV_OBJECT_DEFINE_ID(IBvCommandContext, "8740fae9-74bb-4a0f-bf07-b4ff7179e6e4");

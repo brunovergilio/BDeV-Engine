@@ -17,7 +17,7 @@ public:
 	~BvAsyncFileRequest();
 
 	bool IsDone();
-	u32 GetResult(bool wait = true);
+	u32 GetResult(bool wait = true, u32 waitTimeInMs = kU32Max);
 	void Cancel();
 
 private:

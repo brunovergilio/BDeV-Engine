@@ -32,10 +32,16 @@ D3D_PRIMITIVE_TOPOLOGY GetD3D12PrimitiveTopology(Topology topology, u32 patchCon
 D3D12_PRIMITIVE_TOPOLOGY_TYPE GetD3D12PrimitiveTopologyType(Topology topology);
 D3D12_SRV_DIMENSION GetD3D12SRVDimension(TextureViewType textureViewType, bool multisample = false);
 D3D12_UAV_DIMENSION GetD3D12UAVDimension(TextureViewType textureViewType, bool multisample = false);
+D3D12_RTV_DIMENSION GetD3D12RTVDimension(TextureViewType textureViewType, bool multisample = false);
+D3D12_DSV_DIMENSION GetD3D12DSVDimension(TextureViewType textureViewType, bool multisample = false);
 D3D12_CONSTANT_BUFFER_VIEW_DESC GetD3D12CBVDesc(const BufferViewDesc& viewDesc);
 D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const BufferViewDesc& viewDesc);
 D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const BufferViewDesc& viewDesc);
 D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const TextureViewDesc& viewDesc);
 D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const TextureViewDesc& viewDesc);
+D3D12_RENDER_TARGET_VIEW_DESC GetD3D12RTVDesc(const TextureViewDesc& viewDesc);
+D3D12_DEPTH_STENCIL_VIEW_DESC GetD3D12DSVDesc(const TextureViewDesc& viewDesc);
 D3D12_QUERY_HEAP_TYPE GetD3D12QueryHeapType(QueryType queryType);
 D3D12_QUERY_TYPE GetD3D12QueryType(QueryType queryType);
+D3D12_PREDICATION_OP GetD3D12PredicationOp(PredicationOp predicationOp);
+DXGI_FORMAT GetD3D12IndexFormat(IndexFormat indexFormat);

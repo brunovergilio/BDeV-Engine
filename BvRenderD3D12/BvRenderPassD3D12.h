@@ -10,15 +10,14 @@ class BvRenderDeviceD3D12;
 
 class BvRenderPassD3D12 final : public IBvRenderPass, public IBvResourceD3D12
 {
-	BV_D3D12_DEVICE_RES_DECL;
-
 public:
 	BvRenderPassD3D12(BvRenderDeviceD3D12* pDevice, const RenderPassDesc& renderPassDesc);
 	~BvRenderPassD3D12();
 
 	BV_INLINE const RenderPassDesc& GetDesc() const override { return m_RenderPassDesc; }
 
-	//BV_OBJECT_IMPL_INTERFACE(IBvRenderPassD3D12, IBvRenderPass, IBvRenderDeviceObject);
+private:
+	void Destroy();
 
 private:
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
@@ -29,6 +28,4 @@ private:
 	AttachmentRef* m_pRefs = nullptr;
 	ShadingRateAttachmentRef* m_pSRRefs = nullptr;
 };
-
-
 BV_CREATE_CAST_TO_D3D12(BvRenderPass)

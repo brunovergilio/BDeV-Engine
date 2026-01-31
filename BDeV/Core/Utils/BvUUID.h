@@ -40,7 +40,7 @@ struct BvUUID
 
 	BV_INLINE void New()
 	{
-		BvSplitMix64 gen;
+		BvRandom64 gen;
 		u64 blocks[] = { gen.Next(), gen.Next() };
 		// Set version (4 bits for version, which is 4)
 		blocks[0] = (blocks[0] & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
@@ -115,7 +115,7 @@ namespace Internal::UUID
 
 
 template<size_t Size>
-constexpr BvUUID MakeUUIDv4(const char(&pUUID)[Size])
+constexpr BvUUID MakeUUID(const char(&pUUID)[Size])
 {
 	if (Size != 37 || !Internal::UUID::IsHyphen(pUUID[8]) || !Internal::UUID::IsHyphen(pUUID[13])
 		|| !Internal::UUID::IsHyphen(pUUID[18]) || !Internal::UUID::IsHyphen(pUUID[23]) || !Internal::UUID::IsValidUUID(pUUID))

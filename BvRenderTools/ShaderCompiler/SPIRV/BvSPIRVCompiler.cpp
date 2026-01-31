@@ -237,13 +237,8 @@ BvSPIRVCompiler::~BvSPIRVCompiler()
 }
 
 
-bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppShaderBlob, void** ppErrorBlob)
+bool BvSPIRVCompiler::CompileImpl(const ShaderSourceDesc& shaderDesc, void** ppShaderBlob, void** ppErrorBlob)
 {
-	if (!ppShaderBlob || (objId != BV_OBJECT_ID(BvShaderBlob) && objId != BV_OBJECT_ID(IBvShaderBlob)))
-	{
-		return false;
-	}
-
 	auto shaderStage = GetShaderStage(shaderDesc.m_ShaderStage);
 	auto targetClient = GetAPIVersion(shaderDesc.m_ShaderTarget);
 	auto targetLanguage = GetShaderTarget(shaderDesc.m_ShaderTarget);
@@ -266,7 +261,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, const BvUUID& 
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_NEW(BvShaderBlob)(shader.getInfoLog());
+			*ppErrorBlob = BV_RC_CREATE(BvShaderBlob, shader.getInfoLog());
 		}
 		return false;
 	}
@@ -277,7 +272,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, const BvUUID& 
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_NEW(BvShaderBlob)(program.getInfoLog());
+			*ppErrorBlob = BV_RC_CREATE(BvShaderBlob, program.getInfoLog());
 		}
 		return false;
 	}
@@ -295,7 +290,7 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, const BvUUID& 
 	{
 		//if (pErrorBlob)
 		//{
-		//	*pErrorBlob = BV_NEW(BvShaderBlob)("Error optimizing spirv binary.");
+		//	*pErrorBlob = BV_RC_CREATE(BvShaderBlob, "Error optimizing spirv binary.");
 		//}
 		//return nullptr;
 		compiledShaderBlob.Resize(spv.size() * sizeof(u32));
@@ -307,25 +302,20 @@ bool BvSPIRVCompiler::Compile(const ShaderCreateDesc& shaderDesc, const BvUUID& 
 		memcpy(compiledShaderBlob.Data(), spvOpt.data(), compiledShaderBlob.Size());
 	}
 	
-	*ppShaderBlob = BV_NEW(BvShaderBlob)(compiledShaderBlob);
+	*ppShaderBlob = BV_RC_CREATE(BvShaderBlob, compiledShaderBlob);
 	
 	return true;
 }
 
 
-bool BvSPIRVCompiler::CompileFromFile(const char* pFilename, const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppShaderBlob, void** ppErrorBlob)
+bool BvSPIRVCompiler::CompileFromFileImpl(const char* pFilename, const ShaderSourceDesc& shaderDesc, void** ppShaderBlob, void** ppErrorBlob)
 {
-	if (!ppShaderBlob || (objId != BV_OBJECT_ID(BvShaderBlob) && objId != BV_OBJECT_ID(IBvShaderBlob)))
-	{
-		return false;
-	}
-
 	BvFile file(pFilename, BvFileAccessMode::kRead, BvFileAction::kOpen);
 	if (!file.IsValid())
 	{
 		if (ppErrorBlob)
 		{
-			*ppErrorBlob = BV_NEW(BvShaderBlob)("Error opening the file.");
+			*ppErrorBlob = BV_RC_CREATE(BvShaderBlob, "Error opening the file.");
 		}
 		return false;
 	}
@@ -333,11 +323,11 @@ bool BvSPIRVCompiler::CompileFromFile(const char* pFilename, const ShaderCreateD
 	BvVector<char> sourceCode(size);
 	file.Read(sourceCode.Data(), size);
 
-	auto& desc = const_cast<ShaderCreateDesc&>(shaderDesc);
+	auto& desc = const_cast<ShaderSourceDesc&>(shaderDesc);
 	desc.m_pSourceCode = sourceCode.Data();
 	desc.m_SourceCodeSize = size;
 
-	return Compile(shaderDesc, objId, ppShaderBlob, ppErrorBlob);
+	return CompileImpl(shaderDesc, ppShaderBlob, ppErrorBlob);
 }
 
 
@@ -481,24 +471,13 @@ void BvSPIRVCompiler::ProcessIncludes(const char* pFirst, u32 size, BvString& re
 }
 
 
-void BvSPIRVCompiler::SelfDestroy()
-{
-	BV_DELETE(this);
-}
-
-
 namespace BvRenderTools
 {
 	extern "C"
 	{
-		BV_API bool CreateSPIRVCompiler(const BvUUID& objId, void** ppObj)
+		BV_API bool CreateSPIRVCompiler(void** ppObj)
 		{
-			if (!ppObj || (objId != BV_OBJECT_ID(BvSPIRVCompiler) && objId != BV_OBJECT_ID(IBvShaderCompiler)))
-			{
-				return false;
-			}
-
-			*ppObj = BV_NEW(BvSPIRVCompiler)();
+			*ppObj = BV_RC_CREATE(BvSPIRVCompiler);
 			return true;
 		}
 	}

@@ -16,7 +16,7 @@ class BvRenderEngineGl final : public IBvRenderEngine
 
 public:
 	const GPUList& GetGPUs() const override;
-	bool CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateRenderDeviceImpl(const RenderDeviceDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj) override;
 
 private:
 	friend class BvRenderEngineGlHelper;

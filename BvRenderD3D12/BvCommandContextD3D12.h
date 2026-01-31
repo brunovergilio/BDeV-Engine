@@ -5,9 +5,9 @@
 #include "BDeV/Core/RenderAPI/BvCommandContext.h"
 #include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/Container/BvRobinMap.h"
-//#include "BvCommandAllocatorD3D12.h"
-//#include "BvDescriptorHeapD3D12.h"
-//#include "BvCommandQueueD3D12.h"
+#include "BvCommandAllocatorD3D12.h"
+#include "BvDescriptorHeapD3D12.h"
+#include "BvCommandQueueD3D12.h"
 
 
 class BvRenderDeviceD3D12;
@@ -21,65 +21,60 @@ class BvQueryHeapManagerD3D12;
 
 struct ContextDataD3D12
 {
-	//BvResourceBindingStateD3D12 m_ResourceBindingState;
-	//BvRobinMap<u64, BvDescriptorPoolD3D12> m_DescriptorPools;
-	//BvRobinMap<u64, BvDescriptorSetD3D12> m_DescriptorSets;
-	//BvRobinMap<u64, BvDescriptorSetD3D12> m_BindlessDescriptorSets;
-	//BvQueryHeapManagerD3D12* m_pQueryHeapManager = nullptr;
+	BvResourceBindingStateD3D12 m_ResourceBindingState;
+	BvRobinMap<u64, BvDescriptorPoolD3D12> m_DescriptorPools;
+	BvRobinMap<u64, BvDescriptorHandle> m_Descriptors;
+	BvRobinMap<u64, BvDescriptorHandle> m_BindlessDescriptors;
+	BvQueryHeapManagerD3D12* m_pQueryHeapManager = nullptr;
+};
+
+
+struct DescriptorData
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE m_CPUHandle;
+	u32 m_RangeOffset;
 };
 
 
 class BvFrameDataD3D12 final
 {
-	BV_NOCOPY(BvFrameDataD3D12);
-
 public:
-	BvFrameDataD3D12();
-	BvFrameDataD3D12(BvRenderDeviceD3D12* pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataD3D12* pContextData);
-	BvFrameDataD3D12(BvFrameDataD3D12&& rhs) noexcept;
-	BvFrameDataD3D12& operator=(BvFrameDataD3D12&& rhs) noexcept;
+	BvFrameDataD3D12(BvRenderDeviceD3D12* pDevice, ContextDataD3D12* pContextData, CommandType commandType, u32 frameIndex);
 	~BvFrameDataD3D12();
 
-	void Reset(bool resetQueries = true);
+	void Reset(bool newFrame = true);
 	BvCommandListD3D12* RequestCommandList();
-	D3D12DescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutD3D12* pLayout, BvVector<D3D12WriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless = false);
-	void UpdateSignalIndex(u64 value);
-	void UpdateSignalValue();
+	BvDescriptorHandle RequestDescriptorHandle(u32 rootIndex, const BvShaderResourceLayoutD3D12* pLayout,
+		const BvVector<DescriptorData>& descriptors, bool bindless = false);
 	void ClearActiveCommandLists();
 	void AddQuery(BvQueryD3D12* pQuery);
 	void UpdateQueryData();
 
 	BV_INLINE const auto& GetCommandLists() const { return m_CommandLists; }
 	BV_INLINE auto& GetResourceBindingState() { return m_pContextData->m_ResourceBindingState; }
-	BV_INLINE BvGPUFenceD3D12* GetGPUFence() { return m_pFence; }
-	BV_INLINE std::pair<u64, u64> GetSemaphoreValueIndex() const { return m_SignaValueIndex; }
+	BV_INLINE BvGPUFenceD3D12* GetGPUFence() { return m_Fence; }
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
 	BV_INLINE BvQueryHeapManagerD3D12* GetQueryHeapManager() const { return m_pContextData->m_pQueryHeapManager; }
+	BV_INLINE u64 UpdateFenceValue() { return ++m_FenceValue; }
+	BV_INLINE u64 GetFenceValue() const { return m_FenceValue; }
 
 private:
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
-	BvCommandAllocatorD3D12 m_CommandPool;
+	BvCommandAllocatorD3D12 m_CommandAllocator;
 	BvVector<BvCommandListD3D12*> m_CommandLists;
 	ContextDataD3D12* m_pContextData;
 	BvVector<BvQueryD3D12*> m_Queries;
 	u32 m_UpdatedQueries = 0;
-	BvGPUFenceD3D12* m_pFence = nullptr;
-	std::pair<u64, u64> m_SignaValueIndex;
+	BvRCRef<BvGPUFenceD3D12> m_Fence;
+	u64 m_FenceValue = 0;
 	u32 m_FrameIndex;
 };
 
 
-//BV_OBJECT_DEFINE_ID(IBvCommandContextD3D12, "87f18018-a53f-43e7-b7f5-b39d662d0ce5");
-//BV_OBJECT_ENABLE_ID_OPERATOR(IBvCommandContextD3D12);
-
-
 class BvCommandContextD3D12 final : public IBvCommandContext, public IBvResourceD3D12
 {
-	BV_NOCOPYMOVE(BvCommandContextD3D12);
-	BV_D3D12_DEVICE_RES_DECL;
-
 public:
-	BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 frameCount, ID3D12CommandQueue* pQueue);
+	BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 frameCount, u32 contextIndex, u32 contextGroupIndex, ID3D12CommandQueue* pQueue);
 	~BvCommandContextD3D12();
 
 	BV_INLINE u32 GetGroupIndex() const override { return m_ContextGroupIndex; }
@@ -110,9 +105,9 @@ public:
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
-	void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
-	void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
-	void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) override;
+	void SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) override;
+	void SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) override;
 	void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
@@ -127,7 +122,7 @@ public:
 
 	void SetDepthBounds(f32 min, f32 max) override;
 	void SetStencilRef(u32 stencilRef) override;
-	void SetBlendConstants(const float(pColors[4])) override;
+	void SetBlendConstants(const float(&colors)[4]) override;
 	void SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp(pCombinerOps[2])) override;
 
 	void Draw(const DrawCommandArgs& args) override;
@@ -173,31 +168,27 @@ public:
 
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0) override;
 
-	BV_INLINE auto GetCommandQueue() { return m_Queue.Get(); }
-	BV_INLINE BvGPUFenceD3D12* GetCurrentGPUFence() { return m_Frames[m_ActiveFrameIndex].GetGPUFence(); }
-	BV_INLINE u64 GetCurrentValue() { return m_Frames[m_ActiveFrameIndex].GetSemaphoreValueIndex().first; }
+	BV_INLINE auto GetCommandQueue() { return &m_CommandQueue; }
+	BV_INLINE BvGPUFenceD3D12* GetCurrentGPUFence() { return m_pFrames[m_ActiveFrameIndex].GetGPUFence(); }
+	BV_INLINE u64 GetCurrentValue() { return m_pFrames[m_ActiveFrameIndex].GetFenceValue(); }
 	BV_INLINE BvCommandListD3D12* GetCurrentCommandList() const { return m_pCurrCommandList; }
-
-	void AddSwapChain(BvSwapChainD3D12* pSwapChain);
-	void RemoveSwapChain(BvSwapChainD3D12* pSwapChain);
-
-	//BV_OBJECT_IMPL_INTERFACE(IBvCommandContextD3D12, IBvCommandContext, IBvRenderDeviceObject);
 
 private:
 	void Destroy();
 
 private:
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
-	ComPtr<ID3D12CommandQueue> m_Queue;
-	BvVector<BvFrameDataD3D12> m_Frames;
+	BvCommandQueueD3D12 m_CommandQueue;
+	BvFrameDataD3D12* m_pFrames = nullptr;
 	BvVector<BvSwapChainD3D12*> m_SwapChains;
 	BvCommandListD3D12* m_pCurrCommandList = nullptr;
 	BvFrameDataD3D12* m_pCurrFrame = nullptr;
 	ContextDataD3D12* m_pContextData;
+	BvVector<ID3D12GraphicsCommandList*> m_CommandLists;
+	u32 m_FrameCount = 0;
 	u32 m_ActiveFrameIndex = 0;
 	u32 m_ContextGroupIndex = 0;
 	u32 m_ContextIndex = 0;
 };
-
-
+BV_OBJECT_DEFINE_ID(BvCommandContextD3D12, "87f18018-a53f-43e7-b7f5-b39d662d0ce5");
 BV_CREATE_CAST_TO_D3D12(BvCommandContext)

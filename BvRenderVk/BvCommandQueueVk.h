@@ -11,13 +11,10 @@ class BvCommandBufferVk;
 
 class BvCommandQueueVk final
 {
-	BV_NOCOPY(BvCommandQueueVk);
+	BV_NOCOPYMOVE(BvCommandQueueVk);
 
 public:
-	BvCommandQueueVk();
 	BvCommandQueueVk(VkDevice device, u32 queueFamilyIndex, u32 queueIndex);
-	BvCommandQueueVk(BvCommandQueueVk&& rhs) noexcept;
-	BvCommandQueueVk& operator=(BvCommandQueueVk&& rhs) noexcept;
 	~BvCommandQueueVk();
 
 	void AddWaitSemaphore(VkSemaphore waitSemaphore, u64 value);
@@ -28,7 +25,6 @@ public:
 	BV_INLINE VkQueue GetHandle() const { return m_Queue; }
 	
 private:
-	VkDevice m_Device = VK_NULL_HANDLE;
 	VkQueue m_Queue = VK_NULL_HANDLE;
 	BvVector<VkSemaphoreSubmitInfo> m_WaitSemaphores;
 	BvVector<VkSemaphoreSubmitInfo> m_SignalSemaphores;

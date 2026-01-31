@@ -4,36 +4,10 @@
 #include "BvCommandBufferVk.h"
 
 
-BvCommandPoolVk::BvCommandPoolVk()
-{
-}
-
-
 BvCommandPoolVk::BvCommandPoolVk(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex)
 	: m_pDevice(pDevice), m_QueueFamilyIndex(queueFamilyIndex)
 {
 	Create();
-}
-
-
-BvCommandPoolVk::BvCommandPoolVk(BvCommandPoolVk&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvCommandPoolVk& BvCommandPoolVk::operator=(BvCommandPoolVk&& rhs) noexcept
-{
-	if (this != &rhs)
-	{
-		std::swap(m_pDevice, rhs.m_pDevice);
-		std::swap(m_CommandPool, rhs.m_CommandPool);
-		std::swap(m_CommandBuffers, rhs.m_CommandBuffers);
-		std::swap(m_ActiveCommandBufferCount, rhs.m_ActiveCommandBufferCount);
-		std::swap(m_QueueFamilyIndex, rhs.m_QueueFamilyIndex);
-	}
-
-	return *this;
 }
 
 
@@ -61,7 +35,7 @@ void BvCommandPoolVk::Destroy()
 	{
 		for (auto pCB : m_CommandBuffers)
 		{
-			delete pCB;
+			BV_DELETE(pCB);
 		}
 
 		vkDestroyCommandPool(m_pDevice->GetHandle(), m_CommandPool, nullptr);
@@ -90,7 +64,7 @@ BvCommandBufferVk* BvCommandPoolVk::GetCommandBuffer(BvFrameDataVk* pFrameData)
 	auto result = vkAllocateCommandBuffers(m_pDevice->GetHandle(), &allocateInfo, &commandBuffer);
 	if (result == VK_SUCCESS)
 	{
-		auto pCommandBuffer = m_CommandBuffers.EmplaceBack(new BvCommandBufferVk(m_pDevice, commandBuffer, pFrameData));
+		auto pCommandBuffer = m_CommandBuffers.EmplaceBack(BV_NEW(BvCommandBufferVk)(m_pDevice, commandBuffer, pFrameData));
 		pCommandBuffer->Reset();
 		pCommandBuffer->Begin();
 		++m_ActiveCommandBufferCount;

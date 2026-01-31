@@ -200,7 +200,7 @@ void TextureArray::CreateShaderResourceLayout()
 	setDesc.m_ConstantCount = 1;
 	setDesc.m_pConstants = &constantDesc;
 
-	ShaderResourceLayoutDesc layoutDesc{};
+	ShaderResourceLayoutCreateDesc layoutDesc{};
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
 

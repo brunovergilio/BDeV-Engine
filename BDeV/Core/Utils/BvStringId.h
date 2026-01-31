@@ -27,8 +27,6 @@ public:
 	bool operator==(const char* pId) const;
 	bool operator!=(const char* pId) const;
 
-	const char* GetString() const;
-
 	constexpr operator u64() const { return m_Id; }
 	constexpr u64 GetId() const { return m_Id; }
 
@@ -57,10 +55,3 @@ struct std::hash<BvStringId>
 		return id;
 	}
 };
-
-
-#if BV_DEBUG
-#define BV_NAME_ID(id) BvStringId(id)
-#else
-#define BV_NAME_ID(id) BvStringId(id##_sid)
-#endif

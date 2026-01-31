@@ -3,10 +3,12 @@
 
 #include "BvCommonD3D12.h"
 #include "BDeV/Core/Container/BvVector.h"
+#include "BDeV/Core/Container/BvRobinMap.h"
 #include "BDeV/Core/System/Threading/BvSync.h"
 
 
 class BvRenderDeviceD3D12;
+class BvShaderResourceLayoutD3D12;
 
 
 class BvDescriptorHandle
@@ -16,7 +18,7 @@ public:
     {
     }
 
-    BV_INLINE BvDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle, D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle)
+    BV_INLINE BvDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE CPUHandle, D3D12_GPU_DESCRIPTOR_HANDLE GPUHandle = D3D12_GPU_DESCRIPTOR_HANDLE{ kInvalidPos })
         : m_CPUHandle(CPUHandle), m_GPUHandle(GPUHandle)
     {
     }
@@ -85,9 +87,6 @@ private:
 };
 
 
-// CPU Descriptor heaps will be handled in separate places - CBV_SRV_UAV and Sampler types will be owned
-// by the device, and any synchronization needed will be handled by it. RTVs and DSVs will be owned by
-// Command Contexts.
 class BvCPUDescriptorHeapD3D12
 {
 public:
@@ -101,10 +100,83 @@ public:
 
 private:
     BvRenderDeviceD3D12* m_pDevice = nullptr;
-	BvVector<ComPtr<ID3D12DescriptorHeap>> m_CPUHeaps;
-    D3D12_CPU_DESCRIPTOR_HANDLE m_Handle;
+	BvVector<ID3D12DescriptorHeap*> m_CPUHeaps;
+    D3D12_CPU_DESCRIPTOR_HANDLE m_Handle{};
 	u32 m_DescriptorSize = 0;
 	u32 m_NumDescriptors = 0;
     u32 m_CurrUsed = 0;
     D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+};
+
+
+class BvDescriptorPoolD3D12
+{
+public:
+    BvDescriptorPoolD3D12();
+    BvDescriptorPoolD3D12(BvDescriptorPoolD3D12&&) noexcept = default;
+    BvDescriptorPoolD3D12& operator=(BvDescriptorPoolD3D12&&) noexcept = default;
+    BvDescriptorPoolD3D12(BvRenderDeviceD3D12* pDevice, const BvShaderResourceLayoutD3D12* pLayout, u32 rootIndex, u32 maxAllocationsPerPool);
+    ~BvDescriptorPoolD3D12();
+
+	BvDescriptorHandle Allocate();
+	void Reset();
+
+    BV_INLINE bool IsValid() const { return m_pDescriptorHeap != nullptr; }
+    BV_INLINE u32 GetHandleCount() const { return m_HandleCount; }
+    BV_INLINE auto GetHeapType() const { return m_HeapType; }
+    BV_INLINE auto GetHandleSize() const { return m_pDescriptorHeap->GetDescriptorSize(); }
+
+private:
+    struct PoolData
+    {
+        BvDescriptorHandle m_Handle;
+        u32 m_CurrAllocations = 0;
+    };
+
+    BvGPUDescriptorHeapD3D12* m_pDescriptorHeap = nullptr;
+    D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+    BvVector<PoolData> m_Pools;
+	u32 m_RootIndex = 0;
+	u32 m_MaxAllocationsPerPool = 0;
+	u32 m_CurrPoolIndex = 0;
+    u32 m_HandleCount = 0;
+};
+
+
+struct ResourceIdD3D12
+{
+	u32 m_RegisterSpace;
+	u32 m_Binding;
+	u32 m_ArrayIndex;
+
+	friend bool operator==(const ResourceIdD3D12& lhs, const ResourceIdD3D12& rhs)
+	{
+		return lhs.m_RegisterSpace == rhs.m_RegisterSpace && lhs.m_Binding == rhs.m_Binding && lhs.m_ArrayIndex == rhs.m_ArrayIndex;
+	}
+};
+
+
+class BvResourceBindingStateD3D12 final
+{
+public:
+	BvResourceBindingStateD3D12() = default;
+	~BvResourceBindingStateD3D12() = default;
+
+	void SetResource(const BvDescriptorHandle& handle, u32 registerSpace, u32 binding, u32 arrayIndex);
+
+	void Reset();
+
+	const BvDescriptorHandle* GetResource(const ResourceIdD3D12& resId) const;
+
+	BV_INLINE bool IsEmpty() const { return m_Descriptors.Empty(); }
+	BV_INLINE bool IsDirty(u32 registerSpace) const { auto it = m_DirtySets.FindKey(registerSpace); return it != m_DirtySets.cend() ? it->second : false; }
+	BV_INLINE void MarkClean(u32 registerSpace) { m_DirtySets[registerSpace] = false; }
+
+private:
+	std::pair<BvDescriptorHandle*, bool> AddOrRetrieveResourceData(u32 registerSpace, u32 binding, u32 arrayIndex);
+
+private:
+	BvRobinMap<ResourceIdD3D12, u32> m_Bindings;
+	BvVector<BvDescriptorHandle> m_Descriptors;
+	BvRobinMap<u32, bool> m_DirtySets;
 };

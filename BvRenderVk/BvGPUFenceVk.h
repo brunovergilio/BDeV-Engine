@@ -8,14 +8,10 @@
 class BvRenderDeviceVk;
 
 
-BV_OBJECT_DEFINE_ID(BvGPUFenceVk, "96de8b96-bb06-4ae4-b96e-e6a3c5323232");
 class BvGPUFenceVk final : public IBvGPUFence, public IBvResourceVk
 {
-	BV_NOCOPYMOVE(BvGPUFenceVk);
-	BV_VK_DEVICE_RES_DECL;
-
 public:
-	BvGPUFenceVk(BvRenderDeviceVk* pDevice, u64 initialValue = 0, bool isTimeline = true);
+	BvGPUFenceVk(BvRenderDeviceVk* pDevice, VkSemaphore semaphore);
 	~BvGPUFenceVk();
 
 	void Signal(u64 value) override;
@@ -26,17 +22,12 @@ public:
 	BV_INLINE VkSemaphore GetHandle() const { return m_Semaphore; }
 	BV_INLINE bool IsValid() const { return m_Semaphore != VK_NULL_HANDLE; }
 
-	//BV_OBJECT_IMPL_INTERFACE(IBvGPUFenceVk, IBvGPUFence, IBvRenderDeviceObject);
-
 private:
-	void Create(u64 initialValue, bool isTimelineSemaphore);
 	void Destroy();
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkSemaphore m_Semaphore = VK_NULL_HANDLE;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvGPUFenceVk);
-
-
+BV_OBJECT_DEFINE_ID(BvGPUFenceVk, "96de8b96-bb06-4ae4-b96e-e6a3c5323232");
 BV_CREATE_CAST_TO_VK(BvGPUFence)

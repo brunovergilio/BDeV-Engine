@@ -25,8 +25,8 @@ struct ContextDataVk
 {
 	BvResourceBindingStateVk m_ResourceBindingState;
 	BvRobinMap<u64, BvDescriptorPoolVk> m_DescriptorPools;
-	BvRobinMap<u64, BvDescriptorSetVk> m_DescriptorSets;
-	BvRobinMap<u64, BvDescriptorSetVk> m_BindlessDescriptorSets;
+	BvRobinMap<u64, VkDescriptorSet> m_DescriptorSets;
+	BvRobinMap<u64, VkDescriptorSet> m_BindlessDescriptorSets;
 	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr;
 	BvFramebufferManagerVk* m_pFramebufferManager = nullptr;
 	BvQueryASVk* m_pASQueries = nullptr;
@@ -38,17 +38,14 @@ class BvFrameDataVk final
 	BV_NOCOPY(BvFrameDataVk);
 
 public:
-	BvFrameDataVk();
 	BvFrameDataVk(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData);
-	BvFrameDataVk(BvFrameDataVk&& rhs) noexcept;
-	BvFrameDataVk& operator=(BvFrameDataVk&& rhs) noexcept;
 	~BvFrameDataVk();
 
-	void Reset(bool resetQueries = true);
+	void Reset(bool newFrame = true);
 	BvCommandBufferVk* RequestCommandBuffer();
 	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless = false);
-	void UpdateSignalIndex();
-	void UpdateSignalValue();
+	//void UpdateSignalIndex();
+	//void UpdateSignalValue();
 	void ClearActiveCommandBuffers();
 	void AddQuery(BvQueryVk* pQuery);
 	VkFramebuffer GetFramebuffer(const FramebufferDesc& fbDesc);
@@ -58,10 +55,12 @@ public:
 	BV_INLINE const auto& GetCommandBuffers() const { return m_CommandBuffers; }
 	BV_INLINE auto& GetResourceBindingState() { return m_pContextData->m_ResourceBindingState; }
 	BV_INLINE BvGPUFenceVk* GetGPUFence() { return m_pFence; }
-	BV_INLINE std::pair<u64, u64> GetSemaphoreValueIndex() const { return m_SignaValueIndex; }
+	//BV_INLINE std::pair<u64, u64> GetSemaphoreValueIndex() const { return m_SignaValueIndex; }
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
 	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pContextData->m_pQueryHeapManager; }
 	BV_INLINE BvQueryASVk* GetQueryAS() const { return m_pContextData->m_pASQueries; }
+	BV_INLINE u64 UpdateFenceValue() { return ++m_FenceValue; }
+	BV_INLINE u64 GetFenceValue() const { return m_FenceValue; }
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
@@ -71,17 +70,14 @@ private:
 	BvVector<BvQueryVk*> m_Queries;
 	u32 m_UpdatedQueries = 0;
 	BvRCRef<BvGPUFenceVk> m_pFence;
-	std::pair<u64, u64> m_SignaValueIndex;
+	u64 m_FenceValue = 0;
+	//std::pair<u64, u64> m_SignaValueIndex;
 	u32 m_FrameIndex;
 };
 
 
-BV_OBJECT_DEFINE_ID(BvCommandContextVk, "87f18018-a53f-43e7-b7f5-b39d662d0ce5");
 class BvCommandContextVk final : public IBvCommandContext, public IBvResourceVk
 {
-	BV_NOCOPYMOVE(BvCommandContextVk);
-	BV_VK_DEVICE_RES_DECL;
-
 public:
 	BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, u32 queueFamilyIndex, u32 queueIndex);
 	~BvCommandContextVk();
@@ -114,9 +110,9 @@ public:
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
-	void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
-	void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
-	void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0) override;
+	void SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) override;
+	void SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) override;
+	void SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding) override;
 	void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0) override;
@@ -131,7 +127,7 @@ public:
 
 	void SetDepthBounds(f32 min, f32 max) override;
 	void SetStencilRef(u32 stencilRef) override;
-	void SetBlendConstants(const float(pColors[4])) override;
+	void SetBlendConstants(const float(&colors)[4]) override;
 	void SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp(pCombinerOps[2])) override;
 
 	void Draw(const DrawCommandArgs& args) override;
@@ -183,15 +179,13 @@ public:
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0) override;
 
 	BV_INLINE BvCommandQueueVk* GetCommandQueue() { return &m_Queue; }
-	BV_INLINE BvGPUFenceVk* GetCurrentGPUFence() { return m_Frames[m_ActiveFrameIndex].GetGPUFence(); }
-	BV_INLINE u64 GetCurrentValue() { return m_Frames[m_ActiveFrameIndex].GetSemaphoreValueIndex().first; }
+	BV_INLINE BvGPUFenceVk* GetCurrentGPUFence() { return m_pFrames[m_ActiveFrameIndex].GetGPUFence(); }
+	BV_INLINE u64 GetCurrentValue() { return m_pFrames[m_ActiveFrameIndex].GetFenceValue(); }
 	BV_INLINE BvCommandBufferVk* GetCurrentCommandBuffer() const { return m_pCurrCommandBuffer; }
 
 	void AddSwapChain(BvSwapChainVk* pSwapChain);
 	void RemoveSwapChain(BvSwapChainVk* pSwapChain);
 	void RemoveFramebuffers(VkImageView view);
-
-	//BV_OBJECT_IMPL_INTERFACE(IBvCommandContextVk, IBvCommandContext, IBvRenderDeviceObject);
 
 private:
 	void Destroy();
@@ -199,16 +193,14 @@ private:
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	BvCommandQueueVk m_Queue;
-	BvVector<BvFrameDataVk> m_Frames;
+	BvFrameDataVk* m_pFrames = nullptr;
 	BvVector<BvSwapChainVk*> m_SwapChains;
 	BvCommandBufferVk* m_pCurrCommandBuffer = nullptr;
-	BvFrameDataVk* m_pCurrFrame = nullptr;
 	ContextDataVk* m_pContextData;
+	u32 m_FrameCount = 0;
 	u32 m_ActiveFrameIndex = 0;
 	u32 m_ContextGroupIndex = 0;
 	u32 m_ContextIndex = 0;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvCommandContextVk);
-
-
+BV_OBJECT_DEFINE_ID(BvCommandContextVk, "87f18018-a53f-43e7-b7f5-b39d662d0ce5");
 BV_CREATE_CAST_TO_VK(BvCommandContext)

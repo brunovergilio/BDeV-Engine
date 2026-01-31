@@ -8,7 +8,7 @@
     <ClInclude Include="BvCommandPoolVk.h" />
     <ClInclude Include="BvCommandQueueVk.h" />
     <ClInclude Include="BvCommonVk.h" />
-    <ClInclude Include="BvDebugReportVk.h" />
+    <ClInclude Include="BvDebugUtilsVk.h" />
     <ClInclude Include="BvDescriptorSetVk.h" />
     <ClInclude Include="BvFramebufferVk.h" />
     <ClInclude Include="BvPipelineStateVk.h" />
@@ -29,7 +29,6 @@
     <ClInclude Include="BvShaderBindingTableVk.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Windows\BvSwapChainVkWindows.cpp" />
     <ClCompile Include="BvBufferViewVk.cpp" />
     <ClCompile Include="BvBufferVk.cpp" />
     <ClCompile Include="BvCommandBufferVk.cpp" />
@@ -37,7 +36,7 @@
     <ClCompile Include="BvCommandPoolVk.cpp" />
     <ClCompile Include="BvCommandQueueVk.cpp" />
     <ClCompile Include="BvCommonVk.cpp" />
-    <ClCompile Include="BvDebugReportVk.cpp" />
+    <ClCompile Include="BvDebugUtilsVk.cpp" />
     <ClCompile Include="BvDescriptorSetVk.cpp" />
     <ClCompile Include="BvFramebufferVk.cpp" />
     <ClCompile Include="BvPipelineStateVk.cpp" />

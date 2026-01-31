@@ -1,23 +1,24 @@
 #include "BvRenderEngineVk.h"
 #include "BvUtilsVk.h"
 #include "BvRenderDeviceVk.h"
-#include "BvDebugReportVk.h"
+#include "BvDebugUtilsVk.h"
 #include "BDeV/Core/Container/BvVector.h"
 
 
 class BvRenderEngineVkHelper
 {
 public:
-	static BvRenderEngineVk* Create()
+	static BvRenderEngineVk* Create(const RenderEngineDesc& renderEngineDesc)
 	{
 		static bool initialized = false;
 		if (!initialized)
 		{
 			initialized = true;
-			s_pEngine = BV_NEW(BvRenderEngineVk)();
+			s_pEngine = BV_RC_CREATE_IN_PLACE(*BV_DEFAULT_MEMORY_ARENA, BvRenderEngineVk, renderEngineDesc);
+			s_pEngine->SetMemoryArena(BV_DEFAULT_MEMORY_ARENA);
 			if (s_pEngine->GetGPUs().Size() == 0)
 			{
-				Destroy();
+				s_pEngine->Release();
 				s_pEngine = nullptr;
 			}
 		}
@@ -29,15 +30,21 @@ public:
 		return s_pEngine;
 	}
 
-	static void Destroy()
+	static void OnDeviceDestroyed(u32 index)
 	{
-		BV_DELETE_IN_PLACE(s_pEngine);
+		s_pEngine->OnDeviceDestroyed(index);
 	}
 
 private:
 	static BvRenderEngineVk* s_pEngine;
 };
 BvRenderEngineVk* BvRenderEngineVkHelper::s_pEngine = nullptr;
+
+
+void OnVkDeviceDestroyed(u32 index)
+{
+	BvRenderEngineVkHelper::OnDeviceDestroyed(index);
+}
 
 
 bool IsInstanceExtensionSupported(const BvVector<VkExtensionProperties>& extensions, const char* pExtension);
@@ -47,16 +54,9 @@ bool IsDeviceSuitable(VkPhysicalDevice gpu);
 void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo, BvGPUInfo& gpuInfo);
 
 
-bool BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderEngineVk::CreateRenderDeviceImpl(const RenderDeviceDesc& renderDeviceDesc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvRenderDevice)))
-	{
-		return false;
-	}
-
-	BvRenderDeviceCreateDescVk descVk;
-	memcpy(&descVk, &deviceCreateDesc, sizeof(BvRenderDeviceCreateDesc));
-	u32 gpuIndex = descVk.m_GPUIndex;
+	u32 gpuIndex = renderDeviceDesc.m_GPUIndex;
 	if (gpuIndex >= m_GPUs.Size())
 	{
 		gpuIndex = 0;
@@ -74,7 +74,7 @@ bool BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& de
 	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
 	if (!pDevice)
 	{
-		pDevice = BV_NEW(BvRenderDeviceVk)(this, m_Devices[gpuIndex]->m_PhysicalDevice, m_Devices[gpuIndex]->m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], descVk);
+		pDevice = BV_RC_CREATE(BvRenderDeviceVk, m_Instance, m_Devices[gpuIndex]->m_PhysicalDevice, m_Devices[gpuIndex]->m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], renderDeviceDesc);
 		if (!pDevice->IsValid())
 		{
 			pDevice->Release();
@@ -90,16 +90,10 @@ bool BvRenderEngineVk::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& de
 }
 
 
-void BvRenderEngineVk::OnDeviceDestroyed(u32 index)
-{
-	m_Devices[index]->m_pDevice = nullptr;
-}
-
-
-BvRenderEngineVk::BvRenderEngineVk()
+BvRenderEngineVk::BvRenderEngineVk(const RenderEngineDesc& renderEngineDesc)
 	: m_VulkanLib(BV_VULKAN_DLL_NAME)
 {
-	Create();
+	Create(renderEngineDesc);
 }
 
 
@@ -109,7 +103,7 @@ BvRenderEngineVk::~BvRenderEngineVk()
 }
 
 
-void BvRenderEngineVk::Create()
+void BvRenderEngineVk::Create(const RenderEngineDesc& renderEngineDesc)
 {
 	if (!m_VulkanLib)
 	{
@@ -269,11 +263,9 @@ void BvRenderEngineVk::Create()
 		SetupDeviceInfo(physicalDevices[i], *pDeviceData->m_pDeviceInfo, *m_GPUs[i]);
 	}
 
-	if (hasDebugUtils)
+	if (hasDebugUtils && renderEngineDesc.m_EnableDebugLayer)
 	{
-#if BV_DEBUG
-		m_pDebugReport = BV_NEW(BvDebugReportVk)(m_Instance);
-#endif
+		m_pDebugUtils = BV_NEW(BvDebugUtilsVk)(m_Instance);
 	}
 }
 
@@ -299,9 +291,9 @@ void BvRenderEngineVk::Destroy()
 			BV_DELETE(pGPU);
 		}
 
-		if (m_pDebugReport)
+		if (m_pDebugUtils)
 		{
-			BV_DELETE(m_pDebugReport);
+			BV_DELETE(m_pDebugUtils);
 		}
 
 		vkDestroyInstance(m_Instance, nullptr);
@@ -312,9 +304,9 @@ void BvRenderEngineVk::Destroy()
 }
 
 
-void BvRenderEngineVk::SelfDestroy()
+void BvRenderEngineVk::OnDeviceDestroyed(u32 index)
 {
-	BvRenderEngineVkHelper::Destroy();
+	m_Devices[index]->m_pDevice = nullptr;
 }
 
 
@@ -403,25 +395,28 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	void** pNextFeature = &deviceInfo.m_DeviceFeatures1_3.pNext;
 	void** pNextMemoryProperty = &deviceInfo.m_DeviceMemoryProperties.pNext;
 
-	bool vertexAttributeDivisor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
-	bool fragmentShading = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-	bool meshShader = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MESH_SHADER_EXTENSION_NAME);
-	bool accelerationStructure = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-	bool rayTracingPipeline = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-	bool rayQuery = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_QUERY_EXTENSION_NAME);
-	bool conservativeRasterization = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
-	bool customBorderColor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
-	bool memoryBudget = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
-	bool deferredHostOperations = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-	bool deviceAddress = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-	bool predication = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
-	bool depthClipEnable = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
-	bool trueFullScreen = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
+	auto& ff = deviceInfo.m_FeatureFlags;
+	ff.vertexAttributeDivisor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
+	ff.fragmentShading = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+	ff.meshShader = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MESH_SHADER_EXTENSION_NAME);
+	ff.accelerationStructure = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+	ff.rayTracingPipeline = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+	ff.rayQuery = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_QUERY_EXTENSION_NAME);
+	ff.conservativeRasterization = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
+	ff.customBorderColor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
+	ff.memoryBudget = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+	ff.deferredHostOperations = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+	ff.deviceAddress = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+	ff.predication = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
+	ff.depthClipEnable = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
+	ff.trueFullScreen = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
 		&& deviceInfo.m_ExtendedSurfaceCaps.hasSurface2Caps;
+	ff.globalQueuePriority = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME);
+	ff.depthBiasControl = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME);
 
 	deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-	if (vertexAttributeDivisor)
+	if (ff.vertexAttributeDivisor)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.vertexAttributeDivisorFeatures.pNext;
@@ -432,7 +427,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
 	}
 
-	if (fragmentShading)
+	if (ff.fragmentShading)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures.pNext;
@@ -442,7 +437,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
 	}
 
-	if (meshShader)
+	if (ff.meshShader)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.meshShaderFeatures;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.meshShaderFeatures.pNext;
@@ -453,7 +448,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 	}
 
-	if (accelerationStructure && deferredHostOperations && deviceAddress)
+	if (ff.accelerationStructure && ff.deferredHostOperations && ff.deviceAddress)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.accelerationStructureFeatures.pNext;
@@ -463,7 +458,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 
 		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
 
-		if (rayTracingPipeline)
+		if (ff.rayTracingPipeline)
 		{
 
 			*pNextFeature = &deviceInfo.m_ExtendedFeatures.rayTracingPipelineFeatures;
@@ -475,7 +470,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
 		}
 
-		if (rayQuery)
+		if (ff.rayQuery)
 		{
 			*pNextFeature = &deviceInfo.m_ExtendedFeatures.rayQueryFeatures;
 			pNextFeature = &deviceInfo.m_ExtendedFeatures.rayQueryFeatures.pNext;
@@ -484,7 +479,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		}
 	}
 
-	if (conservativeRasterization)
+	if (ff.conservativeRasterization)
 	{
 		*pNextProperty = &deviceInfo.m_ExtendedProperties.convervativeRasterizationProps;
 		pNextProperty = &deviceInfo.m_ExtendedProperties.convervativeRasterizationProps.pNext;
@@ -492,7 +487,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
 	}
 
-	if (customBorderColor)
+	if (ff.customBorderColor)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.customBorderColorFeatures;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.customBorderColorFeatures.pNext;
@@ -503,7 +498,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
 	}
 
-	if (memoryBudget)
+	if (ff.memoryBudget)
 	{
 		*pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties;
 		pNextMemoryProperty = &deviceInfo.m_ExtendedProperties.memoryBudgetProperties.pNext;
@@ -511,12 +506,12 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 	}
 
-	if (deferredHostOperations)
+	if (ff.deferredHostOperations)
 	{
 		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
 	}
 
-	if (predication)
+	if (ff.predication)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.conditionalRenderingFeatures;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.conditionalRenderingFeatures.pNext;
@@ -524,7 +519,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME);
 	}
 
-	if (depthClipEnable)
+	if (ff.depthClipEnable)
 	{
 		*pNextFeature = &deviceInfo.m_ExtendedFeatures.depthClibEnableFeature;
 		pNextFeature = &deviceInfo.m_ExtendedFeatures.depthClibEnableFeature.pNext;
@@ -532,7 +527,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME);
 	}
 
-	if (trueFullScreen)
+	if (ff.trueFullScreen)
 	{
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
 	}
@@ -574,23 +569,23 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	{
 		caps |= RenderDeviceCapabilities::kSamplerMinMaxReduction;
 	}
-	if (customBorderColor)
+	if (ff.customBorderColor)
 	{
 		caps |= RenderDeviceCapabilities::kCustomBorderColor;
 	}
-	if (predication)
+	if (ff.predication)
 	{
 		caps |= RenderDeviceCapabilities::kPredication;
 	}
-	if (conservativeRasterization)
+	if (ff.conservativeRasterization)
 	{
 		caps |= RenderDeviceCapabilities::kConservativeRasterization;
 	}
-	if (fragmentShading)
+	if (ff.fragmentShading)
 	{
 		caps |= RenderDeviceCapabilities::kShadingRate;
 	}
-	if (meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.taskShader)
+	if (ff.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.taskShader)
 	{
 		caps |= RenderDeviceCapabilities::kMeshShader;
 		if (deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries)
@@ -598,11 +593,11 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 			caps |= RenderDeviceCapabilities::kMeshQuery;
 		}
 	}
-	if (rayTracingPipeline)
+	if (ff.rayTracingPipeline)
 	{
 		caps |= RenderDeviceCapabilities::kRayTracing;
 	}
-	if (rayQuery)
+	if (ff.rayQuery)
 	{
 		caps |= RenderDeviceCapabilities::kRayQuery;
 	}
@@ -610,7 +605,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	{
 		caps |= RenderDeviceCapabilities::kMultiView;
 	}
-	if (trueFullScreen)
+	if (ff.trueFullScreen)
 	{
 		caps |= RenderDeviceCapabilities::kTrueFullScreen;
 	}
@@ -746,14 +741,9 @@ namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API bool CreateRenderEngine(const BvUUID& objId, void** ppObj)
+		BV_API bool CreateRenderEngine(const RenderEngineDesc& renderEngineDesc, void** ppObj)
 		{
-			if (!ppObj || (objId != BV_OBJECT_ID(BvRenderEngineVk) && objId != BV_OBJECT_ID(IBvRenderEngine)))
-			{
-				return false;
-			}
-
-			*ppObj = BvRenderEngineVkHelper::Create();
+			*ppObj = BvRenderEngineVkHelper::Create(renderEngineDesc);
 			
 			return *ppObj != nullptr;
 		}

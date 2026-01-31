@@ -30,8 +30,6 @@ class BvQueryVk;
 
 class BvCommandBufferVk final
 {
-	BV_NOCOPY(BvCommandBufferVk);
-
 public:
 	enum class State : u8
 	{
@@ -41,8 +39,6 @@ public:
 	};
 
 	BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData);
-	BvCommandBufferVk(BvCommandBufferVk&& rhs) noexcept = default;
-	BvCommandBufferVk& operator=(BvCommandBufferVk&& rhs) noexcept = default;
 	~BvCommandBufferVk();
 
 	void Reset();
@@ -66,9 +62,9 @@ public:
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
-	void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
-	void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
-	void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
+	void SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding);
+	void SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding);
+	void SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding);
 	void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);

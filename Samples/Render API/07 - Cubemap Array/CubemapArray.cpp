@@ -246,7 +246,7 @@ void CubemapArray::CreateShaderResourceLayout()
 	setDesc.m_ResourceCount = 3;
 	setDesc.m_pResources = resourceDescs;
 
-	ShaderResourceLayoutDesc layoutDesc{};
+	ShaderResourceLayoutCreateDesc layoutDesc{};
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
 
@@ -436,7 +436,7 @@ void CubemapArray::CreateSkyboxResources()
 	setDesc.m_ConstantCount = 1;
 	setDesc.m_pConstants = constantDesc;
 
-	ShaderResourceLayoutDesc layoutDesc{};
+	ShaderResourceLayoutCreateDesc layoutDesc{};
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
 

@@ -1,20 +1,20 @@
-#include "BvDebugReportVk.h"
+#include "BvDebugUtilsVk.h"
 
 
-BvDebugReportVk::BvDebugReportVk(VkInstance instance)
+BvDebugUtilsVk::BvDebugUtilsVk(VkInstance instance)
 	: m_Instance(instance)
 {
 	Create();
 }
 
 
-BvDebugReportVk::~BvDebugReportVk()
+BvDebugUtilsVk::~BvDebugUtilsVk()
 {
 	Destroy();
 }
 
 
-void BvDebugReportVk::Create()
+void BvDebugUtilsVk::Create()
 {
 	VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
 	debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -27,21 +27,21 @@ void BvDebugReportVk::Create()
 	debugInfo.pfnUserCallback = DebugUtilsMessengerCallbackEXT;
 	//debugInfo.pUserData = nullptr;
 
-	auto result = vkCreateDebugUtilsMessengerEXT(m_Instance, &debugInfo, nullptr, &m_DebugReport);
+	auto result = vkCreateDebugUtilsMessengerEXT(m_Instance, &debugInfo, nullptr, &m_DebugUtils);
 }
 
 
-void BvDebugReportVk::Destroy()
+void BvDebugUtilsVk::Destroy()
 {
-	if (m_DebugReport)
+	if (m_DebugUtils)
 	{
-		vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugReport, nullptr);
-		m_DebugReport = VK_NULL_HANDLE;
+		vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugUtils, nullptr);
+		m_DebugUtils = VK_NULL_HANDLE;
 	}
 }
 
 
-VkBool32 VKAPI_PTR BvDebugReportVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+VkBool32 VKAPI_PTR BvDebugUtilsVk::DebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
 	char prefix[64]{};

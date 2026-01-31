@@ -10,9 +10,6 @@ class BvRenderDeviceD3D12;
 
 class BvBufferViewD3D12 final : public IBvBufferView, public IBvResourceD3D12
 {
-	BV_NOCOPYMOVE(BvBufferViewD3D12);
-	BV_D3D12_DEVICE_RES_DECL;
-
 public:
 	BvBufferViewD3D12(BvRenderDeviceD3D12* pDevice, const BufferViewDesc& bufferViewDesc);
 	~BvBufferViewD3D12();
@@ -35,6 +32,4 @@ private:
 	CD3DX12_CPU_DESCRIPTOR_HANDLE m_SRV;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE m_UAV;
 };
-
-
 BV_CREATE_CAST_TO_D3D12(BvBufferView)

@@ -14,10 +14,7 @@ class BvCommandPoolVk final
 	BV_NOCOPY(BvCommandPoolVk);
 
 public:
-	BvCommandPoolVk();
 	BvCommandPoolVk(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex);
-	BvCommandPoolVk(BvCommandPoolVk&& rhs) noexcept;
-	BvCommandPoolVk& operator=(BvCommandPoolVk&& rhs) noexcept;
 	~BvCommandPoolVk();
 
 	void Create();

@@ -692,7 +692,6 @@ namespace
 		}
 	}
 
-
 	//--------------------------------------------------------------------------------------
 	inline void AdjustPlaneResource(
 		DXGIFormat fmt,
@@ -708,13 +707,13 @@ namespace
 			if (!slicePlane)
 			{
 				// Plane 0
-				res.m_SlicePitch = res.m_RowPitch * static_cast<long>(height);
+				res.m_SlicePitch = res.m_RowPitch * height;
 			}
 			else
 			{
 				// Plane 1
 				res.m_pData = reinterpret_cast<const uint8_t*>(res.m_pData) + uintptr_t(res.m_RowPitch) * height;
-				res.m_SlicePitch = res.m_RowPitch * ((static_cast<long>(height) + 1) >> 1);
+				res.m_SlicePitch = res.m_RowPitch * ((height + 1) >> 1);
 			}
 			break;
 
@@ -722,14 +721,14 @@ namespace
 			if (!slicePlane)
 			{
 				// Plane 0
-				res.m_SlicePitch = res.m_RowPitch * static_cast<long>(height);
+				res.m_SlicePitch = res.m_RowPitch * height;
 			}
 			else
 			{
 				// Plane 1
 				res.m_pData = reinterpret_cast<const uint8_t*>(res.m_pData) + uintptr_t(res.m_RowPitch) * height;
 				res.m_RowPitch = (res.m_RowPitch >> 1);
-				res.m_SlicePitch = res.m_RowPitch * static_cast<long>(height);
+				res.m_SlicePitch = res.m_RowPitch * height;
 			}
 			break;
 		}
@@ -1310,8 +1309,7 @@ u32 BvDDS::GetArraySize() const
 
 u32 BvDDS::GetPlaneCount() const
 {
-	auto formatInfo = GetFormatInfo(GetFormat());
-	return formatInfo.m_PlaneCount;
+	return BvRenderUtils::GetFormatInfo(GetFormat()).m_PlaneCount;
 }
 
 
@@ -1364,100 +1362,6 @@ bool BvDDS::IsValid() const
 bool BvDDS::HasDX10Header() const
 {
 	return m_pDDSHeaderDX10 != nullptr;
-}
-
-
-u32 BvDDS::GetSubresourceCount() const
-{
-	return GetMipCount() * GetArraySize() * GetPlaneCount();
-}
-
-
-void BvDDS::GetSubresourceData(SubresourceData& subresource, u32 mipLevel, u32 arraySlice, u32 planeSlice) const
-{
-	u32 mipCount = GetMipCount();
-	u32 arraySize = GetArraySize();
-	u32 planeCount = GetPlaneCount();
-
-	Format format = GetFormat();
-	u32 w = GetWidth();
-	u32 h = GetHeight();
-	u32 d = GetDepth();
-
-	TextureSubresourceInfo texSubresource;
-	for (auto p = 0u; p < planeCount; ++p)
-	{
-		auto pData = m_pTextureData;
-		for (auto a = 0u; a < arraySize; ++a)
-		{
-			for (auto m = 0u; m < mipCount; ++m)
-			{
-				GetTextureSubresourceInfo(texSubresource, format, { w, h, d }, m);
-				subresource.m_pData = pData;
-				subresource.m_RowPitch = texSubresource.m_RowPitch;
-				subresource.m_SlicePitch = texSubresource.m_SlicePitch;
-
-				pData += texSubresource.m_MipSize;
-				if (pData > m_pData + texSubresource.m_MipSize)
-				{
-					return;
-				}
-
-				AdjustPlaneSubresourceData(format, h, p, subresource);
-
-				if (p == planeSlice && a == arraySlice && m == mipLevel)
-				{
-					return;
-				}
-			}
-		}
-	}
-}
-
-
-u32 BvDDS::GetAllSubresourceData(SubresourceData* pSubresources, u32 subresourceCount) const
-{
-	u32 mipCount = GetMipCount();
-	u32 arraySize = GetArraySize();
-	u32 planeCount = GetPlaneCount();
-
-	Format format = GetFormat();
-	u32 w = GetWidth();
-	u32 h = GetHeight();
-	u32 d = GetDepth();
-
-	u32 subresourceIndex = 0;
-	TextureSubresourceInfo texSubresource;
-	for (auto p = 0; p < planeCount; ++p)
-	{
-		auto pData = m_pTextureData;
-		for (auto a = 0; a < arraySize; ++a)
-		{
-			for (auto m = 0; m < mipCount; ++m, ++subresourceIndex)
-			{
-				if (subresourceIndex == subresourceCount)
-				{
-					return subresourceIndex;
-				}
-
-				GetTextureSubresourceInfo(texSubresource, format, { w, h, d }, m);
-				auto& subresource = pSubresources[subresourceIndex];
-				subresource.m_pData = pData;
-				subresource.m_RowPitch = texSubresource.m_RowPitch;
-				subresource.m_SlicePitch = texSubresource.m_SlicePitch;
-
-				pData += texSubresource.m_MipSize;
-				if (pData > m_pData + texSubresource.m_MipSize)
-				{
-					return subresourceIndex;
-				}
-
-				AdjustPlaneSubresourceData(format, h, p, subresource);
-			}
-		}
-	}
-
-	return subresourceIndex;
 }
 
 

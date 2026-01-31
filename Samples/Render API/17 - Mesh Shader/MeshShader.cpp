@@ -295,7 +295,7 @@ void MeshShader::CreateShaderResourceLayout()
 		setDesc.m_ConstantCount = 1;
 		setDesc.m_pConstants = &constDesc;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 

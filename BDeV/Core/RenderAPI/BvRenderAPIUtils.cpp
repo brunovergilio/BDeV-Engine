@@ -2,152 +2,232 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 
 
-void GetTextureSubresourceInfo(TextureSubresourceInfo& subresource, Format format, const Extent3D& size, u32 mipLevel)
+u32 BvRenderUtils::CalcRowPitch(Format format, u32 width)
 {
-	auto width = std::max(1u, size.width >> mipLevel);
-	auto height = std::max(1u, size.height >> mipLevel);
-	auto depth = std::max(1u, size.depth >> mipLevel);
+	auto fi = GetFormatInfo(format);
+	u32 wAlign = fi.m_WidthAlignment;
+	u32 numUnits;
 
-	subresource.m_Width = width;
-	subresource.m_Height = height;
-	subresource.m_Detph = depth;
-
-	auto formatInfo = GetFormatInfo(format);
-	if (formatInfo.m_IsCompressed)
+	if (fi.m_IsCompressed)
 	{
-		u64 numBlocksWide = 0;
-		if (width > 0)
-		{
-			numBlocksWide = std::max(1ull, (u64(width) + 3ull) >> 2ull);
-		}
-		u64 numBlocksHigh = 0;
-		if (height > 0)
-		{
-			numBlocksHigh = std::max(1ull, (u64(height) + 3ull) >> 2ull);
-		}
-		subresource.m_RowPitch = numBlocksWide * formatInfo.m_BlocksPerElement;
-		subresource.m_NumRows = numBlocksHigh;
-		subresource.m_SlicePitch = subresource.m_RowPitch * numBlocksHigh;
-	}
-	else if (formatInfo.m_IsPacked)
-	{
-		subresource.m_RowPitch = ((u64(width) + 1ull) >> 1ull) * formatInfo.m_BlocksPerElement;
-		subresource.m_NumRows = u64(height);
-		subresource.m_SlicePitch = subresource.m_RowPitch * height;
+		numUnits = DivideAndRoundUp(width, wAlign);
 	}
 	else
 	{
-		switch (format)
+		numUnits = RoundToNearestPowerOf2(width, wAlign);
+	}
+
+	return (fi.m_BitsPerPixel * numUnits) >> 3;
+}
+
+
+void BvRenderUtils::AdjustPlaneSizeAndFormatForCopyableLayout(Format format, u32 width, u32 height, u32 planeSlice,
+	Format& planeFormat, u32& planeWidth, u32& planeHeight, u32& minPlanePitchWidth)
+{
+	auto fi = GetFormatInfo(GetFormatInfo(format).m_ParentFormat);
+	if (fi.m_IsPlanar)
+	{
+		switch (fi.m_ParentFormat)
 		{
-		case Format::kNV11:
-			subresource.m_RowPitch = ((u64(width) + 3ull) >> 2ull) * 4ull;
-			subresource.m_NumRows = u64(height) * 2ull; // Direct3D makes this simplifying assumption, although it is larger than the 4:1:1 data
-			subresource.m_SlicePitch = subresource.m_RowPitch * subresource.m_NumRows;
-			break;
 		case Format::kNV12:
-		case Format::k420_OPAQUE:
-		case Format::kP208:
-		case Format::kP010:
-		case Format::kP016:
-			subresource.m_RowPitch = ((u64(width) + 1ull) >> 1ull) * formatInfo.m_BlocksPerElement;
-			subresource.m_NumRows = height + ((u64(height) + 1ull) >> 1ull);
-			subresource.m_SlicePitch = (subresource.m_RowPitch * u64(height)) + ((subresource.m_RowPitch * u64(height) + 1ull) >> 1ull);
-			break;
-		default:
-			BV_ASSERT(formatInfo.m_BitsPerPixel > 0, "Bits per pixel can't be 0");
-
-			subresource.m_RowPitch = (u64(width) * formatInfo.m_BitsPerPixel + 7ull) >> 3ull; // round up to nearest byte
-			subresource.m_NumRows = u64(height);
-			subresource.m_SlicePitch = subresource.m_RowPitch * height;
-			break;
-		}
-	}
-	subresource.m_MipSize = subresource.m_SlicePitch * depth;
-}
-
-
-void AdjustPlaneSubresourceData(Format format, u32 height, u32 planeSlice, SubresourceData& subresource)
-{
-	switch (format)
-	{
-	case Format::kNV12:
-	case Format::kP010:
-	case Format::kP016:
-		if (planeSlice == 0)
-		{
-			subresource.m_SlicePitch = subresource.m_RowPitch * u64(height);
-		}
-		else
-		{
-			subresource.m_pData += uintptr_t(subresource.m_RowPitch) * height;
-			subresource.m_SlicePitch = subresource.m_RowPitch * ((u64(height) + 1ull) >> 1ull);
-		}
-		break;
-	case Format::kNV11:
-		if (planeSlice == 0)
-		{
-			subresource.m_SlicePitch = subresource.m_RowPitch * u64(height);
-		}
-		else
-		{
-			subresource.m_pData += uintptr_t(subresource.m_RowPitch) * height;
-			subresource.m_RowPitch >>= 1;
-			subresource.m_SlicePitch = subresource.m_RowPitch * height;
-		}
-		break;
-	}
-}
-
-
-u64 GetBufferSizeForTexture(const TextureDesc& textureDesc, u32 alignment, u32 maxSubresourceCount, SubresourceFootprint* pSubresources)
-{
-	u64 totalSize = 0;
-	TextureSubresourceInfo subresourceInfo{};
-	u32 planeCount = GetFormatInfo(textureDesc.m_Format).m_PlaneCount;
-	u32 subresourceIndex = 0;
-	for (auto plane = 0u; plane < planeCount; ++plane)
-	{
-		for (auto array = 0u; array < textureDesc.m_ArraySize; ++array)
-		{
-			for (auto mip = 0u; mip < textureDesc.m_MipLevels && subresourceIndex < maxSubresourceCount; ++mip, ++subresourceIndex)
+			switch (planeSlice)
 			{
-				GetTextureSubresourceInfo(subresourceInfo, textureDesc.m_Format, textureDesc.m_Size, mip);
-				SubresourceData subresourceData{ reinterpret_cast<const u8*>(totalSize), subresourceInfo.m_RowPitch, subresourceInfo.m_SlicePitch };
-				AdjustPlaneSubresourceData(textureDesc.m_Format, subresourceInfo.m_Height, plane, subresourceData);
-				subresourceInfo.m_RowPitch = subresourceData.m_RowPitch;
-				subresourceInfo.m_SlicePitch = subresourceData.m_SlicePitch;
-				subresourceInfo.m_MipSize = subresourceInfo.m_SlicePitch * subresourceInfo.m_Detph;
+			case 0:
+				planeFormat = Format::kR8_Typeless;
+				planeWidth = width;
+				planeHeight = height;
+				break;
+			case 1:
+				planeFormat = Format::kRG8_Typeless;
+				planeWidth = (width + 1) >> 1;
+				planeHeight = (height + 1) >> 1;
+				break;
+			};
 
-				if (pSubresources)
-				{
-					pSubresources[subresourceIndex].m_Offset = reinterpret_cast<u64>(subresourceData.m_pData);
-					pSubresources[subresourceIndex].m_Subresource = subresourceInfo;
-				}
+			minPlanePitchWidth = planeWidth;
+			break;
+		case Format::kP010: [[fallthrough]];
+		case Format::kP016:
+			switch (planeSlice)
+			{
+			case 0:
+				planeFormat = Format::kR16_Typeless;
+				planeWidth = width;
+				planeHeight = height;
+				break;
+			case 1:
+				planeFormat = Format::kRG16_Typeless;
+				planeWidth = (width + 1) >> 1;
+				planeHeight = (height + 1) >> 1;
+				break;
+			};
+			minPlanePitchWidth = planeWidth;
+			break;
+		case Format::kP208:
+			switch (planeSlice)
+			{
+			case 0:
+				planeFormat = Format::kR8_Typeless;
+				planeWidth = width;
+				planeHeight = height;
+				break;
+			case 1:
+				planeFormat = Format::kRG8_Typeless;
+				planeWidth = (width + 1) >> 1;
+				planeHeight = height;
+				break;
+			};
 
-				totalSize += RoundToNearestPowerOf2(subresourceInfo.m_MipSize, alignment);
+			minPlanePitchWidth = planeWidth;
+			break;
+		case Format::kV208:
+			planeFormat = Format::kR8_Typeless;
+			switch (planeSlice)
+			{
+			case 0:
+				planeWidth = width;
+				planeHeight = height;
+				break;
+			case 1: [[fallthrough]];
+			case 2:
+				planeWidth = width;
+				planeHeight = (height + 1) >> 1;
+				break;
 			}
+
+			minPlanePitchWidth = planeWidth;
+			break;
+		case Format::kV408:
+			planeFormat = Format::kR8_Typeless;
+			planeWidth = width;
+			planeHeight = height;
+			minPlanePitchWidth = planeWidth;
+			break;
+		case Format::kNV11:
+			switch (planeSlice)
+			{
+			case 0:
+				planeFormat = Format::kR8_Typeless;
+				planeWidth = width;
+				planeHeight = height;
+				minPlanePitchWidth = width;
+				break;
+			case 1:
+				planeFormat = Format::kRG8_Typeless;
+				planeWidth = (width + 3) >> 2;
+				planeHeight = height;
+
+				// NV11 has unused padding to the right of the chroma plane in the RowMajor (linear) copyable layout.
+				minPlanePitchWidth = (width + 1) >> 1;
+				break;
+			}
+			break;
+		case Format::kR32G8X24_Typeless: [[fallthrough]];
+		case Format::kR24G8_Typeless:
+			switch (planeSlice)
+			{
+			case 0:
+				planeFormat = Format::kR32_Typeless;
+				planeWidth = width;
+				planeHeight = height;
+				minPlanePitchWidth = width;
+				break;
+			case 1:
+				planeFormat = Format::kR8_Typeless;
+				planeWidth = width;
+				planeHeight = height;
+				minPlanePitchWidth = width;
+				break;
+			}
+			break;
 		}
 	}
-
-	return totalSize;
-}
-
-
-void CopySubresource(const void* pSrcData, void* pDstData, const SubresourceFootprint& srcSubresource, const SubresourceFootprint& dstSubresource)
-{
-	for (auto z = 0u; z < dstSubresource.m_Subresource.m_Detph; ++z)
+	else
 	{
-		for (auto y = 0u; y < dstSubresource.m_Subresource.m_NumRows; ++y)
-		{
-			auto pSrc = static_cast<const char*>(pSrcData) + y * srcSubresource.m_Subresource.m_RowPitch + srcSubresource.m_Subresource.m_SlicePitch * z;
-			auto pDst = static_cast<char*>(pDstData) + dstSubresource.m_Offset + y * dstSubresource.m_Subresource.m_RowPitch + dstSubresource.m_Subresource.m_SlicePitch * z;
-			memcpy(pDst, pSrc, dstSubresource.m_Subresource.m_RowPitch);
-		}
+		planeFormat = format;
+		planeWidth = width;
+		planeHeight = height;
+		minPlanePitchWidth = planeWidth;
 	}
 }
 
 
-u32 GetMipCount(u32 width, u32 height, u32 depth)
+u64 BvRenderUtils::GetCopyableFootprints(const TextureDesc& textureDesc, u32 placementAlignment, u32 pitchAlignment, u32 numSubresources,
+	SubresourceFootprint* pSubresources, u64 baseOffset, u32 firstSubresource)
 {
-	return static_cast<u32>(std::floorf(std::log2f(std::max(std::max(width, height), depth))) + 1);
+	auto fi = BvRenderUtils::GetFormatInfo(textureDesc.m_Format);
+
+	const u32 wAlign = fi.m_WidthAlignment;
+	const u32 hAlign = fi.m_HeightAlignment;
+	const u32 dAlign = fi.m_DepthAlignment;
+	u32 subRes = 0;
+
+	u64 totalBytes = 0;
+	u32 subresourceCount = textureDesc.m_MipLevels * textureDesc.m_ArraySize * fi.m_PlaneCount;
+	for (; subRes < numSubresources; ++subRes)
+	{
+		u32 subresourceIndex = firstSubresource + subRes;
+		if (subresourceIndex > subresourceCount)
+		{
+			break;
+		}
+
+		totalBytes = RoundToNearestPowerOf2(totalBytes, placementAlignment);
+		u32 mipLevel, arraySlice, planeSlice;
+		DecomposeSubresourceIndex(subresourceIndex, textureDesc.m_MipLevels, textureDesc.m_ArraySize, mipLevel, arraySlice, planeSlice);
+
+		u32 width = RoundToNearestPowerOf2(textureDesc.m_Size.m_Width >> mipLevel, wAlign);
+		u32 height = RoundToNearestPowerOf2(textureDesc.m_Size.m_Height >> mipLevel, hAlign);
+		u32 depth = RoundToNearestPowerOf2(textureDesc.m_Size.m_Depth >> mipLevel, dAlign);
+
+		Format planeFormat;
+		u32 minPlanePitchWidth, planeWidth, planeHeight;
+		AdjustPlaneSizeAndFormatForCopyableLayout(textureDesc.m_Format, width, height, planeSlice, planeFormat, planeWidth, planeHeight, minPlanePitchWidth);
+
+		SubresourceFootprint localFootprint{};
+		auto& footprint = pSubresources ? pSubresources[subRes] : localFootprint;
+		footprint.m_Subresource.m_Format = planeFormat;
+		footprint.m_Subresource.m_Width = planeWidth;
+		footprint.m_Subresource.m_Height = planeHeight;
+		footprint.m_Subresource.m_Detph = depth;
+
+		// Calculate row pitch
+		u32 minPlaneRowPitch = CalcRowPitch(planeFormat, minPlanePitchWidth);
+		u32 numRows = fi.m_IsPlanar ? planeHeight : (height / hAlign);
+
+		footprint.m_Subresource.m_NumRows = numRows;
+		footprint.m_Subresource.m_RowPitch = RoundToNearestPowerOf2(minPlaneRowPitch, fi.m_IsPlanar ? placementAlignment : pitchAlignment);
+		footprint.m_Subresource.m_RowSize = CalcRowPitch(planeFormat, planeWidth);
+		footprint.m_Subresource.m_SlicePitch = footprint.m_Subresource.m_NumRows * footprint.m_Subresource.m_RowPitch;
+		footprint.m_Offset = totalBytes + baseOffset;
+
+		u64 subresourceSize = (numRows * depth - 1) * footprint.m_Subresource.m_RowPitch + minPlaneRowPitch;
+		totalBytes += subresourceSize;
+	}
+
+	return totalBytes;
+}
+
+
+BV_INLINE void CopySubresourceRows(const SubresourceData& src, void* pDst, const TextureSubresourceInfo& dst)
+{
+	for (auto z = 0u; z < dst.m_Detph; ++z)
+	{
+		auto pDestSlice = static_cast<u8*>(pDst) + dst.m_SlicePitch * u64(z);
+		auto pSrcSlice = static_cast<const u8*>(src.m_pData) + src.m_SlicePitch * u64(z);
+		for (auto y = 0u; y < dst.m_NumRows; ++y)
+		{
+			memcpy(pDestSlice + dst.m_RowPitch * u64(y), pSrcSlice + src.m_RowPitch * u64(y), dst.m_RowSize);
+		}
+	}
+};
+
+
+void BvRenderUtils::UpdateSubresources(u32 numSubresources, const SubresourceData* pSubresources, const SubresourceFootprint* pFootprints, void* pDst)
+{
+	for (auto i = 0; i < numSubresources; ++i)
+	{
+		u8* pData = reinterpret_cast<u8*>(pDst) + pFootprints[i].m_Offset;
+		CopySubresourceRows(pSubresources[i], pDst, pFootprints[i].m_Subresource);
+	}
 }

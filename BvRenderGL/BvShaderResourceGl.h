@@ -12,7 +12,7 @@ class BvShaderResourceSetPoolGl;
 class BvShaderResourceLayoutGl final : public IBvShaderResourceLayout
 {
 public:
-	BvShaderResourceLayoutGl(const BvRenderDeviceGl& device, const ShaderResourceLayoutDesc& shaderResourceLayoutDesc);
+	BvShaderResourceLayoutGl(const BvRenderDeviceGl& device, const ShaderResourceLayoutCreateDesc& shaderResourceLayoutDesc);
 	~BvShaderResourceLayoutGl();
 
 private:

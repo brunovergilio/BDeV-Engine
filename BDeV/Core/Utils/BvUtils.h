@@ -142,10 +142,17 @@ constexpr std::conditional_t<(sizeof(Type1) >= sizeof(Type2)), Type1, Type2> Rou
 }
 
 
-template<typename Type>
-constexpr Type CalculateNewContainerSize(Type value)
+template<typename Type1, typename Type2>
+constexpr std::conditional_t<(sizeof(Type1) >= sizeof(Type2)), Type1, Type2> DivideAndRoundUp(const Type1 dividend, const Type2 divisor)
 {
-	return value + (value >> 1) + Type(value <= 2);
+	return (dividend + divisor - 1) / divisor;
+}
+
+
+template<typename Type>
+constexpr Type CalculateNewContainerSize(Type currSize)
+{
+	return currSize + (currSize >> 1) + Type(currSize <= 2);
 }
 
 

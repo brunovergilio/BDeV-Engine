@@ -6,9 +6,6 @@
 #include <bit>
 
 
-BV_VK_DEVICE_RES_DEF(BvQueryVk)
-
-
 BvQueryVk::BvQueryVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 frameCount)
 	: m_pDevice(pDevice), m_QueryType(queryType), m_QueryData(frameCount, {})
 {

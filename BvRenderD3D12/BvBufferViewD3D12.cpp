@@ -5,9 +5,6 @@
 #include "BvDescriptorHeapD3D12.h"
 
 
-BV_D3D12_DEVICE_RES_DEF(BvBufferViewD3D12)
-
-
 BvBufferViewD3D12::BvBufferViewD3D12(BvRenderDeviceD3D12* pDevice, const BufferViewDesc& bufferViewDesc)
 	: m_BufferViewDesc(bufferViewDesc), m_pDevice(pDevice)
 {

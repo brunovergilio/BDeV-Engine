@@ -5,13 +5,13 @@
 #include "BDeV/Core/Utils/BvUtils.h"
 
 
-class BvDebugReportVk
+class BvDebugUtilsVk
 {
-	BV_NOCOPYMOVE(BvDebugReportVk);
+	BV_NOCOPYMOVE(BvDebugUtilsVk);
 
 public:
-	BvDebugReportVk(VkInstance instance);
-	~BvDebugReportVk();
+	BvDebugUtilsVk(VkInstance instance);
+	~BvDebugUtilsVk();
 
 private:
 	void Create();
@@ -22,5 +22,5 @@ private:
 
 private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
-	VkDebugUtilsMessengerEXT m_DebugReport = VK_NULL_HANDLE;
+	VkDebugUtilsMessengerEXT m_DebugUtils = VK_NULL_HANDLE;
 };

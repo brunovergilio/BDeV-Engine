@@ -8,6 +8,7 @@
     <ClInclude Include="ShaderCompiler\BvShaderBlob.h" />
     <ClInclude Include="TextureLoader\BvSTBTextureLoader.h" />
     <ClInclude Include="TextureLoader\BvDDSTextureLoader.h" />
+    <ClInclude Include="ShaderCompiler\DXC\BvDXCompiler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.cpp" />
@@ -16,6 +17,7 @@
     <ClCompile Include="ShaderCompiler\BvShaderBlob.cpp" />
     <ClCompile Include="TextureLoader\BvDDSTextureLoader.cpp" />
     <ClCompile Include="TextureLoader\BvTextureLoaderCommon.cpp" />
+    <ClCompile Include="ShaderCompiler\DXC\BvDXCompiler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BvRenderTools.def" />

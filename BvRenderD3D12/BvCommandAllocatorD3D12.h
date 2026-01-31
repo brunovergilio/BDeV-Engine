@@ -12,13 +12,8 @@ class BvFrameDataD3D12;
 
 class BvCommandAllocatorD3D12 final
 {
-	BV_NOCOPY(BvCommandAllocatorD3D12);
-
 public:
-	BvCommandAllocatorD3D12();
 	BvCommandAllocatorD3D12(BvRenderDeviceD3D12* pDevice, CommandType commandType);
-	BvCommandAllocatorD3D12(BvCommandAllocatorD3D12&& rhs) noexcept;
-	BvCommandAllocatorD3D12& operator=(BvCommandAllocatorD3D12&& rhs) noexcept;
 	~BvCommandAllocatorD3D12();
 
 	void Create();

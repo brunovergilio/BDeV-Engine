@@ -96,7 +96,7 @@ public:
 	bool Contains(const Type& value) const;
 
 private:
-	Type m_pData[N]{};
+	Type m_pData[N];
 	size_t m_Size = 0;
 };
 

@@ -18,9 +18,3 @@ BvShaderBlob::BvShaderBlob(const char* pErrorString)
 BvShaderBlob::~BvShaderBlob()
 {
 }
-
-
-void BvShaderBlob::SelfDestroy()
-{
-	BV_DELETE(this);
-}

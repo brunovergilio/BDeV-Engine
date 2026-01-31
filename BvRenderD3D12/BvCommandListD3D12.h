@@ -5,6 +5,7 @@
 #include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
 #include "BDeV/Core/Container/BvFixedVector.h"
+#include "BvDescriptorHeapD3D12.h"
 
 
 class BvRenderDeviceD3D12;
@@ -36,6 +37,7 @@ public:
 	enum class State : u8
 	{
 		kRecording,
+		kRenderTarget,
 		kRenderPass,
 	};
 
@@ -46,6 +48,7 @@ public:
 	~BvCommandListD3D12();
 
 	void Reset();
+	void Begin();
 	void Close();
 
 	void BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets);
@@ -65,9 +68,9 @@ public:
 	void SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
-	void SetDynamicConstantBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
-	void SetDynamicStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
-	void SetDynamicRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, const u32* pOffsets, u32 set, u32 binding, u32 startIndex = 0);
+	void SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding);
+	void SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding);
+	void SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding);
 	void SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
 	void SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex = 0);
@@ -80,9 +83,9 @@ public:
 	void SetVertexBufferViews(u32 vertexBufferCount, const VertexBufferView* pVertexBufferViews, u32 firstBinding = 0);
 	void SetIndexBufferView(const IndexBufferView& indexBufferView);
 
-	void SetDepthBounds(float min, float max);
+	void SetDepthBounds(f32 min, f32 max);
 	void SetStencilRef(u32 stencilRef);
-	void SetBlendConstants(const float(pColors[4]));
+	void SetBlendConstants(const f32(&colors)[4]);
 	void SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp(pCombinerOps[2]));
 
 	void Draw(const DrawCommandArgs& args);
@@ -98,11 +101,13 @@ public:
 
 	void CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer);
 	void CopyBuffer(const IBvBuffer* pSrcBuffer, IBvBuffer* pDstBuffer, const BufferCopyDesc& copyDesc);
+	void CopyBuffer(ID3D12Resource* pSrc, ID3D12Resource* pDst, const BufferCopyDesc& copyDesc);
 
 	void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture);
 	void CopyTexture(const IBvTexture* pSrcTexture, IBvTexture* pDstTexture, const TextureCopyDesc& copyDesc);
 
 	void CopyBufferToTexture(const IBvBuffer* pSrcBuffer, IBvTexture* pDstTexture, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
+	void CopyBufferToTexture(ID3D12Resource* pSrc, ID3D12Resource* pDst, u32 copyCount, const SubresourceFootprint* pCopyDescs);
 	void CopyTextureToBuffer(const IBvTexture* pSrcTexture, IBvBuffer* pDstBuffer, u32 copyCount, const BufferTextureCopyDesc* pCopyDescs);
 
 	void ResourceBarrier(u32 barrierCount, const ResourceBarrierDesc* pBarriers);
@@ -124,21 +129,24 @@ public:
 	void DispatchRays(const DispatchRaysCommandArgs& args);
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 
-	BV_INLINE const ID3D12CommandList* GetHandle() const { return m_CommandList.Get(); }
+	BV_INLINE ID3D12GraphicsCommandList* GetHandle() const { return m_CommandList.Get(); }
 	BV_INLINE const BvVector<BvSwapChainD3D12*>& GetSwapChains() const { return m_SwapChains; }
 
 private:
 	void FlushDescriptorSets();
 	void ResetRenderTargets();
-	void AddSwapChain(BvSwapChainD3D12* pSwapChain);
-	void BeginMeshQueries();
-	void EndMeshQueries();
 
 private:
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
 	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
 	ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 	ComPtr<ID3D12GraphicsCommandList6> m_CommandListEx;
+	ID3D12CommandSignature* m_pDrawIndirectSig = nullptr;
+	ID3D12CommandSignature* m_pDrawIndexedIndirectSig = nullptr;
+	ID3D12CommandSignature* m_pDispatchIndirectSig = nullptr;
+	ID3D12CommandSignature* m_pDispatchMeshIndirectSig = nullptr;
+	ID3D12CommandSignature* m_pDispatchRaysIndirectSig = nullptr;
+
 	BvFrameDataD3D12* m_pFrameData = nullptr;
 
 	BvVector<BvSwapChainD3D12*> m_SwapChains;

@@ -50,10 +50,7 @@ struct ResourceDataVk
 class BvResourceBindingStateVk final
 {
 public:
-
 	BvResourceBindingStateVk();
-	BvResourceBindingStateVk(BvResourceBindingStateVk&& rhs) noexcept;
-	BvResourceBindingStateVk& operator=(BvResourceBindingStateVk&& rhs) noexcept;
 	~BvResourceBindingStateVk();
 
 	void SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex, u32 offset = 0);
@@ -76,25 +73,6 @@ private:
 	BvRobinMap<ResourceIdVk, u32> m_Bindings;
 	BvVector<ResourceDataVk> m_Resources;
 	BvRobinMap<u32, bool> m_DirtySets;
-};
-
-
-class BvDescriptorSetVk final
-{
-public:
-	BvDescriptorSetVk();
-	BvDescriptorSetVk(BvRenderDeviceVk* pDevice, VkDescriptorSet descriptorSet);
-	BvDescriptorSetVk(BvDescriptorSetVk&& rhs) noexcept;
-	BvDescriptorSetVk& operator=(BvDescriptorSetVk&& rhs) noexcept;
-	~BvDescriptorSetVk();
-
-	void Update(const BvVector<VkWriteDescriptorSet>& writeSets);
-
-	BV_INLINE VkDescriptorSet GetHandle() const { return m_DescriptorSet; }
-
-private:
-	BvRenderDeviceVk* m_pDevice = nullptr;
-	VkDescriptorSet m_DescriptorSet = VK_NULL_HANDLE;
 };
 
 

@@ -5,9 +5,18 @@
 #include "BDeV/Core/Utils/BvStringId.h"
 #include "BDeV/Core/Math/BvMath.h"
 #include "BDeV/Core/Container/BvFixedVector.h"
+#include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/Utils/BvObject.h"
 #include "BDeV/Core/Utils/BvHash.h"
 #include <algorithm>
+
+#define BV_RENDER_VAR(var) \
+BV_INLINE std::conditional_t<(std::is_fundamental_v<decltype(m_##var)> || std::is_enum_v<decltype(m_##var)>), decltype(m_##var), const decltype(m_##var)&> Get##var() const { return m_##var; } \
+BV_INLINE auto& Set##var(std::conditional_t<(std::is_fundamental_v<decltype(m_##var)> || std::is_enum_v<decltype(m_##var)>), decltype(m_##var), const decltype(m_##var)&> value) { m_##var = value; return *this; }
+
+#define BV_RENDER_VAR_PTR(prefix, var) \
+BV_INLINE std::conditional_t<(std::is_fundamental_v<decltype(m_##prefix##var)> || std::is_enum_v<decltype(m_##prefix##var)>), decltype(m_##prefix##var), const decltype(m_##prefix##var)&> Get##var##Ptr() const { return m_##prefix##var; } \
+BV_INLINE auto& Set##var##Ptr(std::conditional_t<(std::is_fundamental_v<decltype(m_##prefix##var)> || std::is_enum_v<decltype(m_##prefix##var)>), decltype(m_##prefix##var), const decltype(m_##prefix##var)&> value) { m_##prefix##var = value; return *this; }
 
 
 class IBvBuffer;
@@ -23,6 +32,8 @@ class IBvShaderResourceLayout;
 class IBvShaderBindingTable;
 class IBvShaderCompiler;
 class IBvRenderPass;
+class IBvPipelineCache;
+class BvWindow;
 
 
 constexpr u32 kMaxDevices = 4;
@@ -263,167 +274,6 @@ enum class Format : u8
 };
 
 
-struct FormatInfo
-{
-	u8 m_BitsPerPixel;
-	u8 m_ElementCount : 3;
-	u8 m_ElementSize : 5;
-	u8 m_BlockWidth : 3;
-	u8 m_BlockHeight : 3;
-	u8 m_BlocksPerElement : 5;
-	Format m_SRGBOrLinearVariant;
-	bool m_IsSRGBFormat : 1;
-	bool m_IsDepthStencil : 1;
-	bool m_IsCompressed : 1;
-	bool m_IsPacked : 1;
-	bool m_IsPlanar : 1;
-	u8 m_PlaneCount : 2;
-};
-
-
-constexpr FormatInfo GetFormatInfo(Format format)
-{
-	constexpr FormatInfo kFormatInfos[] =
-	{
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// kUnknown
-		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_Typeless
-		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_Float
-		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_UInt
-		{ 128, 4, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA32_SInt
-		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_Typeless
-		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_Float
-		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_UInt
-		{ 96, 3, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB32_SInt
-		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_Typeless
-		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_Float
-		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_UNorm
-		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_UInt
-		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_SNorm
-		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA16_SInt
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_Typeless
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_Float
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_UInt
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG32_SInt
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR32G8X24_Typeless
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD32_Float_S8X24_UInt
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR32_Float_X8X24_Typeless
-		{ 64, 2, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kX32_Typeless_G8X24_UInt
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10A2_Typeless
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10A2_UNorm
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10A2_UInt
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG11B10_Float
-		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_Typeless
-		{ 32, 4, 1, 1, 1, 1, Format::kRGBA8_UNorm_SRGB, false, false, false, false, false, 1 },// kRGBA8_UNorm
-		{ 32, 4, 1, 1, 1, 1, Format::kRGBA8_UNorm, true, false, false, false, false, 1 },// kRGBA8_UNorm_SRGB
-		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_UInt
-		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_SNorm
-		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGBA8_SInt
-		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_Typeless
-		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_Float
-		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_UNorm
-		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_UInt
-		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_SNorm
-		{ 32, 2, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG16_SInt
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_Typeless
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD32_Float
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_Float
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_UInt
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR32_SInt
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR24G8_Typeless
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD24_UNorm_S8_UInt
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kR24_UNorm_X8_Typeless
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kX24_Typeless_G8_UInt
-		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_Typeless
-		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_UNorm
-		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_UInt
-		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_SNorm
-		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRG8_SInt
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_Typeless
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_Float
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, true, false, false, false, 1 },// kD16_UNorm
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_UNorm
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_UInt
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_SNorm
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR16_SInt
-		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_Typeless
-		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_UNorm
-		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_UInt
-		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_SNorm
-		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR8_SInt
-		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kA8_UNorm
-		{ 1, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kR1_UNorm
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB9E5_SHAREDEXP
-		{ 32, 4, 1, 1, 1, 4, Format::kUnknown, false, false, false, true, false, 1 },// kRG8_BG8_UNorm
-		{ 32, 4, 1, 1, 1, 4, Format::kUnknown, false, false, false, true, false, 1 },// kGR8_GB8_UNorm
-		{ 4, 3, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC1_Typeless
-		{ 4, 3, 8, 4, 4, 8, Format::kBC1_UNorm_SRGB, false, false, true, false, false, 1 },// kBC1_UNorm
-		{ 4, 3, 8, 4, 4, 8, Format::kBC1_UNorm, true, false, true, false, false, 1 },// kBC1_UNorm_SRGB
-		{ 8, 4, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC2_Typeless
-		{ 8, 4, 16, 4, 4, 16, Format::kBC2_UNorm_SRGB, false, false, true, false, false, 1 },// kBC2_UNorm
-		{ 8, 4, 16, 4, 4, 16, Format::kBC2_UNorm, true, false, true, false, false, 1 },// kBC2_UNorm_SRGB
-		{ 8, 4, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC3_Typeless
-		{ 8, 4, 16, 4, 4, 16, Format::kBC3_UNorm_SRGB, false, false, true, false, false, 1 },// kBC3_UNorm
-		{ 8, 4, 16, 4, 4, 16, Format::kBC3_UNorm, true, false, true, false, false, 1 },// kBC3_UNorm_SRGB
-		{ 4, 1, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC4_Typeless
-		{ 4, 1, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC4_UNorm
-		{ 4, 1, 8, 4, 4, 8, Format::kUnknown, false, false, true, false, false, 1 },// kBC4_SNorm
-		{ 8, 2, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC5_Typeless
-		{ 8, 2, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC5_UNorm
-		{ 8, 2, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC5_SNorm
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kB5G6R5_UNorm
-		{ 16, 1, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGR5A1_UNorm
-		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGRA8_UNorm
-		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGRX8_UNorm
-		{ 32, 1, 4, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kRGB10_XR_BIAS_A2_UNorm
-		{ 32, 4, 1, 1, 1, 1, Format::kBGRA8_UNorm_SRGB, false, false, false, false, false, 1 },// kBGRA8_Typeless
-		{ 32, 4, 1, 1, 1, 1, Format::kBGRA8_Typeless, true, false, false, false, false, 1 },// kBGRA8_UNorm_SRGB
-		{ 32, 4, 1, 1, 1, 1, Format::kBGRX8_UNorm_SRGB, false, false, false, false, false, 1 },// kBGRX8_Typeless
-		{ 32, 4, 1, 1, 1, 1, Format::kBGRX8_Typeless, true, false, false, false, false, 1 },// kBGRX8_UNorm_SRGB
-		{ 8, 3, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC6H_Typeless
-		{ 8, 3, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC6H_UF16
-		{ 8, 3, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC6H_SF16
-		{ 8, 4, 16, 4, 4, 16, Format::kUnknown, false, false, true, false, false, 1 },// kBC7_Typeless
-		{ 8, 4, 16, 4, 4, 16, Format::kBC7_UNorm_SRGB, false, false, true, false, false, 1 },// kBC7_UNorm
-		{ 8, 4, 16, 4, 4, 16, Format::kBC7_UNorm, true, false, true, false, false, 1 },// kBC7_UNorm_SRGB
-		{ 32, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kAYUV
-		{ 32, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kY410
-		{ 64, 4, 2, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kY416
-		{ 12, 3, 1, 2, 2, 2, Format::kUnknown, false, false, false, false, true, 2 },// kNV12
-		{ 24, 3, 2, 2, 2, 4, Format::kUnknown, false, false, false, false, true, 2 },// kP010
-		{ 24, 3, 2, 2, 2, 4, Format::kUnknown, false, false, false, false, true, 2 },// kP016
-		{ 12, 3, 1, 1, 1, 2, Format::kUnknown, false, false, false, false, true, 2 },// k420_OPAQUE
-		{ 32, 3, 1, 2, 1, 4, Format::kUnknown, false, false, false, true, false, 1 },// kYUY2
-		{ 64, 3, 2, 2, 1, 8, Format::kUnknown, false, false, false, true, false, 1 },// kY210
-		{ 64, 3, 2, 2, 1, 8, Format::kUnknown, false, false, false, true, false, 1 },// kY216
-		{ 12, 3, 1, 4, 2, 1, Format::kUnknown, false, false, false, false, true, 2 },// kNV11
-		{ 8, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kAI44
-		{ 8, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kIA44
-		{ 8, 1, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kP8
-		{ 16, 2, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kA8P8
-		{ 16, 4, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, false, 1 },// kBGRA4_UNorm
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 0, 0, 0, 0, 0, 1, Format::kUnknown, false, false, false, false, false, 0 },// Undefined
-		{ 16, 3, 1, 2, 2, 2, Format::kUnknown, false, false, false, false, true, 2 },// kP208
-		{ 16, 3, 1, 2, 2, 1, Format::kUnknown, false, false, false, false, true, 0 },// kV208
-		{ 24, 3, 1, 1, 1, 1, Format::kUnknown, false, false, false, false, true, 0 },// kV408
-	};
-
-	return kFormatInfos[static_cast<u32>(format)];
-}
-
-
 enum class FormatFeatures : u16
 {
 	kNone =						0,
@@ -600,21 +450,22 @@ struct Extent3D
 	{
 		struct
 		{
-			u32 width;
-			u32 height;
-			u32 depth;
+			u32 m_Width;
+			u32 m_Height;
+			u32 m_Depth;
 		};
 		struct
 		{
-			u32 x;
-			u32 y;
-			u32 z;
+			u32 m_X;
+			u32 m_Y;
+			u32 m_Z;
 		};
+		u32 m_Sizes[3];
 	};
 
 	friend constexpr bool operator==(const Extent3D& lhs, const Extent3D& rhs)
 	{
-		return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+		return lhs.m_X == rhs.m_X && lhs.m_Y == rhs.m_Y && lhs.m_Z == rhs.m_Z;
 	}
 
 	friend constexpr bool operator!=(const Extent3D& lhs, const Extent3D& rhs)
@@ -626,9 +477,9 @@ struct Extent3D
 
 struct Offset3D
 {
-	i32 x;
-	i32 y;
-	i32 z;
+	i32 m_X = 0;
+	i32 m_Y = 0;
+	i32 m_Z = 0;
 };
 
 
@@ -644,15 +495,15 @@ struct SwapChainDesc
 {
 	u32 m_SwapChainImageCount = 3;
 	Format m_Format = Format::kUnknown;
-	bool m_PreferHDR = false;
 	bool m_VSync = false;
 	SwapChainMode m_WindowMode = SwapChainMode::kWindowed;
-};
+	bool m_PreferHDR = false;
 
-
-struct SwapChainCreateDesc : SwapChainDesc
-{
-
+	BV_RENDER_VAR(SwapChainImageCount);
+	BV_RENDER_VAR(Format);
+	BV_RENDER_VAR(VSync);
+	BV_RENDER_VAR(WindowMode);
+	BV_RENDER_VAR(PreferHDR);
 };
 
 
@@ -681,11 +532,29 @@ BV_USE_ENUM_CLASS_OPERATORS(BufferCreateFlags);
 struct BufferDesc
 {
 	u64 m_Size = 0;
-	BufferCreateFlags m_CreateFlags = BufferCreateFlags::kNone;
 	BufferUsage m_UsageFlags = BufferUsage::kNone;
+	BufferCreateFlags m_CreateFlags = BufferCreateFlags::kNone;
 	MemoryType m_MemoryType = MemoryType::kDevice;
-	ResourceState m_ResourceState = ResourceState::kCommon;
 	bool m_Formatted = false;
+
+	BV_RENDER_VAR(Size);
+	BV_RENDER_VAR(UsageFlags);
+	BV_RENDER_VAR(CreateFlags);
+	BV_RENDER_VAR(MemoryType);
+	BV_RENDER_VAR(Formatted);
+};
+
+
+struct BufferInitData
+{
+	BufferInitData() = default;
+	BufferInitData(IBvCommandContext* pContext, const void* pData = nullptr, u64 size = 0)
+		: m_pContext(pContext), m_pData(pData), m_Size(size) {}
+
+	IBvCommandContext* m_pContext = nullptr;
+	const void* m_pData = nullptr;
+	u64 m_Size = 0;
+	ResourceState m_ResourceState = ResourceState::kCommon;
 };
 
 
@@ -696,11 +565,20 @@ struct BufferViewDesc
 	u32 m_ElementCount = 0;
 	u32 m_Stride = 0;
 	Format m_Format = Format::kUnknown;
+
+	BV_RENDER_VAR_PTR(p, Buffer);
+	BV_RENDER_VAR(Offset);
+	BV_RENDER_VAR(ElementCount);
+	BV_RENDER_VAR(Stride);
+	BV_RENDER_VAR(Format);
 };
 
 
 struct VertexBufferView
 {
+	VertexBufferView(IBvBuffer* pBuffer, u32 stride, u64 offset = 0)
+		: m_pBuffer(pBuffer), m_Stride(stride), m_Offset(offset) {}
+
 	IBvBuffer* m_pBuffer = nullptr;
 	u64 m_Offset = 0;
 	u32 m_Stride = 0;
@@ -709,6 +587,9 @@ struct VertexBufferView
 
 struct IndexBufferView
 {
+	IndexBufferView(IBvBuffer* pBuffer = nullptr, IndexFormat indexFormat = IndexFormat::kU32, u64 offset = 0)
+		: m_pBuffer(pBuffer), m_IndexFormat(indexFormat), m_Offset(offset) {}
+
 	IBvBuffer* m_pBuffer = nullptr;
 	u64 m_Offset = 0;
 	IndexFormat m_IndexFormat = IndexFormat::kUnknown;
@@ -740,8 +621,6 @@ enum class TextureCreateFlags : u8
 {
 	kNone = 0,
 	kCreateCubemap = BvBit(0),
-	kReserveMips = BvBit(1),
-	kGenerateMips = kReserveMips | BvBit(2)
 };
 BV_USE_ENUM_CLASS_OPERATORS(TextureCreateFlags);
 
@@ -758,7 +637,46 @@ struct TextureDesc
 	TextureCreateFlags m_CreateFlags = TextureCreateFlags::kNone;
 	TextureUsage m_UsageFlags = TextureUsage::kNone;
 	MemoryType m_MemoryType = MemoryType::kDevice;
+
+	BV_RENDER_VAR(Size);
+	BV_RENDER_VAR(Alignment);
+	BV_RENDER_VAR(MipLevels);
+	BV_RENDER_VAR(ArraySize);
+	BV_RENDER_VAR(SampleCount);
+	BV_RENDER_VAR(ImageType);
+	BV_RENDER_VAR(Format);
+	BV_RENDER_VAR(CreateFlags);
+	BV_RENDER_VAR(UsageFlags);
+	BV_RENDER_VAR(MemoryType);
+};
+
+
+struct SubresourceData
+{
+	const u8* m_pData;
+	u64 m_RowPitch;
+	u64 m_SlicePitch;
+};
+
+
+struct TextureInitData
+{
+	TextureInitData() = default;
+
+	TextureInitData(IBvCommandContext* pContext, u32 subresourceCount = 0, const SubresourceData* pSubresources = nullptr)
+		: m_pContext(pContext), m_SubresourceCount(subresourceCount), m_pSubresources(pSubresources) {}
+
+	template<typename Container>
+	TextureInitData(IBvCommandContext* pContext, const Container& subresources)
+		: m_pContext(pContext), m_SubresourceCount(subresources.Size()), m_pSubresources(subresources.Data()) {}
+
+	IBvCommandContext* m_pContext = nullptr;
+	const SubresourceData* m_pSubresources = nullptr;
+	u32 m_SubresourceCount = 0;
+	u32 m_FirstSubresource = 0;
 	ResourceState m_ResourceState = ResourceState::kCommon;
+	u32 m_MutableFormatCount = 0;
+	const Format* m_pMutableFormats = nullptr;
 };
 
 
@@ -787,13 +705,14 @@ struct SubresourceDesc
 
 struct TextureSubresourceInfo
 {
+	Format m_Format;
 	u32 m_Width;
 	u32 m_Height;
 	u32 m_Detph;
-	u64 m_NumRows;
-	u64 m_RowPitch;
-	u64 m_SlicePitch;
-	u64 m_MipSize;
+	u32 m_NumRows;
+	u32 m_RowPitch;
+	u32 m_RowSize;
+	u32 m_SlicePitch;
 };
 
 
@@ -804,36 +723,17 @@ struct SubresourceFootprint
 };
 
 
-struct SubresourceData
-{
-	const u8* m_pData;
-	u64 m_RowPitch;
-	u64 m_SlicePitch;
-};
-
-
-struct BufferInitData
-{
-	IBvCommandContext* m_pContext = nullptr;
-	const void* m_pData = nullptr;
-	u64 m_Size = 0;
-};
-
-
-struct TextureInitData
-{
-	IBvCommandContext* m_pContext = nullptr;
-	u32 m_SubresourceCount = 0;
-	const SubresourceData* m_pSubresources = nullptr;
-};
-
-
 struct TextureViewDesc
 {
 	IBvTexture* m_pTexture = nullptr;
 	SubresourceDesc m_SubresourceDesc;
 	TextureViewType m_ViewType = TextureViewType::kTexture2D;
 	Format m_Format = Format::kUnknown;
+
+	BV_RENDER_VAR_PTR(p, Texture);
+	BV_RENDER_VAR(SubresourceDesc);
+	BV_RENDER_VAR(ViewType);
+	BV_RENDER_VAR(Format);
 };
 
 
@@ -841,30 +741,30 @@ struct ClearColorValue
 {
 	constexpr ClearColorValue()
 		: r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
-	constexpr ClearColorValue(float r, float g, float b, float a = 1.0f)
+	constexpr ClearColorValue(f32 r, f32 g, f32 b, f32 a = 1.0f)
 		: r(r), g(g), b(b), a(a) {}
-	constexpr ClearColorValue(const float* pColors)
+	constexpr ClearColorValue(const f32* pColors)
 	{
 		std::copy(pColors, pColors + 4, colors);
 	}
-	constexpr ClearColorValue(float depth, u8 stencil = 0)
+	constexpr ClearColorValue(f32 depth, u8 stencil = 0)
 		: depth(depth), stencil(stencil) {}
 	union
 	{
 		struct
 		{
-			float r;
-			float g;
-			float b;
-			float a;
+			f32 r;
+			f32 g;
+			f32 b;
+			f32 a;
 		};
 		struct
 		{
-			float colors[4];
+			f32 colors[4];
 		};
 		struct
 		{
-			float depth;
+			f32 depth;
 			u8 stencil;
 		};
 	};
@@ -883,21 +783,34 @@ BV_USE_ENUM_CLASS_OPERATORS(ClearFlags);
 
 struct Viewport
 {
-	float x;
-	float y;
-	float width;
-	float height;
-	float minDepth;
-	float maxDepth;
+	Viewport(f32 width, f32 height)
+		: m_Width(width), m_Height(height) {}
+
+	Viewport(f32 width, f32 height, f32 minDepth, f32 maxDepth)
+		: m_Width(width), m_Height(height), m_MinDepth(minDepth), m_MaxDepth(maxDepth) {}
+
+	Viewport(f32 x, f32 y, f32 width, f32 height, f32 minDepth, f32 maxDepth)
+		: m_X(x), m_Y(y), m_Width(width), m_Height(height), m_MinDepth(minDepth), m_MaxDepth(maxDepth) {}
+
+	f32 m_X = 0.0f;
+	f32 m_Y = 0.0f;
+	f32 m_Width = 0.0f;
+	f32 m_Height = 0.0f;
+	f32 m_MinDepth = 0.0f;
+	f32 m_MaxDepth = 1.0f;
 };
 
 
 struct Rect
 {
-	i32 x;
-	i32 y;
-	u32 width;
-	u32 height;
+	Rect() = default;
+	Rect(u32 width, u32 height) : m_Right(width), m_Bottom(height) {}
+	Rect(i32 left, i32 top, i32 right, i32 bottom) : m_Left(left), m_Top(top), m_Right(right), m_Bottom(bottom) {}
+
+	i32 m_Left = 0;
+	i32 m_Top = 0;
+	i32 m_Right = 0;
+	i32 m_Bottom = 0;
 };
 
 
@@ -914,21 +827,23 @@ struct TextureCopyDesc
 	Offset3D m_SrcTextureOffset{ 0,0,0 };
 	u32 m_SrcMip = 0;
 	u32 m_SrcLayer = 0;
+	u32 m_SrcPlane = 0;
 	Offset3D m_DstTextureOffset{ 0,0,0 };
 	u32 m_DstMip = 0;
 	u32 m_DstLayer = 0;
+	u32 m_DstPlane = 0;
 	Extent3D m_Size{ kU32Max, kU32Max, kU32Max };
 };
 
 
 struct BufferTextureCopyDesc
 {
-	u64 m_BufferSize = kU64Max;
-	u64 m_BufferOffset = 0;
+	SubresourceFootprint m_SubresourceFootprint{};
 	Offset3D m_TextureOffset{ 0,0,0 };
 	Extent3D m_TextureSize{ kU32Max, kU32Max, kU32Max };
 	u32 m_Mip = 0;
 	u32 m_Layer = 0;
+	u32 m_Plane = 0;
 };
 
 
@@ -938,28 +853,34 @@ struct ResourceBarrierDesc
 	{
 		kStateTransition,
 		kMemory,
-		kStateTransitionAcquire,
-		kStateTransitionRelease,
 	};
 
 	IBvTexture* m_pTexture = nullptr;
 	IBvBuffer* m_pBuffer = nullptr;
-
 	ResourceState m_SrcState = ResourceState::kCommon;
 	ResourceState m_DstState = ResourceState::kCommon;
-
 	Type m_Type = Type::kStateTransition;
-
 	IBvCommandContext* m_pSrcContext = nullptr;
 	IBvCommandContext* m_pDstContext = nullptr;
-
 	// These fields can be used for more detailed barriers (in Vulkan)
 	ResourceAccess m_SrcAccess = ResourceAccess::kAuto;
 	ResourceAccess m_DstAccess = ResourceAccess::kAuto;
 	PipelineStage m_SrcPipelineStage = PipelineStage::kAuto;
 	PipelineStage m_DstPipelineStage = PipelineStage::kAuto;
-
 	SubresourceDesc m_Subresource;
+
+	BV_RENDER_VAR_PTR(p, Texture);
+	BV_RENDER_VAR_PTR(p, Buffer);
+	BV_RENDER_VAR(SrcState);
+	BV_RENDER_VAR(DstState);
+	BV_RENDER_VAR(Type);
+	BV_RENDER_VAR_PTR(p, SrcContext);
+	BV_RENDER_VAR_PTR(p, DstContext);
+	BV_RENDER_VAR(SrcAccess);
+	BV_RENDER_VAR(DstAccess);
+	BV_RENDER_VAR(SrcPipelineStage);
+	BV_RENDER_VAR(DstPipelineStage);
+	BV_RENDER_VAR(Subresource);
 };
 
 
@@ -1003,48 +924,159 @@ enum class ShaderResourceType : u8
 
 struct ShaderResourceDesc
 {
-	BvStringId m_Name;
-	u32 m_Binding;
-	u32 m_Count;
-	ShaderResourceType m_ShaderResourceType;
-	ShaderStage m_ShaderStages;
-	const IBvSampler* const* m_ppStaticSamplers;
-	bool m_Bindless;
+	ShaderResourceDesc() = default;
 
-	template<ShaderResourceType Type>
-	static ShaderResourceDesc As(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ name, binding, count, Type, shaderStages, nullptr }; }
-	template<ShaderResourceType Type>
-	static ShaderResourceDesc As(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ BvStringId::Empty(), binding, count, Type, shaderStages, nullptr }; }
+	ShaderResourceDesc(ShaderResourceType shaderResourceType, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages)
+		: m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_ShaderStages(shaderStages)
+	{
+	}
 
-	static ShaderResourceDesc AsConstantBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kConstantBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kStructuredBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsRWStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kRWStructuredBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsDynamicConstantBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kDynamicConstantBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsDynamicStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kDynamicStructuredBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsDynamicRWStructuredBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kDynamicRWStructuredBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsFormattedBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kFormattedBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsRWFormattedBuffer(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kRWFormattedBuffer, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsTexture(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kTexture, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsRWTexture(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kRWTexture, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsSampler(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kSampler, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsInputAttachment(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kInputAttachment, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsAccelerationStructure(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kAccelerationStructure, shaderStages, nullptr }; }
-	static ShaderResourceDesc AsStaticSampler(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc{ name, binding, count, ShaderResourceType::kSampler, shaderStages, ppSamplers }; }
+	ShaderResourceDesc(ShaderResourceType shaderResourceType, u32 binding,
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
+		: m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages), m_Bindless(bindless)
+	{
+	}
 
-	static ShaderResourceDesc AsConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsConstantBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsTexture(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWTexture(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsSampler(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsInputAttachment(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count); }
-	static ShaderResourceDesc AsStaticSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, const IBvSampler* const* ppSamplers = nullptr) { return AsStaticSampler(BvStringId::Empty(), binding, shaderStages, count, ppSamplers); }
+	ShaderResourceDesc(ShaderResourceType shaderResourceType, u32 binding,
+		u32 count, IBvSampler* const* ppSamplers, ShaderStage shaderStages = ShaderStage::kAllStages)
+		: m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages), m_StaticSamplers(count, ppSamplers)
+	{
+	}
+
+	ShaderResourceDesc(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages)
+		: m_Name(name), m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_ShaderStages(shaderStages)
+	{
+	}
+
+	ShaderResourceDesc(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding,
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
+		: m_Name(name), m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages), m_Bindless(bindless)
+	{
+	}
+
+	ShaderResourceDesc(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding,
+		u32 count, IBvSampler* const* ppSamplers, ShaderStage shaderStages = ShaderStage::kAllStages)
+		: m_Name(name), m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages),
+		m_StaticSamplers(count, ppSamplers)
+	{
+	}
+
+	BvStringId m_Name{};
+	u32 m_Binding = 0;
+	u32 m_Count = 0;
+	ShaderResourceType m_ShaderResourceType = ShaderResourceType::kUnknown;
+	bool m_Bindless = false;
+	ShaderStage m_ShaderStages = ShaderStage::kAllStages;
+	BvVector<IBvSampler*> m_StaticSamplers;
+
+	BV_RENDER_VAR(Name);
+	BV_RENDER_VAR(Binding);
+	BV_RENDER_VAR(Count);
+	BV_RENDER_VAR(ShaderResourceType);
+	BV_RENDER_VAR(Bindless);
+	BV_RENDER_VAR(ShaderStages);
+	
+	auto& AddShaderStage(ShaderStage shaderStage)
+	{
+		m_ShaderStages |= shaderStage;
+
+		return *this;
+	}
+
+	auto& AddStaticSampler(IBvSampler* pSampler)
+	{
+		BV_ASSERT(pSampler, "Invalid Sampler data");
+		m_StaticSamplers.PushBack(pSampler);
+
+		return *this;
+	}
+
+	auto& AddStaticSamplers(u32 count, IBvSampler* const* ppSamplers)
+	{
+		BV_ASSERT(ppSamplers, "Invalid Sampler data");
+		for (auto i = 0; i < count; ++i)
+		{
+			m_StaticSamplers.PushBack(ppSamplers[i]);
+		}
+
+		return *this;
+	}
+
+	auto& SetStaticSamplers(u32 count, IBvSampler* const* ppSamplers)
+	{
+		BV_ASSERT(ppSamplers, "Invalid Sampler data");
+		m_StaticSamplers.Assign(count, ppSamplers);
+		
+		return *this;
+	}
+
+	auto& Set(ShaderResourceType shaderResourceType, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages)
+	{
+		return SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages);
+	}
+
+	auto& Set(ShaderResourceType shaderResourceType, u32 binding,
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
+	{
+		return SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages)
+			.SetCount(count).SetBindless(bindless);
+	}
+
+	auto& Set(ShaderResourceType shaderResourceType, u32 binding,
+		u32 count, IBvSampler* const* ppSamplers, ShaderStage shaderStages = ShaderStage::kAllStages)
+	{
+		return SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages)
+			.SetCount(count).SetStaticSamplers(count, ppSamplers);
+	}
+
+	auto& Set(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages)
+	{
+		return SetName(name).SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages);
+	}
+
+	auto& Set(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding,
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
+	{
+		return SetName(name).SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages)
+			.SetCount(count).SetBindless(bindless);
+	}
+
+	auto& Set(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding,
+		u32 count, IBvSampler* const* ppSamplers, ShaderStage shaderStages = ShaderStage::kAllStages)
+	{
+		return SetName(name).SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages)
+			.SetCount(count).SetStaticSamplers(count, ppSamplers);
+	}
+
+	static ShaderResourceDesc AsConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kConstantBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kStructuredBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kRWStructuredBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsDynamicConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicConstantBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsDynamicStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicStructuredBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsDynamicRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicRWStructuredBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kFormattedBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsRWFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kRWFormattedBuffer, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kTexture, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsRWTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kRWTexture, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kSampler, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsInputAttachment(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kInputAttachment, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsAccelerationStructure(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kAccelerationStructure, binding, count, shaderStages, bindless); }
+	static ShaderResourceDesc AsStaticSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc(name, ShaderResourceType::kSampler, binding, count, ppSamplers, shaderStages); }
+
+	static ShaderResourceDesc AsConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsRWTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsSampler(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsInputAttachment(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsStaticSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { return AsStaticSampler(BvStringId::Empty(), binding, shaderStages, count, ppSamplers); }
 
 	friend bool operator<(const ShaderResourceDesc& lhs, const ShaderResourceDesc& rhs)
 	{
@@ -1054,22 +1086,35 @@ struct ShaderResourceDesc
 	friend bool operator==(const ShaderResourceDesc& lhs, const ShaderResourceDesc& rhs)
 	{
 		return lhs.m_Name == rhs.m_Name && lhs.m_Binding == rhs.m_Binding && lhs.m_Count == rhs.m_Count && lhs.m_ShaderResourceType == rhs.m_ShaderResourceType
-			&& lhs.m_ShaderStages == rhs.m_ShaderStages && lhs.m_ppStaticSamplers == rhs.m_ppStaticSamplers && lhs.m_Bindless == rhs.m_Bindless;
+			&& lhs.m_ShaderStages == rhs.m_ShaderStages && lhs.m_StaticSamplers == rhs.m_StaticSamplers && lhs.m_Bindless == rhs.m_Bindless;
 	}
 };
 
 
 struct ShaderResourceConstantDesc
 {
-	BvStringId m_Name;
-	u32 m_Binding;
-	u32 m_Size;
-	ShaderStage m_ShaderStages;
+	ShaderResourceConstantDesc() = default;
+	ShaderResourceConstantDesc(const BvStringId& name, u32 binding, u32 size, ShaderStage shaderStages)
+		: m_Name(name), m_Binding(binding), m_Size(size), m_ShaderStages(shaderStages) {}
+	ShaderResourceConstantDesc(const BvStringId& name, u32 size, ShaderStage shaderStages)
+		: m_Name(name), m_Size(size), m_ShaderStages(shaderStages) {}
+	ShaderResourceConstantDesc(u32 size, ShaderStage shaderStages)
+		: m_Size(size), m_ShaderStages(shaderStages) {}
+
+	BvStringId m_Name{};
+	u32 m_Binding = 0;
+	u32 m_Size = 0;
+	ShaderStage m_ShaderStages = ShaderStage::kAllStages;
+
+	BV_RENDER_VAR(Name);
+	BV_RENDER_VAR(Binding);
+	BV_RENDER_VAR(Size);
+	BV_RENDER_VAR(ShaderStages);
 
 	template<typename T>
-	static ShaderResourceConstantDesc As(const BvStringId name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return { name, binding, sizeof(T), shaderStages }; }
+	static ShaderResourceConstantDesc As(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return { name, binding, sizeof(T), shaderStages }; }
 	template<typename T>
-	static ShaderResourceConstantDesc As(const BvStringId name, ShaderStage shaderStages = ShaderStage::kAllStages) { return { name, 0, sizeof(T), shaderStages }; }
+	static ShaderResourceConstantDesc As(const BvStringId& name, ShaderStage shaderStages = ShaderStage::kAllStages) { return { name, 0, sizeof(T), shaderStages }; }
 	template<typename T>
 	static ShaderResourceConstantDesc As(ShaderStage shaderStages = ShaderStage::kAllStages) { return { nullptr, 0, sizeof(T), shaderStages }; }
 
@@ -1088,11 +1133,48 @@ struct ShaderResourceConstantDesc
 struct ShaderResourceSetDesc
 {
 	u32 m_Index;
-	u32 m_ResourceCount;
-	const ShaderResourceDesc* m_pResources;
 	bool m_Bindless;
-	u32 m_ConstantCount;
-	const ShaderResourceConstantDesc* m_pConstants;
+	BvVector<ShaderResourceDesc> m_Resources;
+	BvVector<ShaderResourceConstantDesc> m_Constants;
+
+	auto& AddConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kConstantBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddDynamicConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicConstantBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddDynamicStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddDynamicRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicRWStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kFormattedBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddRWFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWFormattedBuffer, binding, count, shaderStages, bindless); return *this; }
+	auto& AddTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kTexture, binding, count, shaderStages, bindless); return *this; }
+	auto& AddRWTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWTexture, binding, count, shaderStages, bindless); return *this; }
+	auto& AddSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kSampler, binding, count, shaderStages, bindless); return *this; }
+	auto& AddInputAttachment(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kInputAttachment, binding, count, shaderStages, bindless); return *this; }
+	auto& AddAccelerationStructure(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kAccelerationStructure, binding, count, shaderStages, bindless); return *this; }
+	auto& AddStaticSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { m_Resources.EmplaceBack(name, ShaderResourceType::kSampler, binding, count, ppSamplers, shaderStages); return *this; }
+
+	auto& AddConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddRWTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddSampler(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddInputAttachment(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddStaticSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { return AddStaticSampler(BvStringId::Empty(), binding, shaderStages, count, ppSamplers); }
+
+	template<typename T> auto& AddConstant(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, binding, sizeof(T), shaderStages); return *this; }
+	template<typename T> auto& AddConstant(const BvStringId& name, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, 0, sizeof(T), shaderStages); return *this; }
+	template<typename T> auto& AddConstant(ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(nullptr, 0, sizeof(T), shaderStages); return *this; }
+
+	BV_RENDER_VAR(Index);
+	BV_RENDER_VAR(Bindless);
+	BV_RENDER_VAR(Resources);
+	BV_RENDER_VAR(Constants);
 
 	friend bool operator<(const ShaderResourceSetDesc& lhs, const ShaderResourceSetDesc& rhs)
 	{
@@ -1101,10 +1183,14 @@ struct ShaderResourceSetDesc
 };
 
 
-struct ShaderResourceLayoutDesc
+struct ShaderResourceLayoutCreateDesc
 {
-	u32 m_ShaderResourceSetCount = 0;
-	const ShaderResourceSetDesc* m_pShaderResourceSets = nullptr;
+	BvVector<ShaderResourceSetDesc> m_ShaderResourceSets;
+
+	BV_INLINE auto& AddResourceSet(u32 index = kU32Max, bool bindless = false)
+	{
+		return m_ShaderResourceSets.PushBack(ShaderResourceSetDesc{ index == kU32Max ? (u32)m_ShaderResourceSets.Size() : index, bindless });
+	}
 };
 
 
@@ -1142,20 +1228,86 @@ enum class ReductionMode : u8
 
 struct SamplerDesc
 {
-	Filter			m_MagFilter = Filter::kLinear;
-	Filter			m_MinFilter = Filter::kLinear;
-	MipMapFilter	m_MipmapMode = MipMapFilter::kLinear;
-	AddressMode		m_AddressModeU = AddressMode::kWrap;
-	AddressMode		m_AddressModeV = AddressMode::kWrap;
-	AddressMode		m_AddressModeW = AddressMode::kWrap;
-	CompareOp		m_CompareOp = CompareOp::kNone;
-	ReductionMode	m_ReductionMode = ReductionMode::kStandard;
-	bool			m_AnisotropyEnable = false;
-	float			m_MaxAnisotropy = 1.0f;
-	float			m_MipLodBias = 0.0f;
-	float			m_MinLod = 0.0f;
-	float			m_MaxLod = kF32Max;
-	float			m_BorderColor[4]{};
+	SamplerDesc() = default;
+
+	SamplerDesc(Filter magFilter, Filter minFilter, MipMapFilter mipmapMode,
+		AddressMode addressModeU = AddressMode::kWrap, AddressMode addressModeV = AddressMode::kWrap, AddressMode addressModeW = AddressMode::kWrap)
+		: m_MagFilter(magFilter), m_MinFilter(minFilter), m_MipmapMode(mipmapMode),
+		m_AddressModeU(addressModeU), m_AddressModeV(addressModeV), m_AddressModeW(addressModeW) {}
+
+	Filter m_MagFilter = Filter::kLinear;
+	Filter m_MinFilter = Filter::kLinear;
+	MipMapFilter m_MipmapMode = MipMapFilter::kLinear;
+	AddressMode m_AddressModeU = AddressMode::kWrap;
+	AddressMode m_AddressModeV = AddressMode::kWrap;
+	AddressMode m_AddressModeW = AddressMode::kWrap;
+	CompareOp m_CompareOp = CompareOp::kNone;
+	ReductionMode m_ReductionMode = ReductionMode::kStandard;
+	bool m_AnisotropyEnable = false;
+	f32 m_MaxAnisotropy = 1.0f;
+	f32 m_MipLodBias = 0.0f;
+	f32 m_MinLod = 0.0f;
+	f32 m_MaxLod = kF32Max;
+	f32 m_BorderColor[4]{};
+
+	BV_RENDER_VAR(MagFilter);
+	BV_RENDER_VAR(MinFilter);
+	BV_RENDER_VAR(MipmapMode);
+	BV_RENDER_VAR(AddressModeU);
+	BV_RENDER_VAR(AddressModeV);
+	BV_RENDER_VAR(AddressModeW);
+	BV_RENDER_VAR(CompareOp);
+	BV_RENDER_VAR(ReductionMode);
+	BV_RENDER_VAR(AnisotropyEnable);
+	BV_RENDER_VAR(MaxAnisotropy);
+	BV_RENDER_VAR(MipLodBias);
+	BV_RENDER_VAR(MinLod);
+	BV_RENDER_VAR(MaxLod);
+
+	auto& SetBorderColor(f32 r, f32 g, f32 b, f32 a = 1.0f)
+	{
+		m_BorderColor[0] = r;
+		m_BorderColor[1] = g;
+		m_BorderColor[2] = b;
+		m_BorderColor[3] = a;
+
+		return *this;
+	}
+
+	auto& SetBorderColor(const f32(&color)[4])
+	{
+		memcpy(m_BorderColor, color, sizeof(m_BorderColor));
+
+		return *this;
+	}
+
+	auto& SetFilter(Filter magFilter, Filter minFilter, MipMapFilter mipmapMode)
+	{
+		return SetMagFilter(magFilter).SetMinFilter(minFilter).SetMipmapMode(mipmapMode);
+	}
+
+	auto& SetAddressMode(AddressMode addressModeU, AddressMode addressModeV, AddressMode addressModeW)
+	{
+		return SetAddressModeU(addressModeU).SetAddressModeV(addressModeV).SetAddressModeW(addressModeW);
+	}
+
+	auto& SetAnisotropy(bool enable, f32 maxAnisotropy)
+	{
+		return SetAnisotropyEnable(enable).SetMaxAnisotropy(maxAnisotropy);
+	}
+
+	auto& SetLOD(f32 min, f32 max, f32 bias = 0.0f)
+	{
+		return SetMinLod(min).SetMaxLod(max).SetMipLodBias(bias);
+	}
+};
+
+
+struct GPUFenceDesc
+{
+	u64 m_Value;
+
+	BV_RENDER_VAR(Value);
 };
 
 
@@ -1257,13 +1409,13 @@ struct RenderPassTargetDesc
 	constexpr RenderPassTargetDesc(IBvTextureView* pView)
 		: m_pView(pView) {}
 
-	constexpr RenderPassTargetDesc(IBvTextureView* pView, float r, float g, float b, float a = 1.0f)
+	constexpr RenderPassTargetDesc(IBvTextureView* pView, f32 r, f32 g, f32 b, f32 a = 1.0f)
 		: m_pView(pView), m_ClearValues(r, g, b, a) {}
 
-	constexpr RenderPassTargetDesc(IBvTextureView* pView, const float* pColors)
+	constexpr RenderPassTargetDesc(IBvTextureView* pView, const f32* pColors)
 		: m_pView(pView), m_ClearValues(pColors) {}
 
-	constexpr RenderPassTargetDesc(IBvTextureView* pView, float depth, u8 stencil)
+	constexpr RenderPassTargetDesc(IBvTextureView* pView, f32 depth, u8 stencil)
 		: m_pView(pView), m_ClearValues(depth, stencil) {}
 
 	IBvTextureView* m_pView = nullptr;
@@ -1273,9 +1425,19 @@ struct RenderPassTargetDesc
 
 struct AttachmentRef
 {
-	u32 m_Index = 0;
+	AttachmentRef() = default;
+	AttachmentRef(u32 index, ResourceState resourceState, ResolveMode resolveMode = ResolveMode::kNone)
+		: m_Index(index), m_ResourceState(resourceState), m_ResolveMode(resolveMode)
+	{}
+
+	u32 m_Index = kU32Max;
 	ResourceState m_ResourceState = ResourceState::kCommon;
 	ResolveMode m_ResolveMode = ResolveMode::kNone;
+
+	bool IsValid() const
+	{
+		return m_Index != kU32Max;
+	}
 
 	constexpr bool operator==(const AttachmentRef& rhs) const
 	{
@@ -1291,9 +1453,18 @@ struct AttachmentRef
 
 struct ShadingRateAttachmentRef
 {
-	u32 m_Index = 0;
-	ResourceState m_ResourceState = ResourceState::kCommon;
+	ShadingRateAttachmentRef() = default;
+	ShadingRateAttachmentRef(u32 index, u32 xSize, u32 ySize, ResourceState resourceState = ResourceState::kShadingRate)
+		: m_Index(index), m_ResourceState(resourceState), m_TexelSizes{ xSize, ySize } {}
+
+	u32 m_Index = kU32Max;
+	ResourceState m_ResourceState = ResourceState::kShadingRate;
 	u32 m_TexelSizes[2]{ 0,0 };
+
+	bool IsValid() const
+	{
+		return m_Index != kU32Max;
+	}
 
 	constexpr bool operator==(const ShadingRateAttachmentRef& rhs) const
 	{
@@ -1310,83 +1481,66 @@ struct ShadingRateAttachmentRef
 
 struct SubpassDesc
 {
-	u32 m_InputAttachmentCount = 0;
-	u32 m_ColorAttachmentCount = 0;
-	const AttachmentRef* m_pColorAttachments = nullptr;
-	const AttachmentRef* m_pDepthStencilAttachment = nullptr;
-	const AttachmentRef* m_pInputAttachments = nullptr;
-	const AttachmentRef* m_pResolveAttachments = nullptr;
-	const AttachmentRef* m_pDepthStencilResolveAttachment = nullptr;
-	const ShadingRateAttachmentRef* m_pShadingRateAttachment = nullptr;
+	BvVector<AttachmentRef> m_ColorAttachments;
+	BvVector<AttachmentRef> m_InputAttachments;
+	BvVector<AttachmentRef> m_ResolveAttachments;
+	AttachmentRef m_DepthStencilAttachment;
+	AttachmentRef m_DepthStencilResolveAttachment;
+	ShadingRateAttachmentRef m_ShadingRateAttachment;
 	u32 m_MultiviewCount = 0;
 	u32 m_MultiviewCorrelationMask = 0;
 
-	constexpr bool operator==(const SubpassDesc& rhs) const
+	BV_RENDER_VAR(MultiviewCount);
+	BV_RENDER_VAR(MultiviewCorrelationMask);
+
+	auto& AddColorAttachment(u32 index, ResourceState resourceState)
 	{
-		if (m_ColorAttachmentCount != rhs.m_ColorAttachmentCount || m_InputAttachmentCount != rhs.m_InputAttachmentCount)
-		{
-			return false;
-		}
+		m_ColorAttachments.EmplaceBack(index, resourceState);
+		
+		return *this;
+	}
 
-		if ((m_pDepthStencilAttachment == nullptr && rhs.m_pDepthStencilAttachment != nullptr)
-			|| (m_pDepthStencilAttachment != nullptr && rhs.m_pDepthStencilAttachment == nullptr))
-		{
-			return false;
-		}
+	auto& AddInputAttachment(u32 index, ResourceState resourceState)
+	{
+		m_InputAttachments.EmplaceBack(index, resourceState);
 
-		if (m_pDepthStencilAttachment != nullptr && rhs.m_pDepthStencilAttachment != nullptr
-			&& *m_pDepthStencilAttachment != *rhs.m_pDepthStencilAttachment)
-		{
-			return false;
-		}
+		return *this;
+	}
 
-		if ((m_pResolveAttachments == nullptr && rhs.m_pResolveAttachments != nullptr)
-			|| (m_pResolveAttachments != nullptr && rhs.m_pResolveAttachments == nullptr))
-		{
-			return false;
-		}
+	auto& AddResolveAttachment(u32 index, ResourceState resourceState, ResolveMode resolveMode)
+	{
+		m_ResolveAttachments.EmplaceBack(index, resourceState, resolveMode);
 
-		if (m_pResolveAttachments != nullptr && rhs.m_pResolveAttachments != nullptr
-			&& *m_pResolveAttachments != *rhs.m_pResolveAttachments)
-		{
-			return false;
-		}
+		return *this;
+	}
 
-		if (m_pDepthStencilResolveAttachment != nullptr && rhs.m_pDepthStencilResolveAttachment != nullptr
-			&& *m_pDepthStencilResolveAttachment != *rhs.m_pDepthStencilResolveAttachment)
-		{
-			return false;
-		}
+	auto& SetDepthStencilAttachment(u32 index, ResourceState resourceState)
+	{
+		m_DepthStencilAttachment = AttachmentRef(index, resourceState);
 
-		if ((m_pShadingRateAttachment == nullptr && rhs.m_pShadingRateAttachment != nullptr)
-			|| (m_pShadingRateAttachment != nullptr && rhs.m_pShadingRateAttachment == nullptr))
-		{
-			return false;
-		}
+		return *this;
+	}
 
-		if (m_pShadingRateAttachment != nullptr && rhs.m_pShadingRateAttachment != nullptr
-			&& *m_pShadingRateAttachment != *rhs.m_pShadingRateAttachment)
-		{
-			return false;
-		}
+	auto& SetDepthStencilResolveAttachment(u32 index, ResourceState resourceState, ResolveMode resolveMode)
+	{
+		m_DepthStencilResolveAttachment = AttachmentRef(index, resourceState, resolveMode);
 
-		for (auto i = 0u; i < m_ColorAttachmentCount; ++i)
-		{
-			if (m_pColorAttachments[i] != rhs.m_pColorAttachments[i])
-			{
-				return false;
-			}
-		}
+		return *this;
+	}
 
-		for (auto i = 0u; i < m_InputAttachmentCount; ++i)
-		{
-			if (m_pInputAttachments[i] != rhs.m_pInputAttachments[i])
-			{
-				return false;
-			}
-		}
+	auto& ShadingRateAttachment(u32 index, u32 xSize, u32 ySize, ResourceState resourceState = ResourceState::kShadingRate)
+	{
+		m_ShadingRateAttachment = ShadingRateAttachmentRef(index, xSize, ySize, resourceState);
 
-		if (m_MultiviewCount != rhs.m_MultiviewCount || m_MultiviewCorrelationMask != rhs.m_MultiviewCorrelationMask)
+		return *this;
+	}
+
+	bool operator==(const SubpassDesc& rhs) const
+	{
+		if (m_ColorAttachments != rhs.m_ColorAttachments || m_InputAttachments != rhs.m_InputAttachments
+			|| m_ResolveAttachments != rhs.m_ResolveAttachments || m_DepthStencilAttachment != rhs.m_DepthStencilAttachment
+			|| m_DepthStencilResolveAttachment != rhs.m_DepthStencilResolveAttachment || m_ShadingRateAttachment != rhs.m_ShadingRateAttachment
+			|| m_MultiviewCount != rhs.m_MultiviewCount || m_MultiviewCorrelationMask != rhs.m_MultiviewCorrelationMask)
 		{
 			return false;
 		}
@@ -1394,7 +1548,7 @@ struct SubpassDesc
 		return true;
 	}
 
-	constexpr bool operator!=(const SubpassDesc& rhs) const
+	bool operator!=(const SubpassDesc& rhs) const
 	{
 		return !(*this == rhs);
 	}
@@ -1405,12 +1559,29 @@ struct SubpassDependency
 {
 	static constexpr auto kExternalSubpassIndex = kU32Max;
 
-	u32 m_SrcSubpass = 0;
-	u32 m_DstSubpass = 0;
 	ResourceAccess m_SrcAccess = ResourceAccess::kAuto;
 	ResourceAccess m_DstAccess = ResourceAccess::kAuto;
 	PipelineStage m_SrcStage = PipelineStage::kAuto;
 	PipelineStage m_DstStage = PipelineStage::kAuto;
+	u16 m_SrcSubpass = 0;
+	u16 m_DstSubpass = 0;
+
+	BV_RENDER_VAR(SrcAccess);
+	BV_RENDER_VAR(DstAccess);
+	BV_RENDER_VAR(SrcStage);
+	BV_RENDER_VAR(DstStage);
+	BV_RENDER_VAR(SrcSubpass);
+	BV_RENDER_VAR(DstSubpass);
+
+	auto& SetSrc(u16 subpass, ResourceAccess access, PipelineStage stage)
+	{
+		return SetSrcSubpass(subpass).SetSrcAccess(access).SetSrcStage(stage);
+	}
+
+	auto& SetDst(u16 subpass, ResourceAccess access, PipelineStage stage)
+	{
+		return SetDstSubpass(subpass).SetDstAccess(access).SetDstStage(stage);
+	}
 
 	constexpr bool operator==(const SubpassDependency& rhs) const
 	{
@@ -1433,12 +1604,28 @@ struct RenderPassAttachment
 		m_LoadOp(LoadOp::kClear), m_StoreOp(StoreOp::kStore)
 	{}
 
+	RenderPassAttachment(Format format, ResourceState stateBefore, ResourceState stateAfter, u8 sampleCount, LoadOp loadOp, StoreOp storeOp)
+		: m_Format(format), m_StateBefore(stateBefore), m_StateAfter(stateAfter), m_SampleCount(sampleCount), m_LoadOp(loadOp), m_StoreOp(storeOp)
+	{}
+
+	RenderPassAttachment(Format format, ResourceState stateAfter)
+		: m_Format(format), m_StateBefore(ResourceState::kCommon), m_StateAfter(stateAfter), m_SampleCount(1),
+		m_LoadOp(LoadOp::kClear), m_StoreOp(StoreOp::kStore)
+	{}
+
 	Format m_Format;
 	ResourceState m_StateBefore;
 	ResourceState m_StateAfter;
 	u8 m_SampleCount : 5;
 	LoadOp m_LoadOp : 2;
 	StoreOp m_StoreOp : 1;
+
+	BV_RENDER_VAR(Format);
+	BV_RENDER_VAR(StateBefore);
+	BV_RENDER_VAR(StateAfter);
+	BV_RENDER_VAR(SampleCount);
+	BV_RENDER_VAR(LoadOp);
+	BV_RENDER_VAR(StoreOp);
 
 	constexpr bool operator==(const RenderPassAttachment& rhs) const
 	{
@@ -1459,12 +1646,38 @@ struct RenderPassAttachment
 
 struct RenderPassDesc
 {
-	const RenderPassAttachment* m_pAttachments = nullptr;
-	const SubpassDesc* m_pSubpasses = nullptr;
-	const SubpassDependency* m_pSubpassDependencies = nullptr;
-	u32 m_AttachmentCount = 0;
-	u32 m_SubpassCount = 0;
-	u32 m_SubpassDependencyCount = 0;
+	BvVector<RenderPassAttachment> m_Attachments;
+	BvVector<SubpassDesc> m_Subpasses;
+	BvVector<SubpassDependency> m_SubpassDependencies;
+
+	auto& AddAttachment()
+	{
+		return m_Attachments.EmplaceBack();
+	}
+
+	auto& AddAttachment(Format format, ResourceState stateBefore, ResourceState stateAfter, u8 sampleCount, LoadOp loadOp, StoreOp storeOp)
+	{
+		m_Attachments.EmplaceBack(format, stateBefore, stateAfter, sampleCount, loadOp, storeOp);
+
+		return *this;
+	}
+
+	auto& AddAttachment(Format format, ResourceState stateAfter)
+	{
+		m_Attachments.EmplaceBack(format, stateAfter);
+
+		return *this;
+	}
+
+	auto& AddSubpass()
+	{
+		return m_Subpasses.EmplaceBack();
+	}
+
+	auto& AddSubpassDependency()
+	{
+		return m_SubpassDependencies.EmplaceBack();
+	}
 
 	bool operator==(const RenderPassDesc& rhs) const noexcept
 	{
@@ -1484,57 +1697,57 @@ struct std::hash<RenderPassDesc>
 	size_t operator()(const RenderPassDesc& renderPassDesc) const
 	{
 		u64 hash = 0;
-		HashCombine(hash, renderPassDesc.m_AttachmentCount);
-		for (auto i = 0u; i < renderPassDesc.m_AttachmentCount; ++i)
+		HashCombine(hash, renderPassDesc.m_Attachments.Size());
+		for (auto i = 0u; i < renderPassDesc.m_Attachments.Size(); ++i)
 		{
-			auto& attachment = renderPassDesc.m_pAttachments[i];
+			auto& attachment = renderPassDesc.m_Attachments[i];
 			HashCombine(hash, attachment.m_Format, attachment.m_StateBefore, attachment.m_StateAfter, attachment.m_SampleCount,
 				attachment.m_LoadOp, attachment.m_StoreOp);
 		}
 
-		HashCombine(hash, renderPassDesc.m_SubpassCount);
-		for (auto i = 0u; i < renderPassDesc.m_SubpassCount; ++i)
+		HashCombine(hash, renderPassDesc.m_Subpasses.Size());
+		for (auto i = 0u; i < renderPassDesc.m_Subpasses.Size(); ++i)
 		{
-			auto& subpass = renderPassDesc.m_pSubpasses[i];
-			HashCombine(hash, subpass.m_ColorAttachmentCount);
-			for (auto j = 0u; j < subpass.m_ColorAttachmentCount; ++j)
+			auto& subpass = renderPassDesc.m_Subpasses[i];
+			HashCombine(hash, subpass.m_ColorAttachments.Size());
+			for (auto j = 0u; j < subpass.m_ColorAttachments.Size(); ++j)
 			{
-				auto& attachment = subpass.m_pColorAttachments[j];
+				auto& attachment = subpass.m_ColorAttachments[j];
 				HashCombine(hash, attachment.m_Index, attachment.m_ResourceState);
 			}
 
-			if (subpass.m_pDepthStencilAttachment)
+			if (subpass.m_DepthStencilAttachment.IsValid())
 			{
-				HashCombine(hash, subpass.m_pDepthStencilAttachment->m_Index, subpass.m_pDepthStencilAttachment->m_ResourceState);
+				HashCombine(hash, subpass.m_DepthStencilAttachment.m_Index, subpass.m_DepthStencilAttachment.m_ResourceState);
 			}
 
-			HashCombine(hash, subpass.m_InputAttachmentCount);
-			for (auto j = 0u; j < subpass.m_InputAttachmentCount; ++j)
+			HashCombine(hash, subpass.m_InputAttachments.Size());
+			for (auto j = 0u; j < subpass.m_InputAttachments.Size(); ++j)
 			{
-				auto& attachment = subpass.m_pInputAttachments[j];
+				auto& attachment = subpass.m_InputAttachments[j];
 				HashCombine(hash, attachment.m_Index, attachment.m_ResourceState);
 			}
 
-			if (subpass.m_pResolveAttachments)
+			if (subpass.m_ResolveAttachments.Size())
 			{
-				for (auto j = 0u; j < subpass.m_ColorAttachmentCount; ++j)
+				for (auto j = 0u; j < subpass.m_ResolveAttachments.Size(); ++j)
 				{
-					auto& attachment = subpass.m_pResolveAttachments[j];
+					auto& attachment = subpass.m_ResolveAttachments[j];
 					HashCombine(hash, attachment.m_Index, attachment.m_ResourceState);
 				}
 			}
 
-			if (subpass.m_pShadingRateAttachment)
+			if (subpass.m_ShadingRateAttachment.IsValid())
 			{
-				HashCombine(hash, subpass.m_pShadingRateAttachment->m_Index, subpass.m_pShadingRateAttachment->m_ResourceState,
-					subpass.m_pShadingRateAttachment->m_TexelSizes[0], subpass.m_pShadingRateAttachment->m_TexelSizes[1]);
+				HashCombine(hash, subpass.m_ShadingRateAttachment.m_Index, subpass.m_ShadingRateAttachment.m_ResourceState,
+					subpass.m_ShadingRateAttachment.m_TexelSizes[0], subpass.m_ShadingRateAttachment.m_TexelSizes[1]);
 			}
 		}
 
-		HashCombine(hash, renderPassDesc.m_SubpassDependencyCount);
-		for (auto i = 0u; i < renderPassDesc.m_SubpassDependencyCount; ++i)
+		HashCombine(hash, renderPassDesc.m_SubpassDependencies.Size());
+		for (auto i = 0u; i < renderPassDesc.m_SubpassDependencies.Size(); ++i)
 		{
-			auto& subpassDep = renderPassDesc.m_pSubpassDependencies[i];
+			auto& subpassDep = renderPassDesc.m_SubpassDependencies[i];
 			HashCombine(hash, subpassDep.m_SrcSubpass, subpassDep.m_DstSubpass,
 				subpassDep.m_SrcAccess, subpassDep.m_DstAccess, subpassDep.m_SrcStage, subpassDep.m_DstStage);
 		}
@@ -1551,8 +1764,9 @@ enum class QueryType : u8
 	kOcclusionBinary,
 	kPipelineStatistics,
 	kMeshPipelineStatistics,
+	QueryTypeCount,
 };
-constexpr u32 kQueryTypeCount = 5;
+constexpr u32 kQueryTypeCount = u32(QueryType::QueryTypeCount);
 
 
 struct PipelineStatistics
@@ -1747,28 +1961,27 @@ enum class ShaderTarget : u8
 	kHLSL_6_6,
 	kHLSL_6_7,
 	kHLSL_6_8,
+	kHLSL_6_9,
 };
 
 
-struct ShaderCreateDesc
+struct ShaderSourceDesc
 {
-	const u8* m_pByteCode = nullptr;
 	const char* m_pSourceCode = nullptr;
-	union
-	{
-		size_t m_ByteCodeSize = 0;
-		size_t m_SourceCodeSize;
-	};
-	IBvShaderCompiler* pShaderCompiler = nullptr;
 	const char* m_pEntryPoint = "main";
+	u32 m_SourceCodeSize = 0;
 	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
 	ShaderLanguage m_ShaderLanguage = ShaderLanguage::kUnknown;
 	ShaderTarget m_ShaderTarget = ShaderTarget::kUnknown;
 };
 
 
-struct ShaderByteCodeDesc
+struct ShaderDesc
 {
+	ShaderDesc() = default;
+	ShaderDesc(const u8* pByteCode,	size_t byteCodeSize, ShaderStage shaderStage, const char* pEntryPoint = "main")
+		: m_pByteCode(pByteCode), m_ByteCodeSize(byteCodeSize), m_ShaderStage(shaderStage), m_pEntryPoint(pEntryPoint) {}
+
 	const u8* m_pByteCode = nullptr;
 	size_t m_ByteCodeSize = 0;
 	const char* m_pEntryPoint = "main";
@@ -1779,23 +1992,37 @@ struct ShaderByteCodeDesc
 struct VertexInputDesc
 {
 	static constexpr u32 kAutoOffset = kU32Max;
+	
+	constexpr VertexInputDesc() = default;
+	constexpr VertexInputDesc(const char* pName, u32 binding, Format format, u32 index = 0, InputRate inputRate = InputRate::kPerVertex,
+		u32 offset = kAutoOffset, u32 instanceRate = 0)
+		: m_pName(pName), m_Binding(binding), m_Index(index), m_Format(format), m_InputRate(inputRate),
+		m_Offset(offset), m_InstanceRate(instanceRate) {}
 
 	// Element name
 	const char* m_pName = nullptr;
 	// The buffer slot this attribute belongs to
-	u32			m_Binding = 0;
+	u32 m_Binding = 0;
 	// Index of the input attribute when using the same semantic. Note: In Vulkan and OpenGL, this maps to the location index
 	// that an input variable is. In D3D this is only used if there are multiple elements with the same semantic.
-	u32			m_Index = 0;
+	u32 m_Index = 0;
 	// The offset of this variable in the struct; specify kAutoOffset to let the pipeline figure out the offset.
-	u32			m_Offset = kAutoOffset;
+	u32 m_Offset = kAutoOffset;
 	// Variable format
-	Format		m_Format = Format::kUnknown;
+	Format m_Format = Format::kUnknown;
 	// The input rate, can be per vertex or per instance
-	InputRate	m_InputRate = InputRate::kPerVertex;
+	InputRate m_InputRate = InputRate::kPerVertex;
 	// The instance rate / step, which determines how many instances will be drawn with the same per-instance
 	// data before moving to the next one - this should be 0 if the input rate is InputRate::kPerVertex
-	u32			m_InstanceRate = 0;
+	u32 m_InstanceRate = 0;
+
+	BV_RENDER_VAR_PTR(p, Name);
+	BV_RENDER_VAR(Binding);
+	BV_RENDER_VAR(Index);
+	BV_RENDER_VAR(Offset);
+	BV_RENDER_VAR(Format);
+	BV_RENDER_VAR(InputRate);
+	BV_RENDER_VAR(InstanceRate);
 
 	bool operator==(const VertexInputDesc& rhs) const
 	{
@@ -1804,39 +2031,76 @@ struct VertexInputDesc
 	}
 };
 
-
 struct InputAssemblyStateDesc
 {
-	Topology	m_Topology = Topology::kTriangleList;
-	bool		m_PrimitiveRestart = false;
+	constexpr InputAssemblyStateDesc(Topology topology = Topology::kTriangleList, bool primitiveRestart = false,
+		IndexFormat indexFormatForPrimitiveRestart = IndexFormat::kUnknown)
+		: m_Topology(topology), m_PrimitiveRestart(primitiveRestart), m_IndexFormatForPrimitiveRestart(indexFormatForPrimitiveRestart)
+	{}
+
+	Topology m_Topology = Topology::kTriangleList;
+	bool m_PrimitiveRestart = false;
 	IndexFormat m_IndexFormatForPrimitiveRestart = IndexFormat::kUnknown;
+	
+	BV_RENDER_VAR(Topology);
+	BV_RENDER_VAR(PrimitiveRestart);
+	BV_RENDER_VAR(IndexFormatForPrimitiveRestart);
 };
 
 
 struct RasterizerStateDesc
 {
+	constexpr RasterizerStateDesc() = default;
+	constexpr RasterizerStateDesc(FillMode fillMode, CullMode cullMode, FrontFace frontFace, bool enableDepthClip = false,
+		i32 depthBias = 0, f32 depthBiasClamp = 0.0f, f32 depthBiasSlope = 0.0f, bool enableConservativeRasterization = false)
+		: m_FillMode(fillMode), m_CullMode(cullMode), m_FrontFace(frontFace), m_DepthBias(depthBias), m_DepthBiasClamp(depthBiasClamp),
+		m_DepthBiasSlope(depthBiasSlope), m_EnableDepthClip(enableDepthClip), m_EnableConservativeRasterization(enableConservativeRasterization) {}
+
 	FillMode m_FillMode = FillMode::kSolid;
 	CullMode m_CullMode = CullMode::kNone;
 	FrontFace m_FrontFace = FrontFace::kClockwise;
+	bool m_EnableDepthClip = false;
 	i32 m_DepthBias = 0;
 	f32 m_DepthBiasClamp = 0.0f;
 	f32 m_DepthBiasSlope = 0.0f;
-	bool m_EnableDepthClip = false;
 	bool m_EnableConservativeRasterization = false;
+
+	BV_RENDER_VAR(FillMode);
+	BV_RENDER_VAR(CullMode);
+	BV_RENDER_VAR(FrontFace);
+	BV_RENDER_VAR(EnableDepthClip);
+	BV_RENDER_VAR(DepthBias);
+	BV_RENDER_VAR(DepthBiasClamp);
+	BV_RENDER_VAR(DepthBiasSlope);
+	BV_RENDER_VAR(EnableConservativeRasterization);
 };
 
 
 struct StencilDesc
 {
+	constexpr StencilDesc() = default;
+	constexpr StencilDesc(StencilOp stencilFailOp, StencilOp stencilDepthFailOp, StencilOp stencilPassOp, CompareOp stencilFunc)
+		: m_StencilFailOp(stencilFailOp), m_StencilDepthFailOp(stencilDepthFailOp), m_StencilPassOp(stencilPassOp), m_StencilFunc(stencilFunc)
+	{}
+
 	StencilOp m_StencilFailOp = StencilOp::kKeep;
 	StencilOp m_StencilDepthFailOp = StencilOp::kKeep;
 	StencilOp m_StencilPassOp = StencilOp::kKeep;
 	CompareOp m_StencilFunc = CompareOp::kNone;
+
+	BV_RENDER_VAR(StencilFailOp);
+	BV_RENDER_VAR(StencilDepthFailOp);
+	BV_RENDER_VAR(StencilPassOp);
+	BV_RENDER_VAR(StencilFunc);
 };
 
 
 struct DepthStencilDesc
 {
+	constexpr DepthStencilDesc() = default;
+	constexpr DepthStencilDesc(bool depthTestEnable, bool depthWriteEnable, CompareOp depthOp, bool stencilTestEnable = false,
+		u8 stencilReadMask = 0, u8 stencilWriteMask = 0, bool depthBoundsTestEnable = false, const StencilDesc& stencilFront = {}, const StencilDesc& stencilBack = {}) {}
+	
 	bool m_DepthTestEnable = false;
 	bool m_DepthWriteEnable = false;
 	CompareOp m_DepthOp = CompareOp::kNone;
@@ -1846,11 +2110,40 @@ struct DepthStencilDesc
 	bool m_DepthBoundsTestEnable = false;
 	StencilDesc m_StencilFront{};
 	StencilDesc m_StencilBack{};
+
+	BV_RENDER_VAR(DepthTestEnable);
+	BV_RENDER_VAR(DepthWriteEnable);
+	BV_RENDER_VAR(DepthOp);
+	BV_RENDER_VAR(StencilTestEnable);
+	BV_RENDER_VAR(StencilReadMask);
+	BV_RENDER_VAR(StencilWriteMask);
+	BV_RENDER_VAR(DepthBoundsTestEnable);
+	BV_RENDER_VAR(StencilFront);
+	BV_RENDER_VAR(StencilBack);
 };
+
+
+enum class RenderTargetWriteMask : u8
+{
+	kZero = 0,
+	kRed = BvBit(0),
+	kGreen = BvBit(1),
+	kBlue = BvBit(2),
+	kAlpha = BvBit(3),
+	kAll = kRed | kGreen | kBlue | kAlpha
+};
+BV_USE_ENUM_CLASS_OPERATORS(RenderTargetWriteMask);
 
 
 struct BlendAttachmentStateDesc
 {
+	constexpr BlendAttachmentStateDesc() = default;
+	constexpr BlendAttachmentStateDesc(bool blendEnable, BlendFactor srcBlend, BlendFactor dstBlend, BlendOp blendOp,
+		BlendFactor srcBlendAlpha, BlendFactor dstBlendAlpha, BlendOp alphaBlendOp, RenderTargetWriteMask renderTargetWriteMask = RenderTargetWriteMask::kAll)
+		: m_BlendEnable(blendEnable), m_SrcBlend(srcBlend), m_DstBlend(dstBlend), m_BlendOp(blendOp), m_SrcBlendAlpha(srcBlendAlpha),
+		m_DstBlendAlpha(dstBlendAlpha), m_AlphaBlendOp(alphaBlendOp), m_RenderTargetWriteMask(renderTargetWriteMask)
+	{}
+
 	bool m_BlendEnable = false;
 	BlendFactor m_SrcBlend = BlendFactor::kZero;
 	BlendFactor m_DstBlend = BlendFactor::kZero;
@@ -1858,45 +2151,192 @@ struct BlendAttachmentStateDesc
 	BlendFactor m_SrcBlendAlpha = BlendFactor::kZero;
 	BlendFactor m_DstBlendAlpha = BlendFactor::kZero;
 	BlendOp m_AlphaBlendOp = BlendOp::kAdd;
-	u8 m_RenderTargetWriteMask = 0xF;
+	RenderTargetWriteMask m_RenderTargetWriteMask = RenderTargetWriteMask::kAll;
+
+	BV_RENDER_VAR(BlendEnable);
+	BV_RENDER_VAR(SrcBlend);
+	BV_RENDER_VAR(DstBlend);
+	BV_RENDER_VAR(BlendOp);
+	BV_RENDER_VAR(SrcBlendAlpha);
+	BV_RENDER_VAR(DstBlendAlpha);
+	BV_RENDER_VAR(AlphaBlendOp);
+	BV_RENDER_VAR(RenderTargetWriteMask);
 };
 
 
 struct BlendStateDesc
 {
+	constexpr BlendStateDesc() = default;
+
 	BlendAttachmentStateDesc m_BlendAttachments[kMaxRenderTargets];
 	LogicOp m_LogicOp = LogicOp::kClear;
 	bool m_LogicEnable = false;
 	bool m_AlphaToCoverageEnable = false;
+
+	BV_RENDER_VAR(LogicOp);
+	BV_RENDER_VAR(LogicEnable);
+	BV_RENDER_VAR(AlphaToCoverageEnable);
+
+	auto& SetBlendAttachmentStateDesc(u32 index, bool blendEnable, BlendFactor srcBlend, BlendFactor dstBlend, BlendOp blendOp,
+		BlendFactor srcBlendAlpha, BlendFactor dstBlendAlpha, BlendOp alphaBlendOp, RenderTargetWriteMask renderTargetWriteMask = RenderTargetWriteMask::kAll)
+	{
+		m_BlendAttachments[index] =
+			BlendAttachmentStateDesc(blendEnable, srcBlend, dstBlend, blendOp, srcBlendAlpha, dstBlendAlpha, alphaBlendOp, renderTargetWriteMask);
+
+		return *this;
+	}
 };
 
 
 struct GraphicsPipelineStateDesc
 {
-	u32							m_VertexInputDescCount = 0;
-	VertexInputDesc*			m_pVertexInputDescs = nullptr;
-	IBvShader*					m_Shaders[kMaxShaderStages]{};
-	InputAssemblyStateDesc		m_InputAssemblyStateDesc;
-	RasterizerStateDesc			m_RasterizerStateDesc;
-	DepthStencilDesc			m_DepthStencilDesc;
-	BlendStateDesc				m_BlendStateDesc;
-	IBvShaderResourceLayout*	m_pShaderResourceLayout = nullptr;
-	IBvRenderPass*				m_pRenderPass = nullptr;
-	Format						m_RenderTargetFormats[kMaxRenderTargets]{};
-	Format						m_DepthStencilFormat = Format::kUnknown;
-	u8							m_PatchControlPoints = 0;
-	bool						m_ShadingRateEnabled = false;
-	u32							m_SampleCount = 1;
-	u32							m_SampleMask = kMax<u32>;
-	u32							m_SubpassIndex = 0;
-	u32							m_MultiviewCount = 1;
+	BvFixedVector<IBvShader*, kMaxShaderStages> m_Shaders;
+	BvVector<VertexInputDesc> m_VertexInputDescs;
+	InputAssemblyStateDesc m_InputAssemblyStateDesc;
+	RasterizerStateDesc m_RasterizerStateDesc;
+	DepthStencilDesc m_DepthStencilDesc;
+	BlendStateDesc m_BlendStateDesc;
+	IBvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
+	IBvRenderPass* m_pRenderPass = nullptr;
+	BvFixedVector<Format, kMaxRenderTargets> m_RenderTargetFormats;
+	Format m_DepthStencilFormat = Format::kUnknown;
+	u8 m_PatchControlPoints = 0;
+	bool m_ShadingRateEnabled = false;
+	u32 m_SampleCount = 1;
+	u32 m_SampleMask = kMax<u32>;
+	u32 m_SubpassIndex = 0;
+	u32 m_MultiviewCount = 1;
+
+	BV_RENDER_VAR_PTR(p, ShaderResourceLayout);
+	BV_RENDER_VAR_PTR(p, RenderPass);
+	BV_RENDER_VAR(DepthStencilFormat);
+	BV_RENDER_VAR(PatchControlPoints);
+	BV_RENDER_VAR(ShadingRateEnabled);
+	BV_RENDER_VAR(SampleCount);
+	BV_RENDER_VAR(SampleMask);
+	BV_RENDER_VAR(SubpassIndex);
+	BV_RENDER_VAR(MultiviewCount);
+
+	GraphicsPipelineStateDesc() = default;
+
+	auto& AddShader(IBvShader* pShader)
+	{
+		m_Shaders.PushBack(pShader);
+		return *this;
+	}
+
+	auto& AddVertexInput(const char* pName, u32 binding, Format format, u32 index = 0, InputRate inputRate = InputRate::kPerVertex,
+		u32 offset = VertexInputDesc::kAutoOffset, u32 instanceRate = 0)
+	{
+		m_VertexInputDescs.EmplaceBack(pName, binding, format, index, inputRate, offset, instanceRate);
+		return *this;
+	}
+
+	auto& SetInputAssemblyState(Topology topology = Topology::kTriangleList, bool primitiveRestart = false,
+		IndexFormat indexFormatForPrimitiveRestart = IndexFormat::kUnknown)
+	{
+		m_InputAssemblyStateDesc = InputAssemblyStateDesc(topology, primitiveRestart, indexFormatForPrimitiveRestart);
+		return *this;
+	}
+
+	auto& SetRasterizerState(FillMode fillMode, CullMode cullMode, FrontFace frontFace, bool enableDepthClip = false,
+		i32 depthBias = 0, f32 depthBiasClamp = 0.0f, f32 depthBiasSlope = 0.0f, bool enableConservativeRasterization = false)
+	{
+		m_RasterizerStateDesc = RasterizerStateDesc(fillMode, cullMode, frontFace, enableDepthClip, depthBias, depthBiasClamp, depthBiasSlope, enableConservativeRasterization);
+		return *this;
+	}
+
+	auto& SetRasterizerFillMode(FillMode fillMode)
+	{
+		m_RasterizerStateDesc.SetFillMode(fillMode);
+		return *this;
+	}
+
+	auto& SetRasterizerCullMode(CullMode cullMode)
+	{
+		m_RasterizerStateDesc.SetCullMode(cullMode);
+		return *this;
+	}
+
+	auto& SetRasterizerFrontFace(FrontFace frontFace)
+	{
+		m_RasterizerStateDesc.SetFrontFace(frontFace);
+		return *this;
+	}
+
+	auto& SetRasterizerDepthBias(i32 depthBias = 0, f32 depthBiasClamp = 0.0f, f32 depthBiasSlope = 0.0f)
+	{
+		m_RasterizerStateDesc.SetDepthBias(depthBias).SetDepthBiasClamp(depthBiasClamp).SetDepthBiasSlope(depthBiasSlope);
+
+		return *this;
+	}
+
+	auto& SetDepthStencilState(bool depthTestEnable, bool depthWriteEnable, CompareOp depthOp, bool stencilTestEnable = false,
+		u8 stencilReadMask = 0, u8 stencilWriteMask = 0, bool depthBoundsTestEnable = false, const StencilDesc& stencilFront = {}, const StencilDesc& stencilBack = {})
+	{
+		m_DepthStencilDesc = DepthStencilDesc(depthTestEnable, depthWriteEnable, depthOp, stencilTestEnable, stencilReadMask, stencilWriteMask,
+			depthBoundsTestEnable, stencilFront, stencilBack);
+		return *this;
+	}
+
+	auto& SetDepthTests(bool depthTestEnable, bool depthWriteEnable, CompareOp depthOp)
+	{
+		m_DepthStencilDesc.SetDepthTestEnable(depthTestEnable).SetDepthWriteEnable(depthWriteEnable).SetDepthOp(depthOp);
+		return *this;
+	}
+
+	auto& SetStencilTests(bool stencilTestEnable, u8 stencilReadMask, u8 stencilWriteMask)
+	{
+		m_DepthStencilDesc.SetStencilTestEnable(stencilTestEnable).SetStencilReadMask(stencilReadMask).SetStencilWriteMask(stencilWriteMask);
+		return *this;
+	}
+
+	auto& SetStencilFrontOp(StencilOp stencilFailOp, StencilOp stencilDepthFailOp, StencilOp stencilPassOp, CompareOp stencilFunc)
+	{
+		m_DepthStencilDesc.m_StencilFront = StencilDesc(stencilFailOp, stencilDepthFailOp, stencilPassOp, stencilFunc);
+		return *this;
+	}
+
+	auto& SetStencilBackOp(StencilOp stencilFailOp, StencilOp stencilDepthFailOp, StencilOp stencilPassOp, CompareOp stencilFunc)
+	{
+		m_DepthStencilDesc.m_StencilBack = StencilDesc(stencilFailOp, stencilDepthFailOp, stencilPassOp, stencilFunc);
+		return *this;
+	}
+
+	auto& SetBlendState(LogicOp logicOp = LogicOp::kClear, bool logicEnable = false, bool alphaToCoverageEnable = false)
+	{
+		m_BlendStateDesc.SetLogicOp(logicOp).SetLogicEnable(logicEnable).SetAlphaToCoverageEnable(alphaToCoverageEnable);
+		return *this;
+	}
+
+	auto& AddRenderTargetFormat(Format format)
+	{
+		m_RenderTargetFormats.EmplaceBack(format);
+		return *this;
+	}
+
+	auto& AddRenderTarget(Format format, bool blendEnable, BlendFactor srcBlend, BlendFactor dstBlend, BlendOp blendOp,
+		BlendFactor srcBlendAlpha, BlendFactor dstBlendAlpha, BlendOp alphaBlendOp, RenderTargetWriteMask renderTargetWriteMask = RenderTargetWriteMask::kAll)
+	{
+		m_RenderTargetFormats.EmplaceBack(format);
+		m_BlendStateDesc.SetBlendAttachmentStateDesc(m_RenderTargetFormats.Size() - 1, blendEnable, srcBlend, dstBlend, blendOp, srcBlendAlpha,
+			dstBlendAlpha, alphaBlendOp, renderTargetWriteMask);
+		return *this;
+	}
 };
 
 
 struct ComputePipelineStateDesc
 {
+	ComputePipelineStateDesc() = default;
+	ComputePipelineStateDesc(IBvShader* pShader, IBvShaderResourceLayout* pShaderResourceLayout)
+		: m_pShader(pShader), m_pShaderResourceLayout(pShaderResourceLayout) {}
+
 	IBvShader* m_pShader = nullptr;
 	IBvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
+
+	BV_RENDER_VAR_PTR(p, Shader);
+	BV_RENDER_VAR_PTR(p, ShaderResourceLayout);
 };
 
 
@@ -1960,7 +2400,7 @@ enum class RayTracingGeometryFlags : u8
 BV_USE_ENUM_CLASS_OPERATORS(RayTracingGeometryFlags);
 
 
-enum class RayTracingInstanceFlags : u8
+enum class RayTracingInstanceFlags : u32
 {
 	kNone = 0,
 	kTriangleCullDisable = BvBit(0),
@@ -2028,8 +2468,7 @@ struct BLASGeometryDesc
 
 struct BLASDesc
 {
-	u32 m_GeometryCount = 0;
-	const BLASGeometryDesc* m_pGeometries = 0;
+	BvVector<BLASGeometryDesc> m_Geometries;
 };
 
 
@@ -2063,12 +2502,11 @@ struct BLASBuildGeometryDesc
 
 struct BLASBuildDesc
 {
-	bool m_Update = false;
-	u32 m_GeometryCount = 0;
-	const BLASBuildGeometryDesc* m_pGeometries = nullptr;
+	BvVector<BLASBuildGeometryDesc> m_Geometries;
 	IBvAccelerationStructure* m_pBLAS = nullptr;
 	IBvBuffer* m_pScratchBuffer = nullptr;
 	u64 m_ScratchBufferOffset = 0;
+	bool m_Update = false;
 };
 
 
@@ -2081,13 +2519,16 @@ struct TLASDesc
 
 struct TLASInstanceDesc
 {
-	f32 m_Transform[12] = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
-	//Float34 m_Transform{ Float4(1.0f, 0.0f, 0.0f, 0.0f), Float4(0.0f, 1.0f, 0.0f, 0.0f), Float4(0.0f, 0.0f, 1.0f, 0.0f) };
-	u32 m_InstanceId = 0;
-	u32 m_InstanceMask = 0;
-	u32 m_ShaderBindingTableIndex = 0;
-	RayTracingInstanceFlags m_Flags = RayTracingInstanceFlags::kNone;
-	IBvAccelerationStructure* m_pBLAS = nullptr;
+	TLASInstanceDesc()
+		: m_Transform{ { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f } }, m_InstanceId(0), m_InstanceMask(0),
+		m_ShaderBindingTableIndex(0), m_Flags(RayTracingInstanceFlags::kNone), m_AccelerationStructure(0) {}
+
+	f32 m_Transform[3][4];
+	u32 m_InstanceId : 24;
+	u32 m_InstanceMask : 8;
+	u32 m_ShaderBindingTableIndex : 24;
+	RayTracingInstanceFlags m_Flags : 8;
+	u64 m_AccelerationStructure;
 };
 
 
@@ -2130,11 +2571,8 @@ struct RayTracingAccelerationStructureDesc
 	RayTracingAccelerationStructureType m_Type = RayTracingAccelerationStructureType::kUnknown;
 	RayTracingAccelerationStructureFlags m_Flags = RayTracingAccelerationStructureFlags::kNone;
 	u64 m_CompactedSize = 0;
-	union
-	{
-		BLASDesc m_BLAS{};
-		TLASDesc m_TLAS;
-	};
+	BLASDesc m_BLAS;
+	TLASDesc m_TLAS;
 };
 
 
@@ -2149,6 +2587,14 @@ enum class ShaderGroupType : u8
 
 struct ShaderGroupDesc
 {
+	ShaderGroupDesc() = default;
+	ShaderGroupDesc(const char* pName, u32 general)
+		: m_pName(pName), m_Type(ShaderGroupType::kGeneral), m_General(general) {}
+	ShaderGroupDesc(const char* pName, u32 closestHit, u32 anyHit)
+		: m_pName(pName), m_Type(ShaderGroupType::kTriangles), m_ClosestHit(closestHit), m_AnyHit(anyHit) {}
+	ShaderGroupDesc(const char* pName, u32 closestHit, u32 anyHit, u32 intersection)
+		: m_pName(pName), m_Type(ShaderGroupType::kProcedural), m_ClosestHit(closestHit), m_AnyHit(anyHit), m_Intersection(intersection) {}
+
 	static constexpr u32 kUnusedShader = kU32Max;
 
 	const char* m_pName = nullptr;
@@ -2162,15 +2608,70 @@ struct ShaderGroupDesc
 
 struct RayTracingPipelineStateDesc
 {
-	u32 m_ShaderCount = 0;
-	u32 m_ShaderGroupCount = 0;
-	const IBvShader* const* m_ppShaders = nullptr;
-	const ShaderGroupDesc* m_pShaderGroupDescs = nullptr;
+	BvVector<IBvShader*> m_Shaders;
+	BvVector<ShaderGroupDesc> m_ShaderGroupDescs;
 	IBvShaderResourceLayout* m_pShaderResourceLayout = nullptr;
 	u32 m_MaxPipelineRayRecursionDepth = 0;
 	u32 m_MaxPayloadSize = 0;
 	u32 m_MaxAttributeSize = 0;
 	bool m_ForcePayloadAndAttributeSizes = false; // Vulkan only
+
+	BV_RENDER_VAR_PTR(p, ShaderResourceLayout);
+	BV_RENDER_VAR(MaxPipelineRayRecursionDepth);
+	BV_RENDER_VAR(MaxPayloadSize);
+	BV_RENDER_VAR(MaxAttributeSize);
+	BV_RENDER_VAR(ForcePayloadAndAttributeSizes);
+
+	RayTracingPipelineStateDesc() = default;
+
+	auto& AddShader(IBvShader* pShader)
+	{
+		m_Shaders.EmplaceBack(pShader);
+		return *this;
+	}
+
+	auto& AddGeneralShaderGroup(const char* pName, u32 shaderIndex)
+	{
+		m_ShaderGroupDescs.EmplaceBack(pName, shaderIndex);
+		return *this;
+	}
+
+	auto& AddRayGenShaderGroup(const char* pName, u32 shaderIndex)
+	{
+		return AddGeneralShaderGroup(pName, shaderIndex);
+	}
+
+	auto& AddMissShaderGroup(const char* pName, u32 shaderIndex)
+	{
+		return AddGeneralShaderGroup(pName, shaderIndex);
+	}
+
+	auto& AddCallableShaderGroup(const char* pName, u32 shaderIndex)
+	{
+		return AddGeneralShaderGroup(pName, shaderIndex);
+	}
+
+	auto& AddTriangleShaderGroup(const char* pName, u32 closestHitShaderIndex, u32 anyHitShaderIndex)
+	{
+		m_ShaderGroupDescs.EmplaceBack(pName, closestHitShaderIndex, anyHitShaderIndex);
+		return *this;
+	}
+
+	auto& AddProceduralShaderGroup(const char* pName, u32 closestHitShaderIndex, u32 anyHitShaderIndex, u32 intersectionShaderIndex)
+	{
+		m_ShaderGroupDescs.EmplaceBack(pName, closestHitShaderIndex, anyHitShaderIndex, intersectionShaderIndex);
+		return *this;
+	}
+};
+
+
+struct PipelineCacheInitData
+{
+	u64 m_Size = 0;
+	const void* m_pInitData = nullptr;
+
+	BV_RENDER_VAR(Size);
+	BV_RENDER_VAR_PTR(p, InitData);
 };
 
 
@@ -2221,7 +2722,7 @@ struct CommandContextDesc
 {
 	constexpr CommandContextDesc() = default;
 	constexpr CommandContextDesc(CommandType commandType, bool requireDedicated = true)
-		: m_CommandType(commandType), m_RequireDedicated(requireDedicated)	{}
+		: m_CommandType(commandType), m_RequireDedicated(requireDedicated) {}
 	constexpr CommandContextDesc(u32 contextGroupIndex)
 		: m_ContextGroupIndex(contextGroupIndex) {}
 
@@ -2231,7 +2732,19 @@ struct CommandContextDesc
 };
 
 
-struct BvRenderDeviceCreateDesc
+struct RenderEngineDesc
+{
+	bool m_EnableDebugLayer = true;
+
+	// TODO: Implement these
+	using DebugMessageCallbackFn = void(*)();
+	IBvMemoryArena* m_pMemoryArena = nullptr;
+	u64 m_MaxVirtualMemoryReserveSize = 0;
+	bool m_UseVirtualMemory = false;
+};
+
+
+struct RenderDeviceDesc
 {
 	struct ContextGroupDesc
 	{
@@ -2239,9 +2752,34 @@ struct BvRenderDeviceCreateDesc
 		u32 m_ContextCount;
 	};
 
-	u32 m_GPUIndex = kU32Max;
+	enum BackendOption : u8
+	{
+		kNone,
+		kVulkan,
+		kD3D12
+	};
+
 	BvFixedVector<ContextGroupDesc, kMaxContextGroupCount> m_ContextGroups;
-	bool m_UseDebug = true;
+	u32 m_GPUIndex = kU32Max;
+	BackendOption m_ExtendedBackendOptions = BackendOption::kNone;
+
+	union
+	{
+		struct Vulkan
+		{
+			u32 m_MaxSetsPerDescriptorPool;
+			u32 m_QueryPoolSizes[kQueryTypeCount];
+			u32 m_AccelerationStructureQueryPoolSize;
+		} m_Vulkan;
+		struct D3D12
+		{
+			u32 m_GPUDescriptorHeapSizes[2];
+			u32 m_CPUDescriptorHeapSizes[4];
+			u32 m_MaxDescriptorAllocationsPerPool;
+			u32 m_QueryHeapSizes[kQueryTypeCount];
+		} m_D3D12;
+	};
+
 };
 
 

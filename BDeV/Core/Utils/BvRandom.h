@@ -10,14 +10,15 @@ class BvSplitMix64
 {
 public:
 	BV_INLINE BvSplitMix64()
-		: m_State(BvTime::GetCurrentUTCTimestampInUs()) {}
+		: m_State(BvTime::GetCurrentTimestampInUs()) {
+	}
 	BV_INLINE BvSplitMix64(u64 seed)
-		: m_State(seed) {}
+		: m_State(seed) {
+	}
 
 	BV_INLINE u64 Next()
 	{
-		u64 result = m_State;
-		m_State = m_State + 0x9E3779B97F4A7C15ULL;
+		u64 result = (m_State += 0x9E3779B97F4A7C15ULL);
 		result = (result ^ (result >> 30ULL)) * 0xBF58476D1CE4E5B9ULL;
 		result = (result ^ (result >> 27ULL)) * 0x94D049BB133111EBULL;
 		return result ^ (result >> 31ULL);

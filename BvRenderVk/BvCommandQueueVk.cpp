@@ -5,30 +5,9 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 
 
-BvCommandQueueVk::BvCommandQueueVk()
-{
-}
-
-
 BvCommandQueueVk::BvCommandQueueVk(VkDevice device, u32 queueFamilyIndex, u32 queueIndex)
-	: m_Device(device)
 {
-	vkGetDeviceQueue(m_Device, queueFamilyIndex, queueIndex, &m_Queue);
-}
-
-
-BvCommandQueueVk::BvCommandQueueVk(BvCommandQueueVk&& rhs) noexcept
-{
-	*this = std::move(rhs);
-}
-
-
-BvCommandQueueVk& BvCommandQueueVk::operator=(BvCommandQueueVk&& rhs) noexcept
-{
-	m_Device = rhs.m_Device;
-	m_Queue = rhs.m_Queue;
-
-	return *this;
+	vkGetDeviceQueue(device, queueFamilyIndex, queueIndex, &m_Queue);
 }
 
 
@@ -39,8 +18,7 @@ BvCommandQueueVk::~BvCommandQueueVk()
 
 void BvCommandQueueVk::AddWaitSemaphore(VkSemaphore waitSemaphore, u64 value)
 {
-	auto& waitInfo = m_WaitSemaphores.EmplaceBack();
-	waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+	auto& waitInfo = m_WaitSemaphores.PushBack({ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO });
 	waitInfo.semaphore = waitSemaphore;
 	waitInfo.value = value;
 	waitInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
@@ -49,8 +27,7 @@ void BvCommandQueueVk::AddWaitSemaphore(VkSemaphore waitSemaphore, u64 value)
 
 void BvCommandQueueVk::AddSignalSemaphore(VkSemaphore signalSemaphore, u64 value)
 {
-	auto& signalInfo = m_SignalSemaphores.EmplaceBack();
-	signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+	auto& signalInfo = m_SignalSemaphores.PushBack({ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO });
 	signalInfo.semaphore = signalSemaphore;
 	signalInfo.value = value;
 	signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
@@ -61,13 +38,11 @@ void BvCommandQueueVk::Submit(const BvVector<BvCommandBufferVk*>& commandBuffers
 {
 	for (auto i = 0; i < commandBuffers.Size(); ++i)
 	{
-		auto& cbInfo = m_CommandBuffers.EmplaceBack();
-		cbInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+		auto& cbInfo = m_CommandBuffers.PushBack({ VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO });
 		cbInfo.commandBuffer = commandBuffers[i]->GetHandle();
 	}
 
-	auto& signalInfo = m_SignalSemaphores.EmplaceBack();
-	signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+	auto& signalInfo = m_SignalSemaphores.PushBack({ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO });
 	signalInfo.semaphore = signalSemaphore;
 	signalInfo.value = signalValue;
 	signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
@@ -81,15 +56,14 @@ void BvCommandQueueVk::Submit(const BvVector<BvCommandBufferVk*>& commandBuffers
 			{
 				continue;
 			}
-			auto& scSignalInfo = m_SignalSemaphores.EmplaceBack();
-			scSignalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-			scSignalInfo.semaphore = pSwapChain->GetCurrentRenderCompleteSemaphore();
-			scSignalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
-			auto& scWaitInfo = m_WaitSemaphores.EmplaceBack();
-			scWaitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+			auto& scWaitInfo = m_WaitSemaphores.PushBack({ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO });
 			scWaitInfo.semaphore = pSwapChain->GetCurrentImageAcquiredSemaphore();
 			scWaitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+			auto& scSignalInfo = m_SignalSemaphores.PushBack({ VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO });
+			scSignalInfo.semaphore = pSwapChain->GetCurrentRenderCompleteSemaphore();
+			scSignalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		}
 	}
 

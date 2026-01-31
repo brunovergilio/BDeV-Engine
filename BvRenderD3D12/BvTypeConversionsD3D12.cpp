@@ -53,16 +53,16 @@ CD3DX12_RESOURCE_DESC GetD3D12ResourceDesc(const TextureDesc& textureDesc)
 	switch (textureDesc.m_ImageType)
 	{
 	case TextureType::kTexture1D:
-		return CD3DX12_RESOURCE_DESC::Tex1D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.width, textureDesc.m_ArraySize, textureDesc.m_MipLevels,
+		return CD3DX12_RESOURCE_DESC::Tex1D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.m_Width, textureDesc.m_ArraySize, textureDesc.m_MipLevels,
 			GetD3D12ResourceFlags(textureDesc.m_UsageFlags));
 	case TextureType::kTexture2D:
-		return CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.width, textureDesc.m_Size.height, textureDesc.m_ArraySize,
+		return CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.m_Width, textureDesc.m_Size.m_Height, textureDesc.m_ArraySize,
 			textureDesc.m_MipLevels, textureDesc.m_SampleCount, 0, GetD3D12ResourceFlags(textureDesc.m_UsageFlags));
 	case TextureType::kTexture3D:
-		return CD3DX12_RESOURCE_DESC::Tex3D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.width, textureDesc.m_Size.height, textureDesc.m_Size.depth,
+		return CD3DX12_RESOURCE_DESC::Tex3D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.m_Width, textureDesc.m_Size.m_Height, textureDesc.m_Size.m_Depth,
 			textureDesc.m_MipLevels, GetD3D12ResourceFlags(textureDesc.m_UsageFlags));
 	default:
-		return CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.width, textureDesc.m_Size.height, textureDesc.m_ArraySize,
+		return CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_Size.m_Width, textureDesc.m_Size.m_Height, textureDesc.m_ArraySize,
 			textureDesc.m_MipLevels, textureDesc.m_SampleCount, 0, GetD3D12ResourceFlags(textureDesc.m_UsageFlags));
 	}
 }
@@ -120,14 +120,14 @@ D3D12_DESCRIPTOR_RANGE_TYPE GetD3D12DescriptorRangeType(ShaderResourceType type)
 	switch (type)
 	{
 	case ShaderResourceType::kConstantBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	case ShaderResourceType::kStructuredBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	case ShaderResourceType::kRWStructuredBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-	case ShaderResourceType::kFormattedBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	case ShaderResourceType::kRWFormattedBuffer: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-	case ShaderResourceType::kTexture: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	case ShaderResourceType::kStructuredBuffer:
+	case ShaderResourceType::kFormattedBuffer:
+	case ShaderResourceType::kTexture:
+	case ShaderResourceType::kInputAttachment: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	case ShaderResourceType::kRWStructuredBuffer:
+	case ShaderResourceType::kRWFormattedBuffer:
 	case ShaderResourceType::kRWTexture: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	case ShaderResourceType::kSampler: return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-	case ShaderResourceType::kInputAttachment: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	default:
 		BV_ASSERT(false, "Should never get here");
 	}
@@ -632,6 +632,43 @@ D3D12_UAV_DIMENSION GetD3D12UAVDimension(TextureViewType textureViewType, bool m
 }
 
 
+constexpr D3D12_RTV_DIMENSION kRTVDimensions[][2] =
+{
+	{ D3D12_RTV_DIMENSION_UNKNOWN, D3D12_RTV_DIMENSION_UNKNOWN },
+	{ D3D12_RTV_DIMENSION_TEXTURE1D, D3D12_RTV_DIMENSION_TEXTURE1D },
+	{ D3D12_RTV_DIMENSION_TEXTURE1DARRAY, D3D12_RTV_DIMENSION_TEXTURE1DARRAY },
+	{ D3D12_RTV_DIMENSION_TEXTURE2D, D3D12_RTV_DIMENSION_TEXTURE2DMS },
+	{ D3D12_RTV_DIMENSION_TEXTURE2DARRAY, D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY },
+	{ D3D12_RTV_DIMENSION_UNKNOWN, D3D12_RTV_DIMENSION_UNKNOWN },
+	{ D3D12_RTV_DIMENSION_UNKNOWN, D3D12_RTV_DIMENSION_UNKNOWN },
+	{ D3D12_RTV_DIMENSION_TEXTURE3D, D3D12_RTV_DIMENSION_TEXTURE3D },
+};
+
+
+D3D12_RTV_DIMENSION GetD3D12RTVDimension(TextureViewType textureViewType, bool multisample)
+{
+	return kRTVDimensions[u32(textureViewType)][u32(multisample)];
+}
+
+
+constexpr D3D12_DSV_DIMENSION kDSVDimensions[][2] =
+{
+	{ D3D12_DSV_DIMENSION_UNKNOWN, D3D12_DSV_DIMENSION_UNKNOWN },
+	{ D3D12_DSV_DIMENSION_TEXTURE1D, D3D12_DSV_DIMENSION_TEXTURE1D },
+	{ D3D12_DSV_DIMENSION_TEXTURE1DARRAY, D3D12_DSV_DIMENSION_TEXTURE1DARRAY },
+	{ D3D12_DSV_DIMENSION_TEXTURE2D, D3D12_DSV_DIMENSION_TEXTURE2DMS },
+	{ D3D12_DSV_DIMENSION_TEXTURE2DARRAY, D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY },
+	{ D3D12_DSV_DIMENSION_UNKNOWN, D3D12_DSV_DIMENSION_UNKNOWN },
+	{ D3D12_DSV_DIMENSION_UNKNOWN, D3D12_DSV_DIMENSION_UNKNOWN },
+};
+
+
+D3D12_DSV_DIMENSION GetD3D12DSVDimension(TextureViewType textureViewType, bool multisample)
+{
+	return kDSVDimensions[u32(textureViewType)][u32(multisample)];
+}
+
+
 D3D12_CONSTANT_BUFFER_VIEW_DESC GetD3D12CBVDesc(const BufferViewDesc& viewDesc)
 {
 	BV_ASSERT(viewDesc.m_pBuffer != nullptr, "Invalid buffer handle");
@@ -757,6 +794,84 @@ D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const TextureViewDesc& viewDesc
 }
 
 
+D3D12_RENDER_TARGET_VIEW_DESC GetD3D12RTVDesc(const TextureViewDesc& viewDesc)
+{
+	BV_ASSERT(viewDesc.m_pTexture != nullptr, "Invalid texture handle");
+
+	auto pTex = TO_D3D12(viewDesc.m_pTexture);
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtv{};
+	rtv.Format = DXGI_FORMAT(viewDesc.m_Format);
+	rtv.ViewDimension = GetD3D12RTVDimension(viewDesc.m_ViewType, pTex->GetDesc().m_SampleCount > 1);
+
+	auto& subres = viewDesc.m_SubresourceDesc;
+	switch (rtv.ViewDimension)
+	{
+	case D3D12_RTV_DIMENSION_TEXTURE1D:
+		rtv.Texture1D = { subres.firstMip };
+		break;
+	case D3D12_RTV_DIMENSION_TEXTURE1DARRAY:
+		rtv.Texture1DArray = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		break;
+	case D3D12_RTV_DIMENSION_TEXTURE2D:
+		rtv.Texture2D = { subres.firstMip, subres.planeSlice };
+		break;
+	case D3D12_RTV_DIMENSION_TEXTURE2DMS:
+		rtv.Texture2DMS = {};
+		break;
+	case D3D12_RTV_DIMENSION_TEXTURE2DARRAY:
+		rtv.Texture2DArray = { subres.firstMip, subres.firstLayer, subres.layerCount, subres.planeSlice };
+		break;
+	case D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY:
+		rtv.Texture2DMSArray = { subres.firstLayer, subres.layerCount };
+		break;
+	case D3D12_RTV_DIMENSION_TEXTURE3D:
+		rtv.Texture3D = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		break;
+	}
+
+	return rtv;
+}
+
+
+D3D12_DEPTH_STENCIL_VIEW_DESC GetD3D12DSVDesc(const TextureViewDesc& viewDesc)
+{
+	BV_ASSERT(viewDesc.m_pTexture != nullptr, "Invalid texture handle");
+
+	auto pTex = TO_D3D12(viewDesc.m_pTexture);
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsv{};
+	dsv.Format = DXGI_FORMAT(viewDesc.m_Format);
+	dsv.ViewDimension = GetD3D12DSVDimension(viewDesc.m_ViewType, pTex->GetDesc().m_SampleCount > 1);
+	dsv.Flags = D3D12_DSV_FLAG_NONE;
+
+	auto& subres = viewDesc.m_SubresourceDesc;
+	switch (dsv.ViewDimension)
+	{
+	case D3D12_DSV_DIMENSION_TEXTURE1D:
+		dsv.Texture1D = { subres.firstMip };
+		break;
+	case D3D12_DSV_DIMENSION_TEXTURE1DARRAY:
+		dsv.Texture1DArray = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		break;
+	case D3D12_DSV_DIMENSION_TEXTURE2D:
+		dsv.Texture2D = { subres.firstMip };
+		break;
+	case D3D12_DSV_DIMENSION_TEXTURE2DMS:
+		dsv.Texture2DMS = {};
+		break;
+	case D3D12_DSV_DIMENSION_TEXTURE2DARRAY:
+		dsv.Texture2DArray = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		break;
+	case D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY:
+		dsv.Texture2DMSArray = { subres.firstLayer, subres.layerCount };
+		break;
+	}
+
+	return dsv;
+}
+
+
 D3D12_QUERY_HEAP_TYPE GetD3D12QueryHeapType(QueryType queryType)
 {
 	constexpr D3D12_QUERY_HEAP_TYPE kQueryTypes[] =
@@ -784,4 +899,29 @@ D3D12_QUERY_TYPE GetD3D12QueryType(QueryType queryType)
 	};
 
 	return kQueryTypes[u32(queryType)];
+}
+
+
+D3D12_PREDICATION_OP GetD3D12PredicationOp(PredicationOp predicationOp)
+{
+	constexpr D3D12_PREDICATION_OP kPredicationOps[] =
+	{
+		D3D12_PREDICATION_OP_EQUAL_ZERO,
+		D3D12_PREDICATION_OP_NOT_EQUAL_ZERO
+	};
+
+	return kPredicationOps[u8(predicationOp)];
+}
+
+
+DXGI_FORMAT GetD3D12IndexFormat(IndexFormat indexFormat)
+{
+	constexpr DXGI_FORMAT kIndexFormats[] =
+	{
+		DXGI_FORMAT_UNKNOWN,
+		DXGI_FORMAT_R16_UINT,
+		DXGI_FORMAT_R32_UINT
+	};
+
+	return kIndexFormats[u8(indexFormat)];
 }

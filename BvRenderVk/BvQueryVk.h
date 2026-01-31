@@ -22,12 +22,8 @@ struct QueryDataVk
 };
 
 
-BV_OBJECT_DEFINE_ID(BvQueryVk, "842f2026-34c0-471f-a6fc-4f3a639bdab9");
 class BvQueryVk final : public IBvQuery, public IBvResourceVk
 {
-	BV_NOCOPYMOVE(BvQueryVk);
-	BV_VK_DEVICE_RES_DECL;
-
 public:
 	BvQueryVk(BvRenderDeviceVk* pDevice, QueryType queryType, u32 frameCount);
 	~BvQueryVk();
@@ -39,8 +35,6 @@ public:
 	BV_INLINE const QueryDataVk* GetQueryData(u32 frameIndex) const { return &m_QueryData[frameIndex]; }
 	BV_INLINE QueryType GetQueryType() const { return m_QueryType; }
 
-	//BV_OBJECT_IMPL_INTERFACE(IBvQueryVk, IBvQuery, IBvRenderDeviceObject);
-
 private:
 	void Destroy();
 
@@ -50,9 +44,7 @@ private:
 	QueryType m_QueryType = QueryType::kTimestamp;
 	u32 m_LatestResultIndex = 0;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvQueryVk);
-
-
+BV_OBJECT_DEFINE_ID(BvQueryVk, "842f2026-34c0-471f-a6fc-4f3a639bdab9");
 BV_CREATE_CAST_TO_VK(BvQuery)
 
 

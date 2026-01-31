@@ -3,447 +3,41 @@
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvUUID.h"
+#include "BDeV/Core/System/Memory/BvMemory.h"
 #include <atomic>
 
 
 namespace Internal
 {
 	template<typename T>
-	constexpr const BvUUID GetObjectUUID()
-	{
-		return BvUUID{};
-	}
-
-	template<typename T>
-	constexpr bool IsValidObjectUUID()
-	{
-		return false;
-	}
+	constexpr const BvUUID GetObjectUUID() = delete;
 
 	template<typename T>
 	const BvUUID GetObjectUUIDHelper(T** ppObj)
 	{
 		return GetObjectUUID<T>();
 	}
+
+	class BvRCObjController;
 }
 
 // Creates a UUID for a specific object type
 #define BV_OBJECT_DEFINE_ID(objType, uuid) namespace Internal \
 { \
-	constexpr const BvUUID objType##_UUID = MakeUUIDv4(uuid); \
+	template<> constexpr const BvUUID GetObjectUUID<objType>() \
+	{ \
+		return MakeUUID(uuid); \
+	} \
 }
-
-// Enables the operator BV_OBJECT_ID() to be used for a specific type
-#define BV_OBJECT_ENABLE_ID_OPERATOR(objType) template<> constexpr const BvUUID Internal::GetObjectUUID<objType>() \
-{ \
-	return Internal::objType##_UUID; \
-} \
-template<> constexpr bool Internal::IsValidObjectUUID<objType>() { return true; }
 
 // Returns the UUID of a specific object type
 #define BV_OBJECT_ID(objType) Internal::GetObjectUUID<objType>()
 
-// Helper for methods that create RefCounted-based objects
+// Helper for methods that create UUID-based objects
 #define BV_OBJ_ARGS(ppObj) Internal::GetObjectUUIDHelper(ppObj), reinterpret_cast<void**>(ppObj)
 
-//class BvControlBlockBase
-//{
-//public:
-//	BvControlBlockBase() = default;
-//	virtual ~BvControlBlockBase() = default;
-//
-//	virtual void Destroy() noexcept = 0;
-//	virtual void DestroySelf() noexcept = 0;
-//
-//	u32 IncSRef() noexcept
-//	{
-//		return ++m_SRefs;
-//	}
-//
-//	u32 IncWRef() noexcept
-//	{
-//		return ++m_WRefs;
-//	}
-//
-//	u32 DecSRef() noexcept
-//	{
-//		auto count = --m_SRefs;
-//		if (count == 0)
-//		{
-//			Destroy();
-//			DecWRef();
-//		}
-//
-//		return count;
-//	}
-//
-//	u32 DecWRef() noexcept
-//	{
-//		auto count = --m_WRefs;
-//		if (count == 0)
-//		{
-//			DestroySelf();
-//		}
-//
-//		return count;
-//	}
-//
-//private:
-//	std::atomic<u32> m_SRefs = 1;
-//	std::atomic<u32> m_WRefs = 1;
-//};
-//
-//
-//template<typename T, typename A = IBvMemoryArena>
-//class BvControlBlock : public BvControlBlockBase
-//{
-//public:
-//	BvControlBlock(A* pArena = nullptr) : m_pArena(pArena) {}
-//	~BvControlBlock() {}
-//
-//	void SetObject(T* pObj)
-//	{
-//		m_pObj = pObj;
-//	}
-//
-//	void Destroy() noexcept override
-//	{
-//		if (m_pArena)
-//		{
-//			BV_MDELETE(*m_pArena, m_pObj);
-//		}
-//		else
-//		{
-//			BV_DELETE(m_pObj);
-//		}
-//	}
-//
-//	void DestroySelf() noexcept override
-//	{
-//		if (m_pArena)
-//		{
-//			BV_MDELETE(*m_pArena, this);
-//		}
-//		else
-//		{
-//			BV_DELETE(this);
-//		}
-//	}
-//
-//protected:
-//	A* m_pArena = nullptr;
-//	T* m_pObj = nullptr;
-//};
-//
-//
-//#define BV_OBJECT_IMPL_INTERFACE_FOR_EACH(id, first, ...) || id == Internal::first##_UUID \
-//	IF_ELSE(HAS_ARGS(__VA_ARGS__))			\
-//	(										\
-//		DEFER2(_BV_OBJECT_IMPL_INTERFACE_FOR_EACH)()(id, __VA_ARGS__)	\
-//	)										\
-//	(										\
-//	)
-//#define _BV_OBJECT_IMPL_INTERFACE_FOR_EACH() BV_OBJECT_IMPL_INTERFACE_FOR_EACH
-//
-//// Implements IBvObject::QueryInterface() with the object type and other allowed types
-//#define BV_OBJECT_IMPL_INTERFACE(objType, ...) \
-//bool QueryInterface(const BvUUID& id, IBvObject** ppInterface) override \
-//{ \
-//	if (!ppInterface) \
-//	{ \
-//		return false; \
-//	} \
-//	if (id == Internal::objType##_UUID __VA_OPT__ ( EVAL ( BV_OBJECT_IMPL_INTERFACE_FOR_EACH(id, __VA_ARGS__) ) ) ) \
-//	{ \
-//		*ppInterface = this; \
-//		this->AddRef(); \
-//		return true; \
-//	} \
-//	return BvObjectBase::QueryInterface(id, ppInterface); \
-//}
-//
-//// Base COM-like object
-//BV_OBJECT_DEFINE_ID(IBvObject, "00000000-0000-0000-0000-000000000000")
-//class IBvObject
-//{
-//	BV_NOCOPYMOVE(IBvObject);
-//
-//public:
-//	virtual u32 AddRef() = 0;
-//	virtual u32 Release() = 0;
-//	virtual bool QueryInterface(const BvUUID& id, IBvObject** ppInterface) = 0;
-//
-//protected:
-//	IBvObject() {}
-//	virtual ~IBvObject() {}
-//};
-//
-//
-//// This is a ref-counted object type, derived from the base interface,
-//// which implements AddRef() and Release() for base classes.
-//class BvRefCounted : public IBvObject
-//{
-//	BV_NOCOPYMOVE(BvRefCounted);
-//
-//public:
-//	void SetControlBlock(BvControlBlockBase* pControlBlock)
-//	{
-//		m_pControlBlock = pControlBlock;
-//	}
-//
-//	u32 AddRef() override final
-//	{
-//		return m_pControlBlock->IncSRef();
-//	}
-//
-//	u32 Release() override final
-//	{
-//		return m_pControlBlock->DecSRef();
-//	}
-//
-//protected:
-//	BvRefCounted() {}
-//	~BvRefCounted() {}
-//
-//protected:
-//	BvControlBlockBase* m_pControlBlock = nullptr;
-//};
-//
-//
-//// Base type for classes implementing the IBvObject interface. Any classes using these COM-like
-//// classes must derive from this class and be created with either BV_NEW or BV_MNEW.
-//class BvObjectBase : public BvRefCounted
-//{
-//	BV_NOCOPYMOVE(BvObjectBase);
-//
-//public:
-//	virtual bool QueryInterface(const BvUUID& id, IBvObject** ppInterface)
-//	{
-//		if (!ppInterface)
-//		{
-//			return false;
-//		}
-//
-//		if (id == BV_OBJECT_ID(IBvObject))
-//		{
-//			*ppInterface = this;
-//			(*ppInterface)->AddRef();
-//
-//			return true;
-//		}
-//
-//		return false;
-//	}
-//
-//protected:
-//	BvObjectBase() {}
-//	~BvObjectBase() {}
-//};
-//
-//
-//// Basic factory class to simplify the creation of IBvObject-based objects
-//class BvObjectCreator
-//{
-//public:
-//	template<typename T, typename... Args>
-//	static T* Create(const BvSourceInfo& sourceInfo, Args&&... args)
-//	{
-//		auto pCB = BV_NEW_SI(sourceInfo, BvControlBlock<T>)();
-//		auto pNewObj = BV_NEW_SI(sourceInfo, T)(std::forward<Args>(args)...);
-//		pCB->SetObject(pNewObj);
-//		pNewObj->SetControlBlock(pCB);
-//
-//		return pNewObj;
-//	}
-//
-//	template<typename T, typename A, typename... Args>
-//	static T* CreateManaged(const BvSourceInfo& sourceInfo, A* pArena, Args&&... args)
-//	{
-//		auto pCB = BV_MNEW_SI(sourceInfo, *pArena, BvControlBlock<T>)(pArena);
-//		auto pNewObj = BV_MNEW_SI(sourceInfo, *pArena, T)(std::forward<Args>(args)...);
-//		pCB->SetObject(pNewObj);
-//		pNewObj->SetControlBlock(pCB);
-//
-//		return pNewObj;
-//	}
-//};
-//
-//#define BV_OBJECT_CREATE(Type, ...) BvObjectCreator::Create<Type>(BV_SOURCE_INFO __VA_OPT__(,) __VA_ARGS__)
-//#define BV_OBJECT_MCREATE(pArena, Type, ...) BvObjectCreator::CreateManaged<Type>(BV_SOURCE_INFO, pArena __VA_OPT__(,) __VA_ARGS__)
-//
-//
-//template<typename T>
-//class BvObjectHandle
-//{
-//public:
-//	BvObjectHandle()
-//	{
-//	}
-//
-//	BvObjectHandle(T* pObj)
-//		: m_pObj(pObj)
-//	{
-//		InternalAddRef();
-//	}
-//
-//	template<typename U>
-//	BvObjectHandle(U* pObj)
-//	{
-//		if (pObj)
-//		{
-//			T* pNewObj = nullptr;
-//			if (pObj->QueryInterface(BV_OBJECT_ID(T), (IBvObject**)&pNewObj))
-//			{
-//				m_pObj = pNewObj;
-//			}
-//		}
-//	}
-//
-//	BvObjectHandle(const BvObjectHandle& rhs)
-//		: m_pObj(rhs.m_pObj)
-//	{
-//		InternalAddRef();
-//	}
-//
-//	BvObjectHandle(BvObjectHandle&& rhs)
-//	{
-//		// Can't use &rhs since the & operator is overloaded
-//		if (this != std::addressof(rhs))
-//		{
-//			Swap(rhs);
-//		}
-//	}
-//
-//	BvObjectHandle& operator=(T* pObj)
-//	{
-//		if (m_pObj != pObj)
-//		{
-//			BvObjectHandle(pObj).Swap(*this);
-//		}
-//
-//		return *this;
-//	}
-//
-//	template<typename U>
-//	BvObjectHandle& operator=(U* pObj)
-//	{
-//		if ((void*)m_pObj != (void*)pObj)
-//		{
-//			InternalRelease();
-//
-//			if (pObj)
-//			{
-//				T* pNewObj = nullptr;
-//				if (pObj->QueryInterface(BV_OBJECT_ID(T), (IBvObject**)&pNewObj))
-//				{
-//					m_pObj = pNewObj;
-//				}
-//			}
-//		}
-//
-//		return *this;
-//	}
-//
-//	BvObjectHandle& operator=(const BvObjectHandle& rhs)
-//	{
-//		if (m_pObj != rhs.m_pObj)
-//		{
-//			BvObjectHandle(rhs).Swap(*this);
-//		}
-//
-//		return *this;
-//	}
-//
-//	BvObjectHandle& operator=(BvObjectHandle&& rhs)
-//	{
-//		BvObjectHandle(static_cast<BvObjectHandle&&>(rhs)).Swap(*this);
-//
-//		return *this;
-//	}
-//
-//	~BvObjectHandle()
-//	{
-//		InternalRelease();
-//	}
-//
-//	BV_INLINE T* operator->() const
-//	{
-//		return m_pObj;
-//	}
-//
-//	BV_INLINE operator T*() const
-//	{
-//		return m_pObj;
-//	}
-//
-//	BV_INLINE T** operator&()
-//	{
-//		return &m_pObj;
-//	}
-//
-//	BV_INLINE operator bool() const { return m_pObj != nullptr; }
-//
-//	BV_INLINE u32 Reset()
-//	{
-//		return InternalRelease();
-//	}
-//
-//	BV_INLINE void Attach(T* pObj)
-//	{
-//		if (m_pObj != pObj)
-//		{
-//			BvObjectHandle other(pObj);
-//			std::swap(m_pObj, other.m_pObj);
-//		}
-//	}
-//
-//	BV_INLINE T* Detach()
-//	{
-//		auto pObj = m_pObj;
-//		m_pObj = nullptr;
-//		return pObj;
-//	}
-//
-//	void Swap(BvObjectHandle& rhs)
-//	{
-//		std::swap(m_pObj, rhs.m_pObj);
-//	}
-//
-//	void Swap(BvObjectHandle&& rhs)
-//	{
-//		std::swap(m_pObj, rhs.m_pObj);
-//	}
-//
-//private:
-//	u32 InternalAddRef()
-//	{
-//		if (m_pObj)
-//		{
-//			return m_pObj->AddRef();
-//		}
-//
-//		return 0;
-//	}
-//
-//	u32 InternalRelease()
-//	{
-//		u32 refCount = 0;
-//		T* pObj = m_pObj;
-//
-//		if (pObj)
-//		{
-//			m_pObj = nullptr;
-//			refCount = pObj->Release();
-//		}
-//
-//		return refCount;
-//	}
-//
-//private:
-//	T* m_pObj = nullptr;
-//};
 
-
+// Base class for refcounted objects that manage themselves
 class BvRCObj
 {
 public:
@@ -460,33 +54,95 @@ public:
 		}
 	}
 
+	template<BvMemoryArenaType A>
+	BV_INLINE void SetMemoryArena(A* pArena)
+	{
+		BV_ASSERT(m_pArena == nullptr, "Can't change memory arena");
+		m_pArena = pArena;
+	}
+
 protected:
 	BvRCObj() {}
-	virtual ~BvRCObj() {}
+	template<BvMemoryArenaType A> BvRCObj(A* pArena) : m_pArena(pArena) {}
+	virtual ~BvRCObj() = 0 {}
 
-	virtual void SelfDestroy() = 0;
+	virtual void SelfDestroy()
+	{
+		auto pObj = this;
+		auto pArena = m_pArena;
+
+		pObj->~BvRCObj();
+		pArena->Free(pObj);
+	}
 
 private:
+	IBvMemoryArena* m_pArena = nullptr;
 	std::atomic<i32> m_RefCount = 1;
 };
 
 
 template<typename T>
-concept BvRCType = std::is_base_of_v<BvRCObj, T> && Internal::IsValidObjectUUID<T>();
+concept BvRCType = std::is_base_of_v<BvRCObj, T>;
 
 
-template<BvRCType T>
+namespace Internal
+{
+	class BvRCObjController
+	{
+	public:
+		template<BvRCType T, BvMemoryArenaType A, typename... Args>
+		static T* Create(A& arena, const std::source_location& sourceInfo, Args&&... args)
+		{
+			T* pObj = BV_MNEW_SI(arena, sourceInfo, T)(std::forward<Args>(args)...);
+			pObj->SetMemoryArena(&arena);
+			return pObj;
+		}
+
+		template<BvRCType T, typename... Args>
+		static T* Create(const std::source_location& sourceInfo, Args&&... args)
+		{
+			auto& arena = *BV_DEFAULT_MEMORY_ARENA;
+			T* pObj = BV_MNEW_SI(arena, sourceInfo, T)(std::forward<Args>(args)...);
+			pObj->SetMemoryArena(&arena);
+			return pObj;
+		}
+
+		template<BvRCType T, BvMemoryArenaType A>
+		static void* Allocate(A& arena, const std::source_location& sourceInfo)
+		{
+			return BV_MALLOC_SI(arena, sourceInfo, sizeof(T), alignof(T));
+		}
+	};
+}
+
+
+// These macros can be used to create BvRCObj instances with the default allocator or a custom one. They are meant to be assistance methods
+// but are by no means mandatory or the only ways to create these types of objects. If needed, the BvRCObj::SelfDestroy() method can be
+// overridden and custom implementation logic can be added to it
+#define BV_RC_CREATE_IN_PLACE(arena, Type, ...) new(Internal::BvRCObjController::Allocate<Type>(arena, std::source_location::current())) Type(__VA_ARGS__);
+#define BV_RC_CREATE(Type, ...) Internal::BvRCObjController::Create<Type>(std::source_location::current() __VA_OPT__(, __VA_ARGS__))
+#define BV_RC_CREATE_CUSTOM(arena, Type, ...) Internal::BvRCObjController::Create<Type>(arena, std::source_location::current() __VA_OPT__(, __VA_ARGS__))
+
+
+// Templated class for automatic management of BvRCObj types
+template<typename T>
 class BvRCRef
 {
+	template<typename U>
+	friend class BvRCRef;
+
 public:
 	BvRCRef()
 		: m_pObj(nullptr)
 	{
 	}
-	BvRCRef(T* pObj)
+	BvRCRef(T* pObj, bool addRef = true)
 		: m_pObj(pObj)
 	{
-		InternalAddRef();
+		if (addRef)
+		{
+			InternalAddRef();
+		}
 	}
 	BvRCRef(std::nullptr_t)
 		: m_pObj(nullptr)
@@ -502,9 +158,24 @@ public:
 	{
 		rhs.m_pObj = nullptr;
 	}
+	BvRCRef& operator=(T* pObj)
+	{
+		if (m_pObj != pObj)
+		{
+			InternalRelease();
+			m_pObj = pObj;
+			InternalAddRef();
+		}
+		return *this;
+	}
+	BvRCRef& operator=(std::nullptr_t)
+	{
+		InternalRelease();
+		return *this;
+	}
 	BvRCRef& operator=(const BvRCRef& rhs)
 	{
-		if (this != &rhs)
+		if (m_pObj != rhs.m_pObj)
 		{
 			InternalRelease();
 			m_pObj = rhs.m_pObj;
@@ -514,33 +185,33 @@ public:
 	}
 	BvRCRef& operator=(BvRCRef&& rhs) noexcept
 	{
-		std::swap(m_pObj, rhs.m_pObj);
+		if (this != reinterpret_cast<BvRCRef*>(&reinterpret_cast<u8&>(rhs)))
+		{
+			InternalRelease();
+			m_pObj = rhs.m_pObj;
+			rhs.m_pObj = nullptr;
+		}
 		return *this;
 	}
 	~BvRCRef()
 	{
 		InternalRelease();
 	}
-
 	void Reset()
 	{
 		InternalRelease();
 	}
-
 	void Attach(T* pObj)
 	{
 		InternalRelease();
 		m_pObj = pObj;
 	}
-
 	T* Detach()
 	{
 		auto pObj = m_pObj;
 		m_pObj = nullptr;
-
 		return pObj;
 	}
-
 	T* operator->() const { return m_pObj; }
 	operator bool() const { return m_pObj != nullptr; }
 	operator T*() const { return m_pObj; }
@@ -566,47 +237,4 @@ private:
 
 private:
 	T* m_pObj;
-};
-
-
-using BvRCCreateFn = bool(*)(const BvUUID&, void**);
-
-
-namespace Internal
-{
-	template<typename T>
-	constexpr bool IsObjectValueTypeV = std::is_fundamental_v<T> || std::is_pointer_v<T>;
-
-	template<typename T>
-	constexpr bool IsObjectRefType = !IsObjectValueTypeV<T>;
-}
-
-
-struct BvObjectCreateFlags
-{
-	u32 m_Flag;
-	const void* m_pValue;
-};
-
-
-template<size_t MaxFlags>
-class BvObjectCreateFlagsBuilder
-{
-	template<typename T>
-	void Add(u32 flag, const T& value)
-	{
-		if constexpr (Internal::IsObjectValueTypeV<T>)
-		{
-			m_CreateFlags.PushBack({ flag, (const void*)value });
-		}
-		else
-		{
-			m_CreateFlags.PushBack({ flag, (const void*)&value});
-		}
-	}
-
-	BV_INLINE operator BvObjectCreateFlags*() const { return m_CreateFlags.Data(); }
-
-private:
-	BvObjectCreateFlags m_CreateFlags[MaxFlags]{};
 };

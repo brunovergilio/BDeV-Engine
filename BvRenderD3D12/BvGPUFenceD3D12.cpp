@@ -2,10 +2,9 @@
 #include "BvRenderDeviceD3D12.h"
 
 
-BvGPUFenceD3D12::BvGPUFenceD3D12(BvRenderDeviceD3D12* pDevice, u64 initialValue)
-	: m_pDevice(pDevice)
+BvGPUFenceD3D12::BvGPUFenceD3D12(BvRenderDeviceD3D12* pDevice, ComPtr<ID3D12Fence>& fence, HANDLE event)
+	: m_pDevice(pDevice), m_Fence(std::move(fence)), m_Event(event)
 {
-	Create(initialValue);
 }
 
 
@@ -23,11 +22,16 @@ void BvGPUFenceD3D12::Signal(u64 value)
 
 bool BvGPUFenceD3D12::Wait(u64 value, u64 timeout)
 {
+	if (m_Fence->GetCompletedValue() >= value)
+	{
+		return true;
+	}
+
 	u64 timeoutInMs = (timeout / 1000000);
-	DWORD waitValue = timeoutInMs > u64(INFINITE) ? INFINITE : DWORD(timeoutInMs);
+	DWORD waitTime = DWORD(std::min(timeoutInMs, u64(INFINITE)));
 
 	m_Fence->SetEventOnCompletion(value, m_Event);
-	auto result = WaitForSingleObject(m_Event, waitValue);
+	auto result = WaitForSingleObject(m_Event, waitTime);
 
 	return result == WAIT_OBJECT_0;
 }
@@ -42,18 +46,6 @@ bool BvGPUFenceD3D12::IsDone(u64 value)
 u64 BvGPUFenceD3D12::GetCompletedValue()
 {
 	return m_Fence->GetCompletedValue();
-}
-
-
-void BvGPUFenceD3D12::Create(u64 initialValue)
-{
-	auto hr = m_pDevice->GetHandle()->CreateFence(initialValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence));
-	if (FAILED(hr))
-	{
-		// TODO: Handle error
-	}
-
-	m_Event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 }
 
 

@@ -4,7 +4,6 @@
 #include "BvRenderCommon.h"
 
 
-BV_OBJECT_DEFINE_ID(IBvShaderBindingTable, "9f90a079-c378-4b59-9522-958685fdea9c");
 class IBvShaderBindingTable : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvShaderBindingTable);
@@ -18,4 +17,4 @@ protected:
 	IBvShaderBindingTable() {}
 	~IBvShaderBindingTable() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvShaderBindingTable);
+BV_OBJECT_DEFINE_ID(IBvShaderBindingTable, "9f90a079-c378-4b59-9522-958685fdea9c");

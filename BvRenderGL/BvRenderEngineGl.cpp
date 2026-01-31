@@ -45,7 +45,7 @@ const GPUList& BvRenderEngineGl::GetGPUs() const
 }
 
 
-bool BvRenderEngineGl::CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderEngineGl::CreateRenderDeviceImpl(const RenderDeviceDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj)
 {
 	if (!ppObj || !(BV_GL_IS_TYPE_VALID(objId, BvRenderDevice)))
 	{

@@ -16,7 +16,7 @@ BV_OBJECT_DEFINE_ID(BvRenderDeviceGl, "b632960a-c02f-4464-a336-b4d37b2c21f7");
 class BvRenderDeviceGl final : public IBvRenderDevice, public IBvResourceGl
 {
 public:
-	BvRenderDeviceGl(BvRenderEngineGl* pEngine, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDesc& deviceDesc);
+	BvRenderDeviceGl(BvRenderEngineGl* pEngine, const BvGPUInfo& gpuInfo, const RenderDeviceDesc& deviceDesc);
 
 private:
 	~BvRenderDeviceGl();
@@ -28,8 +28,8 @@ private:
 	bool CreateTextureViewImpl(const TextureViewDesc& desc, const BvUUID& objId, void** ppObj) override;
 	bool CreateSamplerImpl(const SamplerDesc& desc, const BvUUID& objId, void** ppObj) override;
 	bool CreateRenderPassImpl(const RenderPassDesc& renderPassDesc, const BvUUID& objId, void** ppObj) override;
-	bool CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc, const BvUUID& objId, void** ppObj) override;
-	bool CreateShaderImpl(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateShaderResourceLayoutImpl(const ShaderResourceLayoutCreateDesc& srlDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateShaderImpl(const ShaderSourceDesc& shaderDesc, const BvUUID& objId, void** ppObj) override;
 	bool CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, const BvUUID& objId, void** ppObj) override;
 	bool CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, const BvUUID& objId, void** ppObj) override;
 	bool CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, const BvUUID& objId, void** ppObj) override;
@@ -77,7 +77,7 @@ public:
 	}
 
 private:
-	void Create(const BvRenderDeviceCreateDesc& deviceDesc);
+	void Create(const RenderDeviceDesc& deviceDesc);
 	void Destroy();
 	void SelfDestroy() override;
 

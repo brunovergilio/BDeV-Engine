@@ -251,7 +251,7 @@ void RayTracing2::CreateShaderResourceLayout()
 		setDesc.m_ConstantCount = 1;
 		setDesc.m_pConstants = &constDesc;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 
@@ -269,7 +269,7 @@ void RayTracing2::CreateShaderResourceLayout()
 		setDesc.m_ResourceCount = 2;
 		setDesc.m_pResources = resourceDescs;
 
-		ShaderResourceLayoutDesc layoutDesc{};
+		ShaderResourceLayoutCreateDesc layoutDesc{};
 		layoutDesc.m_ShaderResourceSetCount = 1;
 		layoutDesc.m_pShaderResourceSets = &setDesc;
 
@@ -360,14 +360,14 @@ void RayTracing2::CreateResources()
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	bufferInitData.m_pData = vertices;
 	bufferInitData.m_Size = bufferDesc.m_Size;
-	m_VBTri = m_Device->CreateBuffer(bufferDesc, &bufferInitData);
+	m_VBTri = m_Device->CreateBuffer(bufferDesc, bufferInitData);
 
 	u32 indices[3] = { 0, 1, 2 };
 	bufferDesc.m_Size = sizeof(indices);
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	bufferInitData.m_pData = indices;
 	bufferInitData.m_Size = bufferDesc.m_Size;
-	m_IBTri = m_Device->CreateBuffer(bufferDesc, &bufferInitData);
+	m_IBTri = m_Device->CreateBuffer(bufferDesc, bufferInitData);
 
 	bufferDesc.m_Size = sizeof(RayData);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;

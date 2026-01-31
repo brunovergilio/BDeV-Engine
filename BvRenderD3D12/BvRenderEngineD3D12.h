@@ -30,20 +30,22 @@ struct BvDeviceInfoD3D12
 
 class BvRenderEngineD3D12 final : public IBvRenderEngine
 {
-public:
-	bool CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj) override;
+private:
+	bool CreateRenderDeviceImpl(const RenderDeviceDesc& renderDeviceDesc, void** ppObj) override;
 	void OnDeviceDestroyed(u32 index);
+
+public:
 	BV_INLINE const GPUList& GetGPUs() const override { return m_GPUs; }
+	BV_INLINE bool IsDebugEnabled() const { return m_DebugController != nullptr; }
 
 private:
 	friend class BvRenderEngineD3D12Helper;
 
-	BvRenderEngineD3D12();
+	BvRenderEngineD3D12(const RenderEngineDesc& renderEngineDesc);
 	~BvRenderEngineD3D12();
 
 	void Create();
 	void Destroy();
-	void SelfDestroy() override;
 
 private:
 	struct DeviceData
@@ -56,6 +58,7 @@ private:
 	ComPtr<IDXGIFactory1> m_Factory = nullptr;
 	BvFixedVector<DeviceData*, kMaxDevices> m_Devices;
 	GPUList m_GPUs;
+	ComPtr<ID3D12Debug> m_DebugController;
 };
 
 
@@ -63,7 +66,6 @@ namespace BvRenderD3D12
 {
 	extern "C"
 	{
-		BV_API IBvRenderEngine* CreateRenderEngine();
-		BV_API BvRenderEngineD3D12* CreateRenderEngineD3D12();
+		BV_API bool CreateRenderEngine(const RenderEngineDesc& renderEngineDesc, void** ppObj);
 	}
 }

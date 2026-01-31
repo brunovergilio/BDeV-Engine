@@ -6,35 +6,29 @@
 #include "BvCommonVk.h"
 
 
-class BvDebugReportVk;
+class BvDebugUtilsVk;
 class BvRenderDeviceVk;
 
 
-BV_OBJECT_DEFINE_ID(BvRenderEngineVk, "eb31d72c-fe50-4284-ab0c-a5dbccf3c72d");
 class BvRenderEngineVk final : public IBvRenderEngine
 {
 	BV_NOCOPYMOVE(BvRenderEngineVk);
+	friend class BvRenderEngineVkHelper;
 
 private:
-	bool CreateRenderDeviceImpl(const BvRenderDeviceCreateDesc& deviceCreateDesc, const BvUUID& objId, void** ppObj) override;
+	bool CreateRenderDeviceImpl(const RenderDeviceDesc& renderDeviceDesc, void** ppObj) override;
 
 public:
 	BV_INLINE const GPUList& GetGPUs() const override { return m_GPUs; }
-
-	void OnDeviceDestroyed(u32 index);
 	BV_INLINE VkInstance GetHandle() const { return m_Instance; }
 
-	//BV_OBJECT_IMPL_INTERFACE(IBvRenderEngineVk, IBvRenderEngine);
-
 private:
-	friend class BvRenderEngineVkHelper;
-
-	BvRenderEngineVk();
+	BvRenderEngineVk(const RenderEngineDesc& renderEngineDesc);
 	~BvRenderEngineVk();
 
-	void Create();
+	void Create(const RenderEngineDesc& renderEngineDesc);
 	void Destroy();
-	void SelfDestroy() override;
+	void OnDeviceDestroyed(u32 index);
 
 private:
 	struct DeviceData
@@ -49,15 +43,15 @@ private:
 	VkInstance m_Instance = VK_NULL_HANDLE;
 	BvFixedVector<DeviceData*, kMaxDevices> m_Devices;
 	GPUList m_GPUs;
-	BvDebugReportVk* m_pDebugReport = nullptr;
+	BvDebugUtilsVk* m_pDebugUtils = nullptr;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvRenderEngineVk);
+BV_OBJECT_DEFINE_ID(BvRenderEngineVk, "eb31d72c-fe50-4284-ab0c-a5dbccf3c72d");
 
 
 namespace BvRenderVk
 {
 	extern "C"
 	{
-		BV_API bool CreateRenderEngine(const BvUUID& objId, void** ppObj);
+		BV_API bool CreateRenderEngine(const RenderEngineDesc& renderEngineDesc, void** ppObj);
 	}
 }

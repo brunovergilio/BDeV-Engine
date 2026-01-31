@@ -294,7 +294,7 @@ namespace Internal
 #define BV_LOG_INFO(channel, message, ...) BV_LOG(channel, 1, 0, message __VA_OPT__(, ) __VA_ARGS__)
 #define BV_LOG_WARNING(channel, message, ...) BV_LOG(channel, 2, 0, message __VA_OPT__(, ) __VA_ARGS__)
 #define BV_LOG_ERROR(channel, message, ...) BV_LOG(channel, 3, 0, message __VA_OPT__(, ) __VA_ARGS__)
-#define BV_LOG_FATAL(channel, message, ...) do						\
+#define BV_LOG_FATAL(channel, message, ...) do					\
 {																\
 	BV_LOG(channel, 4, 0, message __VA_OPT__(, ) __VA_ARGS__);	\
 	Internal::ReportFatalError(message);						\

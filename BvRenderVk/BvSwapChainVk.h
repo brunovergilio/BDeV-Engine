@@ -14,13 +14,11 @@ class BvCommandContextVk;
 class BvGPUFenceVk;
 
 
-BV_OBJECT_DEFINE_ID(BvSwapChainVk, "68fe17c5-c20d-4c33-83dc-22ac819ab867");
 class BvSwapChainVk final : public IBvSwapChain, public IBvResourceVk
 {
-	BV_VK_DEVICE_RES_DECL;
-
 public:
-	BvSwapChainVk(BvRenderDeviceVk* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContextVk* pContext);
+	BvSwapChainVk(BvRenderDeviceVk* pDevice, VkSwapchainKHR swapChain, VkSurfaceKHR surface, const BvVector<VkImage>& images,
+		const VkExtent2D& extents, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContextVk* pContext);
 	~BvSwapChainVk();
 
 	void AcquireImage();
@@ -38,16 +36,15 @@ public:
 	BV_INLINE bool IsValid() const { return m_Swapchain != VK_NULL_HANDLE; }
 	BV_INLINE bool IsReady() const { return m_IsReady; }
 
-	//BV_OBJECT_IMPL_INTERFACE(IBvSwapChainVk, IBvSwapChain, IBvRenderDeviceObject);
 
 private:
-	bool Create();
+	bool RecreateSwapChain();
 	void Destroy();
 
-	void CreateSurface();
-	void DestroySurface();
 	void Resize();
 	void SetTrueFullscreen(bool value);
+	void CreateTextureResources(const BvVector<VkImage>& images, const VkExtent2D& extents);
+	void DestroyTextureResources();
 	void CreateSynchronizationResources();
 	void DestroySynchronizationResources();
 
@@ -78,9 +75,8 @@ private:
 
 	// Make sure only one image has been acquired per presentation / frame
 	bool m_IsReady = false;
+
 	bool m_FullscreenAcquired = false;
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(BvSwapChainVk);
-
-
+BV_OBJECT_DEFINE_ID(BvSwapChainVk, "68fe17c5-c20d-4c33-83dc-22ac819ab867");
 BV_CREATE_CAST_TO_VK(BvSwapChain)

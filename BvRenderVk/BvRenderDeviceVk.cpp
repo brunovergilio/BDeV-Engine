@@ -1,5 +1,4 @@
 #include "BvRenderDeviceVk.h"
-#include "BvRenderEngineVk.h"
 #include "BvUtilsVk.h"
 #include "BvCommandQueueVk.h"
 #include "BvSwapChainVk.h"
@@ -18,17 +17,19 @@
 #include "BvFramebufferVk.h"
 #include "BvTypeConversionsVk.h"
 #include "BvCommandContextVk.h"
-#include "BvQueryVk.h"
 #include "BvGPUFenceVk.h"
 #include "BvAccelerationStructureVk.h"
 #include "BvShaderBindingTableVk.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
-BvRenderDeviceVk::BvRenderDeviceVk(BvRenderEngineVk* pEngine, VkPhysicalDevice physicalDevice, BvDeviceInfoVk* pDeviceInfo, u32 index, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDescVk& deviceDesc)
-	: m_pEngine(pEngine), m_PhysicalDevice(physicalDevice), m_pDeviceInfo(pDeviceInfo), m_GPUInfo(gpuInfo), m_Index(index)
+extern void OnVkDeviceDestroyed(u32 index);
+
+
+BvRenderDeviceVk::BvRenderDeviceVk(VkInstance instance, VkPhysicalDevice physicalDevice, BvDeviceInfoVk* pDeviceInfo, u32 index,const BvGPUInfo& gpuInfo, const RenderDeviceDesc& renderDeviceDesc)
+	: m_Instance(instance), m_PhysicalDevice(physicalDevice), m_pDeviceInfo(pDeviceInfo), m_GPUInfo(gpuInfo), m_Index(index)
 {
-	Create(deviceDesc);
+	Create(renderDeviceDesc);
 }
 
 
@@ -38,252 +39,283 @@ BvRenderDeviceVk::~BvRenderDeviceVk()
 }
 
 
-bool BvRenderDeviceVk::CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateSwapChainImpl(BvWindow* pWindow, const SwapChainDesc& desc, IBvCommandContext* pContext, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvSwapChain)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	SwapChainDesc scd(desc);
+	auto result = VkHelpers::CreateSwapChain(this, m_Instance, TO_VK(pContext)->GetGroupIndex(), nullptr, VK_NULL_HANDLE, scd, pWindow);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvSwapChainVk>(this, pWindow, desc, TO_VK(pContext));
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	auto& obj = result.second;
+	*ppObj = BV_RC_CREATE(BvSwapChainVk, this, obj.m_SwapChain, obj.m_Surface, obj.m_Images, obj.m_Extents, pWindow, scd, TO_VK(pContext));
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateBufferImpl(const BufferDesc& desc, const BufferInitData* pInitData, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvBuffer)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateBuffer(this, desc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvBufferVk>(this, desc, pInitData);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	auto& obj = result.second;
+	if (pInitData)
+	{
+		VkHelpers::UploadMemoryToGPU(this, obj.m_Buffer, *pInitData);
+	}
+
+	*ppObj = BV_RC_CREATE(BvBufferVk, this, desc, obj.m_Buffer, obj.m_DeviceAddress, obj.m_Memory, obj.m_pMappedMemory, obj.m_NeedsFlush);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateBufferViewImpl(const BufferViewDesc& desc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateBufferViewImpl(const BufferViewDesc& desc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvBufferView)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateBufferView(this, desc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvBufferViewVk>(this, desc);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvBufferViewVk, this, desc, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateTextureImpl(const TextureDesc& desc, const TextureInitData* pInitData, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvTexture)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	u32 mutableFormatCount = 0;
+	const Format* pMutableFormats = nullptr;
+	if (pInitData)
+	{
+		mutableFormatCount = pInitData->m_MutableFormatCount;
+		pMutableFormats = pInitData->m_pMutableFormats;
+	}
+
+	auto result = VkHelpers::CreateTexture(this, desc, mutableFormatCount, pMutableFormats);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvTextureVk>(this, desc, pInitData);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	auto& obj = result.second;
+	if (pInitData)
+	{
+		VkHelpers::UploadMemoryToGPU(this, obj.m_Texture, desc, *pInitData);
+	}
+
+	*ppObj = BV_RC_CREATE(BvTextureVk, this, desc, obj.m_Texture, obj.m_Memory);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateTextureViewImpl(const TextureViewDesc& desc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateTextureViewImpl(const TextureViewDesc& desc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvTextureView)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateTextureView(this, desc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvTextureViewVk>(this, desc);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvTextureViewVk, this, desc, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateSamplerImpl(const SamplerDesc& desc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateSamplerImpl(const SamplerDesc& desc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvSampler)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateSampler(this, desc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvSamplerVk>(this, desc);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvSamplerVk, this, desc, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvRenderPass)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateRenderPass(this, renderPassDesc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvRenderPassVk>(this, renderPassDesc);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvRenderPassVk, this, renderPassDesc, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutCreateDesc& srlDesc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvShaderResourceLayout)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateShaderResourceLayout(this, srlDesc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvShaderResourceLayoutVk>(this, srlDesc);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	auto& obj = result.second;
+	*ppObj = BV_RC_CREATE(BvShaderResourceLayoutVk, this, srlDesc, obj.m_DescriptorSetLayouts, obj.m_PipelineLayout);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateShaderImpl(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateShaderImpl(const ShaderDesc& shaderDesc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvShader)))
-	{
-		return false;
-	}
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
 
-	auto pObj = CreateResource<BvShaderVk>(this, shaderDesc);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvShaderVk, this, shaderDesc);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvGraphicsPipelineState)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto cache = pPipelineCache ? TO_VK(pPipelineCache)->GetHandle() : VK_NULL_HANDLE;
+	auto result = VkHelpers::CreateGraphicsPipeline(this, graphicsPipelineStateDesc, cache);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvGraphicsPipelineStateVk>(this, graphicsPipelineStateDesc, VK_NULL_HANDLE);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvGraphicsPipelineStateVk, this, graphicsPipelineStateDesc, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvComputePipelineState)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto cache = pPipelineCache ? TO_VK(pPipelineCache)->GetHandle() : VK_NULL_HANDLE;
+	auto result = VkHelpers::CreateComputePipeline(this, computePipelineStateDesc, cache);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvComputePipelineStateVk>(this, computePipelineStateDesc, VK_NULL_HANDLE);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvComputePipelineStateVk, this, computePipelineStateDesc, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvRayTracingPipelineState)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto cache = pPipelineCache ? TO_VK(pPipelineCache)->GetHandle() : VK_NULL_HANDLE;
+	auto result = VkHelpers::CreateRayTracingPipeline(this, rayTracingPipelineStateDesc, cache);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvRayTracingPipelineStateVk>(this, rayTracingPipelineStateDesc, VK_NULL_HANDLE);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvRayTracingPipelineStateVk, this, rayTracingPipelineStateDesc, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateQueryImpl(QueryType queryType, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateQueryImpl(QueryType queryType, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvQuery)))
-	{
-		return false;
-	}
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
 
-	auto pObj = CreateResource<BvQueryVk>(this, queryType, 3);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvQueryVk, this, queryType, 3);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateFenceImpl(u64 value, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateFenceImpl(const GPUFenceDesc& fenceDesc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvGPUFence)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateSemaphore(this, fenceDesc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvGPUFenceVk>(this, value);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	*ppObj = BV_RC_CREATE(BvGPUFenceVk, this, result.second);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvAccelerationStructure)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateAccelerationStructure(this, asDesc);
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvAccelerationStructureVk>(this, asDesc);
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	auto& obj = result.second;
+	*ppObj = BV_RC_CREATE(BvAccelerationStructureVk, this, asDesc, obj.m_AS, obj.m_DeviceAddress, obj.m_Geometries, obj.m_PrimitiveCounts,
+		obj.m_BufferObj.m_Buffer, obj.m_BufferObj.m_Memory, obj.m_BufferObj.m_DeviceAddress, obj.m_ScratchSizes);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvShaderBindingTable)))
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreateShaderBindingTable(this, sbtDesc, TO_VK(pContext));
+	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
-	auto pObj = CreateResource<BvShaderBindingTableVk>(this, sbtDesc, m_pDeviceInfo->m_ExtendedProperties.rayTracingPipelineProps, TO_VK(pContext));
-	m_DeviceObjects.Emplace(pObj);
-	*ppObj = pObj;
+	auto& obj = result.second;
+	*ppObj = BV_RC_CREATE(BvShaderBindingTableVk, this, sbtDesc, obj.m_BufferObj.m_Buffer, obj.m_BufferObj.m_DeviceAddress,
+		obj.m_BufferObj.m_Memory, obj.m_Regions);
 
 	return true;
 }
 
 
-bool BvRenderDeviceVk::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceVk::CreateCommandContextImpl(const CommandContextDesc& commandContextDesc, void** ppObj)
 {
-	if (!ppObj || !(BV_VK_IS_TYPE_VALID(objId, BvCommandContext)))
-	{
-		return false;
-	}
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
 
 	BvCommandContextVk* pContext = nullptr;
 	u32 contextGroupIndex = kU32Max;
@@ -323,11 +355,27 @@ bool BvRenderDeviceVk::CreateCommandContextImpl(const CommandContextDesc& comman
 	if (contextGroupIndex < m_Contexts.Size())
 	{
 		auto& commandContextGroup = m_Contexts[contextGroupIndex];
-		pContext = CreateResource<BvCommandContextVk>(this, 3, contextGroupIndex, commandContextGroup.Size());
+		pContext = BV_RC_CREATE(BvCommandContextVk, this, 3, contextGroupIndex, commandContextGroup.Size());
 		commandContextGroup.EmplaceBack(pContext);
 	}
 
 	*ppObj = pContext;
+
+	return true;
+}
+
+
+bool BvRenderDeviceVk::CreatePipelineCacheImpl(const PipelineCacheInitData* pInitData, void** ppObj)
+{
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = VkHelpers::CreatePipelineCache(this, pInitData);
+	if (result.first != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	*ppObj = BV_RC_CREATE(BvPipelineCacheVk, this, result.second);
 
 	return true;
 }
@@ -339,10 +387,12 @@ void BvRenderDeviceVk::WaitIdle() const
 }
 
 
-void BvRenderDeviceVk::GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize) const
+void BvRenderDeviceVk::GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalSize,
+	u64 baseOffset, u64 firstSubresource) const
 {
-	u64 totalSize = GetBufferSizeForTexture(textureDesc, m_pDeviceInfo->m_DeviceProperties.properties.limits.optimalBufferCopyOffsetAlignment,
-		subresourceCount, pSubresources);
+	auto& limits = m_pDeviceInfo->m_DeviceProperties.properties.limits;
+	auto totalSize = BvRenderUtils::GetCopyableFootprints(textureDesc, limits.optimalBufferCopyOffsetAlignment, limits.optimalBufferCopyRowPitchAlignment,
+		subresourceCount, pSubresources, baseOffset, firstSubresource);
 
 	if (pTotalSize)
 	{
@@ -488,9 +538,9 @@ FormatFeatures BvRenderDeviceVk::GetFormatFeatures(Format format) const
 }
 
 
-void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc)
+void BvRenderDeviceVk::Create(const RenderDeviceDesc& renderDeviceDesc)
 {
-	BV_ASSERT(deviceCreateDesc.m_ContextGroups.Size() > 0, "No device queues");
+	BV_ASSERT(renderDeviceDesc.m_ContextGroups.Size() > 0, "No device queues");
 
 	constexpr u32 kMaxQueueCount = 16;
 
@@ -508,18 +558,18 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 
 	// ===========================================================
 	// Prepare Device Queues and create the logical device
-	BvFixedVector<VkDeviceQueueCreateInfo, kMaxContextGroupCount> queueInfos(deviceCreateDesc.m_ContextGroups.Size(), { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO });
+	BvFixedVector<VkDeviceQueueCreateInfo, kMaxContextGroupCount> queueInfos(renderDeviceDesc.m_ContextGroups.Size(), { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO });
 	for (auto i = 0; i < queueInfos.Size(); ++i)
 	{
 		auto& queueCreateInfo = queueInfos[i];
 		queueCreateInfo.pQueuePriorities = queuePriorities;
 
-		auto familyIndex = deviceCreateDesc.m_ContextGroups[i].m_GroupIndex;
+		auto familyIndex = renderDeviceDesc.m_ContextGroups[i].m_GroupIndex;
 		auto& familyProps = m_pDeviceInfo->m_QueueFamilyProperties[familyIndex].queueFamilyProperties;
-		BV_ASSERT_ONCE(deviceCreateDesc.m_ContextGroups[i].m_ContextCount <= familyProps.queueCount,
+		BV_ASSERT_ONCE(renderDeviceDesc.m_ContextGroups[i].m_ContextCount <= familyProps.queueCount,
 			"Using more context than what is available - truncating to maximum allowed");
 		queueCreateInfo.queueFamilyIndex = familyIndex;
-		queueCreateInfo.queueCount = std::min(deviceCreateDesc.m_ContextGroups[i].m_ContextCount, familyProps.queueCount);
+		queueCreateInfo.queueCount = std::min(renderDeviceDesc.m_ContextGroups[i].m_ContextCount, familyProps.queueCount);
 
 		m_Contexts[familyIndex].Reserve(queueCreateInfo.queueCount);
 	}
@@ -540,6 +590,23 @@ void BvRenderDeviceVk::Create(const BvRenderDeviceCreateDescVk& deviceCreateDesc
 	SetupSupportedDisplayFormats();
 
 	CreateVMA();
+
+	if (renderDeviceDesc.m_ExtendedBackendOptions == RenderDeviceDesc::kVulkan)
+	{
+		m_MaxSetsPerDescriptorPool = renderDeviceDesc.m_Vulkan.m_MaxSetsPerDescriptorPool;
+		memcpy(m_QueryPoolSizes, renderDeviceDesc.m_Vulkan.m_QueryPoolSizes, sizeof(m_QueryPoolSizes));
+		m_AccelerationStructureQueryPoolSize = renderDeviceDesc.m_Vulkan.m_AccelerationStructureQueryPoolSize;
+	}
+	else
+	{
+		constexpr u32 kDefaultMaxSetsPerDescriptorPool = 16;
+		constexpr u32 kDefaultQueryPoolSizes[kQueryTypeCount] = { 8, 4, 4, 2, 2 };
+		constexpr u32 kAccelerationStructureQueryPoolSize = 2;
+
+		m_MaxSetsPerDescriptorPool = kDefaultMaxSetsPerDescriptorPool;
+		memcpy(m_QueryPoolSizes, kDefaultQueryPoolSizes, sizeof(m_QueryPoolSizes));
+		m_AccelerationStructureQueryPoolSize = kAccelerationStructureQueryPoolSize;
+	}
 }
 
 
@@ -549,32 +616,20 @@ void BvRenderDeviceVk::Destroy()
 	{
 		vkDeviceWaitIdle(m_Device);
 
-		for (auto& pObj : m_DeviceObjects)
-		{
-			pObj->Destroy();
-		}
-		m_DeviceObjects.Clear();
-
 		DestroyVMA();
 		
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
 		
-		m_pEngine->OnDeviceDestroyed(m_Index);
+		OnVkDeviceDestroyed(m_Index);
 	}
-}
-
-
-void BvRenderDeviceVk::SelfDestroy()
-{
-	BV_DELETE_IN_PLACE(this);
 }
 
 
 void BvRenderDeviceVk::CreateVMA()
 {
 	VmaAllocatorCreateInfo vmaACI{};
-	vmaACI.instance = m_pEngine->GetHandle();
+	vmaACI.instance = m_Instance;
 	vmaACI.device = m_Device;
 	vmaACI.physicalDevice = m_PhysicalDevice;
 	vmaACI.vulkanApiVersion = VK_API_VERSION_1_3;
@@ -583,7 +638,7 @@ void BvRenderDeviceVk::CreateVMA()
 	{
 		vmaACI.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 	}
-	if (m_pDeviceInfo->m_EnabledExtensions.Contains(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
+	if (m_pDeviceInfo->m_FeatureFlags.memoryBudget)
 	{
 		vmaACI.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
 	}

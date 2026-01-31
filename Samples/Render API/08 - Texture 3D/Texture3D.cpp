@@ -184,7 +184,7 @@ void Texture3D::CreateShaderResourceLayout()
 	setDesc.m_ConstantCount = 1;
 	setDesc.m_pConstants = constantDesc;
 
-	ShaderResourceLayoutDesc layoutDesc{};
+	ShaderResourceLayoutCreateDesc layoutDesc{};
 	layoutDesc.m_ShaderResourceSetCount = 1;
 	layoutDesc.m_pShaderResourceSets = &setDesc;
 
@@ -296,7 +296,7 @@ void Texture3D::CreateTextures()
 	texDesc.m_ResourceState = ResourceState::kPixelShaderResource;
 	texDesc.m_UsageFlags = TextureUsage::kShaderResource;
 	texDesc.m_CreateFlags = TextureCreateFlags::kGenerateMips;
-	SubresourceData data{ textureData.Data(), kDim.width * kByteSize, kDim.width * kByteSize * kDim.height };
+	SubresourceData data{ textureData.Data(), kDim.m_Width * kByteSize, kDim.m_Width * kByteSize * kDim.m_Height };
 	TextureInitData initData{ m_Context, 1, &data };
 
 	m_Texture = m_Device->CreateTexture(texDesc, &initData);

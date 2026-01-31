@@ -376,10 +376,6 @@ public:
 	bool IsValid() const;
 	bool HasDX10Header() const;
 
-	u32 GetSubresourceCount() const;
-	void GetSubresourceData(SubresourceData& subresource, u32 mipLevel = 0, u32 arraySlice = 0, u32 planeSlice = 0) const;
-	u32 GetAllSubresourceData(SubresourceData* pSubresources, u32 subresourceCount) const;
-
 private:
 	void ProcessHeaders();
 	bool ValidateData();

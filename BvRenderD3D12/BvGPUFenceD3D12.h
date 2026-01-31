@@ -9,10 +9,8 @@ class BvRenderDeviceD3D12;
 
 class BvGPUFenceD3D12 final : public IBvGPUFence, public IBvResourceD3D12
 {
-	BV_NOCOPYMOVE(BvGPUFenceD3D12);
-
 public:
-	BvGPUFenceD3D12(BvRenderDeviceD3D12* pDevice, u64 initialValue = 0);
+	BvGPUFenceD3D12(BvRenderDeviceD3D12* pDevice, ComPtr<ID3D12Fence>& fence, HANDLE event);
 	~BvGPUFenceD3D12();
 
 	void Signal(u64 value) override;
@@ -24,7 +22,6 @@ public:
 	BV_INLINE bool IsValid() const { return m_Fence; }
 
 private:
-	void Create(u64 initialValue);
 	void Destroy();
 
 private:
@@ -32,6 +29,4 @@ private:
 	ComPtr<ID3D12Fence> m_Fence;
 	HANDLE m_Event = nullptr;
 };
-
-
 BV_CREATE_CAST_TO_D3D12(BvGPUFence)

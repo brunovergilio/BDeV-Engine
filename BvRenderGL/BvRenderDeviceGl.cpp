@@ -21,7 +21,7 @@
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
-BvRenderDeviceGl::BvRenderDeviceGl(BvRenderEngineGl* pEngine, const BvGPUInfo& gpuInfo, const BvRenderDeviceCreateDesc& deviceDesc)
+BvRenderDeviceGl::BvRenderDeviceGl(BvRenderEngineGl* pEngine, const BvGPUInfo& gpuInfo, const RenderDeviceDesc& deviceDesc)
 	: m_pEngine(pEngine), m_GPUInfo(gpuInfo), m_MasterContext(nullptr)
 {
 	Create(deviceDesc);
@@ -132,7 +132,7 @@ bool BvRenderDeviceGl::CreateRenderPassImpl(const RenderPassDesc& renderPassDesc
 }
 
 
-bool BvRenderDeviceGl::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutDesc& srlDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceGl::CreateShaderResourceLayoutImpl(const ShaderResourceLayoutCreateDesc& srlDesc, const BvUUID& objId, void** ppObj)
 {
 	if (!ppObj || !(BV_GL_IS_TYPE_VALID(objId, BvShaderResourceLayout)))
 	{
@@ -146,7 +146,7 @@ bool BvRenderDeviceGl::CreateShaderResourceLayoutImpl(const ShaderResourceLayout
 }
 
 
-bool BvRenderDeviceGl::CreateShaderImpl(const ShaderCreateDesc& shaderDesc, const BvUUID& objId, void** ppObj)
+bool BvRenderDeviceGl::CreateShaderImpl(const ShaderSourceDesc& shaderDesc, const BvUUID& objId, void** ppObj)
 {
 	if (!ppObj || !(BV_GL_IS_TYPE_VALID(objId, BvShader)))
 	{
@@ -287,7 +287,7 @@ FormatFeatures BvRenderDeviceGl::GetFormatFeatures(Format format) const
 }
 
 
-void BvRenderDeviceGl::Create(const BvRenderDeviceCreateDesc& deviceCreateDesc)
+void BvRenderDeviceGl::Create(const RenderDeviceDesc& deviceCreateDesc)
 {
 	BV_ASSERT(deviceCreateDesc.m_ContextGroups.Size() == 1 && deviceCreateDesc.m_ContextGroups[0].m_GroupIndex == 0,
 		"OpenGL implementation has only 1 context group");

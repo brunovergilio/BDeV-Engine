@@ -4,7 +4,6 @@
 #include "BvRenderCommon.h"
 
 
-BV_OBJECT_DEFINE_ID(IBvBuffer, "6184cda7-615d-4b60-a31c-92f679f62d03");
 class IBvBuffer : public BvRCObj
 {
 	BV_NOCOPYMOVE(IBvBuffer);
@@ -25,4 +24,4 @@ protected:
 	IBvBuffer() {}
 	~IBvBuffer() {}
 };
-BV_OBJECT_ENABLE_ID_OPERATOR(IBvBuffer);
+BV_OBJECT_DEFINE_ID(IBvBuffer, "6184cda7-615d-4b60-a31c-92f679f62d03");
