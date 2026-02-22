@@ -92,6 +92,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BvAccelerationStructureD3D12.h" />
     <ClInclude Include="BvBufferD3D12.h" />
     <ClInclude Include="BvBufferViewD3D12.h" />
     <ClInclude Include="BvCommandAllocatorD3D12.h" />
@@ -102,11 +103,12 @@
     <ClInclude Include="BvDescriptorHeapD3D12.h" />
     <ClInclude Include="BvGPUFenceD3D12.h" />
     <ClInclude Include="BvPipelineStateD3D12.h" />
-    <ClInclude Include="BvQueryD3D12.h" />
+    <ClInclude Include="BvQueryHeapD3D12.h" />
     <ClInclude Include="BvRenderDeviceD3D12.h" />
     <ClInclude Include="BvRenderEngineD3D12.h" />
     <ClInclude Include="BvRenderPassD3D12.h" />
     <ClInclude Include="BvSamplerD3D12.h" />
+    <ClInclude Include="BvShaderBindingTableD3D12.h" />
     <ClInclude Include="BvShaderD3D12.h" />
     <ClInclude Include="BvShaderResourceD3D12.h" />
     <ClInclude Include="BvSwapChainD3D12.h" />
@@ -117,6 +119,7 @@
     <ClInclude Include="Third Party\D3D12MemAlloc.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BvAccelerationStructureD3D12.cpp" />
     <ClCompile Include="BvBufferD3D12.cpp" />
     <ClCompile Include="BvBufferViewD3D12.cpp" />
     <ClCompile Include="BvCommandAllocatorD3D12.cpp" />
@@ -127,11 +130,12 @@
     <ClCompile Include="BvDescriptorHeapD3D12.cpp" />
     <ClCompile Include="BvGPUFenceD3D12.cpp" />
     <ClCompile Include="BvPipelineStateD3D12.cpp" />
-    <ClCompile Include="BvQueryD3D12.cpp" />
+    <ClCompile Include="BvQueryHeapD3D12.cpp" />
     <ClCompile Include="BvRenderDeviceD3D12.cpp" />
     <ClCompile Include="BvRenderEngineD3D12.cpp" />
     <ClCompile Include="BvRenderPassD3D12.cpp" />
     <ClCompile Include="BvSamplerD3D12.cpp" />
+    <ClCompile Include="BvShaderBindingTableD3D12.cpp" />
     <ClCompile Include="BvShaderD3D12.cpp" />
     <ClCompile Include="BvShaderResourceD3D12.cpp" />
     <ClCompile Include="BvSwapChainD3D12.cpp" />

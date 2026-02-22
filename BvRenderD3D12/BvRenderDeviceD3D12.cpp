@@ -13,6 +13,8 @@
 #include "BvShaderD3D12.h"
 #include "BvPipelineStateD3D12.h"
 #include "BvGPUFenceD3D12.h"
+#include "BvAccelerationStructureD3D12.h"
+#include "BvShaderBindingTableD3D12.h"
 #include "BvUtilsD3D12.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
@@ -59,6 +61,12 @@ bool BvRenderDeviceD3D12::CreateBufferImpl(const BufferDesc& desc, const BufferI
 	if (FAILED(result.first))
 	{
 		return false;
+	}
+
+	auto& obj = result.second;
+	if (pInitData)
+	{
+		D3D12Utils::UploadMemoryToGPU(this, obj.m_Buffer.Get(), *pInitData);
 	}
 
 	*ppObj = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvBufferD3D12, this, desc, result.second.m_Buffer, result.second.m_Allocation, result.second.m_pMappedMemory);
@@ -186,12 +194,32 @@ bool BvRenderDeviceD3D12::CreateComputePipelineImpl(const ComputePipelineStateDe
 
 bool BvRenderDeviceD3D12::CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj)
 {
-	return false;
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = D3D12Utils::CreatePipelineState(this, rayTracingPipelineStateDesc);
+	if (FAILED(result.first))
+	{
+		return false;
+	}
+
+	*ppObj = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvRayTracingPipelineStateD3D12, this, rayTracingPipelineStateDesc, result.second.m_PSO,
+		result.second.m_RootSig, result.second.m_GroupNames);
+
+	return true;
 }
 
 
-bool BvRenderDeviceD3D12::CreateQueryImpl(QueryType queryType, void** ppObj)
+bool BvRenderDeviceD3D12::CreateQueryHeapImpl(const QueryHeapDesc& queryHeapDesc, void** ppObj)
 {
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto type = GetD3D12QueryHeapType(queryHeapDesc.m_Type);
+	auto result = D3D12Utils::CreateQueryHeap(this, queryHeapDesc);
+	if (FAILED(result.first))
+	{
+		return false;
+	}
+
 	return false;
 }
 
@@ -214,7 +242,19 @@ bool BvRenderDeviceD3D12::CreateFenceImpl(const GPUFenceDesc& fenceDesc, void** 
 
 bool BvRenderDeviceD3D12::CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, void** ppObj)
 {
-	return false;
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = D3D12Utils::CreateRayTracingAccelerationStructure(this, asDesc);
+	if (FAILED(result.first))
+	{
+		return false;
+	}
+
+	auto& obj = result.second;
+	*ppObj = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvAccelerationStructureD3D12, this, asDesc, obj.m_Buffer.m_Buffer,
+		obj.m_Buffer.m_Allocation, obj.m_Geometries, obj.m_ScratchSizes);
+
+	return true;
 }
 
 

@@ -19,7 +19,7 @@ class IBvBufferView;
 class IBvTextureView;
 class BvBufferD3D12;
 class BvTextureD3D12;
-class IBvQuery;
+class IBvQueryHeap;
 class IBvRenderPass;
 class IBvGraphicsPipelineState;
 class IBvComputePipelineState;
@@ -114,18 +114,19 @@ public:
 
 	void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp);
 
-	void BeginQuery(IBvQuery* pQuery);
-	void EndQuery(IBvQuery* pQuery);
+	void BeginQuery(IBvQueryHeap* pQueryHeap, u32 index);
+	void EndQuery(IBvQueryHeap* pQueryHeap, u32 index);
+	void ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset = 0);
 
 	void BeginEvent(const char* pName, const BvColor& color);
 	void EndEvent();
 	void SetMarker(const char* pName, const BvColor& color);
 
-	void BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr);
-	void BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr);
-	void EmitASPostBuild(IBvAccelerationStructure* pAS, const ASPostBuildDesc& postBuildDesc);
-	void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc);
-	void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc);
+	void BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr);
+	void EmitASPostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures, const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc);
+	void EmitASPostBuild(u32 count, VkAccelerationStructureKHR* pAS, VkQueryPool queryPool, VkQueryType queryType, VkBuffer buffer, u64 offset);
+	void CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc);
 	void DispatchRays(const DispatchRaysCommandArgs& args);
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 
@@ -140,7 +141,8 @@ private:
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
 	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
 	ComPtr<ID3D12GraphicsCommandList> m_CommandList;
-	ComPtr<ID3D12GraphicsCommandList6> m_CommandListEx;
+	ComPtr<ID3D12GraphicsCommandList4> m_CommandList4;
+	ComPtr<ID3D12GraphicsCommandList6> m_CommandList6;
 	ID3D12CommandSignature* m_pDrawIndirectSig = nullptr;
 	ID3D12CommandSignature* m_pDrawIndexedIndirectSig = nullptr;
 	ID3D12CommandSignature* m_pDispatchIndirectSig = nullptr;

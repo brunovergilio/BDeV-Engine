@@ -60,7 +60,7 @@
     <ClInclude Include="Core\Utils\BvColor.h" />
     <ClInclude Include="Core\RenderAPI\BvCommandContext.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderAPIUtils.h" />
-    <ClInclude Include="Core\RenderAPI\BvQuery.h" />
+    <ClInclude Include="Core\RenderAPI\BvQueryHeap.h" />
     <ClInclude Include="Core\System\Application\BvMessageHandler.h" />
     <ClInclude Include="BDeV.h" />
     <ClInclude Include="Core\System\HID\BvXInput.h" />

@@ -580,7 +580,19 @@ void BvStringT<CharT>::Format(const CharT* format, ...)
 		va_start(args, format);
 		va_list argsCopy;
 		va_copy(argsCopy, args);
-		size = vsnprintf(nullptr, 0, format, argsCopy) + 1;
+
+		if constexpr (std::is_same_v<CharT, char>)
+		{
+			size = vsnprintf(nullptr, 0, format, argsCopy) + 1;
+		}
+		else if constexpr (std::is_same_v<CharT, wchar_t>)
+		{
+			size = vswprintf(nullptr, 0, format, argsCopy) + 1;
+		}
+		else
+		{
+			size = 1;
+		}
 		va_end(argsCopy);
 		va_end(args);
 
@@ -597,7 +609,14 @@ void BvStringT<CharT>::Format(const CharT* format, ...)
 
 	va_list args;
 	va_start(args, format);
-	vsnprintf(m_pStr, size, format, args);
+	if constexpr (std::is_same_v<CharT, char>)
+	{
+		vsnprintf(m_pStr, size, format, args);
+	}
+	else if constexpr (std::is_same_v<CharT, wchar_t>)
+	{
+		vswprintf(m_pStr, size, format, args);
+	}
 	va_end(args);
 
 	m_pStr[size] = CharT();

@@ -22,6 +22,12 @@ public:
 	void GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType type, u32 index, DeviceAddressRangeAndStride& addressRangeAndStride) const override;
 	BV_INLINE bool IsValid() const { return m_Buffer != nullptr; }
 
+	BV_INLINE VkStridedDeviceAddressRegionKHR GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType type, u32 index) const
+	{
+		auto& region = m_Regions[u32(type)];
+		return { region.deviceAddress + index * region.stride, region.stride, region.size };
+	}
+
 private:
 	void Destroy();
 

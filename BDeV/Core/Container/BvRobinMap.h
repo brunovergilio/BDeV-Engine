@@ -53,6 +53,8 @@ public:
 	template<typename ...Args>
 	std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool> EmplaceOrAssign(const Key & key, Args &&... args);
 	bool Erase(const Key & key);
+	template<bool Const>
+	bool Erase(const RobinIterator<std::pair<Key, Value>, Const>& it);
 
 	Iterator FindKey(const Key & key) const;
 	bool HasKey(const Key& key) const;
@@ -391,6 +393,56 @@ template<typename Key, typename Value, typename Hash, typename Comparer>
 inline bool BvRobinMap<Key, Value, Hash, Comparer>::Erase(const Key & key)
 {
 	auto iter = FindKey(key);
+	if (iter == cend())
+	{
+		return false;
+	}
+
+	auto currIndex = iter.GetIndex();
+	if constexpr (!std::is_trivially_destructible_v<Key>)
+	{
+		m_pData[currIndex].first.~Key();
+	}
+	if constexpr (!std::is_trivially_destructible_v<Value>)
+	{
+		m_pData[currIndex].second.~Value();
+	}
+	m_pHashes[currIndex] = 0;
+	--m_Size;
+
+	for (;;)
+	{
+		// We start from the current index
+		auto shiftIndex = (currIndex + 1) % m_Capacity;
+		// If there's no hash value, we're done
+		if (m_pHashes[shiftIndex] == 0)
+		{
+			break;
+		}
+
+		size_t desiredPos = HashPos(m_pHashes[shiftIndex]);
+		// If the current element's desired position is this one, we're done
+		if (desiredPos == shiftIndex)
+		{
+			break;
+		}
+		else
+		{
+			// Otherwise we swap the elements and keep going
+			std::swap(m_pData[currIndex], m_pData[shiftIndex]);
+			std::swap(m_pHashes[currIndex], m_pHashes[shiftIndex]);
+		}
+
+		currIndex = shiftIndex;
+	}
+
+	return true;
+}
+
+template<typename Key, typename Value, typename Hash, typename Comparer>
+template<bool Const>
+inline bool BvRobinMap<Key, Value, Hash, Comparer>::Erase(const RobinIterator<std::pair<Key, Value>, Const>& iter)
+{
 	if (iter == cend())
 	{
 		return false;

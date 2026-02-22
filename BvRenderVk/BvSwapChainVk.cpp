@@ -66,12 +66,6 @@ void BvSwapChainVk::AcquireImage()
 		}
 	}
 
-	if (m_CurrImageIndex != m_CurrSemaphoreIndex)
-	{
-		std::swap(m_ImageAcquiredSemaphores[m_CurrImageIndex], m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]);
-		std::swap(m_RenderCompleteSemaphores[m_CurrImageIndex], m_RenderCompleteSemaphores[m_CurrSemaphoreIndex]);
-	}
-
 	m_IsReady = true;
 }
 
@@ -119,6 +113,8 @@ void BvSwapChainVk::Present(bool vSync)
 		}
 	}
 
+	SetCurrentFence(m_pCommandContext->GetCurrentGPUFence(), m_pCommandContext->GetCurrentValue());
+
 	m_CurrSemaphoreIndex = (m_CurrSemaphoreIndex + 1) % (u32)m_SwapChainTextures.Size();
 }
 
@@ -150,7 +146,7 @@ void BvSwapChainVk::SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor)
 
 void BvSwapChainVk::SetCurrentFence(BvGPUFenceVk* pFence, u64 value)
 {
-	m_Fences[m_CurrImageIndex] = FenceData{ pFence, value };
+	m_Fences[m_CurrSemaphoreIndex] = FenceData{ pFence, value };
 }
 
 

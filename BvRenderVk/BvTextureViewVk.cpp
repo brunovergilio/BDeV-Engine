@@ -23,6 +23,7 @@ void BvTextureViewVk::Destroy()
 	if (m_View)
 	{
 		vkDestroyImageView(m_pDevice->GetHandle(), m_View, nullptr);
+		m_pDevice->OnVkHandleDestroyed(u64(m_View), true);
 		m_View = VK_NULL_HANDLE;
 	}
 }

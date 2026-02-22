@@ -30,7 +30,7 @@ private:
 	BvRCRef<IBvTexture> m_RWTex;
 	BvRCRef<IBvTextureView> m_RWTexView;
 	BvRCRef<IBvSampler> m_Sampler;
-	BvRCRef<IBvQuery> m_Query;
+	BvRCRef<IBvQueryHeap> m_Query;
 	PipelineStatistics m_PSOStats{};
 	struct PC
 	{

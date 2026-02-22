@@ -13,7 +13,7 @@
 #include "BvTextureViewVk.h"
 #include "BvSamplerVk.h"
 #include "BvDescriptorSetVk.h"
-#include "BvQueryVk.h"
+#include "BvQueryHeapVk.h"
 #include "BvFramebufferVk.h"
 #include "BvTypeConversionsVk.h"
 #include "BvCommandContextVk.h"
@@ -251,11 +251,19 @@ bool BvRenderDeviceVk::CreateRayTracingPipelineImpl(const RayTracingPipelineStat
 }
 
 
-bool BvRenderDeviceVk::CreateQueryImpl(QueryType queryType, void** ppObj)
+bool BvRenderDeviceVk::CreateQueryHeapImpl(const QueryHeapDesc& queryHeapDesc, void** ppObj)
 {
 	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
 
-	*ppObj = BV_RC_CREATE(BvQueryVk, this, queryType, 3);
+	bool isMeshPool = queryHeapDesc.m_Type == QueryType::kMeshPipelineStatistics;
+	VkQueryPool pools[] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
+	auto result = VkHelpers::CreateQueryPool(this, queryHeapDesc);
+	if (result.first != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	*ppObj = BV_RC_CREATE(BvQueryHeapVk, this, queryHeapDesc, result.second.m_QueryPools, result.second.m_PSOFlags);
 
 	return true;
 }
@@ -281,14 +289,14 @@ bool BvRenderDeviceVk::CreateAccelerationStructureImpl(const RayTracingAccelerat
 {
 	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
 
-	auto result = VkHelpers::CreateAccelerationStructure(this, asDesc);
+	auto result = VkHelpers::CreateRayTracingAccelerationStructure(this, asDesc);
 	if (result.first != VK_SUCCESS)
 	{
 		return false;
 	}
 
 	auto& obj = result.second;
-	*ppObj = BV_RC_CREATE(BvAccelerationStructureVk, this, asDesc, obj.m_AS, obj.m_DeviceAddress, obj.m_Geometries, obj.m_PrimitiveCounts,
+	*ppObj = BV_RC_CREATE(BvAccelerationStructureVk, this, asDesc, obj.m_AS, obj.m_DeviceAddress, obj.m_Geometries, obj.m_Ranges,
 		obj.m_BufferObj.m_Buffer, obj.m_BufferObj.m_Memory, obj.m_BufferObj.m_DeviceAddress, obj.m_ScratchSizes);
 
 	return true;
@@ -535,6 +543,18 @@ FormatFeatures BvRenderDeviceVk::GetFormatFeatures(Format format) const
 	}
 	
 	return formatFeatures;
+}
+
+
+void BvRenderDeviceVk::OnVkHandleDestroyed(u64 handle, bool isTextureView)
+{
+	for (auto& contextGroup : m_Contexts)
+	{
+		for (auto pContext : contextGroup)
+		{
+			pContext->OnResourceDeleted(handle, isTextureView);
+		}
+	}
 }
 
 

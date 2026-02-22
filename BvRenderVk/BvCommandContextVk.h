@@ -9,27 +9,39 @@
 #include "BvCommandQueueVk.h"
 #include "BvFramebufferVk.h"
 #include "BvGPUFenceVk.h"
+#include "BDeV/Core/System/Threading/BvSync.h"
 
 
 class BvRenderDeviceVk;
 class BvBufferVk;
 class BvTextureVk;
-class BvQueryVk;
 class BvSwapChainVk;
-class BvQueryHeapManagerVk;
-class BvQueryASVk;
 class BvFramebufferManagerVk;
 
 
 struct ContextDataVk
 {
+	struct DescriptorData
+	{
+		VkDescriptorSet m_DescriptorSet;
+		BvDescriptorPoolVk* m_pDescriptorPool;
+	};
+
+	struct HandleData
+	{
+		u64 m_Handle;
+		bool m_IsTexture;
+	};
+
 	BvResourceBindingStateVk m_ResourceBindingState;
-	BvRobinMap<u64, BvDescriptorPoolVk> m_DescriptorPools;
+	BvRobinMap<u64, BvDescriptorPoolVk*> m_DescriptorPools;
 	BvRobinMap<u64, VkDescriptorSet> m_DescriptorSets;
 	BvRobinMap<u64, VkDescriptorSet> m_BindlessDescriptorSets;
-	BvQueryHeapManagerVk* m_pQueryHeapManager = nullptr;
 	BvFramebufferManagerVk* m_pFramebufferManager = nullptr;
-	BvQueryASVk* m_pASQueries = nullptr;
+	BvRobinMap<u64, BvVector<DescriptorData>> m_ActiveResources;
+	BvAdaptiveMutex m_DeletedResourceLock;
+	BvVector<HandleData> m_DeletedResourceHandles;
+	std::atomic<u32> m_DeletedResourceCounter{};
 };
 
 
@@ -43,22 +55,19 @@ public:
 
 	void Reset(bool newFrame = true);
 	BvCommandBufferVk* RequestCommandBuffer();
-	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless = false);
+	VkDescriptorSet RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 descriptorsDataHash, bool bindless = false);
 	//void UpdateSignalIndex();
 	//void UpdateSignalValue();
 	void ClearActiveCommandBuffers();
-	void AddQuery(BvQueryVk* pQuery);
+	VkQueryPool AddASQueryPool(VkQueryType queryType, u32 queryCount);
 	VkFramebuffer GetFramebuffer(const FramebufferDesc& fbDesc);
 	void RemoveFramebuffers(VkImageView view);
-	void UpdateQueryData();
 	
 	BV_INLINE const auto& GetCommandBuffers() const { return m_CommandBuffers; }
 	BV_INLINE auto& GetResourceBindingState() { return m_pContextData->m_ResourceBindingState; }
 	BV_INLINE BvGPUFenceVk* GetGPUFence() { return m_pFence; }
 	//BV_INLINE std::pair<u64, u64> GetSemaphoreValueIndex() const { return m_SignaValueIndex; }
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
-	BV_INLINE BvQueryHeapManagerVk* GetQueryHeapManager() const { return m_pContextData->m_pQueryHeapManager; }
-	BV_INLINE BvQueryASVk* GetQueryAS() const { return m_pContextData->m_pASQueries; }
 	BV_INLINE u64 UpdateFenceValue() { return ++m_FenceValue; }
 	BV_INLINE u64 GetFenceValue() const { return m_FenceValue; }
 
@@ -67,12 +76,12 @@ private:
 	BvCommandPoolVk m_CommandPool;
 	BvVector<BvCommandBufferVk*> m_CommandBuffers;
 	ContextDataVk* m_pContextData;
-	BvVector<BvQueryVk*> m_Queries;
 	u32 m_UpdatedQueries = 0;
 	BvRCRef<BvGPUFenceVk> m_pFence;
 	u64 m_FenceValue = 0;
 	//std::pair<u64, u64> m_SignaValueIndex;
 	u32 m_FrameIndex;
+	BvVector<VkQueryPool> m_RayTracingQueryPools;
 };
 
 
@@ -161,21 +170,23 @@ public:
 	void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp) override;
 
 	bool SupportsQueryType(QueryType queryType) const override;
-	void BeginQuery(IBvQuery* pQuery) override;
-	void EndQuery(IBvQuery* pQuery) override;
+	void ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount) override;
+	void BeginQuery(IBvQueryHeap* pQueryHeap, u32 index) override;
+	void EndQuery(IBvQueryHeap* pQueryHeap, u32 index) override;
+	void ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset = 0) override;
 
 	void BeginEvent(const char* pName, const BvColor& color = BvColor::Black) override;
 	void EndEvent() override;
 	void SetMarker(const char* pName, const BvColor& color = BvColor::Black) override;
 
-	void BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr) override;
-	void BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr) override;
-	void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc) override;
-	void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc) override;
+	void BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr) override;
+	void EmitRayTracingAccelerationStructurePostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures,
+		const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc) override;
+	void CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc) override;
 	void DispatchRays(const DispatchRaysCommandArgs& args) override;
 	void DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
 		u32 width, u32 height, u32 depth) override;
-
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0) override;
 
 	BV_INLINE BvCommandQueueVk* GetCommandQueue() { return &m_Queue; }
@@ -186,6 +197,7 @@ public:
 	void AddSwapChain(BvSwapChainVk* pSwapChain);
 	void RemoveSwapChain(BvSwapChainVk* pSwapChain);
 	void RemoveFramebuffers(VkImageView view);
+	void OnResourceDeleted(u64 handle, bool isTexture);
 
 private:
 	void Destroy();

@@ -3,6 +3,7 @@
 
 #include "BDeV/Core/RenderAPI/BvPipelineState.h"
 #include "BvCommonD3D12.h"
+#include "BDeV/Core/Container/BvString.h"
 
 
 class BvRenderDeviceD3D12;
@@ -56,6 +57,32 @@ private:
 	ComputePipelineStateDesc m_PipelineStateDesc;
 };
 BV_CREATE_CAST_TO_D3D12(BvComputePipelineState)
+
+
+class BvRayTracingPipelineStateD3D12 : public IBvRayTracingPipelineState, public IBvResourceD3D12
+{
+public:
+	BvRayTracingPipelineStateD3D12(BvRenderDeviceD3D12* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, ComPtr<ID3D12StateObject>& pipeline,
+		ComPtr<ID3D12RootSignature>& rootSig, BvVector<BvWString>& groupNames);
+	~BvRayTracingPipelineStateD3D12();
+
+	BV_INLINE const RayTracingPipelineStateDesc& GetDesc() const override { return m_PipelineStateDesc; }
+	BV_INLINE ID3D12StateObject* GetHandle() const { return m_Pipeline.Get(); }
+	BV_INLINE ID3D12RootSignature* GetRootSig() const { return m_RootSig.Get(); };
+	BV_INLINE auto& GetGroupNames() const { return m_GroupNames; }
+	BV_INLINE bool IsValid() const { return m_Pipeline != nullptr; }
+
+private:
+	void Destroy();
+
+private:
+	BvRenderDeviceD3D12* m_pDevice = nullptr;
+	ComPtr<ID3D12StateObject> m_Pipeline;
+	ComPtr<ID3D12RootSignature> m_RootSig;
+	RayTracingPipelineStateDesc m_PipelineStateDesc;
+	BvVector<BvWString> m_GroupNames;
+};
+BV_CREATE_CAST_TO_D3D12(BvRayTracingPipelineState)
 
 
 class BvPipelineCacheD3D12 final : public IBvPipelineCache

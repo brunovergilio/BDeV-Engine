@@ -2,7 +2,7 @@
 #include "BvRenderDeviceVk.h"
 #include "BvShaderResourceVk.h"
 #include "BvCommandBufferVk.h"
-#include "BvQueryVk.h"
+#include "BvQueryHeapVk.h"
 #include "BvSwapChainVk.h"
 #include "BvGPUFenceVk.h"
 #include "BvFramebufferVk.h"
@@ -31,23 +31,73 @@ BvFrameDataVk::~BvFrameDataVk()
 
 void BvFrameDataVk::Reset(bool newFrame)
 {
+	// If any resource was destroyed, make sure its descriptors have also been removed
+	for (u32 numDeletedResources = m_pContextData->m_DeletedResourceCounter.load(std::memory_order_relaxed); numDeletedResources > 0;
+		numDeletedResources = m_pContextData->m_DeletedResourceCounter.load(std::memory_order_relaxed))
+	{
+		constexpr u32 kDeletedResourceCopyCount = 8;
+		ContextDataVk::HandleData deletedResources[kDeletedResourceCopyCount];
+		u32 copyCount = std::min(numDeletedResources, kDeletedResourceCopyCount);
+		
+		{
+			BvScopedLock lock(m_pContextData->m_DeletedResourceLock);
+			for (auto i = 0; i < copyCount; i++)
+			{
+				deletedResources[i] = m_pContextData->m_DeletedResourceHandles[m_pContextData->m_DeletedResourceHandles.Size() - 1 - i];
+				m_pContextData->m_DeletedResourceHandles.PopBack();
+			}
+		}
+
+		// Update counter
+		m_pContextData->m_DeletedResourceCounter.fetch_sub(copyCount, std::memory_order_relaxed);
+
+		// Remove all destroyed resources from the list of active resources
+		for (auto resourceIndex = 0; resourceIndex < copyCount; resourceIndex++)
+		{
+			auto resourceIt = m_pContextData->m_ActiveResources.FindKey(deletedResources[resourceIndex].m_Handle);
+			if (resourceIt != m_pContextData->m_ActiveResources.cend())
+			{
+				for (auto& descriptorData : resourceIt->second)
+				{
+					// Recycle the descriptors
+					descriptorData.m_pDescriptorPool->RecycleDescriptor(descriptorData.m_DescriptorSet);
+
+					// Also remove said descriptor from the list of active descriptors
+					for (auto setIt = m_pContextData->m_DescriptorSets.cbegin(); setIt != m_pContextData->m_DescriptorSets.cend(); setIt++)
+					{
+						if (setIt->second == descriptorData.m_DescriptorSet)
+						{
+							m_pContextData->m_DescriptorSets.Erase(setIt);
+							break;
+						}
+					}
+				}
+
+				// If it's a texture, it could be used by the framebuffer
+				if (deletedResources[resourceIndex].m_IsTexture)
+				{
+					m_pContextData->m_pFramebufferManager->RemoveFramebuffersWithView(VkImageView(deletedResources[resourceIndex].m_Handle));
+				}
+
+				m_pContextData->m_ActiveResources.Erase(resourceIt);
+			}
+		}
+	}
+
 	if (newFrame)
 	{
 		m_pFence->Wait(m_FenceValue);
-
-		if (m_Queries.Size() > 0)
-		{
-			m_pContextData->m_pQueryHeapManager->Reset(m_FrameIndex);
-			m_Queries.Clear();
-			m_UpdatedQueries = 0;
-		}
-
-		m_pContextData->m_pASQueries->Reset(m_FrameIndex);
 	}
 
 	m_CommandPool.Reset();
 	m_CommandBuffers.Clear();
 	m_pContextData->m_ResourceBindingState.Reset();
+
+	for (auto qp : m_RayTracingQueryPools)
+	{
+		VkHelpers::DestroyDeviceObject(*m_pDevice, qp);
+	}
+	m_RayTracingQueryPools.Clear();
 }
 
 
@@ -63,55 +113,81 @@ BvCommandBufferVk* BvFrameDataVk::RequestCommandBuffer()
 }
 
 
-VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 hashSeed, bool bindless)
+VkDescriptorSet BvFrameDataVk::RequestDescriptorSet(u32 set, const BvShaderResourceLayoutVk* pLayout, BvVector<VkWriteDescriptorSet>& writeSets, u32 descriptorsDataHash, bool bindless)
 {
 	auto srlHash = (u64)pLayout->GetSetLayoutHandles()[set];
-	auto& pool = m_pContextData->m_DescriptorPools[srlHash];
-	if (!pool.IsValid())
-	{
-		pool = BvDescriptorPoolVk(m_pDevice, pLayout, set, bindless ? 1 : 16);
-	}
 
-	VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-
+	auto pDescriptorSets = &m_pContextData->m_DescriptorSets;
+	u32 maxAllocationsPerPool = 16;
+	u64 descriptorSetHash = srlHash;
 	if (bindless)
 	{
-		auto result = m_pContextData->m_BindlessDescriptorSets.Emplace(srlHash, VK_NULL_HANDLE);
-		if (result.second)
-		{
-			result.first->second = pool.Allocate();
-		}
-
-		for (auto& writeSet : writeSets)
-		{
-			writeSet.dstSet = result.first->second;
-		}
-		vkUpdateDescriptorSets(m_pDevice->GetHandle(), (u32)writeSets.Size(), writeSets.Data(), 0, nullptr);
-
-		descriptorSet = result.first->second;
+		pDescriptorSets = &m_pContextData->m_BindlessDescriptorSets;
+		maxAllocationsPerPool = 1;
 	}
 	else
 	{
-		u64 descriptorSetHash = hashSeed;
-		for (auto& writeSet : writeSets)
+		// For regular descriptors, we combine the layout's hash with the descriptors' data hash
+		HashCombine(descriptorSetHash, descriptorsDataHash);
+	}
+
+	auto result = pDescriptorSets->Emplace(descriptorSetHash, VK_NULL_HANDLE);
+	auto& descriptorSet = result.first->second;
+	if (result.second)
+	{
+		// If it's a new entry, we need to allocate a descriptor, so retrieve a pool for it.
+		// If a pool doesn't exist for this layout, create one
+		auto& pPool = m_pContextData->m_DescriptorPools[srlHash];
+		if (!pPool)
 		{
-			HashCombine(descriptorSetHash, writeSet);
+			pPool = BV_NEW(BvDescriptorPoolVk)(m_pDevice, pLayout, set, maxAllocationsPerPool);
 		}
 
-		auto result = m_pContextData->m_DescriptorSets.Emplace(descriptorSetHash, VK_NULL_HANDLE);
-		if (result.second)
+		descriptorSet = pPool->Allocate();
+
+		if (writeSets.Size() > 0)
 		{
-			result.first->second = pool.Allocate();
-			
 			for (auto& writeSet : writeSets)
 			{
-				writeSet.dstSet = result.first->second;
+				writeSet.dstSet = descriptorSet;
+
+				// Bindless descriptors can be changed at any time, so no need to keep track of them
+				if (!bindless)
+				{
+					u64 handle = 0;
+					switch (writeSet.descriptorType)
+					{
+					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+					case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+					case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+						handle = u64(writeSet.pBufferInfo->buffer);
+						break;
+					case VK_DESCRIPTOR_TYPE_SAMPLER:
+					case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+					case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+					case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+						handle = u64(writeSet.pImageInfo->imageView);
+						break;
+					case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+					case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+						handle = u64(*writeSet.pTexelBufferView);
+						break;
+					case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+						handle = u64(*((VkWriteDescriptorSetAccelerationStructureKHR*)writeSet.pNext)->pAccelerationStructures);
+						break;
+					}
+
+					if (handle)
+					{
+						// Add descriptor set to every active resource (as well as the resource if it doesn't exist yet)
+						m_pContextData->m_ActiveResources[handle].PushBack({ descriptorSet, pPool });
+					}
+				}
 			}
+
 			vkUpdateDescriptorSets(m_pDevice->GetHandle(), (u32)writeSets.Size(), writeSets.Data(), 0, nullptr);
 		}
-
-
-		descriptorSet = result.first->second;
 	}
 
 	return descriptorSet;
@@ -124,9 +200,11 @@ void BvFrameDataVk::ClearActiveCommandBuffers()
 }
 
 
-void BvFrameDataVk::AddQuery(BvQueryVk* pQuery)
+VkQueryPool BvFrameDataVk::AddASQueryPool(VkQueryType queryType, u32 queryCount)
 {
-	m_Queries.EmplaceBack(pQuery);
+	auto obj = VkHelpers::CreateQueryPool(m_pDevice, queryType, queryCount);
+	BV_ASSERT(obj.first == VK_SUCCESS, "Failed to create Acceleration Structure Query Pool");
+	return m_RayTracingQueryPools.PushBack(obj.second.m_QueryPools[0]);
 }
 
 
@@ -142,29 +220,17 @@ void BvFrameDataVk::RemoveFramebuffers(VkImageView view)
 }
 
 
-void BvFrameDataVk::UpdateQueryData()
-{
-	for (auto i = m_UpdatedQueries; i < m_Queries.Size(); ++i, ++m_UpdatedQueries)
-	{
-		m_Queries[i]->SetFenceData(m_pFence, m_FenceValue);
-		m_Queries[i]->SetLatestFrameIndex(m_FrameIndex);
-	}
-}
-
-
 BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount, u32 queueFamilyIndex, u32 queueIndex)
 	: m_pDevice(pDevice), m_Queue(pDevice->GetHandle(), queueFamilyIndex, queueIndex), m_ContextGroupIndex(queueFamilyIndex), m_ContextIndex(queueIndex),
 	m_FrameCount(frameCount)
 {
 	auto pQuerySizes = m_pDevice->GetQueryPoolSizes();
 	m_pContextData = BV_NEW(ContextDataVk)();
-	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerVk)(pDevice, pQuerySizes, frameCount);
 
 	if (pDevice->GetGPUInfo().m_ContextGroups[queueFamilyIndex].SupportsCommandType(CommandType::kGraphics))
 	{
 		auto asQueryPoolSize = m_pDevice->GetAccelerationStructureQueryPoolSize();
 		m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
-		m_pContextData->m_pASQueries = BV_NEW(BvQueryASVk)(pDevice, asQueryPoolSize, frameCount, VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR);
 	}
 
 	auto pFrameData = reinterpret_cast<u8*>(BV_ALLOC(sizeof(BvFrameDataVk) * m_FrameCount, alignof(BvFrameDataVk)));
@@ -185,8 +251,11 @@ BvCommandContextVk::~BvCommandContextVk()
 	BV_FREE(m_pFrames);
 
 	BV_DELETE(m_pContextData->m_pFramebufferManager);
-	BV_DELETE(m_pContextData->m_pQueryHeapManager);
-	BV_DELETE(m_pContextData->m_pASQueries);
+	for (auto& poolData : m_pContextData->m_DescriptorPools)
+	{
+		BV_DELETE(poolData.second);
+	}
+
 	BV_DELETE(m_pContextData);
 }
 
@@ -231,7 +300,6 @@ void BvCommandContextVk::Execute()
 	m_Queue.Submit(commandBuffers, pFence->GetHandle(), semaphoreValue);
 
 	m_pFrames[m_ActiveFrameIndex].ClearActiveCommandBuffers();
-	m_pFrames[m_ActiveFrameIndex].UpdateQueryData();
 
 	m_pCurrCommandBuffer = nullptr;
 }
@@ -251,12 +319,6 @@ void BvCommandContextVk::FlushFrame()
 {
 	// Sanity check
 	BV_ASSERT(m_pCurrCommandBuffer == nullptr, "All command buffers must have been submitted");
-
-	// Update swap chains' fences
-	for (auto& pSwapChain : m_SwapChains)
-	{
-		pSwapChain->SetCurrentFence(GetCurrentGPUFence(), GetCurrentValue());
-	}
 
 	// Get next frame
 	m_ActiveFrameIndex = (m_ActiveFrameIndex + 1) % m_FrameCount;
@@ -608,15 +670,27 @@ bool BvCommandContextVk::SupportsQueryType(QueryType queryType) const
 }
 
 
-void BvCommandContextVk::BeginQuery(IBvQuery* pQuery)
+void BvCommandContextVk::ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount)
 {
-	m_pCurrCommandBuffer->BeginQuery(pQuery);
+	m_pCurrCommandBuffer->ResetQueryHeap(pQueryHeap, startIndex, queryCount);
 }
 
 
-void BvCommandContextVk::EndQuery(IBvQuery* pQuery)
+void BvCommandContextVk::BeginQuery(IBvQueryHeap* pQueryHeap, u32 index)
 {
-	m_pCurrCommandBuffer->EndQuery(pQuery);
+	m_pCurrCommandBuffer->BeginQuery(pQueryHeap, index);
+}
+
+
+void BvCommandContextVk::EndQuery(IBvQueryHeap* pQueryHeap, u32 index)
+{
+	m_pCurrCommandBuffer->EndQuery(pQueryHeap, index);
+}
+
+
+void BvCommandContextVk::ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset)
+{
+	m_pCurrCommandBuffer->ResolveQueryData(pQueryHeap, startIndex, queryCount, pDstBuffer, offset);
 }
 
 
@@ -638,27 +712,23 @@ void BvCommandContextVk::SetMarker(const char* pName, const BvColor& color)
 }
 
 
-void BvCommandContextVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandContextVk::BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+	const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc)
 {
-	m_pCurrCommandBuffer->BuildBLAS(desc, pPostBuildDesc);
+	m_pCurrCommandBuffer->BuildRayTracingAccelerationStructures(count, pBuildDescs, pPostBuildDesc);
 }
 
 
-void BvCommandContextVk::BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandContextVk::EmitRayTracingAccelerationStructurePostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures,
+	const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc)
 {
-	m_pCurrCommandBuffer->BuildTLAS(desc, pPostBuildDesc);
+	m_pCurrCommandBuffer->EmitASPostBuild(count, ppAccelerationStructures, postBuildDesc);
 }
 
 
-void BvCommandContextVk::CopyBLAS(const AccelerationStructureCopyDesc& copyDesc)
+void BvCommandContextVk::CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc)
 {
-	m_pCurrCommandBuffer->CopyBLAS(copyDesc);
-}
-
-
-void BvCommandContextVk::CopyTLAS(const AccelerationStructureCopyDesc& copyDesc)
-{
-	m_pCurrCommandBuffer->CopyTLAS(copyDesc);
+	m_pCurrCommandBuffer->CopyRayTracingAccelerationStructure(copyDesc);
 }
 
 
@@ -715,6 +785,14 @@ void BvCommandContextVk::RemoveFramebuffers(VkImageView view)
 	{
 		m_pFrames[i].RemoveFramebuffers(view);
 	}
+}
+
+
+void BvCommandContextVk::OnResourceDeleted(u64 handle, bool isTexture)
+{
+	BvScopedLock lock(m_pContextData->m_DeletedResourceLock);
+	m_pContextData->m_DeletedResourceHandles.PushBack({ handle, isTexture });
+	m_pContextData->m_DeletedResourceCounter.fetch_add(1, std::memory_order_relaxed);
 }
 
 

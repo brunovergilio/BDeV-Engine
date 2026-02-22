@@ -30,7 +30,7 @@ private:
 	bool CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) override;
 	bool CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) override;
 	bool CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) override;
-	bool CreateQueryImpl(QueryType queryType, void** ppObj) override;
+	bool CreateQueryHeapImpl(const QueryHeapDesc& queryHeapDesc, void** ppObj) override;
 	bool CreateFenceImpl(const GPUFenceDesc& fenceDesc, void** ppObj) override;
 	bool CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, void** ppObj) override;
 	bool CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, void** ppObj) override;
@@ -46,6 +46,8 @@ public:
 	FormatFeatures GetFormatFeatures(Format format) const override;
 	BV_INLINE const BvGPUInfo& GetGPUInfo() const override { return m_GPUInfo; }
 	BV_INLINE const BvVector<Format>& GetSupportedDisplayFormats() const override { return m_SupportedDisplayFormats; }
+
+	void OnVkHandleDestroyed(u64 handle, bool isTextureView);
 
 	BV_INLINE VkDevice GetHandle() const { return m_Device; }
 	BV_INLINE VkPhysicalDevice GetPhysicalDeviceHandle() const { return m_PhysicalDevice; }

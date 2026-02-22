@@ -413,6 +413,8 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		&& deviceInfo.m_ExtendedSurfaceCaps.hasSurface2Caps;
 	ff.globalQueuePriority = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME);
 	ff.depthBiasControl = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME);
+	ff.robustness2 = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
+	ff.pushDescriptor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 
 	deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -530,6 +532,19 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	if (ff.trueFullScreen)
 	{
 		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
+	}
+
+	if (ff.robustness2)
+	{
+		*pNextFeature = &deviceInfo.m_ExtendedFeatures.robustness2Features;
+		pNextFeature = &deviceInfo.m_ExtendedFeatures.robustness2Features.pNext;
+
+		deviceInfo.m_EnabledExtensions.PushBack(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
+	}
+
+	if (ff.pushDescriptor)
+	{
+		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 	}
 
 	*pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties;

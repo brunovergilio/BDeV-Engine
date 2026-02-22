@@ -1,7 +1,7 @@
 #pragma once
 
 
-#define USE_D3D12
+//#define USE_D3D12
 
 
 #if defined(USE_D3D12)

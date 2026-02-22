@@ -54,7 +54,7 @@ namespace VkHelpers
 		VkAccelerationStructureKHR m_AS;
 		VkDeviceAddress m_DeviceAddress;
 		BvVector<VkAccelerationStructureGeometryKHR> m_Geometries;
-		BvVector<u32> m_PrimitiveCounts;
+		BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_Ranges;
 		VkBufferObj m_BufferObj;
 		RayTracingAccelerationStructureScratchSize m_ScratchSizes;
 	};
@@ -62,7 +62,13 @@ namespace VkHelpers
 	struct VkSBTObj
 	{
 		VkBufferObj m_BufferObj;
-		VkStridedDeviceAddressRegionKHR m_Regions[u32(ShaderBindingTableGroupType::kCount)]{};
+		VkStridedDeviceAddressRegionKHR m_Regions[u32(ShaderBindingTableGroupType::kCount)];
+	};
+
+	struct VkQueryPoolObj
+	{
+		VkQueryPool m_QueryPools[2];
+		VkQueryPipelineStatisticFlags m_PSOFlags;
 	};
 
 	VkObj<VkSurfaceKHR> CreateSurface(VkInstance instance, BvRenderDeviceVk* pDevice, BvWindow* pWindow);
@@ -80,8 +86,9 @@ namespace VkHelpers
 	VkObj<VkPipeline> CreateComputePipeline(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	VkObj<VkPipeline> CreateRayTracingPipeline(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	VkObj<VkSemaphore> CreateSemaphore(BvRenderDeviceVk* pDevice, const GPUFenceDesc& fenceDesc = {}, bool isTimelineSemaphore = true);
-	VkObj<VkQueryPool> CreateQueryPool(BvRenderDeviceVk* pDevice, QueryType queryType, u32 queryCount, bool meshPrimitivesPool = false);
-	VkObj<VkASObj> CreateAccelerationStructure(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& asDesc);
+	VkObj<VkQueryPoolObj> CreateQueryPool(BvRenderDeviceVk* pDevice, const QueryHeapDesc& queryHeapDesc);
+	VkObj<VkQueryPoolObj> CreateQueryPool(BvRenderDeviceVk* pDevice, VkQueryType queryType, u32 queryCount, bool meshPrimitivesPool = false);
+	VkObj<VkASObj> CreateRayTracingAccelerationStructure(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& asDesc);
 	VkObj<VkSBTObj> CreateShaderBindingTable(BvRenderDeviceVk* pDevice, const ShaderBindingTableDesc& sbtDesc, BvCommandContextVk* pContext);
 	void UploadMemoryToGPU(BvRenderDeviceVk* pDevice, VkBuffer buffer, const BufferInitData& initData);
 	void UploadMemoryToGPU(BvRenderDeviceVk* pDevice, VkImage texture, const TextureDesc& textureDesc, const TextureInitData& initData);

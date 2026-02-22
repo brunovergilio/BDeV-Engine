@@ -32,7 +32,7 @@ private:
 	BvRCRef<IBvBufferView> m_SBView2;
 	BvRCRef<IBvTexture> m_Depth;
 	BvRCRef<IBvTextureView> m_DepthView;
-	BvRCRef<IBvQuery> m_Query;
+	BvRCRef<IBvQueryHeap> m_Query;
 	PipelineStatistics m_PSOStats{};
 
 	struct PushConstants

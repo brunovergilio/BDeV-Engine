@@ -743,7 +743,7 @@ void RayTracing5::CreateBLAS()
 		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace | RayTracingAccelerationStructureFlags::kAllowCompaction;
 		blasDesc.m_BLAS.m_GeometryCount = 1;
 		blasDesc.m_BLAS.m_pGeometries = &geomDesc;
-		blas[0] = m_Device->CreateAccelerationStructure(blasDesc);
+		blas[0] = m_Device->CreateRayTracingAccelerationStructure(blasDesc);
 	}
 
 	{
@@ -762,7 +762,7 @@ void RayTracing5::CreateBLAS()
 		blasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace | RayTracingAccelerationStructureFlags::kAllowCompaction;
 		blasDesc.m_BLAS.m_GeometryCount = 1;
 		blasDesc.m_BLAS.m_pGeometries = &geomDesc;
-		blas[1] = m_Device->CreateAccelerationStructure(blasDesc);
+		blas[1] = m_Device->CreateRayTracingAccelerationStructure(blasDesc);
 	}
 
 	u64 sizes[] = { blas[0]->GetBuildSizes().m_Build, blas[1]->GetBuildSizes().m_Build };
@@ -805,7 +805,7 @@ void RayTracing5::CreateBLAS()
 	bfd.m_MemoryType = MemoryType::kReadBack;
 	BvRCRef<IBvBuffer> compactBuffer = m_Device->CreateBuffer(bfd);
 
-	ASPostBuildDesc postBuild;
+	RayTracingAccelerationStructurePostBuildDesc postBuild;
 	postBuild.m_pDstBuffer = compactBuffer;
 
 	m_Context->NewCommandList();
@@ -825,11 +825,11 @@ void RayTracing5::CreateBLAS()
 	{
 		auto blasDesc = blas[0]->GetDesc();
 		blasDesc.m_CompactedSize = compactedSizes[0];
-		m_BLAS[0] = m_Device->CreateAccelerationStructure(blasDesc);
+		m_BLAS[0] = m_Device->CreateRayTracingAccelerationStructure(blasDesc);
 
 		blasDesc = blas[1]->GetDesc();
 		blasDesc.m_CompactedSize = compactedSizes[1];
-		m_BLAS[1] = m_Device->CreateAccelerationStructure(blasDesc);
+		m_BLAS[1] = m_Device->CreateRayTracingAccelerationStructure(blasDesc);
 
 		m_Context->NewCommandList();
 
@@ -855,7 +855,7 @@ void RayTracing5::CreateTLAS()
 	tlasDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastBuild | RayTracingAccelerationStructureFlags::kAllowUpdate;
 	tlasDesc.m_TLAS.m_InstanceCount = 3;
 	tlasDesc.m_TLAS.m_Flags = RayTracingGeometryFlags::kOpaque;
-	m_TLAS = m_Device->CreateAccelerationStructure(tlasDesc);
+	m_TLAS = m_Device->CreateRayTracingAccelerationStructure(tlasDesc);
 
 	BufferDesc bufferDesc;
 	auto [build, update] = m_TLAS->GetBuildSizes();

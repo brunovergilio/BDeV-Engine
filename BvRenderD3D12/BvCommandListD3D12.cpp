@@ -1,22 +1,19 @@
 #include "BvCommandListD3D12.h"
-#include "BvRenderEngineD3D12.h"
 #include "BvRenderDeviceD3D12.h"
 #include "BvTextureViewD3D12.h"
 #include "BvRenderPassD3D12.h"
 #include "BvPipelineStateD3D12.h"
 #include "BvBufferD3D12.h"
 #include "BvTypeConversionsD3D12.h"
-#include "BvCommandAllocatorD3D12.h"
 #include "BvShaderResourceD3D12.h"
 #include "BvTextureD3D12.h"
 #include "BvSwapChainD3D12.h"
 #include "BvBufferViewD3D12.h"
 #include "BvSamplerD3D12.h"
-#include "BvQueryD3D12.h"
-#include "BvCommandQueueD3D12.h"
+#include "BvQueryHeapD3D12.h"
 #include "BvCommandContextD3D12.h"
-//#include "BvAccelerationStructureD3D12.h"
-//#include "BvShaderBindingTableD3D12.h"
+#include "BvAccelerationStructureD3D12.h"
+#include "BvShaderBindingTableD3D12.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
 
@@ -27,7 +24,8 @@ BvCommandListD3D12::BvCommandListD3D12(BvRenderDeviceD3D12* pDevice, ID3D12Comma
 	m_pDispatchIndirectSig(pDevice->GetDispatchIndirectSig()), m_pDispatchMeshIndirectSig(pDevice->GetDispatchMeshIndirectSig()),
 	m_pDispatchRaysIndirectSig(pDevice->GetDispatchRaysIndirectSig())
 {
-	m_CommandList.As(&m_CommandListEx);
+	m_CommandList.As(&m_CommandList4);
+	m_CommandList.As(&m_CommandList6);
 }
 
 
@@ -273,13 +271,13 @@ void BvCommandListD3D12::SetComputePipeline(const IBvComputePipelineState* pPipe
 {
 	BV_ASSERT(false, "Not Implemented");
 
-	//m_pGraphicsPipeline = nullptr;
-	//m_pRayTracingPipeline = nullptr;
-	//m_pComputePipeline = TO_D3D12(pPipeline);
-	//m_pShaderResourceLayout = TO_D3D12(m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
+	m_pGraphicsPipeline = nullptr;
+	m_pRayTracingPipeline = nullptr;
+	m_pComputePipeline = TO_D3D12(pPipeline);
+	m_pShaderResourceLayout = TO_D3D12(m_pComputePipeline->GetDesc().m_pShaderResourceLayout);
 
-	//m_CommandList->SetPipelineState(m_pComputePipeline->GetHandle());
-	//m_CommandList->SetGraphicsRootSignature(m_pComputePipeline->GetRootSig());
+	m_CommandList->SetPipelineState(m_pComputePipeline->GetHandle());
+	m_CommandList->SetComputeRootSignature(m_pComputePipeline->GetRootSig());
 }
 
 
@@ -287,13 +285,13 @@ void BvCommandListD3D12::SetRayTracingPipeline(const IBvRayTracingPipelineState*
 {
 	BV_ASSERT(false, "Not Implemented");
 
-	//m_pGraphicsPipeline = nullptr;
-	//m_pComputePipeline = nullptr;
-	//m_pRayTracingPipeline = TO_D3D12(pPipeline);
-	//m_pShaderResourceLayout = TO_D3D12(m_pRayTracingPipeline->GetDesc().m_pShaderResourceLayout);
+	m_pGraphicsPipeline = nullptr;
+	m_pComputePipeline = nullptr;
+	m_pRayTracingPipeline = TO_D3D12(pPipeline);
+	m_pShaderResourceLayout = TO_D3D12(m_pRayTracingPipeline->GetDesc().m_pShaderResourceLayout);
 	
-	//m_CommandList->SetPipelineState(m_pRayTracingPipeline->GetHandle());
-	//m_CommandList->SetGraphicsRootSignature(m_pRayTracingPipeline->GetRootSig());
+	m_CommandList4->SetPipelineState1(m_pRayTracingPipeline->GetHandle());
+	m_CommandList4->SetComputeRootSignature(m_pRayTracingPipeline->GetRootSig());
 }
 
 
@@ -334,19 +332,52 @@ void BvCommandListD3D12::SetRWStructuredBuffers(u32 count, const IBvBufferView* 
 
 void BvCommandListD3D12::SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
-	BV_ASSERT(false, "Not Implemented");
+	auto address = TO_D3D12(pResource->GetDesc().GetBufferPtr())->GetDeviceAddress() + offset;
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
+	BV_ASSERT(rootIndex != kU32Max, "Invalid root index");
+	
+	if (m_pGraphicsPipeline)
+	{
+		m_CommandList->SetGraphicsRootConstantBufferView(rootIndex, address);
+	}
+	else
+	{
+		m_CommandList->SetComputeRootConstantBufferView(rootIndex, address);
+	}
 }
 
 
 void BvCommandListD3D12::SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
-	BV_ASSERT(false, "Not Implemented");
+	auto address = TO_D3D12(pResource->GetDesc().GetBufferPtr())->GetDeviceAddress() + offset;
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
+	BV_ASSERT(rootIndex != kU32Max, "Invalid root index");
+
+	if (m_pGraphicsPipeline)
+	{
+		m_CommandList->SetGraphicsRootShaderResourceView(rootIndex, address);
+	}
+	else
+	{
+		m_CommandList->SetComputeRootShaderResourceView(rootIndex, address);
+	}
 }
 
 
 void BvCommandListD3D12::SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
-	BV_ASSERT(false, "Not Implemented");
+	auto address = TO_D3D12(pResource->GetDesc().GetBufferPtr())->GetDeviceAddress() + offset;
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
+	BV_ASSERT(rootIndex != kU32Max, "Invalid root index");
+
+	if (m_pGraphicsPipeline)
+	{
+		m_CommandList->SetGraphicsRootUnorderedAccessView(rootIndex, address);
+	}
+	else
+	{
+		m_CommandList->SetComputeRootUnorderedAccessView(rootIndex, address);
+	}
 }
 
 
@@ -423,7 +454,7 @@ void BvCommandListD3D12::SetShaderConstants(u32 size, const void* pData, u32 bin
 	{
 		m_CommandList->SetGraphicsRoot32BitConstants(rootIndex, size >> 2, pData, 0);
 	}
-	else if (m_pComputePipeline)
+	else
 	{
 		m_CommandList->SetComputeRoot32BitConstants(rootIndex, size >> 2, pData, 0);
 	}
@@ -459,7 +490,7 @@ void BvCommandListD3D12::SetIndexBufferView(const IndexBufferView& indexBufferVi
 
 void BvCommandListD3D12::SetDepthBounds(f32 min, f32 max)
 {
-	m_CommandListEx->OMSetDepthBounds(min, max);
+	m_CommandList4->OMSetDepthBounds(min, max);
 }
 
 
@@ -478,7 +509,13 @@ void BvCommandListD3D12::SetBlendConstants(const f32(&colors)[4])
 void BvCommandListD3D12::SetShadingRate(ShadingRateDimensions dimensions, ShadingRateCombinerOp(pCombinerOps[2]))
 {
 	BV_ASSERT(false, "Not done yet");
-	//m_CommandListEx->RSSetShadingRate();
+	D3D12_SHADING_RATE_COMBINER ops[] =
+	{
+		GetD3D12ShadingRateCombiner(pCombinerOps[0]),
+		GetD3D12ShadingRateCombiner(pCombinerOps[1])
+	};
+
+	m_CommandList6->RSSetShadingRate(GetD3D12ShadingRate(dimensions), ops);
 }
 
 
@@ -510,7 +547,7 @@ void BvCommandListD3D12::DispatchMesh(const DispatchMeshCommandArgs& args)
 {
 	FlushDescriptorSets();
 
-	m_CommandListEx->DispatchMesh(args.m_ThreadGroupCountX, args.m_ThreadGroupCountY, args.m_ThreadGroupCountZ);
+	m_CommandList6->DispatchMesh(args.m_ThreadGroupCountX, args.m_ThreadGroupCountY, args.m_ThreadGroupCountZ);
 }
 
 
@@ -534,7 +571,7 @@ void BvCommandListD3D12::DispatchIndirect(const IBvBuffer* pBuffer, u64 offset)
 {
 	FlushDescriptorSets();
 
-	m_CommandList->ExecuteIndirect(m_pDrawIndexedIndirectSig, 1, TO_D3D12(pBuffer)->GetHandle(), offset, nullptr, 0);
+	m_CommandList->ExecuteIndirect(m_pDispatchIndirectSig, 1, TO_D3D12(pBuffer)->GetHandle(), offset, nullptr, 0);
 }
 
 
@@ -542,7 +579,7 @@ void BvCommandListD3D12::DispatchMeshIndirect(const IBvBuffer* pBuffer, u64 offs
 {
 	FlushDescriptorSets();
 
-	m_CommandList->ExecuteIndirect(m_pDrawIndexedIndirectSig, 1, TO_D3D12(pBuffer)->GetHandle(), offset, nullptr, 0);
+	m_CommandList->ExecuteIndirect(m_pDispatchMeshIndirectSig, 1, TO_D3D12(pBuffer)->GetHandle(), offset, nullptr, 0);
 }
 
 
@@ -550,7 +587,7 @@ void BvCommandListD3D12::DispatchMeshIndirectCount(const IBvBuffer* pBuffer, u64
 {
 	FlushDescriptorSets();
 
-	m_CommandList->ExecuteIndirect(m_pDrawIndexedIndirectSig, 1, TO_D3D12(pBuffer)->GetHandle(), offset, nullptr, 0);
+	m_CommandList->ExecuteIndirect(m_pDispatchMeshIndirectSig, maxCount, TO_D3D12(pBuffer)->GetHandle(), offset, TO_D3D12(pCountBuffer)->GetHandle(), countOffset);
 }
 
 
@@ -795,35 +832,24 @@ void BvCommandListD3D12::SetPredication(const IBvBuffer* pBuffer, u64 offset, Pr
 }
 
 
-void BvCommandListD3D12::BeginQuery(IBvQuery* pQuery)
+void BvCommandListD3D12::BeginQuery(IBvQueryHeap* pQueryHeap, u32 index)
 {
-	auto pQueryD3D12 = TO_D3D12(pQuery);
-	auto queryType = pQueryD3D12->GetQueryType();
-	auto pData = pQueryD3D12->Allocate(m_pFrameData->GetQueryHeapManager(), m_pFrameData->GetFrameIndex());
-	if (queryType != QueryType::kTimestamp)
-	{
-		m_CommandList->BeginQuery(pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex), GetD3D12QueryType(queryType), pData->m_QueryIndex);
-	}
-
-	m_pFrameData->AddQuery(pQueryD3D12);
+	auto pQH = TO_D3D12(pQueryHeap);
+	m_CommandList->BeginQuery(pQH->GetHandle(), GetD3D12QueryType(pQH->GetDesc().m_Type), index);
 }
 
 
-void BvCommandListD3D12::EndQuery(IBvQuery* pQuery)
+void BvCommandListD3D12::EndQuery(IBvQueryHeap* pQueryHeap, u32 index)
 {
-	ResetRenderTargets();
+	auto pQH = TO_D3D12(pQueryHeap);
+	m_CommandList->EndQuery(pQH->GetHandle(), GetD3D12QueryType(pQH->GetDesc().m_Type), index);
+}
 
-	auto pQueryD3D12 = TO_D3D12(pQuery);
-	auto queryType = pQueryD3D12->GetQueryType();
-	auto frameIndex = m_pFrameData->GetFrameIndex();
-	auto pData = pQueryD3D12->GetQueryData(frameIndex);
-	auto pHeap = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex);
-	m_CommandList->EndQuery(pHeap, GetD3D12QueryType(queryType), pData->m_QueryIndex);
 
-	u64 stride = 0, offset = 0;
-	ID3D12Resource* pBuffer = nullptr;
-	pData->m_pQueryHeap->GetBufferInformation(pData->m_HeapIndex, frameIndex, pData->m_QueryIndex, pBuffer, offset, stride);
-	m_CommandList->ResolveQueryData(pHeap, GetD3D12QueryType(queryType), pData->m_QueryIndex, 1, pBuffer, offset);
+void BvCommandListD3D12::ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset)
+{
+	auto pQH = TO_D3D12(pQueryHeap);
+	m_CommandList->ResolveQueryData(pQH->GetHandle(), GetD3D12QueryType(pQH->GetDesc().m_Type), startIndex, queryCount, TO_D3D12(pDstBuffer)->GetHandle(), offset);
 }
 
 
@@ -845,33 +871,120 @@ void BvCommandListD3D12::SetMarker(const char* pName, const BvColor& color)
 }
 
 
-void BvCommandListD3D12::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandListD3D12::BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+	const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc)
 {
-	BV_ASSERT(false, "Not Implemented");
+	for (auto asIndex = 0; asIndex < count; asIndex++)
+	{
+		auto& buildDesc = pBuildDescs[asIndex];
+
+		auto pAS = TO_D3D12(buildDesc.m_pAS);
+		auto& geometries = pAS->GetGeometries();
+
+		if (buildDesc.m_Geometries.Size() > geometries.Size())
+		{
+			continue;
+		}
+
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc{};
+		asDesc.DestAccelerationStructureData = pAS->GetDeviceAddress();
+		asDesc.ScratchAccelerationStructureData = buildDesc.m_pScratchBuffer->GetDeviceAddress() + buildDesc.m_ScratchBufferOffset;
+		asDesc.Inputs.Type = GetD3D12RayTracingAccelerationStructureType(buildDesc.m_Type);
+		asDesc.Inputs.Flags = GetD3D12RayTracingAccelerationStructureBuildFlags(pAS->GetDesc().m_Flags);
+		asDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+
+		if (buildDesc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
+		{
+			asDesc.Inputs.NumDescs = geometries.Size();
+			asDesc.Inputs.pGeometryDescs = geometries.Data();
+			for (auto i = 0u; i < geometries.Size(); ++i)
+			{
+				// Try to find an index through the id; if not found,
+				// revert back to the current index in the loop
+				auto index = pAS->GetGeometryIndex(buildDesc.m_Geometries[i].m_Id);
+				if (index == kU32Max)
+				{
+					index = i;
+				}
+
+				auto& srcGeometry = buildDesc.m_Geometries[index];
+				auto& dstGeometry = geometries[index];
+
+				// If the data doesn't match, don't include it
+				if (dstGeometry.Type != GetD3D12RayTracingGeometryType(srcGeometry.m_Type))
+				{
+					continue;
+				}
+
+				if (srcGeometry.m_Type == RayTracingGeometryType::kTriangles)
+				{
+					BV_ASSERT(dstGeometry.Triangles.VertexBuffer.StartAddress == 0, "Device address already set");
+					dstGeometry.Triangles.VertexBuffer.StartAddress = srcGeometry.m_Triangle.m_pVertexBuffer->GetDeviceAddress() + srcGeometry.m_Triangle.m_VertexOffset;
+					if (srcGeometry.m_Triangle.m_pIndexBuffer)
+					{
+						BV_ASSERT(dstGeometry.Triangles.IndexBuffer == 0, "Device address already set");
+						dstGeometry.Triangles.IndexBuffer = srcGeometry.m_Triangle.m_pIndexBuffer->GetDeviceAddress() + srcGeometry.m_Triangle.m_IndexOffset;
+					}
+				}
+				else if (srcGeometry.m_Type == RayTracingGeometryType::kAABB)
+				{
+					BV_ASSERT(dstGeometry.AABBs.AABBs.StartAddress == 0, "Device address already set");
+					dstGeometry.AABBs.AABBs.StartAddress = srcGeometry.m_AABB.m_pBuffer->GetDeviceAddress() + srcGeometry.m_AABB.m_Offset;
+				}
+			}
+		}
+		else
+		{
+			BV_ASSERT(buildDesc.m_Geometries.Size() == 1, "TLAS should only have one element");
+
+			auto& srcGeometry = buildDesc.m_Geometries[0];
+			asDesc.Inputs.NumDescs = srcGeometry.m_Instance.m_Count;
+			asDesc.Inputs.InstanceDescs = srcGeometry.m_Instance.m_pBuffer->GetDeviceAddress() + srcGeometry.m_Instance.m_Offset;
+		}
+
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC pbDesc{};
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC* pPBDesc = nullptr;
+		u32 numPBDesc = 0;
+		if (pPostBuildDesc)
+		{
+			pbDesc.InfoType = GetD3D12RayTracingAccelerationStructurePostBuildInfoType(pPostBuildDesc->m_Type);
+			// TODO: Request UAV buffer
+			//pbDesc.DestBuffer = ;
+			numPBDesc = 1;
+			pPBDesc = &pbDesc;
+		}
+
+		m_CommandList4->BuildRaytracingAccelerationStructure(&asDesc, numPBDesc, pPBDesc);
+
+		// Barriers
+
+		if (pPostBuildDesc)
+		{
+			// TODO: Copy UAV data to read-back heap buffer
+			//m_CommandList4->CopyBufferRegion(TO_D3D12(pPostBuildDesc->m_pDstBuffer)->GetHandle(), pPostBuildDesc->m_DstBufferOffset + asIndex * sizeof(u64), , , sizeof(u64));
+		}
+	}
 }
 
 
-void BvCommandListD3D12::BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandListD3D12::EmitASPostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures, const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc)
 {
-	BV_ASSERT(false, "Not Implemented");
-}
+	BvVector<D3D12_GPU_VIRTUAL_ADDRESS> handles; handles.Reserve(count);
+	for (auto i = 0; i < count; i++)
+	{
+		handles.PushBack(TO_D3D12(ppAccelerationStructures[i])->GetDeviceAddress());
+	}
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC pbDesc
+	{
+		//0, // TODO: Request UAV buffer
+		GetD3D12RayTracingAccelerationStructurePostBuildInfoType(postBuildDesc.m_Type)
+	};
+	m_CommandList4->EmitRaytracingAccelerationStructurePostbuildInfo(&pbDesc, count, handles.Data());
 
+	// Barriers
 
-//void BvCommandListD3D12::EmitASPostBuild(IBvAccelerationStructure* pAS, const ASPostBuildDesc& postBuildDesc)
-//{
-//	BV_ASSERT(false, "Not Implemented");
-//}
-
-
-void BvCommandListD3D12::CopyBLAS(const AccelerationStructureCopyDesc& copyDesc)
-{
-	BV_ASSERT(false, "Not Implemented");
-}
-
-
-void BvCommandListD3D12::CopyTLAS(const AccelerationStructureCopyDesc& copyDesc)
-{
-	BV_ASSERT(false, "Not Implemented");
+	// TODO: Copy UAV data to read-back heap buffer
+	//m_CommandList4->CopyBufferRegion(TO_D3D12(postBuildDesc.m_pDstBuffer)->GetHandle(), postBuildDesc.m_DstBufferOffset, , , sizeof(u64) * count);
 }
 
 
@@ -880,11 +993,11 @@ void BvCommandListD3D12::DispatchRays(const DispatchRaysCommandArgs& args)
 	FlushDescriptorSets();
 
 	D3D12_DISPATCH_RAYS_DESC drd{ { args.m_RayGenShader.m_Address, args.m_RayGenShader.m_Size }, // For RayGen, stride == size
-		{ args.m_MissShader.m_Address, args.m_MissShader.m_Stride, args.m_MissShader.m_Size },
-		{ args.m_HitShader.m_Address, args.m_HitShader.m_Stride, args.m_HitShader.m_Size },
-		{ args.m_CallableShader.m_Address, args.m_CallableShader.m_Stride, args.m_CallableShader.m_Size },
+		{ args.m_MissShader.m_Address, args.m_MissShader.m_Size, args.m_MissShader.m_Stride },
+		{ args.m_HitShader.m_Address, args.m_HitShader.m_Size, args.m_HitShader.m_Stride },
+		{ args.m_CallableShader.m_Address, args.m_CallableShader.m_Size, args.m_CallableShader.m_Stride },
 		args.m_Width, args.m_Height, args.m_Depth };
-	m_CommandListEx->DispatchRays(&drd);
+	m_CommandList4->DispatchRays(&drd);
 }
 
 
@@ -892,7 +1005,7 @@ void BvCommandListD3D12::DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offs
 {
 	FlushDescriptorSets();
 
-	BV_ASSERT(false, "Not Implemented");
+	m_CommandList4->ExecuteIndirect(m_pDispatchRaysIndirectSig, 1, TO_D3D12(pBuffer)->GetHandle(), offset, nullptr, 0);
 }
 
 
@@ -912,6 +1025,12 @@ void BvCommandListD3D12::FlushDescriptorSets()
 	{
 		auto& rootParam = params[rootIndex];
 		if (rootParam.ParameterType != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
+		{
+			continue;
+		}
+
+		auto set = rootParam.DescriptorTable.pDescriptorRanges[0].RegisterSpace;
+		if (!rbs.IsDirty(set))
 		{
 			continue;
 		}
@@ -943,11 +1062,12 @@ void BvCommandListD3D12::FlushDescriptorSets()
 		{
 			m_CommandList->SetGraphicsRootDescriptorTable(rootIndex, dstHandle);
 		}
-		else if (m_pComputePipeline)
+		else
 		{
 			m_CommandList->SetComputeRootDescriptorTable(rootIndex, dstHandle);
 		}
 
+		rbs.MarkClean(set);
 		descriptors.Clear();
 	}
 }

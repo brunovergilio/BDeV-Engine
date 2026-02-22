@@ -12,7 +12,7 @@
     <ClInclude Include="BvDescriptorSetVk.h" />
     <ClInclude Include="BvFramebufferVk.h" />
     <ClInclude Include="BvPipelineStateVk.h" />
-    <ClInclude Include="BvQueryVk.h" />
+    <ClInclude Include="BvQueryHeapVk.h" />
     <ClInclude Include="BvRenderDeviceVk.h" />
     <ClInclude Include="BvRenderEngineVk.h" />
     <ClInclude Include="BvRenderPassVk.h" />
@@ -40,7 +40,7 @@
     <ClCompile Include="BvDescriptorSetVk.cpp" />
     <ClCompile Include="BvFramebufferVk.cpp" />
     <ClCompile Include="BvPipelineStateVk.cpp" />
-    <ClCompile Include="BvQueryVk.cpp" />
+    <ClCompile Include="BvQueryHeapVk.cpp" />
     <ClCompile Include="BvRenderDeviceVk.cpp" />
     <ClCompile Include="BvRenderEngineVk.cpp" />
     <ClCompile Include="BvRenderPassVk.cpp" />

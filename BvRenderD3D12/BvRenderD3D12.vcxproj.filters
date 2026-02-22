@@ -23,10 +23,12 @@
     <ClInclude Include="BvCommandContextD3D12.h" />
     <ClInclude Include="BvDescriptorHeapD3D12.h" />
     <ClInclude Include="BvCommandListD3D12.h" />
-    <ClInclude Include="BvQueryD3D12.h" />
+    <ClInclude Include="BvQueryHeapD3D12.h" />
     <ClInclude Include="BvCommandAllocatorD3D12.h" />
     <ClInclude Include="BvCommandQueueD3D12.h" />
     <ClInclude Include="BvUtilsD3D12.h" />
+    <ClInclude Include="BvAccelerationStructureD3D12.h" />
+    <ClInclude Include="BvShaderBindingTableD3D12.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BvCommonD3D12.cpp" />
@@ -48,9 +50,11 @@
     <ClCompile Include="BvCommandContextD3D12.cpp" />
     <ClCompile Include="BvDescriptorHeapD3D12.cpp" />
     <ClCompile Include="BvCommandListD3D12.cpp" />
-    <ClCompile Include="BvQueryD3D12.cpp" />
+    <ClCompile Include="BvQueryHeapD3D12.cpp" />
     <ClCompile Include="BvCommandAllocatorD3D12.cpp" />
     <ClCompile Include="BvCommandQueueD3D12.cpp" />
     <ClCompile Include="BvUtilsD3D12.cpp" />
+    <ClCompile Include="BvAccelerationStructureD3D12.cpp" />
+    <ClCompile Include="BvShaderBindingTableD3D12.cpp" />
   </ItemGroup>
 </Project>

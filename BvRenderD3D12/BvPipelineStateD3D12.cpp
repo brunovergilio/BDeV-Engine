@@ -44,6 +44,24 @@ void BvComputePipelineStateD3D12::Destroy()
 }
 
 
+BvRayTracingPipelineStateD3D12::BvRayTracingPipelineStateD3D12(BvRenderDeviceD3D12* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc,
+	ComPtr<ID3D12StateObject>& pipeline, ComPtr<ID3D12RootSignature>& rootSig, BvVector<BvWString>& groupNames)
+	: m_pDevice(pDevice), m_PipelineStateDesc(pipelineStateDesc), m_Pipeline(std::move(pipeline)), m_RootSig(std::move(rootSig)), m_GroupNames(groupNames)
+{
+}
+
+
+BvRayTracingPipelineStateD3D12::~BvRayTracingPipelineStateD3D12()
+{
+	Destroy();
+}
+
+
+void BvRayTracingPipelineStateD3D12::Destroy()
+{
+}
+
+
 BvPipelineCacheD3D12::BvPipelineCacheD3D12(BvRenderDeviceD3D12* pDevice, ComPtr<ID3D12PipelineLibrary1>& library)
 	: m_pDevice(pDevice), m_Library(std::move(library))
 {

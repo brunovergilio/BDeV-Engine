@@ -164,7 +164,7 @@ int main()
 
 	IBvGraphicsPipelineState* pPSO = pDevice->CreateGraphicsPipeline(pipelineDesc);
 
-	IBvQuery* pQuery = pDevice->CreateQuery(QueryType::kTimestamp);
+	IBvQueryHeap* pQuery = pDevice->CreateQuery(QueryType::kTimestamp);
 
 	auto currIndex = 0;
 	u64 frame = 0;

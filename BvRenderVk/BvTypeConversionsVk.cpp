@@ -537,16 +537,16 @@ VkShaderStageFlagBits GetVkShaderStageFlagBits(const ShaderStage shaderStage)
 }
 
 
-VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType)
+VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType, bool pushDescriptor)
 {
 	switch (resourceType)
 	{
 	case ShaderResourceType::kConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	case ShaderResourceType::kStructuredBuffer:			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	case ShaderResourceType::kRWStructuredBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	case ShaderResourceType::kDynamicConstantBuffer:	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	case ShaderResourceType::kDynamicStructuredBuffer:	return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-	case ShaderResourceType::kDynamicRWStructuredBuffer:return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+	case ShaderResourceType::kDynamicConstantBuffer:	return pushDescriptor ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	case ShaderResourceType::kDynamicStructuredBuffer:	return pushDescriptor ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+	case ShaderResourceType::kDynamicRWStructuredBuffer:return pushDescriptor ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 	case ShaderResourceType::kFormattedBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 	case ShaderResourceType::kRWFormattedBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 	case ShaderResourceType::kTexture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
@@ -932,15 +932,27 @@ VkGeometryInstanceFlagsKHR GetVkGeometryInstanceFlags(RayTracingInstanceFlags fl
 }
 
 
-VkCopyAccelerationStructureModeKHR GetVkCopyAccelerationStructureMode(AccelerationStructureCopyMode mode)
+VkCopyAccelerationStructureModeKHR GetVkCopyAccelerationStructureMode(RayTracingAccelerationStructureCopyMode mode)
 {
 	switch (mode)
 	{
-	case AccelerationStructureCopyMode::kClone: return VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
-	case AccelerationStructureCopyMode::kCompact: return VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
+	case RayTracingAccelerationStructureCopyMode::kClone: return VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
+	case RayTracingAccelerationStructureCopyMode::kCompact: return VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_KHR;
 	}
 
 	return VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_KHR;
+}
+
+
+VkQueryType GetVkQueryType(RayTracingAccelerationStructurePostBuildType asPostBuildType)
+{
+	constexpr VkQueryType kQueryTypes[] =
+	{
+		VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR,
+		VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR
+	};
+
+	return kQueryTypes[u8(asPostBuildType)];
 }
 
 

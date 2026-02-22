@@ -92,6 +92,7 @@ void BvBufferVk::Destroy()
 	if (m_Buffer)
 	{
 		VkHelpers::DestroyDeviceObject(*m_pDevice, m_Buffer, m_pDevice->GetAllocator(), m_VMAAllocation);
+		m_pDevice->OnVkHandleDestroyed(u64(m_Buffer), false);
 		m_Buffer = VK_NULL_HANDLE;
 	}
 }

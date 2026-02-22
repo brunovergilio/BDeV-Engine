@@ -925,3 +925,106 @@ DXGI_FORMAT GetD3D12IndexFormat(IndexFormat indexFormat)
 
 	return kIndexFormats[u8(indexFormat)];
 }
+
+
+D3D12_SHADING_RATE GetD3D12ShadingRate(ShadingRateDimensions dimensions)
+{
+	return D3D12_SHADING_RATE(dimensions);
+}
+
+
+D3D12_SHADING_RATE_COMBINER GetD3D12ShadingRateCombiner(ShadingRateCombinerOp combinerOp)
+{
+	constexpr D3D12_SHADING_RATE_COMBINER kCombinerOps[] =
+	{
+		D3D12_SHADING_RATE_COMBINER_PASSTHROUGH,
+		D3D12_SHADING_RATE_COMBINER_OVERRIDE,
+		D3D12_SHADING_RATE_COMBINER_MIN,
+		D3D12_SHADING_RATE_COMBINER_MAX,
+		D3D12_SHADING_RATE_COMBINER_SUM,
+		D3D12_SHADING_RATE_COMBINER_SUM
+	};
+
+	BV_ASSERT_ONCE(combinerOp != ShadingRateCombinerOp::kMul, "D3D12 doesn't support multiplication combiner op, defaulting to sum");
+
+	return kCombinerOps[u8(combinerOp)];
+}
+
+
+D3D12_HIT_GROUP_TYPE GetD3D12HitGroupType(ShaderGroupType shaderGroupType)
+{
+	return shaderGroupType == ShaderGroupType::kTriangles ? D3D12_HIT_GROUP_TYPE_TRIANGLES : D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE;
+}
+
+
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE GetD3D12RayTracingAccelerationStructureType(RayTracingAccelerationStructureType type)
+{
+	constexpr D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE kTypes[] =
+	{
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL
+	};
+
+	return kTypes[u8(type)];
+}
+
+
+D3D12_RAYTRACING_GEOMETRY_TYPE GetD3D12RayTracingGeometryType(RayTracingGeometryType type)
+{
+	constexpr D3D12_RAYTRACING_GEOMETRY_TYPE kTypes[] =
+	{
+		D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES,
+		D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES,
+		D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS
+	};
+
+	return kTypes[u8(type)];
+}
+
+
+D3D12_RAYTRACING_GEOMETRY_FLAGS GetD3D12RayTracingGeometryFlags(RayTracingGeometryFlags flags)
+{
+	D3D12_RAYTRACING_GEOMETRY_FLAGS result = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+	if (EHasFlag(flags, RayTracingGeometryFlags::kOpaque)) { result |= D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE; }
+	if (EHasFlag(flags, RayTracingGeometryFlags::kNoDuplicateAnyHitInvocation)) { result |= D3D12_RAYTRACING_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION; }
+
+	return result;
+}
+
+
+D3D12_RAYTRACING_INSTANCE_FLAGS GetD3D12RayTracingInstanceFlags(RayTracingInstanceFlags flags)
+{
+	D3D12_RAYTRACING_INSTANCE_FLAGS result = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+	if (EHasFlag(flags, RayTracingInstanceFlags::kTriangleCullDisable)) { result |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE; }
+	if (EHasFlag(flags, RayTracingInstanceFlags::kTriangleFrontCounterclockwise)) { result |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE; }
+	if (EHasFlag(flags, RayTracingInstanceFlags::kForceOpaque)) { result |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE; }
+	if (EHasFlag(flags, RayTracingInstanceFlags::kForceNonOpaque)) { result |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_NON_OPAQUE; }
+
+	return result;
+}
+
+
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetD3D12RayTracingAccelerationStructureBuildFlags(RayTracingAccelerationStructureFlags flags)
+{
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS result = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kAllowUpdate)) { result |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kAllowCompaction)) { result |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kPreferFastTrace)) { result |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kPreferFastBuild)) { result |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD; }
+	if (EHasFlag(flags, RayTracingAccelerationStructureFlags::kLowMemory)) { result |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_MINIMIZE_MEMORY; }
+
+	return result;
+}
+
+
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_TYPE GetD3D12RayTracingAccelerationStructurePostBuildInfoType(RayTracingAccelerationStructurePostBuildType type)
+{
+	constexpr D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_TYPE kPostBuildTypes[] =
+	{
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE,
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE
+	};
+
+	return kPostBuildTypes[u8(type)];
+}

@@ -38,7 +38,7 @@ VkBlendOp GetVkBlendOp(const BlendOp blendOp);
 VkBlendFactor GetVkBlendFactor(const BlendFactor blendFactor);
 VkLogicOp GetVkLogicOp(const LogicOp logicOp);
 VkShaderStageFlagBits GetVkShaderStageFlagBits(const ShaderStage shaderStage);
-VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType);
+VkDescriptorType GetVkDescriptorType(const ShaderResourceType resourceType, bool pushDescriptor = false);
 VkShaderStageFlags GetVkShaderStageFlags(const ShaderStage stages);
 VkAttachmentLoadOp GetVkAttachmentLoadOp(const LoadOp loadOp);
 VkAttachmentStoreOp GetVkAttachmentStoreOp(const StoreOp storeOp);
@@ -58,5 +58,6 @@ VkRayTracingShaderGroupTypeKHR GetVkRayTracingShaderGroupType(ShaderGroupType ty
 VkGeometryTypeKHR GetVkGeometryType(RayTracingGeometryType type);
 VkGeometryFlagsKHR GetVkGeometryFlags(RayTracingGeometryFlags flags);
 VkGeometryInstanceFlagsKHR GetVkGeometryInstanceFlags(RayTracingInstanceFlags flags);
-VkCopyAccelerationStructureModeKHR GetVkCopyAccelerationStructureMode(AccelerationStructureCopyMode mode);
+VkCopyAccelerationStructureModeKHR GetVkCopyAccelerationStructureMode(RayTracingAccelerationStructureCopyMode mode);
+VkQueryType GetVkQueryType(RayTracingAccelerationStructurePostBuildType asPostBuildType);
 VkFullScreenExclusiveEXT GetVkFullScreenExclusiveEXTMode(SwapChainMode mode);

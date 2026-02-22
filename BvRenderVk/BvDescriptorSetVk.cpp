@@ -10,7 +10,7 @@
 #include "BvUtilsVk.h"
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 dynamicOffset)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 binding, u32 arrayIndex, u32 dynamicOffset)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -30,6 +30,13 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* 
 			m_Data.m_BufferInfo = info;
 		}
 
+		//if ((descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC || descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+		//	&& m_DynamicOffset != dynamicOffset)
+		//{
+		//	isDirty = true;
+		//}
+		m_Binding = binding;
+		m_ArrayIndex = arrayIndex;
 		m_DynamicOffset = dynamicOffset;
 		m_DescriptorType = descriptorType;
 		break;
@@ -42,6 +49,8 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* 
 			isDirty = true;
 		}
 
+		m_Binding = binding;
+		m_ArrayIndex = arrayIndex;
 		m_DescriptorType = descriptorType;
 		break;
 	default:
@@ -53,7 +62,7 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvBufferViewVk* 
 }
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 binding, u32 arrayIndex)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -69,6 +78,9 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk*
 			m_Data.m_ImageInfo = info;
 			isDirty = true;
 		}
+
+		m_Binding = binding;
+		m_ArrayIndex = arrayIndex;
 		m_DescriptorType = descriptorType;
 		break;
 	}
@@ -80,6 +92,9 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk*
 			m_Data.m_ImageInfo = info;
 			isDirty = true;
 		}
+
+		m_Binding = binding;
+		m_ArrayIndex = arrayIndex;
 		m_DescriptorType = descriptorType;
 		break;
 	}
@@ -92,7 +107,7 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvTextureViewVk*
 }
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 binding, u32 arrayIndex)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -105,6 +120,9 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pRe
 			m_Data.m_ImageInfo = info;
 			isDirty = true;
 		}
+
+		m_Binding = binding;
+		m_ArrayIndex = arrayIndex;
 		m_DescriptorType = descriptorType;
 		break;
 	}
@@ -117,7 +135,7 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvSamplerVk* pRe
 }
 
 
-bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource)
+bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 binding, u32 arrayIndex)
 {
 	bool isDirty = false;
 	switch (descriptorType)
@@ -128,6 +146,9 @@ bool ResourceDataVk::Set(VkDescriptorType descriptorType, const BvAccelerationSt
 			m_Data.m_AccelerationStructure = pResource->GetHandle();
 			isDirty = true;
 		}
+
+		m_Binding = binding;
+		m_ArrayIndex = arrayIndex;
 		m_DescriptorType = descriptorType;
 		break;
 	default:
@@ -152,7 +173,7 @@ BvResourceBindingStateVk::~BvResourceBindingStateVk()
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 set, u32 binding, u32 arrayIndex, u32 offset)
 {
 	auto[pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	if (pData->Set(descriptorType, pResource, offset) || newElem)
+	if (pData->Set(descriptorType, pResource, binding, arrayIndex, offset) || newElem)
 	{
 		m_DirtySets[set] = true;
 	}
@@ -163,7 +184,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	if (pData->Set(descriptorType, pResource) || newElem)
+	if (pData->Set(descriptorType, pResource, binding, arrayIndex) || newElem)
 	{
 		m_DirtySets[set] = true;
 	}
@@ -174,7 +195,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	if (pData->Set(descriptorType, pResource) || newElem)
+	if (pData->Set(descriptorType, pResource, binding, arrayIndex) || newElem)
 	{
 		m_DirtySets[set] = true;
 	}
@@ -184,7 +205,7 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 set, u32 binding, u32 arrayIndex)
 {
 	auto [pData, newElem] = AddOrRetrieveResourceData(set, binding, arrayIndex);
-	if (pData->Set(descriptorType, pResource) || newElem)
+	if (pData->Set(descriptorType, pResource, binding, arrayIndex) || newElem)
 	{
 		m_DirtySets[set] = true;
 	}
@@ -194,19 +215,43 @@ void BvResourceBindingStateVk::SetResource(VkDescriptorType descriptorType, cons
 void BvResourceBindingStateVk::Reset()
 {
 	m_Bindings.Clear();
-	m_Resources.Clear();
+	for (auto& perSetResource : m_PerSetResources)
+	{
+		perSetResource.Clear();
+	}
 }
 
 
 const ResourceDataVk* BvResourceBindingStateVk::GetResource(const ResourceIdVk& resId) const
 {
 	auto it = m_Bindings.FindKey(resId);
-	return it != m_Bindings.cend() ? &m_Resources[it->second] : nullptr;
+	return it != m_Bindings.cend() ? &m_PerSetResources[resId.m_Set][it->second] : nullptr;
+}
+
+
+std::pair<u32, const ResourceDataVk*> BvResourceBindingStateVk::GetResources(u32 set) const
+{
+	u32 count = 0;
+	const ResourceDataVk* pResources = nullptr;
+
+	if (set < m_PerSetResources.Size())
+	{
+		count = m_PerSetResources[set].Size();
+		pResources = count > 0 ? m_PerSetResources[set].Data() : nullptr;
+	}
+
+	return std::make_pair(count, pResources);
 }
 
 
 std::pair<ResourceDataVk*, bool> BvResourceBindingStateVk::AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex)
 {
+	if (m_PerSetResources.Size() <= set)
+	{
+		m_PerSetResources.Resize(set + 1, {});
+		m_DirtySets.Resize(set + 1);
+	}
+
 	ResourceIdVk resId{ set, binding, arrayIndex };
 	auto bindingIt = m_Bindings.Emplace(resId, 0);
 	u32 index = 0;
@@ -217,18 +262,13 @@ std::pair<ResourceDataVk*, bool> BvResourceBindingStateVk::AddOrRetrieveResource
 	}
 	else
 	{
-		m_Resources.EmplaceBack();
-		index = static_cast<u32>(m_Resources.Size()) - 1;
+		m_PerSetResources[set].PushBack({});
+		index = static_cast<u32>(m_PerSetResources[set].Size()) - 1;
 		bindingIt.first->second = index;
 		newElem = true;
 	}
 
-	return std::make_pair(&m_Resources[index], newElem);
-}
-
-
-BvDescriptorPoolVk::BvDescriptorPoolVk()
-{
+	return std::make_pair(&m_PerSetResources[set][index], newElem);
 }
 
 
@@ -239,7 +279,7 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(BvRenderDeviceVk* pDevice, const BvShader
 	auto pSet = pLayout->GetResourceSet(set);
 	BV_ASSERT(pSet != nullptr, "Set not found in current Shader Resource Layout");
 
-	m_IsBindless = pSet->m_Bindless;
+	m_IsBindless = pSet->IsBindless();
 	m_Layout = m_pLayout->GetSetLayoutHandles().At(m_SetIndex);
 	for (auto i = 0u; i < pSet->m_Resources.Size(); ++i)
 	{
@@ -253,33 +293,6 @@ BvDescriptorPoolVk::BvDescriptorPoolVk(BvRenderDeviceVk* pDevice, const BvShader
 	{
 		m_PoolSizes.PushBack({ poolSize.first, poolSize.second * m_MaxAllocationsPerPool });
 	}
-}
-
-
-BvDescriptorPoolVk::BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs) noexcept
-	: m_pDevice(rhs.m_pDevice), m_pLayout(rhs.m_pLayout), m_Layout(rhs.m_Layout), m_DescriptorPools(std::move(rhs.m_DescriptorPools)),
-	m_PoolSizes(std::move(rhs.m_PoolSizes)), m_SetIndex(rhs.m_SetIndex), m_MaxAllocationsPerPool(rhs.m_MaxAllocationsPerPool),
-	m_CurrPoolIndex(rhs.m_CurrPoolIndex), m_IsBindless(rhs.m_IsBindless)
-{
-}
-
-
-BvDescriptorPoolVk& BvDescriptorPoolVk::operator=(BvDescriptorPoolVk&& rhs) noexcept
-{
-	if (this != &rhs)
-	{
-		m_pDevice = rhs.m_pDevice;
-		m_pLayout = rhs.m_pLayout;
-		m_Layout = rhs.m_Layout;
-		m_DescriptorPools = std::move(rhs.m_DescriptorPools);
-		m_PoolSizes = std::move(rhs.m_PoolSizes);
-		m_SetIndex = rhs.m_SetIndex;
-		m_MaxAllocationsPerPool = rhs.m_MaxAllocationsPerPool;
-		m_CurrPoolIndex = rhs.m_CurrPoolIndex;
-		m_IsBindless = rhs.m_IsBindless;
-	}
-
-	return *this;
 }
 
 
@@ -317,17 +330,18 @@ void BvDescriptorPoolVk::Destroy()
 
 VkDescriptorSet BvDescriptorPoolVk::Allocate()
 {
-	if (m_CurrPoolIndex == m_DescriptorPools.Size())
+	VkDescriptorSet descriptorSet;
+	if (m_FreeDescriptorSets.Size())
 	{
-		Create();
+		descriptorSet = m_FreeDescriptorSets.Back();
+		m_FreeDescriptorSets.PopBack();
+		return descriptorSet;
 	}
 
-	if (m_DescriptorPools[m_CurrPoolIndex].currAllocationCount == m_MaxAllocationsPerPool)
+	if (m_CurrPoolIndex == m_DescriptorPools.Size()
+		|| (m_DescriptorPools[m_CurrPoolIndex].currAllocationCount == m_MaxAllocationsPerPool && ++m_CurrPoolIndex == m_DescriptorPools.Size()))
 	{
-		if (++m_CurrPoolIndex == m_DescriptorPools.Size())
-		{
-			Create();
-		}
+		Create();
 	}
 
 	VkDescriptorSetAllocateInfo allocateInfo{};
@@ -337,12 +351,17 @@ VkDescriptorSet BvDescriptorPoolVk::Allocate()
 	allocateInfo.descriptorPool = m_DescriptorPools[m_CurrPoolIndex].pool;
 	allocateInfo.pSetLayouts = &m_Layout;
 
-	VkDescriptorSet descriptorSet;
 	auto result = vkAllocateDescriptorSets(m_pDevice->GetHandle(), &allocateInfo, &descriptorSet);
 
 	m_DescriptorPools[m_CurrPoolIndex].currAllocationCount++;
 
 	return descriptorSet;
+}
+
+
+void BvDescriptorPoolVk::RecycleDescriptor(VkDescriptorSet descriptorSet)
+{
+	m_FreeDescriptorSets.PushBack(descriptorSet);
 }
 
 
@@ -355,4 +374,6 @@ void BvDescriptorPoolVk::Reset()
 	}
 
 	m_CurrPoolIndex = 0;
+
+	m_FreeDescriptorSets.Clear();
 }

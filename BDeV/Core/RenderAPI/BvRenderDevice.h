@@ -28,6 +28,7 @@ public:
 	template<BvRCType T> BV_INLINE bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, T** ppObj) { return CreateComputePipelineImpl(computePipelineStateDesc, nullptr, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, T** ppObj) { return CreateRayTracingPipelineImpl(rayTracingPipelineStateDesc, nullptr, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateQuery(QueryType queryType, T** ppObj) { return CreateQueryImpl(queryType, reinterpret_cast<void**>(ppObj)); }
+	template<BvRCType T> BV_INLINE bool CreateQueryHeap(const QueryHeapDesc& queryHeapDesc, T** ppObj) { return CreateQueryHeapImpl(queryHeapDesc, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateFence(const GPUFenceDesc& fenceDesc, T** ppObj) { return CreateFenceImpl(fenceDesc, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, T** ppObj) { return CreateAccelerationStructureImpl(asDesc, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateShaderBindingTable(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, T** ppObj) { return CreateShaderBindingTableImpl(sbtDesc, pContext, reinterpret_cast<void**>(ppObj)); }
@@ -40,7 +41,6 @@ public:
 	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr,
 		u64 baseOffset = 0, u64 firstSubresource = 0) const = 0;
 	virtual u64 GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const = 0;
-
 	virtual FormatFeatures GetFormatFeatures(Format format) const = 0;
 
 	virtual const BvGPUInfo& GetGPUInfo() const = 0;
@@ -62,7 +62,7 @@ protected:
 	virtual bool CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) = 0;
 	virtual bool CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) = 0;
 	virtual bool CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) = 0;
-	virtual bool CreateQueryImpl(QueryType queryType, void** ppObj) = 0;
+	virtual bool CreateQueryHeapImpl(const QueryHeapDesc& queryHeapDesc, void** ppObj) = 0;
 	virtual bool CreateFenceImpl(const GPUFenceDesc& fenceDesc, void** ppObj) = 0;
 	virtual bool CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, void** ppObj) = 0;
 	virtual bool CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, void** ppObj) = 0;

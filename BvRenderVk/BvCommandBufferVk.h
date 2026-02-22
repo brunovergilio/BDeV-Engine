@@ -18,7 +18,7 @@ class IBvBufferView;
 class IBvTextureView;
 class BvBufferVk;
 class BvTextureVk;
-class IBvQuery;
+class IBvQueryHeap;
 class IBvRenderPass;
 class IBvGraphicsPipelineState;
 class IBvComputePipelineState;
@@ -113,18 +113,20 @@ public:
 
 	void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp);
 
-	void BeginQuery(IBvQuery* pQuery);
-	void EndQuery(IBvQuery* pQuery);
+	void ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount);
+	void BeginQuery(IBvQueryHeap* pQueryHeap, u32 index);
+	void EndQuery(IBvQueryHeap* pQueryHeap, u32 index);
+	void ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset = 0);
 
 	void BeginEvent(const char* pName, const BvColor& color);
 	void EndEvent();
 	void SetMarker(const char* pName, const BvColor& color);
 
-	void BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr);
-	void BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr);
-	void EmitASPostBuild(IBvAccelerationStructure* pAS, const ASPostBuildDesc& postBuildDesc);
-	void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc);
-	void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc);
+	void BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr);
+	void EmitASPostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures, const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc);
+	void EmitASPostBuild(u32 count, VkAccelerationStructureKHR* pAS, VkQueryPool queryPool, VkQueryType queryType, VkBuffer buffer, u64 offset);
+	void CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc);
 	void DispatchRays(const DispatchRaysCommandArgs& args);
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
 
@@ -153,18 +155,24 @@ private:
 	const BvRayTracingPipelineStateVk* m_pRayTracingPipeline = nullptr;
 	const BvShaderResourceLayoutVk* m_pShaderResourceLayout = nullptr;
 
-	BvVector<BvQueryVk*> m_MeshQueries;
+	struct MeshQuery
+	{
+		VkQueryPool m_Pool;
+		u32 m_Index;
+	};
+	BvVector<MeshQuery> m_MeshQueries;
+	BvVector<VkDescriptorSet> m_DescriptorSets;
 
 	VkPipelineBindPoint m_PipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_MAX_ENUM;
 
 	State m_CurrentState = State::kRecording;
 	bool m_HasDebugUtils = false;
+	bool m_PushDescriptor = false;
 
 	// TODO: All these objects should be temporary, only used inside a function call
 	BvVector<VkWriteDescriptorSetAccelerationStructureKHR> m_ASWriteSets;
 	BvVector<VkWriteDescriptorSet> m_WriteSets;
 	BvVector<u32> m_DynamicOffsets;
-	BvVector<VkDescriptorSet> m_DescriptorSets;
 
 	BvVector<VkBufferImageCopy> m_BufferImageCopyRegions;
 	BvVector<VkImageCopy> m_ImageCopyRegions;
@@ -172,7 +180,4 @@ private:
 	BvVector<VkMemoryBarrier2> m_MemoryBarriers;
 	BvVector<VkBufferMemoryBarrier2> m_BufferBarriers;
 	BvVector<VkImageMemoryBarrier2> m_ImageBarriers;
-
-	BvVector<VkAccelerationStructureGeometryKHR> m_ASGeometries;
-	BvVector<VkAccelerationStructureBuildRangeInfoKHR> m_ASRanges;
 };

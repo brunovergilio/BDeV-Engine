@@ -36,14 +36,16 @@ struct ResourceDataVk
 		VkAccelerationStructureKHR m_AccelerationStructure;
 	};
 
+	u32 m_Binding;
+	u32 m_ArrayIndex;
 	u32 m_DynamicOffset;
 	Data m_Data;
 	VkDescriptorType m_DescriptorType;
 
-	bool Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 dynamicOffset = 0);
-	bool Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource);
-	bool Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource);
-	bool Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource);
+	bool Set(VkDescriptorType descriptorType, const BvBufferViewVk* pResource, u32 binding, u32 arrayIndex, u32 dynamicOffset = 0);
+	bool Set(VkDescriptorType descriptorType, const BvTextureViewVk* pResource, u32 binding, u32 arrayIndex);
+	bool Set(VkDescriptorType descriptorType, const BvSamplerVk* pResource, u32 binding, u32 arrayIndex);
+	bool Set(VkDescriptorType descriptorType, const BvAccelerationStructureVk* pResource, u32 binding, u32 arrayIndex);
 };
 
 
@@ -61,37 +63,33 @@ public:
 	void Reset();
 
 	const ResourceDataVk* GetResource(const ResourceIdVk& resId) const;
+	std::pair<u32, const ResourceDataVk*> GetResources(u32 set) const;
 
-	BV_INLINE bool IsEmpty() const { return m_Resources.Empty(); }
-	BV_INLINE bool IsDirty(u32 set) const { auto it = m_DirtySets.FindKey(set); return it != m_DirtySets.cend() ? it->second : false; }
-	BV_INLINE void MarkClean(u32 set) { m_DirtySets[set] = false; }
+	BV_INLINE bool IsDirty(u32 set) const { return m_DirtySets.Size() > set && m_DirtySets[set]; }
+	BV_INLINE void MarkClean(u32 set) { if (m_DirtySets.Size() > set) { m_DirtySets[set] = false; } }
 
 private:
 	std::pair<ResourceDataVk*, bool> AddOrRetrieveResourceData(u32 set, u32 binding, u32 arrayIndex);
 
 private:
 	BvRobinMap<ResourceIdVk, u32> m_Bindings;
-	BvVector<ResourceDataVk> m_Resources;
-	BvRobinMap<u32, bool> m_DirtySets;
+	BvVector<BvVector<ResourceDataVk>> m_PerSetResources;
+	BvVector<bool> m_DirtySets;
 };
 
 
 class BvDescriptorPoolVk final
 {
 public:
-	BvDescriptorPoolVk();
 	BvDescriptorPoolVk(BvRenderDeviceVk* pDevice, const BvShaderResourceLayoutVk* pLayout, u32 set, u32 maxAllocationsPerPool);
-	BvDescriptorPoolVk(BvDescriptorPoolVk&& rhs) noexcept;
-	BvDescriptorPoolVk& operator=(BvDescriptorPoolVk&& rhs) noexcept;
 	~BvDescriptorPoolVk();
 
 	void Create();
 	void Destroy();
 
 	VkDescriptorSet Allocate();
+	void RecycleDescriptor(VkDescriptorSet descriptorSet);
 	void Reset();
-
-	BV_INLINE bool IsValid() const { return m_Layout != VK_NULL_HANDLE; }
 
 private:
 	struct PoolData
@@ -105,6 +103,7 @@ private:
 	VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
 	BvVector<PoolData> m_DescriptorPools;
 	BvVector<VkDescriptorPoolSize> m_PoolSizes;
+	BvVector<VkDescriptorSet> m_FreeDescriptorSets;
 	u32 m_SetIndex = 0;
 	u32 m_MaxAllocationsPerPool = 0;
 	u32 m_CurrPoolIndex = 0;

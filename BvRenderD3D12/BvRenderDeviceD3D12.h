@@ -17,7 +17,7 @@ class BvShaderD3D12;
 class BvGraphicsPipelineStateD3D12;
 class BvComputePipelineStateD3D12;
 class BvRayTracingPipelineStateD3D12;
-class BvQueryD3D12;
+class BvQueryHeapD3D12;
 class BvCommandContextD3D12;
 class BvGPUFenceD3D12;
 class BvAccelerationStructureD3D12;
@@ -45,7 +45,7 @@ public:
 	bool CreateGraphicsPipelineImpl(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) override;
 	bool CreateComputePipelineImpl(const ComputePipelineStateDesc& computePipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) override;
 	bool CreateRayTracingPipelineImpl(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, IBvPipelineCache* pPipelineCache, void** ppObj) override;
-	bool CreateQueryImpl(QueryType queryType, void** ppObj) override;
+	bool CreateQueryHeapImpl(const QueryHeapDesc& queryHeapDesc, void** ppObj) override;
 	bool CreateFenceImpl(const GPUFenceDesc& fenceDesc, void** ppObj) override;
 	bool CreateAccelerationStructureImpl(const RayTracingAccelerationStructureDesc& asDesc, void** ppObj) override;
 	bool CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, void** ppObj) override;

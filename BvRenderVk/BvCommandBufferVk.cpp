@@ -15,7 +15,7 @@
 #include "BvSwapChainVk.h"
 #include "BvBufferViewVk.h"
 #include "BvSamplerVk.h"
-#include "BvQueryVk.h"
+#include "BvQueryHeapVk.h"
 #include "BvCommandQueueVk.h"
 #include "BvCommandContextVk.h"
 #include "BvAccelerationStructureVk.h"
@@ -24,7 +24,8 @@
 
 
 BvCommandBufferVk::BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
-	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetDeviceInfo()->m_HasDebugUtils)
+	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetDeviceInfo()->m_HasDebugUtils),
+	m_PushDescriptor(pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor)
 {
 }
 
@@ -468,10 +469,13 @@ void BvCommandBufferVk::SetShaderResourceParams(u32 resourceParamsCount, IBvShad
 		m_DescriptorSets.Resize(startIndex + resourceParamsCount, VK_NULL_HANDLE);
 	}
 
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	for (auto i = 0; i < resourceParamsCount; ++i)
 	{
+		auto set = i + startIndex;
 		auto pSRP = TO_VK(ppResourceParams[i]);
-		m_DescriptorSets[i] = pSRP ? pSRP->GetHandle() : VK_NULL_HANDLE;
+		m_DescriptorSets[set] = pSRP ? pSRP->GetHandle() : VK_NULL_HANDLE;
+		bindingState.MarkClean(set);
 	}
 
 	vkCmdBindDescriptorSets(m_CommandBuffer, m_PipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), startIndex, resourceParamsCount, m_DescriptorSets.Data() + startIndex, 0, nullptr);
@@ -509,6 +513,19 @@ void BvCommandBufferVk::SetRWStructuredBuffers(u32 count, const IBvBufferView* c
 
 void BvCommandBufferVk::SetDynamicConstantBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
+	if (m_PushDescriptor)
+	{
+		VkDescriptorBufferInfo bi{ TO_VK(pResource->GetDesc().GetBufferPtr())->GetHandle(), offset, VK_WHOLE_SIZE };
+		VkWriteDescriptorSet wds{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		wds.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		wds.dstBinding = binding;
+		wds.descriptorCount = 1;
+		wds.pBufferInfo = &bi;
+
+		vkCmdPushDescriptorSetKHR(m_CommandBuffer, m_PipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), set, 1, &wds);
+		return;
+	}
+
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	bindingState.SetResource(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, TO_VK(pResource), set, binding, 0, offset);
 }
@@ -516,6 +533,19 @@ void BvCommandBufferVk::SetDynamicConstantBuffer(IBvBufferView* pResource, u32 o
 
 void BvCommandBufferVk::SetDynamicStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
+	if (m_PushDescriptor)
+	{
+		VkDescriptorBufferInfo bi{ TO_VK(pResource->GetDesc().GetBufferPtr())->GetHandle(), offset, VK_WHOLE_SIZE };
+		VkWriteDescriptorSet wds{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		wds.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		wds.dstBinding = binding;
+		wds.descriptorCount = 1;
+		wds.pBufferInfo = &bi;
+
+		vkCmdPushDescriptorSetKHR(m_CommandBuffer, m_PipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), set, 1, &wds);
+		return;
+	}
+
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, TO_VK(pResource), set, binding, 0, offset);
 }
@@ -523,6 +553,19 @@ void BvCommandBufferVk::SetDynamicStructuredBuffer(IBvBufferView* pResource, u32
 
 void BvCommandBufferVk::SetDynamicRWStructuredBuffer(IBvBufferView* pResource, u32 offset, u32 set, u32 binding)
 {
+	if (m_PushDescriptor)
+	{
+		VkDescriptorBufferInfo bi{ TO_VK(pResource->GetDesc().GetBufferPtr())->GetHandle(), offset, VK_WHOLE_SIZE };
+		VkWriteDescriptorSet wds{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		wds.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		wds.dstBinding = binding;
+		wds.descriptorCount = 1;
+		wds.pBufferInfo = &bi;
+
+		vkCmdPushDescriptorSetKHR(m_CommandBuffer, m_PipelineBindPoint, m_pShaderResourceLayout->GetPipelineLayoutHandle(), set, 1, &wds);
+		return;
+	}
+
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
 	bindingState.SetResource(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, TO_VK(pResource), set, binding, 0, offset);
 }
@@ -1126,61 +1169,88 @@ void BvCommandBufferVk::SetPredication(const IBvBuffer* pBuffer, u64 offset, Pre
 }
 
 
-void BvCommandBufferVk::BeginQuery(IBvQuery* pQuery)
+void BvCommandBufferVk::ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount)
 {
-	auto pQueryVk = TO_VK(pQuery);
-	auto queryType = pQueryVk->GetQueryType();
-	auto pData = pQueryVk->Allocate(m_pFrameData->GetQueryHeapManager(), m_pFrameData->GetFrameIndex());
-	if (queryType != QueryType::kTimestamp)
+	auto pQueryHeapVk = TO_VK(pQueryHeap);
+	vkCmdResetQueryPool(m_CommandBuffer, pQueryHeapVk->GetHandle(), startIndex, queryCount);
+	if (pQueryHeapVk->GetDesc().m_Type == QueryType::kMeshPipelineStatistics)
 	{
-		VkQueryControlFlags flags = queryType == QueryType::kOcclusion ? VK_QUERY_CONTROL_PRECISE_BIT : 0;
-		vkCmdBeginQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex), pData->m_QueryIndex, flags);
-		if (queryType == QueryType::kMeshPipelineStatistics)
-		{
-			auto meshPool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1);
-			if (meshPool != VK_NULL_HANDLE)
-			{
-				m_MeshQueries.EmplaceBack(pQueryVk);
-			}
-		}
+		vkCmdResetQueryPool(m_CommandBuffer, pQueryHeapVk->GetHandle(1), startIndex, queryCount);
 	}
-
-	m_pFrameData->AddQuery(pQueryVk);
 }
 
 
-void BvCommandBufferVk::EndQuery(IBvQuery* pQuery)
+void BvCommandBufferVk::BeginQuery(IBvQueryHeap* pQueryHeap, u32 index)
+{
+	auto queryType = pQueryHeap->GetDesc().m_Type;
+	if (queryType == QueryType::kTimestamp)
+	{
+		return;
+	}
+
+	auto pQueryHeapVk = TO_VK(pQueryHeap);
+	VkQueryControlFlags flags = queryType == QueryType::kOcclusion ? VK_QUERY_CONTROL_PRECISE_BIT : 0;
+	vkCmdBeginQuery(m_CommandBuffer, pQueryHeapVk->GetHandle(), index, flags);
+	if (queryType == QueryType::kMeshPipelineStatistics)
+	{
+		auto meshPool = pQueryHeapVk->GetHandle(1);
+		if (meshPool != VK_NULL_HANDLE)
+		{
+			m_MeshQueries.PushBack({ meshPool, index });
+		}
+	}
+}
+
+
+void BvCommandBufferVk::EndQuery(IBvQueryHeap* pQueryHeap, u32 index)
 {
 	ResetRenderTargets();
 
-	auto pQueryVk = TO_VK(pQuery);
-	auto queryType = pQueryVk->GetQueryType();
-	auto frameIndex = m_pFrameData->GetFrameIndex();
-	auto pData = pQueryVk->GetQueryData(frameIndex);
-	auto pool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex);
-	auto meshPool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1);
+	auto pQueryHeapVk = TO_VK(pQueryHeap);
+	auto queryType = pQueryHeapVk->GetDesc().m_Type;
+	auto pool = pQueryHeapVk->GetHandle();
+	auto meshPool = pQueryHeapVk->GetHandle(1);
+
 	if (queryType == QueryType::kTimestamp)
 	{
-		vkCmdWriteTimestamp2(m_CommandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, pool, pData->m_QueryIndex);
+		vkCmdWriteTimestamp2(m_CommandBuffer, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, pool, index);
 	}
 	else
 	{
-		vkCmdEndQuery(m_CommandBuffer, pool, pData->m_QueryIndex);
+		vkCmdEndQuery(m_CommandBuffer, pool, index);
 	}
-	VkBuffer buffer;
-	u64 stride = 0, offset = 0;
-	pData->m_pQueryHeap->GetBufferInformation(pData->m_HeapIndex, frameIndex, pData->m_QueryIndex, buffer, offset, stride);
+}
+
+
+void BvCommandBufferVk::ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset)
+{
+	auto pQueryHeapVk = TO_VK(pQueryHeap);
+
 	VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
+	auto queryType = pQueryHeapVk->GetDesc().m_Type;
 	if (queryType == QueryType::kOcclusionBinary)
 	{
 		flags |= VK_QUERY_RESULT_PARTIAL_BIT;
 	}
 
-	vkCmdCopyQueryPoolResults(m_CommandBuffer, pool, pData->m_QueryIndex, 1, buffer, offset, stride, flags);
-	if (queryType == QueryType::kMeshPipelineStatistics && meshPool != VK_NULL_HANDLE)
+	auto buffer = TO_VK(pDstBuffer)->GetHandle();
+	auto pool = pQueryHeapVk->GetHandle();
+	if (queryType != QueryType::kMeshPipelineStatistics)
 	{
-		pData->m_pQueryHeap->GetBufferInformation(pData->m_HeapIndex, frameIndex, pData->m_QueryIndex, buffer, offset, stride, 1);
-		vkCmdCopyQueryPoolResults(m_CommandBuffer, meshPool, pData->m_QueryIndex, 1, buffer, offset, stride, flags);
+		vkCmdCopyQueryPoolResults(m_CommandBuffer, pool, startIndex, queryCount, buffer, offset, pQueryHeapVk->GetQuerySize(), flags);
+	}
+	else
+	{
+		// Unfortunately, mesh primitives is a separate pool, so in order to keep all values in the correct place, we resolve them one by one
+		VkDeviceSize stride0 = pQueryHeapVk->GetQuerySize() - sizeof(u64);
+		constexpr VkDeviceSize stride1 = sizeof(u64);
+		auto meshPool = pQueryHeapVk->GetHandle(1);
+		for (auto i = 0; i < queryCount; i++)
+		{
+			auto currOffset = offset + i * (stride0 + stride1);
+			vkCmdCopyQueryPoolResults(m_CommandBuffer, pool, startIndex, 1, buffer, currOffset, stride0, flags);
+			vkCmdCopyQueryPoolResults(m_CommandBuffer, meshPool, startIndex, 1, buffer, currOffset + stride0, stride1, flags);
+		}
 	}
 }
 
@@ -1230,182 +1300,164 @@ void BvCommandBufferVk::SetMarker(const char* pName, const BvColor& color)
 }
 
 
-void BvCommandBufferVk::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandBufferVk::BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+	const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc)
 {
-	if (desc.m_Geometries.Size() > desc.m_pBLAS->GetDesc().m_BLAS.m_Geometries.Size())
+	BvVector<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos; buildInfos.Reserve(count);
+	BvVector<VkAccelerationStructureBuildRangeInfoKHR*> rangeInfos; rangeInfos.Reserve(count);
+	BvVector<VkBufferMemoryBarrier2> barriers; barriers.Reserve(count);
+	BvVector<VkAccelerationStructureKHR> asHandles;
+	if (pPostBuildDesc)
 	{
-		return;
+		asHandles.Reserve(count);
 	}
 
-	auto pAS = TO_VK(desc.m_pBLAS);
-	auto& geoms = pAS->GetGeometries();
-	for (auto i = 0u; i < desc.m_Geometries.Size(); ++i)
+	for (auto asIndex = 0; asIndex < count; asIndex++)
 	{
-		auto& srcGeometry = desc.m_Geometries[i];
+		auto& buildDesc = pBuildDescs[asIndex];
 
-		// Try to find an index through the id; if not found,
-		// revert back to the current index in the loop
-		auto index = pAS->GetGeometryIndex(srcGeometry.m_Id);
-		if (index == kU32Max)
-		{
-			index = i;
-		}
+		auto pAS = TO_VK(buildDesc.m_pAS);
+		auto& geometries = pAS->GetGeometries();
+		auto& ranges = pAS->GetRanges();
 
-		// If the data doesn't match, don't include it
-		if (geoms[index].geometryType != GetVkGeometryType(srcGeometry.m_Type))
+		if (buildDesc.m_Geometries.Size() > geometries.Size())
 		{
 			continue;
 		}
 
-		VkAccelerationStructureGeometryKHR& dstGeometry = m_ASGeometries.EmplaceBack(geoms[index]);
-		VkAccelerationStructureBuildRangeInfoKHR& range = m_ASRanges.EmplaceBack();
-		if (srcGeometry.m_Type == RayTracingGeometryType::kTriangles)
+		VkAccelerationStructureTypeKHR asType{ VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR };
+		if (buildDesc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
 		{
-			VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
-			triangle.vertexData.deviceAddress = TO_VK(srcGeometry.m_Triangle.m_pVertexBuffer)->GetDeviceAddress() + srcGeometry.m_Triangle.m_VertexOffset;
-			if (srcGeometry.m_Triangle.m_pIndexBuffer)
+			for (auto i = 0u; i < geometries.Size(); ++i)
 			{
-				triangle.indexData.deviceAddress = TO_VK(srcGeometry.m_Triangle.m_pIndexBuffer)->GetDeviceAddress() + srcGeometry.m_Triangle.m_IndexOffset;
+				// Try to find an index through the id; if not found,
+				// revert back to the current index in the loop
+				auto index = pAS->GetGeometryIndex(buildDesc.m_Geometries[i].m_Id);
+				if (index == kU32Max)
+				{
+					index = i;
+				}
+
+				auto& srcGeometry = buildDesc.m_Geometries[index];
+				auto& dstGeometry = geometries[index];
+
+				// If the data doesn't match, don't include it
+				if (dstGeometry.geometryType != GetVkGeometryType(srcGeometry.m_Type))
+				{
+					continue;
+				}
+
+				if (srcGeometry.m_Type == RayTracingGeometryType::kTriangles)
+				{
+					VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
+					BV_ASSERT(triangle.vertexData.deviceAddress == 0, "Device address already set");
+					triangle.vertexData.deviceAddress = TO_VK(srcGeometry.m_Triangle.m_pVertexBuffer)->GetDeviceAddress() + srcGeometry.m_Triangle.m_VertexOffset;
+					if (srcGeometry.m_Triangle.m_pIndexBuffer)
+					{
+						BV_ASSERT(triangle.indexData.deviceAddress == 0, "Device address already set");
+						triangle.indexData.deviceAddress = TO_VK(srcGeometry.m_Triangle.m_pIndexBuffer)->GetDeviceAddress() + srcGeometry.m_Triangle.m_IndexOffset;
+					}
+				}
+				else if (srcGeometry.m_Type == RayTracingGeometryType::kAABB)
+				{
+					VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
+					BV_ASSERT(aabb.data.deviceAddress == 0, "Device address already set");
+					aabb.data.deviceAddress = TO_VK(srcGeometry.m_AABB.m_pBuffer)->GetDeviceAddress() + srcGeometry.m_AABB.m_Offset;
+				}
 			}
+
+			asType = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 		}
-		else if (srcGeometry.m_Type == RayTracingGeometryType::kAABB)
+		else
 		{
-			VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
-			aabb.data.deviceAddress = TO_VK(srcGeometry.m_AABB.m_pBuffer)->GetDeviceAddress() + srcGeometry.m_AABB.m_Offset;
+			BV_ASSERT(buildDesc.m_Geometries.Size() == 1, "TLAS should only have one element");
+
+			auto& srcGeometry = buildDesc.m_Geometries[0];
+			auto& dstGeometry = geometries[0];
+			dstGeometry.geometry.instances.data.deviceAddress = TO_VK(srcGeometry.m_Instance.m_pBuffer)->GetDeviceAddress() + srcGeometry.m_Instance.m_Offset;
+			ranges[0].primitiveOffset = srcGeometry.m_Instance.m_Offset;
 		}
-		range.primitiveCount = pAS->GetPrimitiveCounts()[index];
+
+		auto& buildInfo = buildInfos.PushBack({ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR });
+		buildInfo.type = asType;
+		buildInfo.flags = GetVkBuildAccelerationStructureFlags(pAS->GetDesc().m_Flags);
+		if (buildDesc.m_Update && (buildInfo.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
+		{
+			buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+			buildInfo.srcAccelerationStructure = pAS->GetHandle();
+		}
+		else
+		{
+			buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+		}
+		buildInfo.dstAccelerationStructure = pAS->GetHandle();
+		buildInfo.geometryCount = u32(geometries.Size());
+		buildInfo.pGeometries = geometries.Data();
+		//buildInfo.ppGeometries = nullptr;
+		buildInfo.scratchData.deviceAddress = TO_VK(buildDesc.m_pScratchBuffer)->GetDeviceAddress() + buildDesc.m_ScratchBufferOffset;
+
+		rangeInfos.PushBack(ranges.Data());
+
+		auto& barrier = barriers.PushBack({ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
+		barrier.srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+		barrier.dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+		barrier.buffer = TO_VK(pAS)->GetBuffer();
+		barrier.size = VK_WHOLE_SIZE;
+
+		if (pPostBuildDesc)
+		{
+			asHandles.PushBack(buildInfo.dstAccelerationStructure);
+		}
 	}
 
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
-	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-	buildInfo.flags = GetVkBuildAccelerationStructureFlags(pAS->GetDesc().m_Flags);
-	if (desc.m_Update && (buildInfo.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
-	{
-		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
-		buildInfo.srcAccelerationStructure = pAS->GetHandle();
-	}
-	else
-	{
-		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-	}
-	buildInfo.dstAccelerationStructure = pAS->GetHandle();
-	buildInfo.geometryCount = u32(m_ASGeometries.Size());
-	buildInfo.pGeometries = m_ASGeometries.Data();
-	//buildInfo.ppGeometries = nullptr;
-	buildInfo.scratchData.deviceAddress = TO_VK(desc.m_pScratchBuffer)->GetDeviceAddress() + desc.m_ScratchBufferOffset;
+	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, buildInfos.Size(), buildInfos.Data(), rangeInfos.Data());
 
-	VkAccelerationStructureBuildRangeInfoKHR* pRanges = m_ASRanges.Data();
-	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, &pRanges);
-
-	m_ASGeometries.Clear();
-	m_ASRanges.Clear();
-
-	u32 barrierCount = 1;
-	VkBufferMemoryBarrier2 barriers[2] = { { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 }, { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 } };
-	barriers[0].srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-	barriers[0].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-	barriers[0].srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-	barriers[0].dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-	barriers[0].buffer = TO_VK(pAS)->GetBuffer();
-	barriers[0].size = VK_WHOLE_SIZE;
-
-	if (pPostBuildDesc && pPostBuildDesc->m_pDstBuffer)
-	{
-		barrierCount++;
-		barriers[1].srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-		barriers[1].dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-		barriers[1].srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-		barriers[1].dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-		barriers[1].buffer = TO_VK(pPostBuildDesc->m_pDstBuffer)->GetHandle();
-		barriers[1].size = VK_WHOLE_SIZE;
-	}
-
-	ResourceBarrier(barrierCount, barriers, 0, nullptr, 0, nullptr);
+	ResourceBarrier(barriers.Size(), barriers.Data(), 0, nullptr, 0, nullptr);
 
 	if (pPostBuildDesc)
 	{
-		EmitASPostBuild(pAS, *pPostBuildDesc);
+		auto queryType = GetVkQueryType(pPostBuildDesc->m_Type);
+		auto queryPool = m_pFrameData->AddASQueryPool(queryType, count);
+
+		EmitASPostBuild(count, asHandles.Data(), queryPool, queryType, TO_VK(pPostBuildDesc->m_pDstBuffer)->GetHandle(), pPostBuildDesc->m_DstBufferOffset);
 	}
 }
 
 
-void BvCommandBufferVk::BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandBufferVk::EmitASPostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures, const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc)
 {
-	auto pAS = TO_VK(desc.m_pTLAS);
-	VkAccelerationStructureGeometryKHR& dstGeometry = m_ASGeometries.EmplaceBack(pAS->GetGeometries()[0]);
-	dstGeometry.geometry.instances.data.deviceAddress = TO_VK(desc.m_pInstanceBuffer)->GetDeviceAddress() + desc.m_InstanceBufferOffset;
+	BvVector<VkAccelerationStructureKHR> asHandles(count);
 
-	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
-	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-	buildInfo.flags = GetVkBuildAccelerationStructureFlags(pAS->GetDesc().m_Flags);
-	if (desc.m_Update && (buildInfo.flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
+	for (auto i = 0; i < count; i++)
 	{
-		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
-		buildInfo.srcAccelerationStructure = pAS->GetHandle();
+		if (postBuildDesc.m_Type == RayTracingAccelerationStructurePostBuildType::kCompactedSize)
+		{
+			BV_ASSERT_ONCE(ppAccelerationStructures[i]->GetDesc().m_CompactedSize == 0, "Acceleration Structure already compacted");
+		}
+		asHandles[i] = TO_VK(ppAccelerationStructures[i])->GetHandle();
 	}
-	else
-	{
-		buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-	}
-	buildInfo.dstAccelerationStructure = pAS->GetHandle();
-	buildInfo.geometryCount = u32(m_ASGeometries.Size());
-	buildInfo.pGeometries = m_ASGeometries.Data();
-	//buildInfo.ppGeometries = nullptr;
-	buildInfo.scratchData.deviceAddress = TO_VK(desc.m_pScratchBuffer)->GetDeviceAddress() + desc.m_ScratchBufferOffset;
 
-	VkAccelerationStructureBuildRangeInfoKHR& range = m_ASRanges.EmplaceBack(VkAccelerationStructureBuildRangeInfoKHR{});
-	range.primitiveCount = desc.m_InstanceCount;
+	auto queryType = GetVkQueryType(postBuildDesc.m_Type);
+	auto queryPool = m_pFrameData->AddASQueryPool(queryType, count);
 
-	VkAccelerationStructureBuildRangeInfoKHR* pRanges = m_ASRanges.Data();
-	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, 1, &buildInfo, &pRanges);
-
-	m_ASGeometries.Clear();
-	m_ASRanges.Clear();
-
-	if (pPostBuildDesc)
-	{
-		EmitASPostBuild(pAS, *pPostBuildDesc);
-	}
+	EmitASPostBuild(count, asHandles.Data(), queryPool, queryType, TO_VK(postBuildDesc.m_pDstBuffer)->GetHandle(), postBuildDesc.m_DstBufferOffset);
 }
 
 
-void BvCommandBufferVk::EmitASPostBuild(IBvAccelerationStructure* pAS, const ASPostBuildDesc& postBuildDesc)
+void BvCommandBufferVk::EmitASPostBuild(u32 count, VkAccelerationStructureKHR* pAS, VkQueryPool queryPool, VkQueryType queryType, VkBuffer buffer, u64 offset)
 {
-	auto pASVk = TO_VK(pAS);
-	if (postBuildDesc.m_Action == ASPostBuildAction::kWriteCompactedSize)
-	{
-		BV_ASSERT(pAS->GetDesc().m_CompactedSize == 0, "Acceleration Structure already compacted");
+	vkCmdWriteAccelerationStructuresPropertiesKHR(m_CommandBuffer, count, pAS, queryType, queryPool, 0);
 
-		auto pASQueries = m_pFrameData->GetQueryAS();
-		auto query = pASQueries->Allocate(m_pFrameData->GetFrameIndex());
-		auto as = pASVk->GetHandle();
-
-		vkCmdWriteAccelerationStructuresPropertiesKHR(m_CommandBuffer, 1, &as, pASQueries->GetType(), query.m_Pool, query.m_Index);
-
-		constexpr VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
-		vkCmdCopyQueryPoolResults(m_CommandBuffer, query.m_Pool, query.m_Index, 1, TO_VK(postBuildDesc.m_pDstBuffer)->GetHandle(),
-			postBuildDesc.m_DstBufferOffset, sizeof(u64), flags);
-	}
+	constexpr VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
+	vkCmdCopyQueryPoolResults(m_CommandBuffer, queryPool, 0, 1, buffer, offset, sizeof(u64), flags);
 }
 
 
-void BvCommandBufferVk::CopyBLAS(const AccelerationStructureCopyDesc& copyDesc)
+void BvCommandBufferVk::CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc)
 {
-	BV_ASSERT(copyDesc.m_pSrc->GetDesc().m_Type == RayTracingAccelerationStructureType::kBottomLevel &&
-		copyDesc.m_pDst->GetDesc().m_Type == RayTracingAccelerationStructureType::kBottomLevel, "Acceleration structure(s) not bottom level");
-
-	VkCopyAccelerationStructureInfoKHR ci{ VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR };
-	ci.mode = GetVkCopyAccelerationStructureMode(copyDesc.m_CopyMode);
-	ci.src = TO_VK(copyDesc.m_pSrc)->GetHandle();
-	ci.dst = TO_VK(copyDesc.m_pDst)->GetHandle();
-	vkCmdCopyAccelerationStructureKHR(m_CommandBuffer, &ci);
-}
-
-
-void BvCommandBufferVk::CopyTLAS(const AccelerationStructureCopyDesc& copyDesc)
-{
-	BV_ASSERT(copyDesc.m_pSrc->GetDesc().m_Type == RayTracingAccelerationStructureType::kTopLevel &&
-		copyDesc.m_pDst->GetDesc().m_Type == RayTracingAccelerationStructureType::kTopLevel, "Acceleration structure(s) not top level");
+	BV_ASSERT(copyDesc.m_pSrc->GetDesc().m_Type == copyDesc.m_pDst->GetDesc().m_Type, "Acceleration structure type mismatch");
 
 	VkCopyAccelerationStructureInfoKHR ci{ VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR };
 	ci.mode = GetVkCopyAccelerationStructureMode(copyDesc.m_CopyMode);
@@ -1443,82 +1495,145 @@ void BvCommandBufferVk::DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offse
 void BvCommandBufferVk::FlushDescriptorSets()
 {
 	auto& rbs = m_pFrameData->GetResourceBindingState();
-	if (rbs.IsEmpty())
-	{
-		return;
-	}
 
-	u64 hashSeed = 0;
+	u64 descriptorHash = 0;
 	auto& srlDesc = m_pShaderResourceLayout->GetDesc();
-	for (auto i = 0u; i < srlDesc.m_ShaderResourceSets.Size(); ++i)
+	for (auto resSetIndex = 0u; resSetIndex < srlDesc.m_ShaderResourceSets.Size(); ++resSetIndex)
 	{
-		auto& resourceSet = srlDesc.m_ShaderResourceSets[i];
+		auto& resourceSet = srlDesc.m_ShaderResourceSets[resSetIndex];
 		u32 set = resourceSet.m_Index;
 		bool isSetDirty = rbs.IsDirty(set);
 
-		for (auto j = 0u; j < resourceSet.m_Resources.Size(); ++j)
+		if (resourceSet.IsBindless())
 		{
-			auto& resource = resourceSet.m_Resources[j];
-			for (auto arrayIndex = 0u; arrayIndex < resource.m_Count; arrayIndex++)
+			if (!isSetDirty)
 			{
-				ResourceIdVk resId{ set, resource.m_Binding, arrayIndex };
-				if (auto pResourceData = rbs.GetResource(resId))
+				continue;
+			}
+
+			auto [count, pResources] = rbs.GetResources(set);
+			for (auto resIndex = 0; resIndex < count; resIndex++)
+			{
+				auto pResourceData = &pResources[resIndex];
+				auto& writeSet = m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
+				//writeSet.dstSet = nullptr; // This is set in BvFrameDataVk::RequestDescriptorSet()
+				writeSet.descriptorType = pResourceData->m_DescriptorType;
+				writeSet.dstBinding = pResourceData->m_Binding;
+				writeSet.dstArrayElement = pResourceData->m_ArrayIndex;
+				writeSet.descriptorCount = 1;
+
+				switch (pResourceData->m_DescriptorType)
 				{
-					if (isSetDirty)
-					{
-						m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
-						auto& writeSet = m_WriteSets.Back();
-						//writeSet.dstSet = nullptr; // This is set in BvDescriptorSetVk::Update()
-						writeSet.descriptorType = pResourceData->m_DescriptorType;
-						writeSet.dstBinding = resource.m_Binding;
-						writeSet.dstArrayElement = arrayIndex;
-						writeSet.descriptorCount = 1;
+				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				//case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+				//case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+					writeSet.pBufferInfo = &pResourceData->m_Data.m_BufferInfo;
+					HashCombine(descriptorHash, pResourceData->m_Data.m_BufferInfo);
+					break;
+				case VK_DESCRIPTOR_TYPE_SAMPLER:
+				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+					writeSet.pImageInfo = &pResourceData->m_Data.m_ImageInfo;
+					HashCombine(descriptorHash, pResourceData->m_Data.m_ImageInfo);
+					break;
+				case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+					writeSet.pTexelBufferView = &pResourceData->m_Data.m_BufferView;
+					HashCombine(descriptorHash, pResourceData->m_Data.m_BufferView);
+					break;
+				case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+					auto& asWrite = m_ASWriteSets.EmplaceBack(VkWriteDescriptorSetAccelerationStructureKHR{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR });
+					asWrite.accelerationStructureCount = 1;
+					asWrite.pAccelerationStructures = &pResourceData->m_Data.m_AccelerationStructure;
+					writeSet.pNext = &asWrite;
+					HashCombine(descriptorHash, pResourceData->m_Data.m_AccelerationStructure);
+					break;
+				}
+			}
+		}
+		else
+		{
+			if (m_PushDescriptor &&
+				(resourceSet.IsDynamic() || !isSetDirty))
+			{
+				continue;
+			}
 
-						switch (pResourceData->m_DescriptorType)
+			static const VkDescriptorBufferInfo nullBI{ VK_NULL_HANDLE, 0, 0 };
+			static const VkDescriptorImageInfo nullII{ VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL };
+			static const VkBufferView nullBV{ VK_NULL_HANDLE };
+			static const VkAccelerationStructureKHR nullAS{ VK_NULL_HANDLE };
+
+			for (auto resIndex = 0u; resIndex < resourceSet.m_Resources.Size(); ++resIndex)
+			{
+				auto& resource = resourceSet.m_Resources[resIndex];
+				for (auto arrayIndex = 0u; arrayIndex < resource.m_Count; arrayIndex++)
+				{
+					ResourceIdVk resId{ set, resource.m_Binding, arrayIndex };
+					auto descriptorType = GetVkDescriptorType(resource.m_ShaderResourceType);
+					if (auto pResourceData = rbs.GetResource(resId))
+					{
+						if (isSetDirty)
 						{
-						case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-						case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-						case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-							writeSet.pBufferInfo = &pResourceData->m_Data.m_BufferInfo;
-							HashCombine(hashSeed, pResourceData->m_Data.m_BufferInfo);
-							break;
-						case VK_DESCRIPTOR_TYPE_SAMPLER:
-						case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-						case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-						case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-							writeSet.pImageInfo = &pResourceData->m_Data.m_ImageInfo;
-							HashCombine(hashSeed, pResourceData->m_Data.m_ImageInfo);
-							break;
-						case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-						case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-							writeSet.pTexelBufferView = &pResourceData->m_Data.m_BufferView;
-							HashCombine(hashSeed, pResourceData->m_Data.m_BufferView);
-							break;
-						case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-							auto& asWrite = m_ASWriteSets.EmplaceBack(VkWriteDescriptorSetAccelerationStructureKHR{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR });
-							asWrite.accelerationStructureCount = 1;
-							asWrite.pAccelerationStructures = &pResourceData->m_Data.m_AccelerationStructure;
-							writeSet.pNext = &asWrite;
-							HashCombine(hashSeed, pResourceData->m_Data.m_AccelerationStructure);
-							break;
-						}
-					}
+							auto& writeSet = m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
+							//writeSet.dstSet = nullptr; // This is set in BvFrameDataVk::RequestDescriptorSet()
+							writeSet.descriptorType = descriptorType;
+							writeSet.dstBinding = resource.m_Binding;
+							writeSet.dstArrayElement = arrayIndex;
+							writeSet.descriptorCount = 1;
 
-					if (pResourceData->m_DescriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-						|| pResourceData->m_DescriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
-					{
-						m_DynamicOffsets.EmplaceBack(pResourceData->m_DynamicOffset);
+							BV_ASSERT(descriptorType == pResourceData->m_DescriptorType, "Descriptor type mismatch");
+
+							switch (descriptorType)
+							{
+							case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+							case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+							case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+							case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+								writeSet.pBufferInfo = pResourceData ? &pResourceData->m_Data.m_BufferInfo : &nullBI;
+								HashCombine(descriptorHash, *writeSet.pBufferInfo);
+								break;
+							case VK_DESCRIPTOR_TYPE_SAMPLER:
+							case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+							case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+							case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+								writeSet.pImageInfo = pResourceData ? &pResourceData->m_Data.m_ImageInfo : &nullII;
+								HashCombine(descriptorHash, *writeSet.pImageInfo);
+								break;
+							case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+							case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+								writeSet.pTexelBufferView = pResourceData ? &pResourceData->m_Data.m_BufferView : &nullBV;
+								HashCombine(descriptorHash, *writeSet.pTexelBufferView);
+								break;
+							case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+								auto& asWrite = m_ASWriteSets.EmplaceBack(VkWriteDescriptorSetAccelerationStructureKHR{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR });
+								asWrite.accelerationStructureCount = 1;
+								asWrite.pAccelerationStructures = pResourceData ? &pResourceData->m_Data.m_AccelerationStructure : &nullAS;
+								writeSet.pNext = &asWrite;
+								HashCombine(descriptorHash, *asWrite.pAccelerationStructures);
+								break;
+							}
+						}
+
+						if (pResourceData->m_DescriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+							|| pResourceData->m_DescriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+						{
+							m_DynamicOffsets.EmplaceBack(pResourceData->m_DynamicOffset);
+						}
 					}
 				}
 			}
 		}
 
-		if (!m_WriteSets.Empty() || !m_DynamicOffsets.Empty())
+		if (!m_WriteSets.Empty() || !m_DynamicOffsets.Empty() || resourceSet.IsBindless())
 		{
-			VkDescriptorSet descriptorSet;
-			if (isSetDirty)
+			// If we only have dynamic offsets it means we already set this descriptor once
+			VkDescriptorSet descriptorSet = m_WriteSets.Empty() && !m_DynamicOffsets.Empty() ? VK_NULL_HANDLE : m_DescriptorSets[set];
+			if (isSetDirty || resourceSet.IsBindless())
 			{
-				descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets, hashSeed, resourceSet.m_Bindless);
+				descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets, descriptorHash, resourceSet.IsBindless());
 				if (m_DescriptorSets.Size() <= set)
 				{
 					m_DescriptorSets.Resize(set + 1, VK_NULL_HANDLE);
@@ -1583,24 +1698,18 @@ void BvCommandBufferVk::AddSwapChain(BvSwapChainVk* pSwapChain)
 
 void BvCommandBufferVk::BeginMeshQueries()
 {
-	for (auto pQueryVk : m_MeshQueries)
+	for (auto& query : m_MeshQueries)
 	{
-		auto frameIndex = m_pFrameData->GetFrameIndex();
-		auto pData = pQueryVk->GetQueryData(frameIndex);
-		vkCmdBeginQuery(m_CommandBuffer, pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1), pData->m_QueryIndex, 0);
+		vkCmdBeginQuery(m_CommandBuffer, query.m_Pool, query.m_Index, 0);
 	}
 }
 
 
 void BvCommandBufferVk::EndMeshQueries()
 {
-	for (auto pQueryVk : m_MeshQueries)
+	for (auto& query : m_MeshQueries)
 	{
-		auto frameIndex = m_pFrameData->GetFrameIndex();
-		auto pData = pQueryVk->GetQueryData(frameIndex);
-		auto pool = pData->m_pQueryHeap->GetHandle(pData->m_HeapIndex, 1);
-		auto index = pData->m_QueryIndex;
-		vkCmdEndQuery(m_CommandBuffer, pool, index);
+		vkCmdEndQuery(m_CommandBuffer, query.m_Pool, query.m_Index);
 	}
 
 	m_MeshQueries.Clear();

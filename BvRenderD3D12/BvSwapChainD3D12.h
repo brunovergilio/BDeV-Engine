@@ -55,6 +55,9 @@ private:
 
 	u32 m_CurrImageIndex = 0;
 	UINT m_PresentFlags = 0;
+
+	u32 m_Width = 0;
+	u32 m_Height = 0;
 };
 BV_OBJECT_DEFINE_ID(BvSwapChainD3D12, "68fe17c5-c20d-4c33-83dc-22ac819ab867");
 BV_CREATE_CAST_TO_D3D12(BvSwapChain)

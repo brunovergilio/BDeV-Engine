@@ -1157,6 +1157,8 @@ namespace VkHelpers
 
 		layouts.Resize(shaderResourceLayoutDesc.m_ShaderResourceSets.Size());
 
+		bool pushDescriptor = pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor;
+
 		BvVector<VkDescriptorSetLayoutBinding> bindings;
 		BvVector<VkDescriptorBindingFlags> flags;
 		BvVector<VkSampler> samplers;
@@ -1167,14 +1169,12 @@ namespace VkHelpers
 		{
 			auto& set = shaderResourceLayoutDesc.m_ShaderResourceSets[i];
 			u32 currSamplerIndex = 0;
-			bool isBindful = false;
-			bool isBindless = false;
 			for (auto j = 0u; j < set.m_Resources.Size(); ++j)
 			{
 				auto& currResource = set.m_Resources[j];
 				if (currResource.m_StaticSamplers.Size() == 0)
 				{
-					bindings.PushBack({ currResource.m_Binding, GetVkDescriptorType(currResource.m_ShaderResourceType),
+					bindings.PushBack({ currResource.m_Binding, GetVkDescriptorType(currResource.m_ShaderResourceType, pushDescriptor),
 						currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), nullptr });
 				}
 				else
@@ -1187,23 +1187,22 @@ namespace VkHelpers
 						currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), samplers.Data() + currSamplerIndex });
 					currSamplerIndex += currResource.m_Count;
 				}
-				if (currResource.m_Bindless)
-				{
-					isBindless = true;
-					flags.EmplaceBack() = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-				}
-				else
-				{
-					isBindful = true;
-				}
-			}
 
-			if (isBindful && isBindless)
-			{
-				// I decided to keep these separate for the moment, as dealing with both on the same set would be dreadful
-				BV_ASSERT(false, "Can't have bindful and bindless resources on the same set");
-				result = VK_ERROR_NOT_PERMITTED;
-				break;
+				//if (currResource.m_Bindless)
+				//{
+				//	flags.PushBack(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+				//}
+				//else
+				//{
+				//	flags.PushBack(0);
+				//}
+
+				if (set.m_Type == ShaderResourceSetDesc::Type::kDynamic)
+				{
+					BV_ASSERT(currResource.IsDynamic(), "Dynamic set can only have dynamic resource types");
+					result = VK_ERROR_NOT_PERMITTED;
+					break;
+				}
 			}
 
 			VkDescriptorSetLayoutCreateInfo layoutCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -1211,8 +1210,9 @@ namespace VkHelpers
 			layoutCI.pBindings = bindings.Data();
 
 			VkDescriptorSetLayoutBindingFlagsCreateInfo flagsCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
-			if (isBindless)
+			if (set.m_Type == ShaderResourceSetDesc::Type::kBindless)
 			{
+				flags.Resize(set.m_Resources.Size(), VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
 				flagsCI.bindingCount = flags.Size();
 				flagsCI.pBindingFlags = flags.Data();
 				layoutCI.pNext = &flagsCI;
@@ -1696,10 +1696,21 @@ namespace VkHelpers
 	}
 
 
-	VkObj<VkQueryPool> CreateQueryPool(BvRenderDeviceVk* pDevice, QueryType queryType, u32 queryCount, bool meshPrimitivesPool)
+	VkObj<VkQueryPoolObj> CreateQueryPool(BvRenderDeviceVk* pDevice, const QueryHeapDesc& queryHeapDesc)
 	{
+		return CreateQueryPool(pDevice, GetVkQueryType(queryHeapDesc.m_Type), queryHeapDesc.m_Count, queryHeapDesc.m_Type == QueryType::kMeshPipelineStatistics);
+	}
+
+
+	VkObj<VkQueryPoolObj> CreateQueryPool(BvRenderDeviceVk* pDevice, VkQueryType queryType, u32 queryCount, bool meshPrimitivesPool)
+	{
+		VkObj<VkQueryPoolObj> obj{};
+		auto& result = obj.first;
+		auto& psoFlags = obj.second.m_PSOFlags;
+		auto& queryPools = obj.second.m_QueryPools;
+
 		VkQueryPoolCreateInfo qpCI{ VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
-		qpCI.queryType = GetVkQueryType(queryType, meshPrimitivesPool);
+		qpCI.queryType = queryType;
 		qpCI.queryCount = queryCount;
 		if (qpCI.queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS)
 		{
@@ -1707,17 +1718,32 @@ namespace VkHelpers
 			bool geometryShader = pDeviceInfo->m_DeviceFeatures.features.geometryShader;
 			bool tessellationShader = pDeviceInfo->m_DeviceFeatures.features.tessellationShader;
 			bool meshShader = pDeviceInfo->m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries;
-			qpCI.pipelineStatistics = GetVkQueryPipelineFlags(geometryShader, tessellationShader, queryType == QueryType::kMeshPipelineStatistics && meshShader);
+			qpCI.pipelineStatistics = GetVkQueryPipelineFlags(geometryShader, tessellationShader, meshPrimitivesPool && meshShader);
 		}
 
-		VkQueryPool pool = VK_NULL_HANDLE;
-		auto result = vkCreateQueryPool(pDevice->GetHandle(), &qpCI, nullptr, &pool);
+		auto device = pDevice->GetHandle();
+		result = vkCreateQueryPool(device, &qpCI, nullptr, &queryPools[0]);
+		if (result != VK_SUCCESS)
+		{
+			return obj;
+		}
 
-		return std::make_pair(result, pool);
+		if (meshPrimitivesPool)
+		{
+			qpCI.queryType = VK_QUERY_TYPE_MESH_PRIMITIVES_GENERATED_EXT;
+			result = vkCreateQueryPool(device, &qpCI, nullptr, &queryPools[1]);
+			if (result != VK_SUCCESS)
+			{
+				DestroyDeviceObject(device, queryPools[0]);
+			}
+		}
+
+
+		return obj;
 	}
 
 
-	VkObj<VkASObj> CreateAccelerationStructure(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& asDesc)
+	VkObj<VkASObj> CreateRayTracingAccelerationStructure(BvRenderDeviceVk* pDevice, const RayTracingAccelerationStructureDesc& asDesc)
 	{
 		VkObj<VkASObj> asObj{};
 		auto& result = asObj.first;
@@ -1726,9 +1752,11 @@ namespace VkHelpers
 		auto& asHandle = as.m_AS;
 		auto& asDeviceAddress = as.m_DeviceAddress;
 		auto& geometries = as.m_Geometries;
-		auto& primitiveCounts = as.m_PrimitiveCounts;
+		auto& ranges = as.m_Ranges;
 		auto& buffer = as.m_BufferObj;
 		auto& scratchSizes = as.m_ScratchSizes;
+
+		BvVector<u32> primitiveCounts;
 
 		VkAccelerationStructureBuildSizesInfoKHR sizeInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR, nullptr, asDesc.m_CompactedSize, 0, 0 };
 		VkAccelerationStructureTypeKHR asType{};
@@ -1741,20 +1769,21 @@ namespace VkHelpers
 			{
 				asType = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-				geometries.Resize(asDesc.m_BLAS.m_Geometries.Size(), { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
+				geometries.Resize(asDesc.m_Geometries.Size(), { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
+				ranges.Resize(geometries.Size(), {});
 				primitiveCounts.Resize(geometries.Size(), 0);
 
-				for (auto i = 0u; i < asDesc.m_BLAS.m_Geometries.Size(); ++i)
+				for (auto i = 0u; i < asDesc.m_Geometries.Size(); ++i)
 				{
-					if (asDesc.m_BLAS.m_Geometries[i].m_Type == RayTracingGeometryType::kTriangles)
+					if (asDesc.m_Geometries[i].m_Type == RayTracingGeometryType::kTriangles)
 					{
-						auto& srcGeometry = asDesc.m_BLAS.m_Geometries[i].m_Triangle;
+						auto& srcGeometry = asDesc.m_Geometries[i].m_Triangle;
 
 						VkAccelerationStructureGeometryKHR& dstGeometry = geometries[i];
 						//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 						//dstGeometry.pNext = nullptr;
 						dstGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-						dstGeometry.flags = GetVkGeometryFlags(asDesc.m_BLAS.m_Geometries[i].m_Flags);
+						dstGeometry.flags = GetVkGeometryFlags(asDesc.m_Geometries[i].m_Flags);
 
 						VkAccelerationStructureGeometryTrianglesDataKHR& triangle = dstGeometry.geometry.triangles;
 						triangle.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
@@ -1766,16 +1795,17 @@ namespace VkHelpers
 
 						u32 primitiveCount = srcGeometry.m_IndexCount > 0 ? srcGeometry.m_IndexCount / 3 : srcGeometry.m_VertexCount / 3;
 						primitiveCounts[i] = primitiveCount;
+						ranges[i].primitiveCount = primitiveCount;
 					}
-					else if (asDesc.m_BLAS.m_Geometries[i].m_Type == RayTracingGeometryType::kAABB)
+					else if (asDesc.m_Geometries[i].m_Type == RayTracingGeometryType::kAABB)
 					{
-						auto& srcGeometry = asDesc.m_BLAS.m_Geometries[i].m_AABB;
+						auto& srcGeometry = asDesc.m_Geometries[i].m_AABB;
 
 						VkAccelerationStructureGeometryKHR& dstGeometry = geometries[i];
 						//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 						//dstGeometry.pNext = nullptr;
 						dstGeometry.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
-						dstGeometry.flags = GetVkGeometryFlags(asDesc.m_BLAS.m_Geometries[i].m_Flags);
+						dstGeometry.flags = GetVkGeometryFlags(asDesc.m_Geometries[i].m_Flags);
 
 						VkAccelerationStructureGeometryAabbsDataKHR& aabb = dstGeometry.geometry.aabbs;
 						aabb.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
@@ -1783,6 +1813,7 @@ namespace VkHelpers
 						aabb.stride = srcGeometry.m_Stride;
 
 						primitiveCounts[i] = srcGeometry.m_Count;
+						ranges[i].primitiveCount = srcGeometry.m_Count;
 					}
 				}
 			}
@@ -1790,18 +1821,18 @@ namespace VkHelpers
 			{
 				asType = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
 
-				geometries.Resize(1, { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
-				primitiveCounts.Resize(1, asDesc.m_TLAS.m_InstanceCount);
-
-				VkAccelerationStructureGeometryKHR& dstGeometry = geometries.Back();
+				VkAccelerationStructureGeometryKHR& dstGeometry = geometries.PushBack({ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR });
 				//dstGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 				//dstGeometry.pNext = nullptr;
 				dstGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-				dstGeometry.flags = GetVkGeometryFlags(asDesc.m_TLAS.m_Flags);
+				dstGeometry.flags = GetVkGeometryFlags(asDesc.m_Geometries[0].m_Flags);
 
 				VkAccelerationStructureGeometryInstancesDataKHR& instances = dstGeometry.geometry.instances;
 				instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-				instances.arrayOfPointers = VK_FALSE;
+				//instances.arrayOfPointers = VK_FALSE;
+
+				primitiveCounts.PushBack(asDesc.m_Geometries[0].m_Instance.m_InstanceCount);
+				ranges.EmplaceBack().primitiveCount = primitiveCounts[0];
 			}
 
 			VkAccelerationStructureBuildGeometryInfoKHR buildInfo{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };

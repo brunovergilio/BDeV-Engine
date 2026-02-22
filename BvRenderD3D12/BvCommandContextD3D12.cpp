@@ -1,6 +1,6 @@
 #include "BvCommandContextD3D12.h"
 #include "BvGPUFenceD3D12.h"
-#include "BvQueryD3D12.h"
+#include "BvQueryHeapD3D12.h"
 #include "BvDescriptorHeapD3D12.h"
 #include "BvShaderResourceD3D12.h"
 #include "BvRenderDeviceD3D12.h"
@@ -20,7 +20,6 @@ BvFrameDataD3D12::BvFrameDataD3D12(BvRenderDeviceD3D12* pDevice, ContextDataD3D1
 
 BvFrameDataD3D12::~BvFrameDataD3D12()
 {
-
 }
 
 
@@ -29,13 +28,6 @@ void BvFrameDataD3D12::Reset(bool newFrame /*= true*/)
 	if (newFrame)
 	{
 		m_Fence->Wait(m_FenceValue);
-
-		if (m_Queries.Size() > 0)
-		{
-			m_pContextData->m_pQueryHeapManager->Reset(m_FrameIndex);
-			m_Queries.Clear();
-			m_UpdatedQueries = 0;
-		}
 	}
 
 	m_CommandAllocator.Reset();
@@ -97,7 +89,7 @@ BvDescriptorHandle BvFrameDataD3D12::RequestDescriptorHandle(u32 rootIndex, cons
 
 		if (!bindless)
 		{
-			BV_ASSERT(pool.GetHandleCount() == descriptors.Size(), "Missing descriptors");
+			BV_ASSERT_ONCE(pool.GetHandleCount() == descriptors.Size(), "Missing descriptors");
 		}
 
 		for (auto& descriptor : descriptors)
@@ -116,22 +108,6 @@ void BvFrameDataD3D12::ClearActiveCommandLists()
 }
 
 
-void BvFrameDataD3D12::AddQuery(BvQueryD3D12* pQuery)
-{
-	m_Queries.EmplaceBack(pQuery);
-}
-
-
-void BvFrameDataD3D12::UpdateQueryData()
-{
-	for (auto i = m_UpdatedQueries; i < m_Queries.Size(); ++i, ++m_UpdatedQueries)
-	{
-		m_Queries[i]->SetFenceData(m_Fence, m_FenceValue);
-		m_Queries[i]->SetLatestFrameIndex(m_FrameIndex);
-	}
-}
-
-
 BvCommandContextD3D12::BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 frameCount, u32 contextIndex, u32 contextGroupIndex, ID3D12CommandQueue* pQueue)
 	: m_pDevice(pDevice), m_CommandQueue(pDevice, pQueue), m_ContextGroupIndex(contextGroupIndex), m_ContextIndex(contextIndex), m_FrameCount(frameCount)
 {
@@ -141,7 +117,6 @@ BvCommandContextD3D12::BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 f
 	constexpr u32 kDefaultQueryPoolSizes[kQueryTypeCount] = { 8, 4, 4, 2, 2 };
 
 	m_pContextData = BV_NEW(ContextDataD3D12)();
-	m_pContextData->m_pQueryHeapManager = BV_NEW(BvQueryHeapManagerD3D12)(pDevice, kDefaultQueryPoolSizes, frameCount);
 
 	auto pFrameData = reinterpret_cast<u8*>(BV_ALLOC(sizeof(BvFrameDataD3D12) * m_FrameCount, alignof(BvFrameDataD3D12)));
 	for (auto i = 0; i < m_FrameCount; ++i)
@@ -160,7 +135,6 @@ BvCommandContextD3D12::~BvCommandContextD3D12()
 	}
 	BV_FREE(m_pFrames);
 
-	BV_DELETE(m_pContextData->m_pQueryHeapManager);
 	BV_DELETE(m_pContextData);
 }
 
@@ -211,7 +185,6 @@ void BvCommandContextD3D12::Execute()
 	m_CommandLists.Clear();
 
 	m_pFrames[m_ActiveFrameIndex].ClearActiveCommandLists();
-	m_pFrames[m_ActiveFrameIndex].UpdateQueryData();
 
 	m_pCurrCommandList = nullptr;
 }
@@ -545,15 +518,21 @@ bool BvCommandContextD3D12::SupportsQueryType(QueryType queryType) const
 }
 
 
-void BvCommandContextD3D12::BeginQuery(IBvQuery* pQuery)
+void BvCommandContextD3D12::BeginQuery(IBvQueryHeap* pQueryHeap, u32 index)
 {
-	m_pCurrCommandList->BeginQuery(pQuery);
+	m_pCurrCommandList->BeginQuery(pQueryHeap, index);
 }
 
 
-void BvCommandContextD3D12::EndQuery(IBvQuery* pQuery)
+void BvCommandContextD3D12::EndQuery(IBvQueryHeap* pQueryHeap, u32 index)
 {
-	m_pCurrCommandList->EndQuery(pQuery);
+	m_pCurrCommandList->EndQuery(pQueryHeap, index);
+}
+
+
+void BvCommandContextD3D12::ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset)
+{
+	m_pCurrCommandList->ResolveQueryData(pQueryHeap, startIndex, queryCount, pDstBuffer, offset);
 }
 
 
@@ -575,27 +554,23 @@ void BvCommandContextD3D12::SetMarker(const char* pName, const BvColor& color)
 }
 
 
-void BvCommandContextD3D12::BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandContextD3D12::BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+	const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc)
 {
-	m_pCurrCommandList->BuildBLAS(desc, pPostBuildDesc);
+	m_pCurrCommandList->BuildRayTracingAccelerationStructures(count, pBuildDescs, pPostBuildDesc);
 }
 
 
-void BvCommandContextD3D12::BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc)
+void BvCommandContextD3D12::EmitRayTracingAccelerationStructurePostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures,
+	const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc)
 {
-	m_pCurrCommandList->BuildTLAS(desc, pPostBuildDesc);
+	m_pCurrCommandList->EmitASPostBuild(count, ppAccelerationStructures, postBuildDesc);
 }
 
 
-void BvCommandContextD3D12::CopyBLAS(const AccelerationStructureCopyDesc& copyDesc)
+void BvCommandContextD3D12::CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc)
 {
-	m_pCurrCommandList->CopyBLAS(copyDesc);
-}
-
-
-void BvCommandContextD3D12::CopyTLAS(const AccelerationStructureCopyDesc& copyDesc)
-{
-	m_pCurrCommandList->CopyTLAS(copyDesc);
+	m_pCurrCommandList->CopyRayTracingAccelerationStructure(copyDesc);
 }
 
 

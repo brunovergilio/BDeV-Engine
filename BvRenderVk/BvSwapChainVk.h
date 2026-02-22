@@ -31,8 +31,8 @@ public:
 	BV_INLINE const SwapChainDesc& GetDesc() const override { return m_SwapChainDesc; }
 	BV_INLINE u32 GetCurrentImageIndex() const override { return m_CurrImageIndex; }
 	BV_INLINE IBvTextureView* GetTextureView(u32 index) const override { return m_SwapChainTextureViews[index]; }
-	BV_INLINE VkSemaphore GetCurrentImageAcquiredSemaphore() const { return m_ImageAcquiredSemaphores[m_CurrImageIndex]; }
-	BV_INLINE VkSemaphore GetCurrentRenderCompleteSemaphore() const { return m_RenderCompleteSemaphores[m_CurrImageIndex]; }
+	BV_INLINE VkSemaphore GetCurrentImageAcquiredSemaphore() const { return m_ImageAcquiredSemaphores[m_CurrSemaphoreIndex]; }
+	BV_INLINE VkSemaphore GetCurrentRenderCompleteSemaphore() const { return m_RenderCompleteSemaphores[m_CurrSemaphoreIndex]; }
 	BV_INLINE bool IsValid() const { return m_Swapchain != VK_NULL_HANDLE; }
 	BV_INLINE bool IsReady() const { return m_IsReady; }
 

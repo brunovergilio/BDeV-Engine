@@ -2,7 +2,6 @@
 
 
 #include "BDeV/Core/RenderAPI/BvRenderCommon.h"
-#include "BDeV/Core/RenderAPI/BvShaderResource.h"
 #include "BvCommonD3D12.h"
 
 
@@ -45,3 +44,12 @@ D3D12_QUERY_HEAP_TYPE GetD3D12QueryHeapType(QueryType queryType);
 D3D12_QUERY_TYPE GetD3D12QueryType(QueryType queryType);
 D3D12_PREDICATION_OP GetD3D12PredicationOp(PredicationOp predicationOp);
 DXGI_FORMAT GetD3D12IndexFormat(IndexFormat indexFormat);
+D3D12_SHADING_RATE GetD3D12ShadingRate(ShadingRateDimensions dimensions);
+D3D12_SHADING_RATE_COMBINER GetD3D12ShadingRateCombiner(ShadingRateCombinerOp combinerOp);
+D3D12_HIT_GROUP_TYPE GetD3D12HitGroupType(ShaderGroupType shaderGroupType);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE GetD3D12RayTracingAccelerationStructureType(RayTracingAccelerationStructureType type);
+D3D12_RAYTRACING_GEOMETRY_TYPE GetD3D12RayTracingGeometryType(RayTracingGeometryType type);
+D3D12_RAYTRACING_GEOMETRY_FLAGS GetD3D12RayTracingGeometryFlags(RayTracingGeometryFlags flags);
+D3D12_RAYTRACING_INSTANCE_FLAGS GetD3D12RayTracingInstanceFlags(RayTracingInstanceFlags flags);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS GetD3D12RayTracingAccelerationStructureBuildFlags(RayTracingAccelerationStructureFlags flags);
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_TYPE GetD3D12RayTracingAccelerationStructurePostBuildInfoType(RayTracingAccelerationStructurePostBuildType type);

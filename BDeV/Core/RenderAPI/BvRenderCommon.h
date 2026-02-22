@@ -932,8 +932,8 @@ struct ShaderResourceDesc
 	}
 
 	ShaderResourceDesc(ShaderResourceType shaderResourceType, u32 binding,
-		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
-		: m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages), m_Bindless(bindless)
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages)
+		: m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages)
 	{
 	}
 
@@ -949,8 +949,8 @@ struct ShaderResourceDesc
 	}
 
 	ShaderResourceDesc(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding,
-		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
-		: m_Name(name), m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages), m_Bindless(bindless)
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages)
+		: m_Name(name), m_ShaderResourceType(shaderResourceType), m_Binding(binding), m_Count(count), m_ShaderStages(shaderStages)
 	{
 	}
 
@@ -965,7 +965,6 @@ struct ShaderResourceDesc
 	u32 m_Binding = 0;
 	u32 m_Count = 0;
 	ShaderResourceType m_ShaderResourceType = ShaderResourceType::kUnknown;
-	bool m_Bindless = false;
 	ShaderStage m_ShaderStages = ShaderStage::kAllStages;
 	BvVector<IBvSampler*> m_StaticSamplers;
 
@@ -973,7 +972,6 @@ struct ShaderResourceDesc
 	BV_RENDER_VAR(Binding);
 	BV_RENDER_VAR(Count);
 	BV_RENDER_VAR(ShaderResourceType);
-	BV_RENDER_VAR(Bindless);
 	BV_RENDER_VAR(ShaderStages);
 	
 	auto& AddShaderStage(ShaderStage shaderStage)
@@ -1016,10 +1014,10 @@ struct ShaderResourceDesc
 	}
 
 	auto& Set(ShaderResourceType shaderResourceType, u32 binding,
-		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages)
 	{
 		return SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages)
-			.SetCount(count).SetBindless(bindless);
+			.SetCount(count);
 	}
 
 	auto& Set(ShaderResourceType shaderResourceType, u32 binding,
@@ -1035,10 +1033,10 @@ struct ShaderResourceDesc
 	}
 
 	auto& Set(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding,
-		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages, bool bindless = false)
+		u32 count = 1, ShaderStage shaderStages = ShaderStage::kAllStages)
 	{
 		return SetName(name).SetShaderResourceType(shaderResourceType).SetBinding(binding).SetShaderStages(shaderStages)
-			.SetCount(count).SetBindless(bindless);
+			.SetCount(count);
 	}
 
 	auto& Set(const BvStringId& name, ShaderResourceType shaderResourceType, u32 binding,
@@ -1048,34 +1046,41 @@ struct ShaderResourceDesc
 			.SetCount(count).SetStaticSamplers(count, ppSamplers);
 	}
 
-	static ShaderResourceDesc AsConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kConstantBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kStructuredBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kRWStructuredBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsDynamicConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicConstantBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsDynamicStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicStructuredBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsDynamicRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicRWStructuredBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kFormattedBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsRWFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kRWFormattedBuffer, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kTexture, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsRWTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kRWTexture, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kSampler, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsInputAttachment(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kInputAttachment, binding, count, shaderStages, bindless); }
-	static ShaderResourceDesc AsAccelerationStructure(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return ShaderResourceDesc(name, ShaderResourceType::kAccelerationStructure, binding, count, shaderStages, bindless); }
+	bool IsDynamic() const
+	{
+		return m_ShaderResourceType == ShaderResourceType::kDynamicConstantBuffer
+			|| m_ShaderResourceType == ShaderResourceType::kDynamicStructuredBuffer
+			|| m_ShaderResourceType == ShaderResourceType::kDynamicRWStructuredBuffer;
+	}
+
+	static ShaderResourceDesc AsConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kConstantBuffer, binding, count, shaderStages); }
+	static ShaderResourceDesc AsStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kStructuredBuffer, binding, count, shaderStages); }
+	static ShaderResourceDesc AsRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kRWStructuredBuffer, binding, count, shaderStages); }
+	static ShaderResourceDesc AsDynamicConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicConstantBuffer, binding, 1, shaderStages); }
+	static ShaderResourceDesc AsDynamicStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicStructuredBuffer, binding, 1, shaderStages); }
+	static ShaderResourceDesc AsDynamicRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return ShaderResourceDesc(name, ShaderResourceType::kDynamicRWStructuredBuffer, binding, 1, shaderStages); }
+	static ShaderResourceDesc AsFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kFormattedBuffer, binding, count, shaderStages); }
+	static ShaderResourceDesc AsRWFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kRWFormattedBuffer, binding, count, shaderStages); }
+	static ShaderResourceDesc AsTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kTexture, binding, count, shaderStages); }
+	static ShaderResourceDesc AsRWTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kRWTexture, binding, count, shaderStages); }
+	static ShaderResourceDesc AsSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kSampler, binding, count, shaderStages); }
+	static ShaderResourceDesc AsInputAttachment(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kInputAttachment, binding, count, shaderStages); }
+	static ShaderResourceDesc AsAccelerationStructure(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return ShaderResourceDesc(name, ShaderResourceType::kAccelerationStructure, binding, count, shaderStages); }
 	static ShaderResourceDesc AsStaticSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { return ShaderResourceDesc(name, ShaderResourceType::kSampler, binding, count, ppSamplers, shaderStages); }
 
-	static ShaderResourceDesc AsConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsRWTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsSampler(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsInputAttachment(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	static ShaderResourceDesc AsAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AsAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	static ShaderResourceDesc AsConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsConstantBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AsDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages); }
+	static ShaderResourceDesc AsDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AsDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages); }
+	static ShaderResourceDesc AsDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AsDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages); }
+	static ShaderResourceDesc AsFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsTexture(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsRWTexture(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsSampler(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsInputAttachment(BvStringId::Empty(), binding, shaderStages, count); }
+	static ShaderResourceDesc AsAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AsAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count); }
 	static ShaderResourceDesc AsStaticSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { return AsStaticSampler(BvStringId::Empty(), binding, shaderStages, count, ppSamplers); }
 
 	friend bool operator<(const ShaderResourceDesc& lhs, const ShaderResourceDesc& rhs)
@@ -1086,7 +1091,7 @@ struct ShaderResourceDesc
 	friend bool operator==(const ShaderResourceDesc& lhs, const ShaderResourceDesc& rhs)
 	{
 		return lhs.m_Name == rhs.m_Name && lhs.m_Binding == rhs.m_Binding && lhs.m_Count == rhs.m_Count && lhs.m_ShaderResourceType == rhs.m_ShaderResourceType
-			&& lhs.m_ShaderStages == rhs.m_ShaderStages && lhs.m_StaticSamplers == rhs.m_StaticSamplers && lhs.m_Bindless == rhs.m_Bindless;
+			&& lhs.m_ShaderStages == rhs.m_ShaderStages && lhs.m_StaticSamplers == rhs.m_StaticSamplers;
 	}
 };
 
@@ -1132,47 +1137,59 @@ struct ShaderResourceConstantDesc
 
 struct ShaderResourceSetDesc
 {
+	enum class Type : u8
+	{
+		kDefault,
+		kBindless,
+		kDynamic,
+	};
+
 	u32 m_Index;
-	bool m_Bindless;
+	Type m_Type;
 	BvVector<ShaderResourceDesc> m_Resources;
 	BvVector<ShaderResourceConstantDesc> m_Constants;
 
-	auto& AddConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kConstantBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddDynamicConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicConstantBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddDynamicStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddDynamicRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicRWStructuredBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kFormattedBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddRWFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWFormattedBuffer, binding, count, shaderStages, bindless); return *this; }
-	auto& AddTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kTexture, binding, count, shaderStages, bindless); return *this; }
-	auto& AddRWTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWTexture, binding, count, shaderStages, bindless); return *this; }
-	auto& AddSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kSampler, binding, count, shaderStages, bindless); return *this; }
-	auto& AddInputAttachment(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kInputAttachment, binding, count, shaderStages, bindless); return *this; }
-	auto& AddAccelerationStructure(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { m_Resources.EmplaceBack(name, ShaderResourceType::kAccelerationStructure, binding, count, shaderStages, bindless); return *this; }
+	auto& AddConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kConstantBuffer, binding, count, shaderStages); return *this; }
+	auto& AddStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kStructuredBuffer, binding, count, shaderStages); return *this; }
+	auto& AddRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWStructuredBuffer, binding, count, shaderStages); return *this; }
+	auto& AddFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kFormattedBuffer, binding, count, shaderStages); return *this; }
+	auto& AddRWFormattedBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWFormattedBuffer, binding, count, shaderStages); return *this; }
+	auto& AddTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kTexture, binding, count, shaderStages); return *this; }
+	auto& AddRWTexture(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kRWTexture, binding, count, shaderStages); return *this; }
+	auto& AddSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kSampler, binding, count, shaderStages); return *this; }
+	auto& AddInputAttachment(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kInputAttachment, binding, count, shaderStages); return *this; }
+	auto& AddAccelerationStructure(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { m_Resources.EmplaceBack(name, ShaderResourceType::kAccelerationStructure, binding, count, shaderStages); return *this; }
 	auto& AddStaticSampler(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { m_Resources.EmplaceBack(name, ShaderResourceType::kSampler, binding, count, ppSamplers, shaderStages); return *this; }
 
-	auto& AddConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddRWTexture(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddSampler(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddInputAttachment(BvStringId::Empty(), binding, shaderStages, count, bindless); }
-	auto& AddAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, bool bindless = false) { return AddAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count, bindless); }
+	auto& AddConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddConstantBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddRWFormattedBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddRWFormattedBuffer(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddTexture(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddRWTexture(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddRWTexture(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddSampler(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddInputAttachment(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddInputAttachment(BvStringId::Empty(), binding, shaderStages, count); }
+	auto& AddAccelerationStructure(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1) { return AddAccelerationStructure(BvStringId::Empty(), binding, shaderStages, count); }
 	auto& AddStaticSampler(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages, u32 count = 1, IBvSampler* const* ppSamplers = nullptr) { return AddStaticSampler(BvStringId::Empty(), binding, shaderStages, count, ppSamplers); }
+
+	auto& AddDynamicConstantBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicConstantBuffer, binding, 1, shaderStages); return *this; }
+	auto& AddDynamicStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicStructuredBuffer, binding, 1, shaderStages); return *this; }
+	auto& AddDynamicRWStructuredBuffer(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Resources.EmplaceBack(name, ShaderResourceType::kDynamicRWStructuredBuffer, binding, 1, shaderStages); return *this; }
+
+	auto& AddDynamicConstantBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AddDynamicConstantBuffer(BvStringId::Empty(), binding, shaderStages); }
+	auto& AddDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AddDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages); }
+	auto& AddDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AddDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages); }
 
 	template<typename T> auto& AddConstant(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, binding, sizeof(T), shaderStages); return *this; }
 	template<typename T> auto& AddConstant(const BvStringId& name, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, 0, sizeof(T), shaderStages); return *this; }
 	template<typename T> auto& AddConstant(ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(nullptr, 0, sizeof(T), shaderStages); return *this; }
 
+	bool IsBindless() const { return m_Type == Type::kBindless; }
+	bool IsDynamic() const { return m_Type == Type::kDynamic; }
+
 	BV_RENDER_VAR(Index);
-	BV_RENDER_VAR(Bindless);
+	BV_RENDER_VAR(Type);
 	BV_RENDER_VAR(Resources);
 	BV_RENDER_VAR(Constants);
 
@@ -1187,9 +1204,19 @@ struct ShaderResourceLayoutCreateDesc
 {
 	BvVector<ShaderResourceSetDesc> m_ShaderResourceSets;
 
-	BV_INLINE auto& AddResourceSet(u32 index = kU32Max, bool bindless = false)
+	BV_INLINE auto& AddResourceSet(u32 index = kU32Max)
 	{
-		return m_ShaderResourceSets.PushBack(ShaderResourceSetDesc{ index == kU32Max ? (u32)m_ShaderResourceSets.Size() : index, bindless });
+		return m_ShaderResourceSets.PushBack(ShaderResourceSetDesc{ index == kU32Max ? (u32)m_ShaderResourceSets.Size() : index, ShaderResourceSetDesc::Type::kDefault });
+	}
+
+	BV_INLINE auto& AddBindlessResourceSet(u32 index = kU32Max)
+	{
+		return m_ShaderResourceSets.PushBack(ShaderResourceSetDesc{ index == kU32Max ? (u32)m_ShaderResourceSets.Size() : index, ShaderResourceSetDesc::Type::kBindless });
+	}
+
+	BV_INLINE auto& AddDynamicResourceSet(u32 index = kU32Max)
+	{
+		return m_ShaderResourceSets.PushBack(ShaderResourceSetDesc{ index == kU32Max ? (u32)m_ShaderResourceSets.Size() : index, ShaderResourceSetDesc::Type::kDynamic });
 	}
 };
 
@@ -1769,6 +1796,19 @@ enum class QueryType : u8
 constexpr u32 kQueryTypeCount = u32(QueryType::QueryTypeCount);
 
 
+struct QueryHeapDesc
+{
+	QueryHeapDesc(QueryType type = QueryType::kTimestamp, u32 count = 1)
+		: m_Type(type), m_Count(count) {}
+
+	QueryType m_Type;
+	u32 m_Count;
+
+	BV_RENDER_VAR(Type);
+	BV_RENDER_VAR(Count);
+};
+
+
 struct PipelineStatistics
 {
 	u64 m_InputAssemblyVertices = 0;
@@ -1782,6 +1822,11 @@ struct PipelineStatistics
 	u64 m_HullOrControlShaderInvocations = 0;
 	u64 m_DomainOrEvaluationShaderInvocations = 0;
 	u64 m_ComputeShaderInvocations = 0;
+};
+
+
+struct MeshPipelineStatistics : PipelineStatistics
+{
 	u64 m_TaskOrAmplificationShaderInvocations = 0;
 	u64 m_MeshShaderInvocations = 0;
 	u64 m_MeshShaderPrimitives = 0;
@@ -2423,21 +2468,22 @@ enum class RayTracingAccelerationStructureFlags : u8
 BV_USE_ENUM_CLASS_OPERATORS(RayTracingAccelerationStructureFlags);
 
 
-enum class ASPostBuildAction : u8
+enum class RayTracingAccelerationStructurePostBuildType : u8
 {
-	kWriteCompactedSize,
+	kSize,
+	kCompactedSize,
 };
 
 
-struct ASPostBuildDesc
+struct RayTracingAccelerationStructurePostBuildDesc
 {
-	ASPostBuildAction m_Action = ASPostBuildAction::kWriteCompactedSize;
+	RayTracingAccelerationStructurePostBuildType m_Type = RayTracingAccelerationStructurePostBuildType::kSize;
 	IBvBuffer* m_pDstBuffer = nullptr;
 	u64 m_DstBufferOffset = 0;
 };
 
 
-struct BLASGeometryDesc
+struct RayTracingAccelerationStructureGeometryDesc
 {
 	struct TriangleDesc
 	{
@@ -2450,8 +2496,13 @@ struct BLASGeometryDesc
 
 	struct AABBDesc
 	{
-		u32 m_Stride;
 		u32 m_Count;
+		u32 m_Stride;
+	};
+
+	struct InstanceDesc
+	{
+		u32 m_InstanceCount;
 	};
 
 	BvStringId m_Id;
@@ -2459,6 +2510,7 @@ struct BLASGeometryDesc
 	{
 		TriangleDesc m_Triangle{};
 		AABBDesc m_AABB;
+		InstanceDesc m_Instance;
 	};
 
 	RayTracingGeometryFlags m_Flags = RayTracingGeometryFlags::kNone;
@@ -2466,13 +2518,7 @@ struct BLASGeometryDesc
 };
 
 
-struct BLASDesc
-{
-	BvVector<BLASGeometryDesc> m_Geometries;
-};
-
-
-struct BLASBuildGeometryDesc
+struct RayTracingAccelerationStructureBuildGeometryDesc
 {
 	struct TriangleDesc
 	{
@@ -2488,11 +2534,19 @@ struct BLASBuildGeometryDesc
 		u64 m_Offset;
 	};
 
+	struct InstanceDesc
+	{
+		IBvBuffer* m_pBuffer;
+		u64 m_Offset;
+		u32 m_Count;
+	};
+
 	BvStringId m_Id;
 	union
 	{
 		TriangleDesc m_Triangle{};
 		AABBDesc m_AABB;
+		InstanceDesc m_Instance;
 	};
 
 	RayTracingGeometryFlags m_Flags = RayTracingGeometryFlags::kNone;
@@ -2500,26 +2554,20 @@ struct BLASBuildGeometryDesc
 };
 
 
-struct BLASBuildDesc
+struct RayTracingAccelerationStructureBuildDesc
 {
-	BvVector<BLASBuildGeometryDesc> m_Geometries;
-	IBvAccelerationStructure* m_pBLAS = nullptr;
+	BvVector<RayTracingAccelerationStructureBuildGeometryDesc> m_Geometries;
+	IBvAccelerationStructure* m_pAS = nullptr;
 	IBvBuffer* m_pScratchBuffer = nullptr;
 	u64 m_ScratchBufferOffset = 0;
 	bool m_Update = false;
+	RayTracingAccelerationStructureType m_Type = RayTracingAccelerationStructureType::kUnknown;
 };
 
 
-struct TLASDesc
+struct RayTracingAccelerationStructureInstanceDesc
 {
-	u32 m_InstanceCount = 0;
-	RayTracingGeometryFlags m_Flags = RayTracingGeometryFlags::kNone;
-};
-
-
-struct TLASInstanceDesc
-{
-	TLASInstanceDesc()
+	RayTracingAccelerationStructureInstanceDesc()
 		: m_Transform{ { 1.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 1.0f, 0.0f } }, m_InstanceId(0), m_InstanceMask(0),
 		m_ShaderBindingTableIndex(0), m_Flags(RayTracingInstanceFlags::kNone), m_AccelerationStructure(0) {}
 
@@ -2532,30 +2580,18 @@ struct TLASInstanceDesc
 };
 
 
-struct TLASBuildDesc
-{
-	bool m_Update = false;
-	u32 m_InstanceCount = 0;
-	IBvAccelerationStructure* m_pTLAS = nullptr;
-	IBvBuffer* m_pInstanceBuffer = nullptr;
-	u64 m_InstanceBufferOffset = 0;
-	IBvBuffer* m_pScratchBuffer = nullptr;
-	u64 m_ScratchBufferOffset = 0;
-};
-
-
-enum class AccelerationStructureCopyMode : u8
+enum class RayTracingAccelerationStructureCopyMode : u8
 {
 	kClone,
 	kCompact
 };
 
 
-struct AccelerationStructureCopyDesc
+struct RayTracingAccelerationStructureCopyDesc
 {
 	IBvAccelerationStructure* m_pSrc = nullptr;
 	IBvAccelerationStructure* m_pDst = nullptr;
-	AccelerationStructureCopyMode m_CopyMode = AccelerationStructureCopyMode::kClone;
+	RayTracingAccelerationStructureCopyMode m_CopyMode = RayTracingAccelerationStructureCopyMode::kClone;
 };
 
 
@@ -2571,8 +2607,7 @@ struct RayTracingAccelerationStructureDesc
 	RayTracingAccelerationStructureType m_Type = RayTracingAccelerationStructureType::kUnknown;
 	RayTracingAccelerationStructureFlags m_Flags = RayTracingAccelerationStructureFlags::kNone;
 	u64 m_CompactedSize = 0;
-	BLASDesc m_BLAS;
-	TLASDesc m_TLAS;
+	BvVector<RayTracingAccelerationStructureGeometryDesc> m_Geometries;
 };
 
 
@@ -2603,6 +2638,11 @@ struct ShaderGroupDesc
 	u32 m_ClosestHit = kUnusedShader;
 	u32 m_AnyHit = kUnusedShader;
 	u32 m_Intersection = kUnusedShader;
+
+	friend bool operator<(const ShaderGroupDesc& lhs, const ShaderGroupDesc& rhs)
+	{
+		return u32(lhs.m_Type) < u32(rhs.m_Type);
+	}
 };
 
 

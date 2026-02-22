@@ -141,7 +141,7 @@
     <ClInclude Include="Core\RenderAPI\BvCommandContext.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderCommon.h" />
     <ClInclude Include="Core\RenderAPI\BvPipelineState.h" />
-    <ClInclude Include="Core\RenderAPI\BvQuery.h" />
+    <ClInclude Include="Core\RenderAPI\BvQueryHeap.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderAPIUtils.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderDevice.h" />
     <ClInclude Include="Core\RenderAPI\BvRenderEngine.h" />

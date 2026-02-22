@@ -8,7 +8,7 @@
 class IBvGraphicsPipelineState;
 class IBvComputePipelineState;
 class IBvShaderResourceParams;
-class IBvQuery;
+class IBvQueryHeap;
 
 
 class IBvCommandContext : public BvRCObj
@@ -169,17 +169,25 @@ public:
 	virtual void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp) = 0;
 
 	virtual bool SupportsQueryType(QueryType queryType) const = 0;
-	virtual void BeginQuery(IBvQuery* pQuery) = 0;
-	virtual void EndQuery(IBvQuery* pQuery) = 0;
+	virtual void ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount) = 0;
+	virtual void BeginQuery(IBvQueryHeap* pQueryHeap, u32 index) = 0;
+	virtual void EndQuery(IBvQueryHeap* pQueryHeap, u32 index) = 0;
+	virtual void ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset = 0) = 0;
 
 	virtual void BeginEvent(const char* pName, const BvColor& color = BvColor::Black) = 0;
 	virtual void EndEvent() = 0;
 	virtual void SetMarker(const char* pName, const BvColor& color = BvColor::Black) = 0;
 
-	virtual void BuildBLAS(const BLASBuildDesc& blasDesc, const ASPostBuildDesc* pPostBuildDesc = nullptr) = 0;
-	virtual void BuildTLAS(const TLASBuildDesc& tlasDesc, const ASPostBuildDesc* pPostBuildDesc = nullptr) = 0;
-	virtual void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc) = 0;
-	virtual void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc) = 0;
+	BV_INLINE void BuildRayTracingAccelerationStructure(const RayTracingAccelerationStructureBuildDesc& buildDesc,
+		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr)
+	{
+		BuildRayTracingAccelerationStructures(1, &buildDesc, pPostBuildDesc);
+	}
+	virtual void BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr) = 0;
+	virtual void EmitRayTracingAccelerationStructurePostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures,
+		const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc) = 0;
+	virtual void CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc) = 0;
 	virtual void DispatchRays(const DispatchRaysCommandArgs& args) = 0;
 	virtual void DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
 		u32 width, u32 height, u32 depth) = 0;

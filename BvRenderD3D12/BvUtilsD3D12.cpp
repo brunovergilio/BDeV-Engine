@@ -5,9 +5,11 @@
 #include "BvShaderResourceD3D12.h"
 #include "BvSamplerD3D12.h"
 #include "BvShaderD3D12.h"
+#include "BvPipelineStateD3D12.h"
 #include "BvTypeConversionsD3D12.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 #include "BDeV/Core/System/Window/BvWindow.h"
+#include "BDeV/Core/Utils/BvText.h"
 #include <dxgi1_5.h>
 
 
@@ -110,7 +112,7 @@ namespace D3D12Utils
 		return result;
 	}
 
-	Obj<BufferObj> CreateBuffer(BvRenderDeviceD3D12* pDevice, const BufferDesc& bufferDesc)
+	Obj<BufferObj> CreateBuffer(BvRenderDeviceD3D12* pDevice, const BufferDesc& bufferDesc, u64 minAlignment)
 	{
 		Obj<BufferObj> result;
 		auto& hr = result.first;
@@ -143,6 +145,10 @@ namespace D3D12Utils
 		auto pAllocator = pDevice->GetAllocator();
 		auto pD3DDevice = pDevice->GetHandle();
 		D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = pD3DDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
+		if (minAlignment)
+		{
+			allocationInfo.Alignment = std::max(allocationInfo.Alignment, minAlignment);
+		}
 
 		do 
 		{
@@ -514,6 +520,113 @@ namespace D3D12Utils
 	}
 
 
+	Obj<RayTracingPSOObj> CreatePipelineState(BvRenderDeviceD3D12* pDevice, const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc)
+	{
+		Obj<RayTracingPSOObj> result{};
+		auto& hr = result.first;
+		auto& pso = result.second.m_PSO;
+		auto& rootSig = result.second.m_RootSig;
+		auto& hitGroupNames = result.second.m_GroupNames;
+
+		ComPtr<ID3D12Device> device(pDevice->GetHandle());
+		ComPtr<ID3D12Device5> device5;
+		hr = device.As(&device5);
+		if (FAILED(hr))
+		{
+			return result;
+		}
+
+		D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS
+			| D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+
+		hr = CreateRootSignature(pDevice, TO_D3D12(rayTracingPipelineStateDesc.m_pShaderResourceLayout), flags, rootSig);
+		if (FAILED(hr))
+		{
+			return result;
+		}
+
+		D3D12_STATE_OBJECT_DESC stateObjectDesc{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
+
+		BvVector<D3D12_STATE_SUBOBJECT> subobjects;
+
+		D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig{ rayTracingPipelineStateDesc.m_MaxPipelineRayRecursionDepth };
+		D3D12_RAYTRACING_SHADER_CONFIG shaderConfig{ rayTracingPipelineStateDesc.m_MaxPayloadSize, rayTracingPipelineStateDesc.m_MaxAttributeSize };
+		D3D12_GLOBAL_ROOT_SIGNATURE globalRootSig{ rootSig.Get() };
+
+		subobjects.PushBack({ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG, &pipelineConfig });
+		subobjects.PushBack({ D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG, &shaderConfig });
+		subobjects.PushBack({ D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE, &globalRootSig });
+
+		BvVector<D3D12_DXIL_LIBRARY_DESC> libs; libs.Reserve(rayTracingPipelineStateDesc.m_Shaders.Size());
+		BvVector<D3D12_EXPORT_DESC> exports; exports.Reserve(libs.Capacity());
+		BvVector<BvWString> exportNames; exportNames.Reserve(libs.Capacity());
+		for (auto pShader : rayTracingPipelineStateDesc.m_Shaders)
+		{
+			auto size = BvTextUtilities::ConvertUTF8CharToWideChar(pShader->GetEntryPoint(), 0, nullptr, 0);
+			BV_ASSERT(size > 0, "Entry point can't be empty");
+			BvTextUtilities::ConvertUTF8CharToWideChar(pShader->GetEntryPoint(), 0, &exportNames.EmplaceBack(size - 1)[0], size);
+
+			libs.PushBack({ { pShader->GetShaderBlob().Data(), pShader->GetShaderBlob().Size() }, 1, &exports.PushBack({ exportNames.Back().CStr(), nullptr, D3D12_EXPORT_FLAG_NONE }) });
+
+			subobjects.PushBack({ D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY, &libs.Back() });
+		}
+
+		BvVector<D3D12_HIT_GROUP_DESC> hitGroups; hitGroups.Reserve(rayTracingPipelineStateDesc.m_ShaderGroupDescs.Size());
+		hitGroupNames.Reserve(hitGroups.Capacity());
+		u32 unnamedGroupIndex = 0;
+		for (auto& group : rayTracingPipelineStateDesc.m_ShaderGroupDescs)
+		{
+			BV_ASSERT(group.m_Type != ShaderGroupType::kNone, "Invalid shader group type");
+			hitGroupNames.EmplaceBack();
+			if (group.m_Type == ShaderGroupType::kGeneral)
+			{
+				hitGroupNames.Back() = exportNames[group.m_General];
+				continue;
+			}
+			
+			if (group.m_pName)
+			{
+				auto size = BvTextUtilities::ConvertUTF8CharToWideChar(group.m_pName, 0, nullptr, 0);
+				hitGroupNames.Back().Resize(size - 1);
+				BvTextUtilities::ConvertUTF8CharToWideChar(group.m_pName, 0, &hitGroupNames.Back()[0], size);
+			}
+			else
+			{
+				hitGroupNames.Back().Format(L"Unnamed Group %u", unnamedGroupIndex++);
+			}
+
+			auto& hitGroup = hitGroups.PushBack({});
+			hitGroup.Type = GetD3D12HitGroupType(group.m_Type);
+			hitGroup.HitGroupExport = hitGroupNames.Back().CStr();
+			if (group.m_ClosestHit != ShaderGroupDesc::kUnusedShader)
+			{
+				hitGroup.ClosestHitShaderImport = exports[group.m_ClosestHit].Name;
+			}
+			if (group.m_AnyHit != ShaderGroupDesc::kUnusedShader)
+			{
+				hitGroup.AnyHitShaderImport = exports[group.m_AnyHit].Name;
+			}
+			if (group.m_Intersection != ShaderGroupDesc::kUnusedShader)
+			{
+				hitGroup.IntersectionShaderImport = exports[group.m_Intersection].Name;
+			}
+
+			subobjects.PushBack({ D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP, &hitGroups.Back() });
+		}
+
+		stateObjectDesc.NumSubobjects = subobjects.Size();
+		stateObjectDesc.pSubobjects = subobjects.Data();
+		hr = device5->CreateStateObject(&stateObjectDesc, IID_PPV_ARGS(&pso));
+
+		return result;
+	}
+
+
 	Obj<ComPtr<ID3D12PipelineLibrary1>> CreatePipelineLibrary(BvRenderDeviceD3D12* pDevice, const PipelineCacheInitData& initData)
 	{
 		Obj<ComPtr<ID3D12PipelineLibrary1>> result;
@@ -529,6 +642,215 @@ namespace D3D12Utils
 		}
 
 		hr = device1->CreatePipelineLibrary(initData.m_pInitData, initData.m_Size, IID_PPV_ARGS(&library));
+
+		return result;
+	}
+
+
+	Obj<ASObj> CreateRayTracingAccelerationStructure(BvRenderDeviceD3D12* pDevice, const RayTracingAccelerationStructureDesc& asDesc)
+	{
+		Obj<ASObj> result{};
+		auto& hr = result.first;
+		auto& buffer = result.second.m_Buffer.m_Buffer;
+		auto& allocation = result.second.m_Buffer.m_Allocation;
+		auto& geometries = result.second.m_Geometries;
+		auto& scratchSizes = result.second.m_ScratchSizes;
+
+		ComPtr<ID3D12Device> device(pDevice->GetHandle());
+		ComPtr<ID3D12Device5> device5;
+		hr = device.As(&device5);
+		if (FAILED(hr))
+		{
+			return result;
+		}
+
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS asInputs{};
+		asInputs.Type = GetD3D12RayTracingAccelerationStructureType(asDesc.m_Type);
+		asInputs.Flags = GetD3D12RayTracingAccelerationStructureBuildFlags(asDesc.m_Flags);
+		asInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+
+		if (asDesc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
+		{
+			geometries.Reserve(asDesc.m_Geometries.Size());
+
+			for (auto geomIndex = 0; geomIndex < asDesc.m_Geometries.Size(); geomIndex++)
+			{
+				auto& srcGeometry = asDesc.m_Geometries[geomIndex];
+				auto& dstGeometry = geometries.EmplaceBack();
+				dstGeometry.Type = GetD3D12RayTracingGeometryType(srcGeometry.m_Type);
+				dstGeometry.Flags = GetD3D12RayTracingGeometryFlags(srcGeometry.m_Flags);
+				if (srcGeometry.m_Type == RayTracingGeometryType::kTriangles)
+				{
+					dstGeometry.Triangles.VertexCount = srcGeometry.m_Triangle.m_VertexCount;
+					dstGeometry.Triangles.VertexFormat = DXGI_FORMAT(srcGeometry.m_Triangle.m_VertexFormat);
+					dstGeometry.Triangles.VertexBuffer.StrideInBytes = srcGeometry.m_Triangle.m_VertexStride;
+					dstGeometry.Triangles.IndexCount = srcGeometry.m_Triangle.m_IndexCount;
+					dstGeometry.Triangles.IndexFormat = GetD3D12IndexFormat(srcGeometry.m_Triangle.m_IndexFormat);
+				}
+				else
+				{
+					dstGeometry.AABBs.AABBCount = srcGeometry.m_AABB.m_Count;
+					dstGeometry.AABBs.AABBs.StrideInBytes = srcGeometry.m_AABB.m_Stride;
+				}
+			}
+
+			asInputs.NumDescs = geometries.Size();
+			asInputs.pGeometryDescs = geometries.Data();
+		}
+		else
+		{
+			asInputs.NumDescs = asDesc.m_Geometries[0].m_Instance.m_InstanceCount;
+		}
+
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO pbInfo;
+		device5->GetRaytracingAccelerationStructurePrebuildInfo(&asInputs, &pbInfo);
+		scratchSizes.m_Build = pbInfo.ScratchDataSizeInBytes;
+		scratchSizes.m_Update = pbInfo.UpdateScratchDataSizeInBytes;
+
+		BufferDesc bufferDesc;
+		bufferDesc.m_Size = pbInfo.ResultDataMaxSizeInBytes;
+		bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
+
+		auto asBuffer = CreateBuffer(pDevice, bufferDesc);
+		if (SUCCEEDED(asBuffer.first))
+		{
+			buffer = std::move(asBuffer.second.m_Buffer);
+			allocation = std::move(asBuffer.second.m_Allocation);
+		}
+
+		return result;
+	}
+
+
+	Obj<SBTObj> CreateShaderBindingTable(BvRenderDeviceD3D12* pDevice, const ShaderBindingTableDesc& sbtDesc, BvCommandContextD3D12* pContext)
+	{
+		Obj<SBTObj> result{};
+		auto& hr = result.first;
+		auto& buffer = result.second.m_Buffer;
+		auto& sbtRegions = result.second.m_Regions;
+
+		auto pPSO = TO_D3D12(sbtDesc.m_pPSO);
+		ComPtr<ID3D12StateObjectProperties> props;
+		hr = pPSO->GetHandle()->QueryInterface(IID_PPV_ARGS(&props));
+		if (FAILED(hr))
+		{
+			return result;
+		}
+
+		BvVector<u32> groupIndexLists[4];
+		auto& psoDesc = sbtDesc.m_pPSO->GetDesc();
+		for (auto g = 0; g < psoDesc.m_ShaderGroupDescs.Size(); ++g)
+		{
+			auto index = 0;
+			auto& currGroup = psoDesc.m_ShaderGroupDescs[g];
+			if (currGroup.m_Type == ShaderGroupType::kGeneral)
+			{
+				auto stage = psoDesc.m_Shaders[currGroup.m_General]->GetShaderStage();
+				switch (stage)
+				{
+				case ShaderStage::kRayGen:
+					index = 0;
+					break;
+				case ShaderStage::kMiss:
+					index = 1;
+					break;
+				case ShaderStage::kCallable:
+					index = 3;
+					break;
+				}
+			}
+			else
+			{
+				index = 2;
+			}
+
+			groupIndexLists[index].PushBack(g);
+		}
+
+		auto& groupNames = pPSO->GetGroupNames();
+		auto& groupDescs = pPSO->GetDesc().m_ShaderGroupDescs;
+
+		constexpr u64 handleSizeAligned = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+
+		//sbtRegions[0].StartAddress = 0;
+		sbtRegions[0].StrideInBytes = RoundToNearestPowerOf2(handleSizeAligned, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+		sbtRegions[0].SizeInBytes = handleSizeAligned;
+
+		//sbtRegions[1].StartAddress = 0;
+		sbtRegions[1].StrideInBytes = handleSizeAligned;
+		sbtRegions[1].SizeInBytes = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[1].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+		//sbtRegions[2].StartAddress = 0;
+		sbtRegions[2].StrideInBytes = handleSizeAligned;
+		sbtRegions[2].SizeInBytes = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[2].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+		//sbtRegions[3].StartAddress = 0;
+		sbtRegions[3].StrideInBytes = handleSizeAligned;
+		sbtRegions[3].SizeInBytes = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[3].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+
+		BufferDesc bufferDesc;
+		bufferDesc.m_Size = sbtRegions[0].StrideInBytes * groupIndexLists[0].Size() + sbtRegions[1].SizeInBytes + sbtRegions[2].SizeInBytes + sbtRegions[3].SizeInBytes;
+
+		u64 currOffset = 0;
+
+		{
+			BvVector<u8> bufferData(bufferDesc.m_Size);
+			auto pStart = bufferData.Data();
+			for (auto g = 0u; g < 4; ++g)
+			{
+				auto pBuffer = pStart + currOffset;
+				auto& groupIndices = groupIndexLists[g];
+				auto stride = sbtRegions[g].StrideInBytes;
+				for (auto i = 0u; i < groupIndices.Size(); ++i)
+				{
+					auto pSrc = props->GetShaderIdentifier(groupNames[groupIndices[i]].CStr());
+					memcpy(pBuffer, pSrc, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+					pBuffer += stride;
+				}
+				currOffset += g == 0 ? sbtRegions[g].StrideInBytes * groupIndexLists[g].Size() : sbtRegions[g].SizeInBytes;
+			}
+
+			auto bufferObj = CreateBuffer(pDevice, bufferDesc, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+			hr = bufferObj.first;
+			if (FAILED(hr))
+			{
+				return result;
+			}
+
+			buffer = std::move(bufferObj.second);
+
+			UploadMemoryToGPU(pDevice, buffer.m_Buffer.Get(), { pContext, bufferData.Data(), bufferData.Size() });
+		}
+
+		currOffset = 0;
+		auto deviceAddress = buffer.m_Buffer->GetGPUVirtualAddress();
+		for (auto g = 0; g < 4; ++g)
+		{
+			if (groupIndexLists[g].Size() == 0)
+			{
+				sbtRegions[g] = {};
+				continue;
+			}
+
+			sbtRegions[g].StartAddress = deviceAddress + currOffset;
+			currOffset += g == 0 ? sbtRegions[g].StrideInBytes * groupIndexLists[g].Size() : sbtRegions[g].SizeInBytes;
+		}
+
+		return result;
+	}
+
+
+	Obj<ComPtr<ID3D12QueryHeap>> CreateQueryHeap(BvRenderDeviceD3D12* pDevice, const QueryHeapDesc& queryHeapDesc)
+	{
+		Obj<ComPtr<ID3D12QueryHeap>> result{};
+		auto& hr = result.first;
+		auto& queryHeap = result.second;
+
+		D3D12_QUERY_HEAP_DESC qhd{};
+		qhd.Type = GetD3D12QueryHeapType(queryHeapDesc.m_Type);
+		qhd.Count = queryHeapDesc.m_Count;
+
+		hr = pDevice->GetHandle()->CreateQueryHeap(&qhd, IID_PPV_ARGS(&queryHeap));
 
 		return result;
 	}

@@ -13,7 +13,7 @@
 BvSwapChainD3D12::BvSwapChainD3D12(BvRenderDeviceD3D12* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContextD3D12* pContext,
 	ComPtr<IDXGISwapChain3>& swapChain, BvVector<ID3D12Resource*>& textures, UINT presentFlags)
 	: m_pDevice(pDevice), m_SwapChainDesc(swapChainParams), m_pCommandContext(pContext), m_pWindow(pWindow), m_SwapChain(std::move(swapChain)),
-	m_PresentFlags(presentFlags)
+	m_PresentFlags(presentFlags), m_Width(pWindow->GetWidth()), m_Height(pWindow->GetHeight())
 {
 	CreateTextureResources(textures);
 
@@ -35,7 +35,13 @@ void BvSwapChainD3D12::AcquireImage()
 
 void BvSwapChainD3D12::Present(bool vSync)
 {
-	m_SwapChain->Present(vSync ? 1 : 0, m_PresentFlags);
+	m_SwapChain->Present(vSync ? 1 : 0, m_SwapChainDesc.m_WindowMode != SwapChainMode::kFullscreen ? m_PresentFlags : 0);
+
+	auto [w, h] = m_pWindow->GetSize();
+	if (m_Width != w || m_Height != h)
+	{
+		Resize();
+	}
 
 	AcquireImage();
 }
@@ -43,6 +49,25 @@ void BvSwapChainD3D12::Present(bool vSync)
 
 void BvSwapChainD3D12::SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor)
 {
+	auto pCurrMonitor = m_pWindow->GetWindowDesc().m_pMonitor;
+	if (!pMonitor)
+	{
+		pMonitor = pCurrMonitor;
+	}
+
+	if (m_SwapChainDesc.m_WindowMode == mode)
+	{
+		if (mode == SwapChainMode::kWindowed || pMonitor == pCurrMonitor)
+		{
+			return;
+		}
+	}
+	
+	m_pWindow->SetFullscreen(mode != SwapChainMode::kWindowed, pMonitor);
+	Resize();
+
+	m_SwapChainDesc.m_WindowMode = mode;
+	SetTrueFullscreen(mode == SwapChainMode::kFullscreen);
 }
 
 
@@ -128,7 +153,7 @@ void BvSwapChainD3D12::DestroyTextureResources()
 
 void BvSwapChainD3D12::Destroy()
 {
-	m_SwapChain->SetFullscreenState(FALSE, nullptr);
+	SetTrueFullscreen(false);
 
 	DestroyTextureResources();
 }
@@ -136,14 +161,15 @@ void BvSwapChainD3D12::Destroy()
 
 void BvSwapChainD3D12::Resize()
 {
-	m_pCommandContext->GetCommandQueue()->WaitIdle();
 	if (m_pWindow->IsClosed() || m_pWindow->IsMinimized())
 	{
 		return;
 	}
+	m_pCommandContext->GetCommandQueue()->WaitIdle();
+	DestroyTextureResources();
 
 	BOOL fs{};
-	if (SUCCEEDED(m_SwapChain->GetFullscreenState(&fs, nullptr) && fs))
+	if (SUCCEEDED(m_SwapChain->GetFullscreenState(&fs, nullptr)) && fs)
 	{
 		m_SwapChain->SetFullscreenState(false, nullptr);
 	}
@@ -151,17 +177,29 @@ void BvSwapChainD3D12::Resize()
 	auto [w, h] = m_pWindow->GetSize();
 	DXGI_SWAP_CHAIN_DESC1 scd{};
 	m_SwapChain->GetDesc1(&scd);
-	m_SwapChain->ResizeBuffers1(scd.BufferCount, w, h, scd.Format, scd.Flags, nullptr, nullptr);
-	//Create();
+	m_SwapChain->ResizeBuffers(0, 0, 0, scd.Format, scd.Flags);
+
+	m_Width = w;
+	m_Height = h;
+
+	BvVector<ID3D12Resource*> backBuffers(scd.BufferCount);
+	for (auto i = 0; i < backBuffers.Size(); i++)
+	{
+		m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i]));
+	}
+	CreateTextureResources(backBuffers);
 }
 
 
 void BvSwapChainD3D12::SetTrueFullscreen(bool value)
 {
-	if (m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen && value)
+	if ((m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen && value) || (m_SwapChainDesc.m_WindowMode != SwapChainMode::kFullscreen && !value))
 	{
 		return;
 	}
 
-	m_SwapChain->SetFullscreenState(value, nullptr);
+	if (FAILED(m_SwapChain->SetFullscreenState(value, nullptr)) && value)
+	{
+		m_SwapChainDesc.m_WindowMode = SwapChainMode::kBorderlessFullscreen;
+	}
 }

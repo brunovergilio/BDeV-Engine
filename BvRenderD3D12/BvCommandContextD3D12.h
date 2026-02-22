@@ -13,10 +13,8 @@
 class BvRenderDeviceD3D12;
 class BvBufferD3D12;
 class BvTextureD3D12;
-class BvQueryD3D12;
 class BvSwapChainD3D12;
 class BvGPUFenceD3D12;
-class BvQueryHeapManagerD3D12;
 
 
 struct ContextDataD3D12
@@ -25,7 +23,6 @@ struct ContextDataD3D12
 	BvRobinMap<u64, BvDescriptorPoolD3D12> m_DescriptorPools;
 	BvRobinMap<u64, BvDescriptorHandle> m_Descriptors;
 	BvRobinMap<u64, BvDescriptorHandle> m_BindlessDescriptors;
-	BvQueryHeapManagerD3D12* m_pQueryHeapManager = nullptr;
 };
 
 
@@ -47,8 +44,6 @@ public:
 	BvDescriptorHandle RequestDescriptorHandle(u32 rootIndex, const BvShaderResourceLayoutD3D12* pLayout,
 		const BvVector<DescriptorData>& descriptors, bool bindless = false);
 	void ClearActiveCommandLists();
-	void AddQuery(BvQueryD3D12* pQuery);
-	void UpdateQueryData();
 
 	BV_INLINE const auto& GetCommandLists() const { return m_CommandLists; }
 	BV_INLINE auto& GetResourceBindingState() { return m_pContextData->m_ResourceBindingState; }
@@ -63,9 +58,9 @@ private:
 	BvCommandAllocatorD3D12 m_CommandAllocator;
 	BvVector<BvCommandListD3D12*> m_CommandLists;
 	ContextDataD3D12* m_pContextData;
-	BvVector<BvQueryD3D12*> m_Queries;
 	u32 m_UpdatedQueries = 0;
 	BvRCRef<BvGPUFenceD3D12> m_Fence;
+	BvVector<ID3D12Resource*> m_ASPostBuildBuffers;
 	u64 m_FenceValue = 0;
 	u32 m_FrameIndex;
 };
@@ -151,17 +146,25 @@ public:
 	void SetPredication(const IBvBuffer* pBuffer, u64 offset, PredicationOp predicationOp) override;
 
 	bool SupportsQueryType(QueryType queryType) const override;
-	void BeginQuery(IBvQuery* pQuery) override;
-	void EndQuery(IBvQuery* pQuery) override;
+	BV_INLINE void ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount) override {}
+	void BeginQuery(IBvQueryHeap* pQueryHeap, u32 index) override;
+	void EndQuery(IBvQueryHeap* pQueryHeap, u32 index) override;
+	void ResolveQueryData(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount, IBvBuffer* pDstBuffer, u64 offset = 0) override;
 
 	void BeginEvent(const char* pName, const BvColor& color = BvColor::Black) override;
 	void EndEvent() override;
 	void SetMarker(const char* pName, const BvColor& color = BvColor::Black) override;
 
-	void BuildBLAS(const BLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr) override;
-	void BuildTLAS(const TLASBuildDesc& desc, const ASPostBuildDesc* pPostBuildDesc = nullptr) override;
-	void CopyBLAS(const AccelerationStructureCopyDesc& copyDesc) override;
-	void CopyTLAS(const AccelerationStructureCopyDesc& copyDesc) override;
+	BV_INLINE void BuildRayTracingAccelerationStructure(const RayTracingAccelerationStructureBuildDesc& buildDesc,
+		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr)
+	{
+		BuildRayTracingAccelerationStructures(1, &buildDesc, pPostBuildDesc);
+	}
+	void BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
+		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr) override;
+	void EmitRayTracingAccelerationStructurePostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures,
+		const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc) override;
+	void CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc) override;
 	void DispatchRays(const DispatchRaysCommandArgs& args) override;
 	void DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
 		u32 width, u32 height, u32 depth) override;

@@ -29,6 +29,7 @@ public:
 	explicit BvVector(size_t size, const Type* pElements, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Range
 	BvVector(std::initializer_list<Type> list, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA); // Initializer List
 	BvVector(const BvVector& rhs); // Copy
+	BvVector(const BvVector& rhs, IBvMemoryArena* pArena); // Copy / Custom Allocator
 	BvVector(BvVector&& rhs) noexcept; // Move
 
 	BvVector& operator=(const BvVector& rhs); // Copy Assignment
@@ -175,6 +176,18 @@ inline BvVector<Type>::BvVector(std::initializer_list<Type> list, IBvMemoryArena
 template<typename Type>
 inline BvVector<Type>::BvVector(const BvVector& rhs)
 	: m_pArena(rhs.m_pArena)
+{
+	Grow(rhs.m_Size);
+
+	for (auto i = 0; i < rhs.m_Size; i++)
+	{
+		PushBack(rhs.m_pData[i]);
+	}
+}
+
+template<typename Type>
+inline BvVector<Type>::BvVector(const BvVector& rhs, IBvMemoryArena* pArena)
+	: m_pArena(pArena)
 {
 	Grow(rhs.m_Size);
 
