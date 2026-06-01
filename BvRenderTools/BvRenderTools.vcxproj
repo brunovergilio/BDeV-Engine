@@ -23,14 +23,14 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -61,6 +61,9 @@
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgUseStatic>false</VcpkgUseStatic>
+    <VcpkgTriplet>
+    </VcpkgTriplet>
+    <VcpkgHostTriplet>x64-windows</VcpkgHostTriplet>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <VcpkgUseStatic>false</VcpkgUseStatic>
@@ -84,7 +87,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SPIRV-Tools-shared.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099,4217 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>BvRenderTools.def</ModuleDefinitionFile>
     </Link>
@@ -116,7 +119,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SPIRV-Tools-shared.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/ignore:4099,4217 %(AdditionalOptions)</AdditionalOptions>
       <ModuleDefinitionFile>BvRenderTools.def</ModuleDefinitionFile>
     </Link>
@@ -126,8 +129,11 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ShaderCompiler\SPIRV\BvSPIRVUtils.h" />
     <ClInclude Include="ShaderCompiler\BvShaderBlob.h" />
+    <ClInclude Include="ShaderCompiler\BvShaderCompiler.h" />
     <ClInclude Include="ShaderCompiler\DXC\BvDXCompiler.h" />
+    <ClInclude Include="ShaderCompiler\DXC\BvDXCUtils.h" />
     <ClInclude Include="TextureLoader\BvDDSTextureLoader.h" />
     <ClInclude Include="TextureLoader\BvTextureLoaderCommon.h" />
     <ClInclude Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.h" />
@@ -136,8 +142,11 @@
     <ClInclude Include="TextureLoader\STB\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ShaderCompiler\SPIRV\BvSPIRVUtils.cpp" />
     <ClCompile Include="ShaderCompiler\BvShaderBlob.cpp" />
+    <ClCompile Include="ShaderCompiler\BvShaderCompiler.cpp" />
     <ClCompile Include="ShaderCompiler\DXC\BvDXCompiler.cpp" />
+    <ClCompile Include="ShaderCompiler\DXC\BvDXCUtils.cpp" />
     <ClCompile Include="TextureLoader\BvDDSTextureLoader.cpp" />
     <ClCompile Include="TextureLoader\BvSTBTextureLoader.cpp" />
     <ClCompile Include="ShaderCompiler\SPIRV\BvSPIRVCompiler.cpp" />

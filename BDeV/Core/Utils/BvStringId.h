@@ -30,6 +30,8 @@ public:
 	constexpr operator u64() const { return m_Id; }
 	constexpr u64 GetId() const { return m_Id; }
 
+	constexpr operator bool() const { return m_Id == Empty().GetId(); }
+
 	static constexpr BvStringId Empty()
 	{
 		constexpr auto kEmptyStringId = Internal::ConstexprMurmurHash64AHelper("", 1);

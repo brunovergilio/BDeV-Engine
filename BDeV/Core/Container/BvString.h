@@ -644,7 +644,7 @@ void BvStringT<CharT>::Erase(const u32 start, const u32 count)
 }
 
 
-#if (BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
+#if (BV_PLATFORM_WIN32 && BV_COMPILER_MSVC)
 #pragma warning(push)
 #pragma warning(disable:6386) // Buffer overrun
 #endif
@@ -673,7 +673,7 @@ void BvStringT<CharT>::Resize(u32 size, CharT c)
 	}
 }
 
-#if (BV_PLATFORM_WIN32 && BV_COMPILER == BV_COMPILER_MSVC)
+#if (BV_PLATFORM_WIN32 && BV_COMPILER_MSVC)
 #pragma warning(pop)
 #endif
 

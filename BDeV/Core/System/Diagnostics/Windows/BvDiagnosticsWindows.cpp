@@ -4,8 +4,6 @@
 #include "BDeV/Core/System/Memory/BvMemory.h"
 #include <cstdio>
 #include <intrin.h>
-#include <utility>
-#include <comdef.h>
 
 
 constexpr u32 kMaxMessageSize = 2_kb;
@@ -53,7 +51,7 @@ public:
 };
 
 
-void ConsoleHelper()
+static void ConsoleHelper()
 {
 	static BvConsoleHelper console;
 }
@@ -94,7 +92,7 @@ void BvConsole::Printf(const BvColorI& textColor, const BvColorI& backGroundColo
 }
 
 
-char* GetMessageBuffer()
+static char* GetMessageBuffer()
 {
 	static thread_local char errorMessage[kMaxMessageSize]{};
 	return errorMessage;

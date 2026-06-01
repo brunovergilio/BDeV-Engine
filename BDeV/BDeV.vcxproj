@@ -21,13 +21,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -68,7 +68,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -132,6 +132,7 @@
     <ClInclude Include="Core\Container\BvString.h" />
     <ClInclude Include="Core\Utils\BvStringId.h" />
     <ClInclude Include="Core\Container\BvVector.h" />
+    <ClInclude Include="Core\Utils\BvUTF.h" />
     <ClInclude Include="Engine\JobSystem\BvParallelJobSystem.h" />
     <ClInclude Include="Core\Math\BvMath.h" />
     <ClInclude Include="Core\Utils\BvRTTI.h" />
@@ -233,6 +234,8 @@
     <ClCompile Include="Core\Utils\BvTime.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="Core\System\Threading\Windows\jump_x86_64_ms_pe_masm.asm" />
+    <MASM Include="Core\System\Threading\Windows\make_x86_64_ms_pe_masm.asm" />
     <None Include="Core\Math\BvMathLoaders.inl" />
     <None Include="Core\Math\BvMathMatrix.inl" />
     <None Include="Core\Math\BvMathQuaternion.inl" />

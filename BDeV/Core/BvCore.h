@@ -18,8 +18,9 @@
 // =================================
 // Compiler definitions
 // =================================
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 	#define BV_COMPILER_MSVC 1
+	#define BV_COMPILER_VERSION _MSC_VER
 #else
 #if BV_PLATFORM_WIN32
 #error "Currently only MSVC compiler is supported for Windows"
@@ -62,8 +63,6 @@
 // Compiler-dependent stuff
 // =================================
 #if BV_COMPILER_MSVC
-	#define BV_COMPILER_VERSION _MSC_VER
-	
 	#if (_MSC_VER >= 1915)
 		#define no_init_all deprecated
 	#endif
@@ -75,6 +74,8 @@
 	#define BV_FUNCTION __FUNCTION__
 	#define BV_INLINE __forceinline
 	#define BV_NO_INLINE __declspec(noinline)
+
+	#define BV_STACK_ALLOC(size) _alloca(size)
 	
 	#pragma warning(disable:4100)	// unref
 	#pragma warning(disable:4103)	// alignment changed after including header, may be due to missing #pragma pack(pop)
@@ -105,6 +106,13 @@
 	#pragma warning(disable:4828)
 
 	#define BV_API
+
+	// These are helper routines for creating thread-local variables to be used with fibers. Since with MSVC compiler the /GT
+	// flag will always be on in this project, there is no need to use any fences or even prevent inlining, but these macros
+	// will be useful when support for other operating systems and compilers is added
+
+	#define BV_FIBER_CALL
+	#define BV_FIBER_TLS_UPDATE()
 
 #else
 	#error "Compiler not yet supported"
@@ -230,11 +238,6 @@ struct BvTrackedAllocationInfo
 	std::source_location m_SourceInfo;
 	const struct BvStackTrace* m_pStackTrace;
 };
-
-
-#if BV_PLATFORM_WIN32
-#define BV_STACK_ALLOC(size) _alloca(size)
-#endif
 
 
 static_assert(std::endian::native == std::endian::little || std::endian::native == std::endian::big, "Endianess must be little or big");

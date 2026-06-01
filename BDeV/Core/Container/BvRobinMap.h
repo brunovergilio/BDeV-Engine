@@ -343,7 +343,7 @@ inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool
 		{
 			m_pData[index].second.~Value();
 		}
-		new (&m_pData[index].second) Value(std::forward<Args>(args)...);
+		new (std::addressof(m_pData[index].second)) Value(std::forward<Args>(args)...);
 		Internal::PropagateAllocator(m_pData[index].second, m_pArena);
 		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
 	}
@@ -372,7 +372,7 @@ inline std::pair<typename BvRobinMap<Key, Value, Hash, Comparer>::Iterator, bool
 		{
 			m_pData[index].second.~Value();
 		}
-		new (&m_pData[index].second) Value(std::forward<Args>(args)...);
+		new (std::addressof(m_pData[index].second)) Value(std::forward<Args>(args)...);
 		Internal::PropagateAllocator(m_pData[index].second, m_pArena);
 		return std::make_pair(Iterator(m_pData, m_pData + index, m_pHashes + index, &m_Size), false);
 	}
@@ -644,7 +644,7 @@ inline size_t BvRobinMap<Key, Value, Hash, Comparer>::EmplaceInternal(KeyValue* 
 	{
 		if (pHashes[currPos] == 0)
 		{
-			new (&pData[currPos]) KeyValue(std::move(newItem));
+			new (std::addressof(pData[currPos])) KeyValue(std::move(newItem));
 			pHashes[currPos] = hash;
 
 			if (newElemInsertedPosition == kU64Max)

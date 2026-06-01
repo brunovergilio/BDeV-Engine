@@ -2018,6 +2018,16 @@ struct ShaderSourceDesc
 	ShaderStage m_ShaderStage = ShaderStage::kUnknown;
 	ShaderLanguage m_ShaderLanguage = ShaderLanguage::kUnknown;
 	ShaderTarget m_ShaderTarget = ShaderTarget::kUnknown;
+
+	bool IsTargetSPIRV() const
+	{
+		return m_ShaderTarget >= ShaderTarget::kSPIRV_1_0 && m_ShaderTarget <= ShaderTarget::kSPIRV_1_6;
+	}
+
+	bool IsTargetHLSL() const
+	{
+		return m_ShaderTarget >= ShaderTarget::kHLSL_5_0 && m_ShaderTarget <= ShaderTarget::kHLSL_6_9;
+	}
 };
 
 

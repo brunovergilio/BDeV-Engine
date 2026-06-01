@@ -830,7 +830,7 @@ inline Type& BvVector<Type>::EmplaceBack(Args&& ...args)
 		Grow(CalculateNewContainerSize(m_Capacity));
 	}
 
-	auto pVal = new (&m_pData[m_Size++]) Type(std::forward<Args>(args)...);
+	auto pVal = new (std::addressof(m_pData[m_Size++])) Type(std::forward<Args>(args)...);
 
 	Internal::PropagateAllocator(*pVal, m_pArena);
 
@@ -885,12 +885,22 @@ inline void BvVector<Type>::Grow(const size_t size)
 	}
 
 	Type* pNewData = reinterpret_cast<Type*>(m_pArena->Allocate(size * sizeof(Type), alignof(Type)));
-	for (auto i = 0u; i < m_Size; i++)
+	if constexpr (!IsPodV<Type>)
 	{
-		new (&pNewData[i]) Type(std::move(m_pData[i]));
-		if constexpr (!std::is_trivially_destructible_v<Type>)
+		for (auto i = 0u; i < m_Size; i++)
 		{
-			m_pData[i].~Type();
+			new (std::addressof(pNewData[i])) Type(std::move(m_pData[i]));
+			if constexpr (!std::is_trivially_destructible_v<Type>)
+			{
+				m_pData[i].~Type();
+			}
+		}
+	}
+	else
+	{
+		if (m_Size)
+		{
+			memcpy(pNewData, m_pData, m_Size * sizeof(Type));
 		}
 	}
 

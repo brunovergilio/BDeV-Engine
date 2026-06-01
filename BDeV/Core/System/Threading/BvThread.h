@@ -64,11 +64,6 @@ public:
 	static const BvThread& GetCurrentThread();
 	static u32 GetCurrentProcessor();
 
-	static BvFiber& ConvertToFiber();
-	static void ConvertFromFiber();
-	static BvFiber& GetFiber();
-	static bool IsFiber();
-
 	BV_INLINE u64 GetId() const { return m_ThreadId; }
 	BV_INLINE OSThreadHandle GetHandle() const { return m_hThread; }
 

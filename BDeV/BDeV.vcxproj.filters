@@ -88,6 +88,7 @@
     <ClInclude Include="Core\Math\DirectXMath\DirectXMath.h" />
     <ClInclude Include="Core\Math\DirectXMath\DirectXPackedVector.h" />
     <ClInclude Include="Core\Math\DirectXMath\sal.h" />
+    <ClInclude Include="Core\Utils\BvUTF.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -148,5 +149,7 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="Core\System\Threading\Windows\BvFiberMASM.asm" />
+    <MASM Include="Core\System\Threading\Windows\jump_x86_64_ms_pe_masm.asm" />
+    <MASM Include="Core\System\Threading\Windows\make_x86_64_ms_pe_masm.asm" />
   </ItemGroup>
 </Project>

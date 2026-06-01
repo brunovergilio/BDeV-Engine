@@ -50,19 +50,7 @@
 
 using OSFileHandle = HANDLE;
 using OSThreadHandle = HANDLE;
-#if defined(BV_USE_ASM_FIBERS)
-namespace Internal
-{
-	struct OSFiberHandle
-	{
-		void* m_pMemory;
-		void* m_pContext;
-	};
-}
-using OSFiberHandle = Internal::OSFiberHandle;
-#else
 using OSFiberHandle = void*;
-#endif
 using OSSharedLibHandle = HMODULE;
 using OSWindowHandle = HWND;
 using OSMonitorHandle = HMONITOR;
@@ -78,5 +66,7 @@ constexpr OSMonitorHandle kNullOSMonitorHandle = nullptr;
 const OSSocketHandle kNullOSSocketHandle = INVALID_SOCKET;
 
 #define BV_SOCKET_ERROR_CODE WSAGetLastError()
+
+#define BV_USE_ASM_FIBERS
 
 #endif // #if BV_PLATFORM_WIN32

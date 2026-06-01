@@ -628,7 +628,7 @@ namespace BvPathUtils
 			return 0;
 		}
 
-		// Check for \\?\, \??\ or \\.\ 
+		// Check for \\?\, \??\ or \\.\ /**/ 
 		if (size >= 4 && IsSlash(pPath[3]) && (size == 4 || !IsSlash(pPath[4])) // \xx\$
 			&& ((IsSlash(pPath[1]) && (pPath[2] == L'?' || pPath[2] == L'.')) // \\?\$ or \\.\$
 				|| (pPath[1] == L'?' && pPath[2] == L'?'))) // \??\$

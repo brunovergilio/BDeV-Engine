@@ -6,6 +6,8 @@
 #include <source_location>
 #include <print>
 
+#include "BDeV/Core/Utils/BvUTF.h"
+
 char stack[1024];
 char stack2[1024];
 char stack3[1024];
@@ -111,11 +113,45 @@ BvMutex mm;
 
 int main()
 {
-	srand(time(nullptr));
-	int n = rand();
-	BvConsole::Print(BvColorI(0, 100, 182), BvColorI(0, 0, 0), "fasf {}\n", n);
-	BvConsole::Print(BvColorI(0, 255, 0), "fasf {}\n", 123);
-	BvConsole::Println("afasfsf {} {}", 123, 545);
+	char c8[48];
+	char8_t cc8[48];
+	char16_t c16[48];
+	constexpr u32 aa = U'ᴚ';
+	constexpr const char* bb = "ᴚ";
+	constexpr const char16_t cc = u'ᴚ';
+	char32_t result; UTFCharTraits::GetChar(bb, bb + std::char_traits<char>::length(bb) + 1, &result, &result + 1);
+	char32_t result2 = UTF16To32(&cc, &cc + 1);
+
+	auto it1 = UTF32To8(result, c8, c8 + 48);
+	*it1 = 0;
+	//char32_t newv = 0x20AC;
+	auto it2 = UTF32To8(result, cc8, cc8 + 48);
+	*it2 = 0;
+
+	auto len1 = UTFCharTraits::Legnth(c8, c8 + 48);
+
+	auto it3 = UTF32To16(result, c16, c16 + 48);
+	*it3 = 0;
+
+	auto len2 = UTFCharTraits::Legnth(c16, c16 + 48);
+	auto len3 = UTFCharTraits::Legnth(&result, &result + 1);
+
+	char8_t res[32];
+	auto it4 = UTF16To8(c16, c16 + 48,  res, res + 32);
+	*it4 = 0;
+
+	char16_t res2[32];
+	auto it5 = UTF8To16(res, res + 32, res2, res2 + 32);
+	*it5 = 0;
+	return 0;
+
+	//auto p = BV_SALLOC(1_kb, 32);
+	//BV_SFREE(p);
+	//srand(time(nullptr));
+	//int n = rand();
+	//BvConsole::Print(BvColorI(0, 100, 182), BvColorI(0, 0, 0), "fasf {}\n", n);
+	//BvConsole::Print(BvColorI(0, 255, 0), "fasf {}\n", 123);
+	//BvConsole::Println("afasfsf {} {}", 123, 545);
 	//std::print("\033[38;2;{};{};{}m", 0, 172, 0);
 	//std::println("fabf");
 	//std::print("\033[0m");
@@ -128,12 +164,12 @@ int main()
 	// Use the custom function
 	//my_vformat_to(buffer.begin(), "Hello, {}! This is {}", 1, 2);
 	//my_vformat_to(bb, "Hello, {}! This is {}", 1, 2);
-	srand(time(nullptr));
-	auto ii = rand();
-	BvDebug::Println("Hello, {}! This is {}", 2, ii);
-	ii = rand();
-	BvDebug::Print("Hello, {}! This is {}", 1, ii);
-	return 0;
+	//srand(time(nullptr));
+	//auto ii = rand();
+	//BvDebug::Println("Hello, {}! This is {}", 2, ii);
+	//ii = rand();
+	//BvDebug::Print("Hello, {}! This is {}", 1, ii);
+	//return 0;
 
 	//JobSystemDesc jsDesc;
 	//jsDesc.m_NumWorkerThreadDescs = 4;
@@ -188,37 +224,33 @@ int main()
 	//js.Shutdown();
 
 	//return 0;
-	//BvFiber& mfb = BvThread::ConvertToFiber();
 
-	//BvSignal s;
-	//BvFiber fb;
-	//fb = BvFiber([&fb, &mfb]()
+
+	//BvFiber mfb = BvFiber::CreateForThread();
+
+	//BvFiber fb = BvFiber([&mfb]()
 	//	{
 	//		printf("%d\n", a);
-	//		fb.Switch(mfb);
+	//		mfb.Yield();
 
 	//		printf("%d\n", a);
-	//		fb.Switch(*pFb2);
-
-	//		printf("%d\n", a);
-	//		fb.Switch(mfb);
+	//		BvFiber::GetCurrent().Yield();
 	//	});
-	//pFb = &fb;
-	//mfb.Switch(fb);
 
-	//MessageBoxW(nullptr, L"afaf", L"fa", MB_OK);
+	//fb.Resume();
 
-	//BvThread t([]()
+	//BvThread t([&fb]()
 	//	{
-	//		BvFiber& mfb = BvThread::ConvertToFiber();
+	//		BvFiber::CreateForThread();
 	//		a = 1;
 
-	//		pFb2 = &mfb;
-	//		mfb.Switch(*pFb);
+	//		fb.Resume();
+	//		BvFiber::DestroyForThread();
 	//	});
 	//t.Wait();
 
-	//mfb.Switch(fb);
+	//fb = nullptr;
+	//BvFiber::DestroyForThread();
 
 	//return 0;
 }

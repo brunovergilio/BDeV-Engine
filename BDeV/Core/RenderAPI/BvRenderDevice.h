@@ -27,7 +27,6 @@ public:
 	template<BvRCType T> BV_INLINE bool CreateGraphicsPipeline(const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, T** ppObj) { return CreateGraphicsPipelineImpl(graphicsPipelineStateDesc, nullptr, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateComputePipeline(const ComputePipelineStateDesc& computePipelineStateDesc, T** ppObj) { return CreateComputePipelineImpl(computePipelineStateDesc, nullptr, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateRayTracingPipeline(const RayTracingPipelineStateDesc& rayTracingPipelineStateDesc, T** ppObj) { return CreateRayTracingPipelineImpl(rayTracingPipelineStateDesc, nullptr, reinterpret_cast<void**>(ppObj)); }
-	template<BvRCType T> BV_INLINE bool CreateQuery(QueryType queryType, T** ppObj) { return CreateQueryImpl(queryType, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateQueryHeap(const QueryHeapDesc& queryHeapDesc, T** ppObj) { return CreateQueryHeapImpl(queryHeapDesc, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateFence(const GPUFenceDesc& fenceDesc, T** ppObj) { return CreateFenceImpl(fenceDesc, reinterpret_cast<void**>(ppObj)); }
 	template<BvRCType T> BV_INLINE bool CreateAccelerationStructure(const RayTracingAccelerationStructureDesc& asDesc, T** ppObj) { return CreateAccelerationStructureImpl(asDesc, reinterpret_cast<void**>(ppObj)); }

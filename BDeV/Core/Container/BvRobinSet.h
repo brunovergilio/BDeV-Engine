@@ -486,7 +486,7 @@ inline size_t BvRobinSet<Key, Hash, Comparer>::EmplaceInternal(KeyValue* const p
 	{
 		if (pHashes[currPos] == 0)
 		{
-			new (&pData[currPos]) KeyValue(std::move(newItem));
+			new (std::addressof(pData[currPos])) KeyValue(std::move(newItem));
 			pHashes[currPos] = hash;
 
 			if (newElemInsertedPosition == kU64Max)

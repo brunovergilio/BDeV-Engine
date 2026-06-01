@@ -49,7 +49,6 @@ public:
 	BV_INLINE auto& GetResourceBindingState() { return m_pContextData->m_ResourceBindingState; }
 	BV_INLINE BvGPUFenceD3D12* GetGPUFence() { return m_Fence; }
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
-	BV_INLINE BvQueryHeapManagerD3D12* GetQueryHeapManager() const { return m_pContextData->m_pQueryHeapManager; }
 	BV_INLINE u64 UpdateFenceValue() { return ++m_FenceValue; }
 	BV_INLINE u64 GetFenceValue() const { return m_FenceValue; }
 

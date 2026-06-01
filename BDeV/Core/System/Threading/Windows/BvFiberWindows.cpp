@@ -1,106 +1,102 @@
 #include "BDeV/Core/System/Threading/BvFiber.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
+#include "BDeV/Core/System/BvPlatformHeaders.h"
+#include "BDeV/Core/System/Memory/BvMemory.h"
 #include <utility>
 
 
-#if !defined(BV_USE_ASM_FIBERS)
+struct alignas(kCacheLineSize) BvFiberImpl
+{
+	BvFiber::EntryPointType m_Task; // Entry Point
+	IBvMemoryArena* m_pArena = nullptr; // Memory Arena
+	void* m_pMemory = nullptr; // Allocated memory block
+	OSFiberHandle m_hFiber = nullptr; // Fiber Context
+	void* m_pFLS = nullptr; // Fiber Local Storage pointer
+	bool m_IsThreadFiber = false; // Determines if this fiber context is from a thread
+};
+
+
 namespace Internal
 {
-	static thread_local BvFiber* s_pTLSCurrentFiber = nullptr;
-
-	static BvFiber* GetCurrentFiber()
-	{
-		return s_pTLSCurrentFiber;
-	}
-
-	static void SetCurrentFiber(BvFiber* pFiber)
-	{
-		s_pTLSCurrentFiber = pFiber;
-	}
-
-	static BvFiber& GetThreadFiber()
-	{
-		static thread_local BvFiber threadFiber;
-
-		return threadFiber;
-	}
+	thread_local BvFiberImpl* g_pThreadFiber = nullptr;
+	thread_local BvFiberImpl* g_pCurrentFiber = nullptr;
 }
 
-void CALLBACK BvFiber::FiberEntryPoint(void* pData)
+
+BvFiberImpl* GetThreadFiberTLS()
 {
-	BvFiber* pFiber = reinterpret_cast<BvFiber*>(pData);
+	return Internal::g_pThreadFiber;
+}
+
+
+void SetThreadFiberTLS(BvFiberImpl* pFiber)
+{
+	Internal::g_pThreadFiber = pFiber;
+}
+
+
+BvFiberImpl* GetCurrentFiberTLS()
+{
+	return Internal::g_pCurrentFiber;
+}
+
+
+void SetCurrentFiberTLS(BvFiberImpl* pFiber)
+{
+	Internal::g_pCurrentFiber = pFiber;
+}
+
+
+#if !defined(BV_USE_ASM_FIBERS)
+void CALLBACK FiberEntryPoint(void* pData)
+{
+	BvFiberImpl* pFiber = reinterpret_cast<BvFiberImpl*>(pData);
 	pFiber->m_Task();
 
 	BV_ASSERT(nullptr, "A fiber should never hit this point");
 	exit(0);
 }
 #else
-// This structure is only used when creating the fiber, but
-// it helps visualizing the elements and their offsets
-struct FiberContext
+struct BvTransferParams
 {
-	__m128 m_pXMMs[10]; // 0 - XMM 6-15
-	u32 m_MMXControl; // 160
-	u32 m_X87Control; // 164
-	void* m_Pad; // 168
-	void* m_pFiberStorage; // 176 - NT_TIB 0x20
-	void* m_pDeallocationStack; // 184 - NT_TIB 0x1478
-	void* m_pStackLimit; // 192 - NT_TIB 0x10
-	void* m_pStackBase; // 200 - NT_TIB 0x8
-	void* m_pR12; // 208
-	void* m_pR13; // 216
-	void* m_pR14; // 224
-	void* m_pR15; // 232
-	void* m_pRDI; // 240
-	void* m_pRSI; // 248
-	void* m_pRBX; // 256
-	void* m_pRBP; // 264
+	OSFiberHandle m_hPrevFiber = nullptr;
+	void* m_pData = nullptr;
 };
-
-
-namespace Internal
-{
-	static thread_local BvFiber* s_pTLSCurrentFiber = nullptr;
-
-	static BV_NO_INLINE BvFiber* GetCurrentFiber()
-	{
-		_mm_mfence();
-		return s_pTLSCurrentFiber;
-	}
-
-	static BV_NO_INLINE void SetCurrentFiber(BvFiber* pFiber)
-	{
-		_mm_mfence();
-		s_pTLSCurrentFiber = pFiber;
-	}
-
-	static BV_NO_INLINE BvFiber& GetThreadFiber()
-	{
-		static thread_local BvFiber threadFiber;
-		_mm_mfence();
-		return threadFiber;
-	}
-}
-
 
 
 extern "C"
 {
-	extern void BV_NO_INLINE SaveFPControlASM(const void* pFiber);
-	extern void BV_NO_INLINE StartFiberASM(const void* pFiber);
-	extern void BV_NO_INLINE SwitchToFiberASM(void** pSrcFiber, const void* pDstFiber);
+	// Switches to the callstack pointed to by 'fiber', along with any parameters in 'pData'.
+	// Returns the previous fiber context pointer, optionally with custom data
+	BvTransferParams jump_fcontext(const OSFiberHandle fiber, void* pData);
+
+	// Prepares memory from 'pStack' with 'size' bytes to be used as a fiber context,
+	// along with a pre-entry point
+	OSFiberHandle make_fcontext(void* pStack, size_t size, void (*pFn)(BvTransferParams));
 }
 
 
-void BvFiber::FiberEntryPoint(void* pData)
+void UpdatePrevFiberContext(const BvTransferParams& result)
 {
-	BvFiber* pFiber = reinterpret_cast<BvFiber*>(pData);
+	auto pPrevFiber = reinterpret_cast<BvFiberImpl*>(result.m_pData);
+	pPrevFiber->m_hFiber = result.m_hPrevFiber;
+}
+
+
+void FiberEntryPoint(BvTransferParams params)
+{
+	auto pFiber = reinterpret_cast<BvFiberImpl*>(params.m_pData);
+	
+	// Jump back to the previous fiber context used to create
+	// this fiber, only happens during creation
+	auto result = jump_fcontext(params.m_hPrevFiber, nullptr);
+
+	// Upon returning, update the previous fiber's context
+	UpdatePrevFiberContext(result);
+
+	// Run main entry point
 	pFiber->m_Task();
-}
 
-
-void BvFiber::FiberExitPoint()
-{
 	BV_ASSERT(nullptr, "A fiber should never hit this point");
 	exit(0);
 }
@@ -112,11 +108,14 @@ BvFiber::BvFiber()
 }
 
 
-BvFiber::BvFiber(BvFiber&& rhs) noexcept
-	: m_hFiber(rhs.m_hFiber), m_Task(std::move(rhs.m_Task)), m_IsThreadSetup(rhs.m_IsThreadSetup)
+BvFiber::BvFiber(std::nullptr_t)
 {
-	rhs.m_hFiber = kNullOSFiberHandle;
-	rhs.m_IsThreadSetup = false;
+}
+
+
+BvFiber::BvFiber(BvFiber&& rhs) noexcept
+	: m_pImpl(rhs.m_pImpl), m_Owned(rhs.m_Owned)
+{
 }
 
 
@@ -126,12 +125,11 @@ BvFiber& BvFiber::operator=(BvFiber&& rhs) noexcept
 	{
 		Destroy();
 
-		m_hFiber = rhs.m_hFiber;
-		m_Task = std::move(rhs.m_Task);
-		m_IsThreadSetup = rhs.m_IsThreadSetup;
+		m_pImpl = rhs.m_pImpl;
+		m_Owned = rhs.m_Owned;
 
-		rhs.m_hFiber = kNullOSFiberHandle;
-		rhs.m_IsThreadSetup = false;
+		rhs.m_pImpl = nullptr;
+		rhs.m_Owned = false;
 	}
 
 	return *this;
@@ -144,62 +142,129 @@ BvFiber::~BvFiber()
 }
 
 
-void BvFiber::Switch(BvFiber& fiber)
+void BvFiber::Resume()
 {
+	BV_ASSERT(m_pImpl != nullptr, "Fiber is nullptr");
+	BV_ASSERT(GetThreadFiberTLS() != nullptr, "Thread is not a fiber");
+	BV_ASSERT(GetCurrentFiberTLS() != m_pImpl, "Already in fiber's context");
+
+#if 0
+	printf("Switching Fibers -> %p => %p\n", GetCurrentFiberTLS(), m_pImpl);
+	printf("Current Thread Fiber TLS: 0x%p\n", GetThreadFiberTLS());
+	printf("Current Fiber TLS: 0x%p\n", GetCurrentFiberTLS());
+#endif
+
+	// Save the previous fiber
+	auto pPrevFiber = GetCurrentFiberTLS();
+
+	// Update TLS with the new fiber
+	SetCurrentFiberTLS(m_pImpl);
+
 #if !defined(BV_USE_ASM_FIBERS)
-	BV_ASSERT(fiber.m_hFiber != nullptr, "Fiber is nullptr");
-	SwitchToFiber(fiber.m_hFiber);
+	::SwitchToFiber(m_pImpl->m_hFiber);
 #else
-	Internal::SetCurrentFiber(&fiber);
-	SwitchToFiberASM(&m_hFiber.m_pContext, fiber.m_hFiber.m_pContext);
+	// Switch to the selected fiber, also passing the previous fiber as parameter
+	auto result = jump_fcontext(m_pImpl->m_hFiber, pPrevFiber);
+
+#if 0
+	printf("Current Fiber TLS After: 0x%p\n", GetCurrentFiberTLS());
+#endif
+
+	// Upon returning, update the previous fiber's context
+	UpdatePrevFiberContext(result);
 #endif
 }
 
 
-BvFiber& BvFiber::GetThreadFiber()
+void BvFiber::Yield()
 {
-	return Internal::GetThreadFiber();
+	auto fiber = GetCurrentThread();
+	fiber.Resume();
 }
 
 
-BvFiber& BvFiber::CreateForThread()
+void* BvFiber::GetLocalData() const
 {
-	auto& fiber = Internal::GetThreadFiber();
+	BV_ASSERT(m_pImpl != nullptr, "Fiber is nullptr");
+	return m_pImpl->m_pFLS;
+}
+
+
+void BvFiber::SetLocalData(void* pData)
+{
+	BV_ASSERT(m_pImpl != nullptr, "Fiber is nullptr");
+	m_pImpl->m_pFLS = pData;
+}
+
+
+BvFiber BvFiber::GetCurrent()
+{
+	return GetCurrentFiberTLS();
+}
+
+
+BvFiber BvFiber::GetCurrentThread()
+{
+	return GetThreadFiberTLS();
+}
+
+
+BvFiber BvFiber::CreateForThread(IBvMemoryArena* pArena)
+{
+	BV_ASSERT(GetThreadFiberTLS() == nullptr, "Fiber already converted / created");
+	auto pThreadFiber = BV_MNEW(*pArena, BvFiberImpl)();
+	pThreadFiber->m_pArena = pArena;
+	pThreadFiber->m_pMemory = pThreadFiber;
+	pThreadFiber->m_IsThreadFiber = true;
+	
 #if !defined(BV_USE_ASM_FIBERS)
-	BV_ASSERT(fiber.m_hFiber == nullptr, "Fiber already converted / created");
-	fiber.m_hFiber = ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
-	BV_ASSERT(fiber.m_hFiber != nullptr, "Couldn't convert Thread to Fiber");
-#else
-	fiber.m_IsThreadSetup = true;
-	Internal::SetCurrentFiber(&fiber);
+	pThreadFiber->m_hFiber = ::ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
+	BV_ASSERT(pThreadFiber->m_hFiber != nullptr, "Couldn't convert Thread to Fiber");
 #endif
-	return fiber;
+
+	// Update thread's fiber context
+	SetThreadFiberTLS(pThreadFiber);
+	// Also make it the current
+	SetCurrentFiberTLS(pThreadFiber);
+
+	return pThreadFiber;
 }
 
 
 void BvFiber::DestroyForThread()
 {
-	auto& fiber = Internal::GetThreadFiber();
+	auto pThreadFiber = GetThreadFiberTLS();
+	BV_ASSERT(pThreadFiber != nullptr && pThreadFiber == GetCurrentFiberTLS(), "Thread not yet converted to Fiber or not currently running");
+
 #if !defined(BV_USE_ASM_FIBERS)
-	BV_ASSERT(fiber.m_hFiber != nullptr, "Thread not yet converted to Fiber");
-	BOOL result = ConvertFiberToThread();
-	BV_ASSERT(result, "Couldn't convert Fiber to Thread");
-	fiber.m_hFiber = nullptr;
+	BOOL result = ::ConvertFiberToThread();
+	BV_ASSERT(result, "Couldn't convert Fiber back to Thread");
 #endif
-	Internal::SetCurrentFiber(nullptr);
-	fiber.m_IsThreadSetup = false;
+
+	BV_MDELETE(*pThreadFiber->m_pArena, pThreadFiber);
+	
+	// Unset TLS variables
+	SetCurrentFiberTLS(nullptr);
+	SetThreadFiberTLS(nullptr);
 }
 
 
-BvFiber* BvFiber::GetCurrent()
+BvFiber::BvFiber(BvFiberImpl* pImpl)
+	: m_pImpl(pImpl)
 {
-	return Internal::GetCurrentFiber();
 }
 
 
-void BvFiber::Create(size_t stackSize)
+void BvFiber::Create(IBvMemoryArena* pArena, size_t stackSize, EntryPointType& entryPoint)
 {
 #if !defined(BV_USE_ASM_FIBERS)
+	auto totalSize = sizeof(BvFiberImpl);
+
+	m_pImpl = new(BV_MALLOC(*pArena, totalSize, alignof(BvFiberImpl))) BvFiberImpl();
+	m_pImpl->m_Task = std::move(entryPoint);
+	m_pImpl->m_pArena = pArena;
+	m_pImpl->m_pMemory = m_pImpl;
+
 	// Piece of information taken from https://github.com/google/marl/issues/12
 	// The Win32 CreateFiber function has unexpected virtual memory size by default.When using CreateFiberEx,
 	// default behavior is to round stack size to next multiple of 1MiB.With CreateFiber, for some reason it rounds to 2MiB,
@@ -213,70 +278,52 @@ void BvFiber::Create(size_t stackSize)
 	// If this minimum stack size is OK for performance, then that's how fiber creation should be done on Windows.
 	//
 	// If we need smaller values(16KiB is common in schedulers), then asm fibers should be used instead IMO.
-	m_hFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, BvFiber::FiberEntryPoint, this);
-
-	BV_ASSERT(m_hFiber != nullptr, "Couldn't create Fiber");
+	m_pImpl->m_hFiber = CreateFiberEx(stackSize > 0 ? stackSize - 1 : 0, stackSize, FIBER_FLAG_FLOAT_SWITCH, FiberEntryPoint, this);
+	BV_ASSERT(m_pImpl->m_hFiber != nullptr, "Couldn't create Fiber");
 #else
-	if (stackSize == 0)
-	{
-		stackSize = 128_kb;
-	}
+	constexpr auto kAlignmentMask = alignof(BvFiberImpl) - 1;
 
-	// On Windows, the stack has to be aligned to a 16-byte boundary
-	constexpr size_t kStackAlignmentSize = 16;
-	m_hFiber.m_pMemory = BV_ALLOC(stackSize, kStackAlignmentSize);
-	// The stack starts at the highest memory address of our block, then grows downwards/backwards; it also has to be 16-byte aligned
-	auto pAlignedStack = reinterpret_cast<void*>((reinterpret_cast<uintptr_t>(m_hFiber.m_pMemory) + stackSize) & ~(kStackAlignmentSize - 1));
+	auto pMemory = BV_MALLOC(*pArena, stackSize, kDefaultAlignmentSize);
 
-	// We need at least 32 bytes for shadow space. As per MSDN:
-	// The parameter area is always at the bottom of the stack (even if alloca is used), so that it will always be adjacent to the
-	// return address during any function call. It contains at least four entries, but always enough space to hold all the parameters
-	// needed by any function that may be called. Note that space is always allocated for the register parameters, even if the parameters
-	// themselves are never homed to the stack; a callee is guaranteed that space has been allocated for all its parameters.
-	auto pStackTop = reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(pAlignedStack) - sizeof(void*) * 4);
+	// Stack memory grows backwards, from highest to lowest address, so we go to the end
+	// of the memory block, minus sizeof(BvFiberImpl), then align it
+	auto pStorage = reinterpret_cast<void*>(((reinterpret_cast<uintptr_t>(pMemory) + stackSize - sizeof(BvFiberImpl)) & ~(kAlignmentMask)));
 
-	// Add the address to the Fiber's starting function
-	*(--pStackTop) = reinterpret_cast<uintptr_t>(StartFiberASM);
-	// Add 8 bytes for padding; we need this when we're preparing the stack on a fiber switch call
-	*(--pStackTop) = 0;
-	// Set up the context structure which will hold the initial values for the fiber
-	auto pContext = reinterpret_cast<FiberContext*>(reinterpret_cast<uintptr_t>(pStackTop) - sizeof(FiberContext));
-	ZeroMemory(pContext, sizeof(FiberContext));
-	// The stack base is the beginning of our stack
-	pContext->m_pStackBase = pAlignedStack;
-	// The limit is our initially allocated pointer (stack grows downwards)
-	pContext->m_pStackLimit = pContext->m_pDeallocationStack = m_hFiber.m_pMemory;
-	// These 3 registers will store some basic information for when the fiber is first switched into
-	pContext->m_pRDI = this;
-	pContext->m_pRSI = BvFiber::FiberEntryPoint;
-	pContext->m_pRBP = BvFiber::FiberExitPoint;
-	// The MMX and x87 control/status words have to be stored in the context's stack before the first switch. I've gotten some
-	// really strange crashes when I didn't do this, such as a MessageBox call within a Fiber's callstack crashing.
-	SaveFPControlASM(pContext);
-	
-	// Store the context address
-	m_hFiber.m_pContext = pContext;
+	// Store our fiber data
+	m_pImpl = new(pStorage) BvFiberImpl();
+	m_pImpl->m_Task = std::move(entryPoint);
+	m_pImpl->m_pArena = pArena;
+	m_pImpl->m_pMemory = pMemory;
+
+	// Skip 64 bytes (maybe should be 32 for Windows)
+	auto pStackTop = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pStorage) - 64);
+	auto pStackBottom = pMemory;
+	auto remainingStackSize = reinterpret_cast<uintptr_t>(pStackTop) - reinterpret_cast<uintptr_t>(pStackBottom);
+
+	// Create context
+	m_pImpl->m_hFiber = make_fcontext(pStackTop, remainingStackSize, FiberEntryPoint);
+
+	// Do initial jump
+	auto result = jump_fcontext(m_pImpl->m_hFiber, m_pImpl);
+
+	// Update the new fiber's context - note that we don't update the thread's context
+	// because we may not have converted the thread into a fiber yet
+	m_pImpl->m_hFiber = result.m_hPrevFiber;
 #endif
+
+	m_Owned = true;
 }
 
 
 void BvFiber::Destroy()
 {
+	if (m_pImpl && m_Owned)
+	{
 #if !defined(BV_USE_ASM_FIBERS)
-	if (m_hFiber && m_Task)
-	{
-		DeleteFiber(m_hFiber);
-		m_hFiber = nullptr;
-	}
-
-	if (m_IsThreadSetup)
-	{
-		DestroyForThread();
-	}
-#else
-	if (m_hFiber.m_pMemory)
-	{
-		BV_FREE(m_hFiber.m_pMemory);
-	}
+		DeleteFiber(m_pImpl->m_hFiber);
 #endif
+
+		m_pImpl->m_Task.~BvMTask();
+		BV_MFREE(*m_pImpl->m_pArena, m_pImpl->m_pMemory);
+	}
 }

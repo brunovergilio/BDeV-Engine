@@ -85,6 +85,8 @@ public:
 
 namespace Internal
 {
+	constexpr size_t kStackAllocationThreshold = 1_kb;
+
 	template<typename Type>
 	BV_INLINE void ConstructArray(Type* pObjs, size_t count)
 	{
@@ -277,6 +279,36 @@ namespace Internal
 		allocator.Free(pObj, sourceInfo);
 	}
 }
+
+
+// Safe stack alloc/free macros - if the size requested is smaller than the given
+// threshold (Internal::kStackAllocationThreshold), heap memory is used instead
+
+
+// Allocate memory from stack (or heap if greater than threshold)
+#define BV_SALLOC(size, align) (size) <= Internal::kStackAllocationThreshold ? \
+	[](void* p, size_t a) \
+	{ \
+		MemType mem{p}; \
+		mem.pAsSizeTPtr[0] = 0; \
+		mem.pAsVoidPtr = BvMemory::AlignMemory(mem.pAsCharPtr + kPointerSize, a); \
+		mem.pAsSizeTPtr[-1] = reinterpret_cast<size_t>(p); \
+		return mem.pAsVoidPtr; \
+	}(BV_STACK_ALLOC((size) + sizeof(kPointerSize) + (align)), align) \
+		: \
+	[](size_t s, size_t a) \
+	{ \
+		return BvMemory::Allocate(s, a); \
+	}(size, align)
+
+// Frees memory from stack (or heap if greater than threshold)
+#define BV_SFREE(pMem) do \
+{ \
+	if (pMem && BvMemory::GetAllocationSize(pMem)) \
+	{ \
+		BvMemory::Free(pMem); \
+	} \
+} while(0)
 
 
 // Managed new / delete / alloc / free macros

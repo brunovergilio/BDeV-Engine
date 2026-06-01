@@ -1,11 +1,8 @@
 #include "BDeV/Core/System/Threading/BvThread.h"
-#include "BDeV/Core/System/Threading/BvFiber.h"
-#include "BDeV/Core/System/Process/BvProcess.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Utils/BvText.h"
 #include <utility>
 #include <process.h>
-#include <algorithm>
 
 
 BvThread::BvThread()
@@ -243,44 +240,22 @@ void BvThread::Yield()
 
 const BvThread& BvThread::GetCurrentThread()
 {
-	static thread_local BvThread thisThread;
-	if (!thisThread.m_hThread)
-	{
-		thisThread.m_hThread = ::GetCurrentThread();
-		thisThread.m_ThreadId = GetThreadId(thisThread.m_hThread);
-	}
+	static thread_local BvThread currentThread = []()
+		{
+			BvThread thisThread;
+			thisThread.m_hThread = ::GetCurrentThread();
+			thisThread.m_ThreadId = ::GetCurrentThreadId();
 
-	return thisThread;
+			return thisThread;
+		}();
+
+	return currentThread;
 }
 
 
 u32 BvThread::GetCurrentProcessor()
 {
 	return GetCurrentProcessorNumber();
-}
-
-
-BvFiber& BvThread::ConvertToFiber()
-{
-	return BvFiber::CreateForThread();
-}
-
-
-void BvThread::ConvertFromFiber()
-{
-	BvFiber::DestroyForThread();
-}
-
-
-BvFiber& BvThread::GetFiber()
-{
-	return BvFiber::GetThreadFiber();
-}
-
-
-bool BvThread::IsFiber()
-{
-	return GetFiber().m_IsThreadSetup;
 }
 
 

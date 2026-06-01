@@ -57,7 +57,7 @@ size_t BvMemory::GetAllocationSize(void* pMem)
 {
 	MemType address{ pMem };
 
-	// We got back and get the original address
+	// We go back and get the original address
 	address.asSizeT = address.pAsSizeTPtr[-1];
 
 	return address.pAsSizeTPtr[0];

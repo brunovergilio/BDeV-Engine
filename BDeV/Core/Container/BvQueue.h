@@ -250,7 +250,7 @@ Type& BvQueue<Type>::EmplaceBack(Args&&... args)
 	}
 
 	auto backIndex = (m_Front + m_Size++) % m_Capacity;
-	new (&m_pData[backIndex]) Type(std::forward<Args>(args)...);
+	new (std::addressof(m_pData[backIndex])) Type(std::forward<Args>(args)...);
 	Internal::PropagateAllocator(m_pData[backIndex], m_pArena);
 
 	return m_pData[backIndex];
@@ -281,7 +281,7 @@ Type& BvQueue<Type>::EmplaceFront(Args&&... args)
 	}
 
 	m_Front = (m_Front - 1 + m_Capacity) % m_Capacity;
-	new (&m_pData[m_Front]) Type(std::forward<Args>(args)...);
+	new (std::addressof(m_pData[m_Front])) Type(std::forward<Args>(args)...);
 	Internal::PropagateAllocator(m_pData[m_Front], m_pArena);
 	++m_Size;
 
@@ -465,7 +465,7 @@ inline void BvQueue<Type>::Grow(u32 size)
 	for (auto i = 0u; i < m_Size; i++)
 	{
 		auto curr = (m_Front + i) % m_Capacity;
-		new (&pNewData[i]) Type(std::move(m_pData[curr]));
+		new (std::addressof(pNewData[i])) Type(std::move(m_pData[curr]));
 		if constexpr (!std::is_trivially_destructible_v<Type>)
 		{
 			m_pData[curr].~Type();
