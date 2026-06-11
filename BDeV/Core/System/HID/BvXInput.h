@@ -65,7 +65,7 @@ public:
 		const State& GetState() const;
 
 		// Sets vibration on the controller
-		void SetVibration(u16 leftMotorSpeed, u16 rightMotorSpeed) const;
+		void SetVibration(f32 leftMotorSpeed, f32 rightMotorSpeed) const;
 
 		// Checks if the controller is connected and update its status; Do
 		// not call this every frame, as it may hinder performance

@@ -17,19 +17,29 @@ class BvSwapChainD3D12;
 class BvGPUFenceD3D12;
 
 
-struct ContextDataD3D12
-{
-	BvResourceBindingStateD3D12 m_ResourceBindingState;
-	BvRobinMap<u64, BvDescriptorPoolD3D12> m_DescriptorPools;
-	BvRobinMap<u64, BvDescriptorHandle> m_Descriptors;
-	BvRobinMap<u64, BvDescriptorHandle> m_BindlessDescriptors;
-};
-
-
 struct DescriptorData
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE m_CPUHandle;
 	u32 m_RangeOffset;
+};
+
+
+struct ContextDataD3D12
+{
+	struct ActiveDescriptorData
+	{
+		BvDescriptorHandle m_Descriptor;
+		BvDescriptorPoolD3D12* m_pDescriptorPool;
+	};
+
+	BvResourceBindingStateD3D12 m_ResourceBindingState;
+	BvRobinMap<u64, BvDescriptorPoolD3D12*> m_DescriptorPools;
+	BvRobinMap<u64, BvDescriptorHandle> m_Descriptors;
+	BvRobinMap<u64, BvDescriptorHandle> m_BindlessDescriptors;
+	BvRobinMap<u64, BvVector<ActiveDescriptorData>> m_ActiveResources;
+	BvAdaptiveMutex m_DeletedResourceLock;
+	BvVector<D3D12_CPU_DESCRIPTOR_HANDLE> m_DeletedResourceHandles;
+	std::atomic<u32> m_DeletedResourceCounter{};
 };
 
 
@@ -44,6 +54,7 @@ public:
 	BvDescriptorHandle RequestDescriptorHandle(u32 rootIndex, const BvShaderResourceLayoutD3D12* pLayout,
 		const BvVector<DescriptorData>& descriptors, bool bindless = false);
 	void ClearActiveCommandLists();
+	ID3D12Resource* AddASPostBuildBuffer(u64 size);
 
 	BV_INLINE const auto& GetCommandLists() const { return m_CommandLists; }
 	BV_INLINE auto& GetResourceBindingState() { return m_pContextData->m_ResourceBindingState; }
@@ -53,13 +64,19 @@ public:
 	BV_INLINE u64 GetFenceValue() const { return m_FenceValue; }
 
 private:
+	struct PostBuildBuffer
+	{
+		ComPtr<ID3D12Resource> m_Buffer;
+		ComPtr<D3D12MA::Allocation> m_Allocation;
+	};
+
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
 	BvCommandAllocatorD3D12 m_CommandAllocator;
 	BvVector<BvCommandListD3D12*> m_CommandLists;
 	ContextDataD3D12* m_pContextData;
 	u32 m_UpdatedQueries = 0;
 	BvRCRef<BvGPUFenceD3D12> m_Fence;
-	BvVector<ID3D12Resource*> m_ASPostBuildBuffers;
+	BvVector<PostBuildBuffer> m_ASPostBuildBuffers;
 	u64 m_FenceValue = 0;
 	u32 m_FrameIndex;
 };
@@ -174,6 +191,8 @@ public:
 	BV_INLINE BvGPUFenceD3D12* GetCurrentGPUFence() { return m_pFrames[m_ActiveFrameIndex].GetGPUFence(); }
 	BV_INLINE u64 GetCurrentValue() { return m_pFrames[m_ActiveFrameIndex].GetFenceValue(); }
 	BV_INLINE BvCommandListD3D12* GetCurrentCommandList() const { return m_pCurrCommandList; }
+
+	void OnResourceDeleted(u32 numHandles, const D3D12_CPU_DESCRIPTOR_HANDLE* pHandles);
 
 private:
 	void Destroy();

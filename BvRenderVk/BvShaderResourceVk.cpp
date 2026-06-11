@@ -97,6 +97,7 @@ BvShaderResourceParamsVk::BvShaderResourceParamsVk(BvRenderDeviceVk* pDevice, co
 	u32 bufferInfoCount = 0;
 	u32 imageInfoCount = 0;
 	u32 bufferViewCount = 0;
+	u32 asCount = 0;
 
 	for (auto i = 0u; i < pSet->m_Resources.Size(); ++i)
 	{
@@ -117,6 +118,8 @@ BvShaderResourceParamsVk::BvShaderResourceParamsVk(BvRenderDeviceVk* pDevice, co
 		case ShaderResourceType::kRWFormattedBuffer:
 			bufferViewCount += res.m_Count;
 			break;
+		case ShaderResourceType::kAccelerationStructure:
+			asCount += res.m_Count;
 		}
 	}
 
@@ -124,6 +127,8 @@ BvShaderResourceParamsVk::BvShaderResourceParamsVk(BvRenderDeviceVk* pDevice, co
 	m_pSetData->m_BufferInfos.Reserve(bufferInfoCount);
 	m_pSetData->m_ImageInfos.Reserve(imageInfoCount);
 	m_pSetData->m_BufferViews.Reserve(bufferViewCount);
+	m_pSetData->m_AccelerationStructures.Reserve(asCount);
+	m_pSetData->m_ASWriteSets.Reserve(asCount);
 }
 
 
@@ -302,11 +307,6 @@ void BvShaderResourceParamsVk::Bind()
 
 VkWriteDescriptorSet& BvShaderResourceParamsVk::PrepareWriteSet(VkDescriptorType descriptorType, u32 count, u32 binding, u32 startIndex)
 {
-	if (!m_pSetData)
-	{
-		m_pSetData = BV_NEW(SetData);
-	}
-
 	m_pSetData->m_WriteSets.PushBack({ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET });
 	auto& writeSet = m_pSetData->m_WriteSets.Back();
 	writeSet.dstSet = m_DescriptorSet;

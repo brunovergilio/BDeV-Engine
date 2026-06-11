@@ -232,7 +232,7 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			}
 			else
 			{
-				BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kAverage, "Invalid resolve mode for render target");
+				//BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kAverage, "Invalid resolve mode for render target");
 				colorAttachments[resolveCount].resolveImageView = pView->GetHandle();
 				colorAttachments[resolveCount].resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 				colorAttachments[resolveCount].resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
@@ -282,8 +282,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			}
 			else
 			{
-				BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kMin || renderTarget.m_ResolveMode == ResolveMode::kMax,
-					"Invalid resolve mode for depth stencil target");
+				//BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kMin || renderTarget.m_ResolveMode == ResolveMode::kMax,
+				//	"Invalid resolve mode for depth stencil target");
 				depthAttachment.resolveImageView = pView->GetHandle();
 				depthAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 				depthAttachment.resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
@@ -1305,12 +1305,12 @@ void BvCommandBufferVk::BuildRayTracingAccelerationStructures(u32 count, const R
 {
 	BvVector<VkAccelerationStructureBuildGeometryInfoKHR> buildInfos; buildInfos.Reserve(count);
 	BvVector<VkAccelerationStructureBuildRangeInfoKHR*> rangeInfos; rangeInfos.Reserve(count);
-	BvVector<VkBufferMemoryBarrier2> barriers; barriers.Reserve(count);
 	BvVector<VkAccelerationStructureKHR> asHandles;
 	if (pPostBuildDesc)
 	{
 		asHandles.Reserve(count);
 	}
+	VkBufferMemoryBarrier2 bufferBarrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
 
 	for (auto asIndex = 0; asIndex < count; asIndex++)
 	{
@@ -1398,26 +1398,38 @@ void BvCommandBufferVk::BuildRayTracingAccelerationStructures(u32 count, const R
 
 		rangeInfos.PushBack(ranges.Data());
 
-		auto& barrier = barriers.PushBack({ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 });
-		barrier.srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-		barrier.dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-		barrier.srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-		barrier.dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
-		barrier.buffer = TO_VK(pAS)->GetBuffer();
-		barrier.size = VK_WHOLE_SIZE;
-
-		if (pPostBuildDesc)
+		if (pPostBuildDesc && count == 1)
 		{
 			asHandles.PushBack(buildInfo.dstAccelerationStructure);
+
+			bufferBarrier.buffer = pAS->GetBuffer();
+			bufferBarrier.size = VK_WHOLE_SIZE;
+			bufferBarrier.srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+			bufferBarrier.dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+			bufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+			bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 		}
 	}
 
 	vkCmdBuildAccelerationStructuresKHR(m_CommandBuffer, buildInfos.Size(), buildInfos.Data(), rangeInfos.Data());
 
-	ResourceBarrier(barriers.Size(), barriers.Data(), 0, nullptr, 0, nullptr);
-
 	if (pPostBuildDesc)
 	{
+		if (asHandles.Size() == 1)
+		{
+			ResourceBarrier(1, &bufferBarrier, 0, nullptr, 0, nullptr);
+		}
+		else
+		{
+			VkMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+			barrier.srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+			barrier.dstAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+			barrier.srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+			barrier.dstStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+
+			ResourceBarrier(0, nullptr, 0, nullptr, 1, &barrier);
+		}
+
 		auto queryType = GetVkQueryType(pPostBuildDesc->m_Type);
 		auto queryPool = m_pFrameData->AddASQueryPool(queryType, count);
 
@@ -1450,8 +1462,32 @@ void BvCommandBufferVk::EmitASPostBuild(u32 count, VkAccelerationStructureKHR* p
 {
 	vkCmdWriteAccelerationStructuresPropertiesKHR(m_CommandBuffer, count, pAS, queryType, queryPool, 0);
 
+	VkMemoryBarrier2 memBarrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+	//memBarrier.pNext = nullptr;
+	memBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+	memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+	memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+	memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+
+	ResourceBarrier(0, nullptr, 0, nullptr, 1, &memBarrier);
+
 	constexpr VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
 	vkCmdCopyQueryPoolResults(m_CommandBuffer, queryPool, 0, 1, buffer, offset, sizeof(u64), flags);
+
+	// Make it visible to host after queue executes this
+	VkBufferMemoryBarrier2 bufferBarrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
+	//bufferBarrier.pNext = nullptr;
+	//bufferBarrier.offset = 0;
+	bufferBarrier.buffer = buffer;
+	bufferBarrier.size = VK_WHOLE_SIZE;
+	bufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	bufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	bufferBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	bufferBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+	bufferBarrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+	bufferBarrier.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+
+	ResourceBarrier(1, &bufferBarrier, 0, nullptr, 0, nullptr);
 }
 
 
@@ -1529,26 +1565,22 @@ void BvCommandBufferVk::FlushDescriptorSets()
 				//case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 				//case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 					writeSet.pBufferInfo = &pResourceData->m_Data.m_BufferInfo;
-					HashCombine(descriptorHash, pResourceData->m_Data.m_BufferInfo);
 					break;
 				case VK_DESCRIPTOR_TYPE_SAMPLER:
 				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 				case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 					writeSet.pImageInfo = &pResourceData->m_Data.m_ImageInfo;
-					HashCombine(descriptorHash, pResourceData->m_Data.m_ImageInfo);
 					break;
 				case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 					writeSet.pTexelBufferView = &pResourceData->m_Data.m_BufferView;
-					HashCombine(descriptorHash, pResourceData->m_Data.m_BufferView);
 					break;
 				case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
 					auto& asWrite = m_ASWriteSets.EmplaceBack(VkWriteDescriptorSetAccelerationStructureKHR{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR });
 					asWrite.accelerationStructureCount = 1;
 					asWrite.pAccelerationStructures = &pResourceData->m_Data.m_AccelerationStructure;
 					writeSet.pNext = &asWrite;
-					HashCombine(descriptorHash, pResourceData->m_Data.m_AccelerationStructure);
 					break;
 				}
 			}

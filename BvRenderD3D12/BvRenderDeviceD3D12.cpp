@@ -421,6 +421,18 @@ FormatFeatures BvRenderDeviceD3D12::GetFormatFeatures(Format format) const
 }
 
 
+void BvRenderDeviceD3D12::OnD3D12HandleDestroyed(u32 numHandles, const D3D12_CPU_DESCRIPTOR_HANDLE* pHandles)
+{
+	for (auto& contextGroup : m_Contexts)
+	{
+		for (auto pContext : contextGroup)
+		{
+			pContext->OnResourceDeleted(numHandles, pHandles);
+		}
+	}
+}
+
+
 void BvRenderDeviceD3D12::Create(const RenderDeviceDesc& renderDeviceDesc)
 {
 	auto hr = D3D12CreateDevice(m_pAdapter, m_pDeviceInfo->m_FeatureLevel, IID_PPV_ARGS(&m_Device));

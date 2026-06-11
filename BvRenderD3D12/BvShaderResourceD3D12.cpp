@@ -50,6 +50,7 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 
 	m_RootParams.Resize(paramCount);
 	m_Ranges.Resize(rangeCount);
+	m_RootParamsBindlessFlags.Resize(rangeCount, false);
 
 	u32 rangeIndex = 0;
 	u32 paramIndex = 0;
@@ -59,8 +60,6 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 	{
 		auto& set = m_ShaderResourceLayoutDesc.m_ShaderResourceSets[i];
 		u32 currRangeIndex = rangeIndex;
-		bool isBindful = false;
-		bool isBindless = false;
 		ShaderStage tableStages = ShaderStage::kUnknown;
 		for (auto j = 0u; j < set.m_Constants.Size(); ++j)
 		{
@@ -97,26 +96,11 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 					D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
 				tableStages |= resource.m_ShaderStages;
 			}
-
-			if (resource.m_Bindless)
-			{
-				isBindless = true;
-			}
-			else
-			{
-				isBindful = true;
-			}
-		}
-
-		if (isBindful && isBindless)
-		{
-			// I decided to keep these separate for the moment, as dealing with both on the same set would be dreadful
-			BV_ASSERT(false, "Can't have bindful and bindless resources on the same set");
-			return;
 		}
 
 		if (currRangeIndex != rangeIndex)
 		{
+			m_RootParamsBindlessFlags[paramIndex] = set.m_Type == ShaderResourceSetDesc::Type::kBindless;
 			m_RootParams[paramIndex++].InitAsDescriptorTable(rangeIndex - currRangeIndex, &m_Ranges[currRangeIndex], GetD3D12ShaderVisibility(tableStages));
 		}
 	}

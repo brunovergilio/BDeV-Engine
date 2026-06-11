@@ -5,6 +5,7 @@
 #include "BvShaderResourceD3D12.h"
 #include "BvRenderDeviceD3D12.h"
 #include "BvCommandListD3D12.h"
+#include "BvShaderBindingTableD3D12.h"
 #include "BvUtilsD3D12.h"
 
 
@@ -25,6 +26,53 @@ BvFrameDataD3D12::~BvFrameDataD3D12()
 
 void BvFrameDataD3D12::Reset(bool newFrame /*= true*/)
 {
+	// If any resource was destroyed, make sure its descriptors have also been removed
+	for (u32 numDeletedResources = m_pContextData->m_DeletedResourceCounter.load(std::memory_order_relaxed); numDeletedResources > 0;
+		numDeletedResources = m_pContextData->m_DeletedResourceCounter.load(std::memory_order_relaxed))
+	{
+		constexpr u32 kDeletedResourceCopyCount = 8;
+		D3D12_CPU_DESCRIPTOR_HANDLE deletedResources[kDeletedResourceCopyCount];
+		u32 copyCount = std::min(numDeletedResources, kDeletedResourceCopyCount);
+
+		{
+			BvScopedLock lock(m_pContextData->m_DeletedResourceLock);
+			for (auto i = 0; i < copyCount; i++)
+			{
+				deletedResources[i] = m_pContextData->m_DeletedResourceHandles[m_pContextData->m_DeletedResourceHandles.Size() - 1 - i];
+				m_pContextData->m_DeletedResourceHandles.PopBack();
+			}
+		}
+
+		// Update counter
+		m_pContextData->m_DeletedResourceCounter.fetch_sub(copyCount, std::memory_order_relaxed);
+
+		// Remove all destroyed resources from the list of active resources
+		for (auto resourceIndex = 0; resourceIndex < copyCount; resourceIndex++)
+		{
+			auto resourceIt = m_pContextData->m_ActiveResources.FindKey(deletedResources[resourceIndex].ptr);
+			if (resourceIt != m_pContextData->m_ActiveResources.cend())
+			{
+				for (auto& descriptorData : resourceIt->second)
+				{
+					// Recycle the descriptors
+					descriptorData.m_pDescriptorPool->RecycleDescriptor(descriptorData.m_Descriptor);
+					
+					// Also remove said descriptor from the list of active descriptors
+					for (auto setIt = m_pContextData->m_Descriptors.cbegin(); setIt != m_pContextData->m_Descriptors.cend(); setIt++)
+					{
+						if (setIt->second.GetGPUHandle() == descriptorData.m_Descriptor)
+						{
+							m_pContextData->m_Descriptors.Erase(setIt);
+							break;
+						}
+					}
+				}
+
+				m_pContextData->m_ActiveResources.Erase(resourceIt);
+			}
+		}
+	}
+
 	if (newFrame)
 	{
 		m_Fence->Wait(m_FenceValue);
@@ -33,6 +81,8 @@ void BvFrameDataD3D12::Reset(bool newFrame /*= true*/)
 	m_CommandAllocator.Reset();
 	m_CommandLists.Clear();
 	m_pContextData->m_ResourceBindingState.Reset();
+
+	m_ASPostBuildBuffers.Clear();
 }
 
 
@@ -53,10 +103,10 @@ BvDescriptorHandle BvFrameDataD3D12::RequestDescriptorHandle(u32 rootIndex, cons
 {
 	auto srlHash = (u64)pLayout;
 	HashCombine(srlHash, rootIndex);
-	auto& pool = m_pContextData->m_DescriptorPools[srlHash];
-	if (!pool.IsValid())
+	auto& pPool = m_pContextData->m_DescriptorPools[srlHash];
+	if (!pPool)
 	{
-		pool = BvDescriptorPoolD3D12(m_pDevice, pLayout, rootIndex, bindless ? 1 : 16);
+		pPool = BV_NEW(BvDescriptorPoolD3D12)(m_pDevice, pLayout, rootIndex, bindless ? 1 : 16);
 	}
 
 	auto& descriptorMap = !bindless ? m_pContextData->m_Descriptors : m_pContextData->m_BindlessDescriptors;
@@ -74,27 +124,33 @@ BvDescriptorHandle BvFrameDataD3D12::RequestDescriptorHandle(u32 rootIndex, cons
 	}
 
 	auto pDevice = m_pDevice->GetHandle();
-	auto heapType = pool.GetHeapType();
+	auto heapType = pPool->GetHeapType();
 
 	auto result = descriptorMap.Emplace(descriptorHash, BvDescriptorHandle{});
 	if (result.second)
 	{
-		result.first->second = pool.Allocate();
+		result.first->second = pPool->Allocate();
 	}
 
-	u32 handleSize = pool.GetHandleSize();
+	u32 handleSize = pPool->GetHandleSize();
 	if (result.second || bindless)
 	{
 		auto gpuHandle = result.first->second;
 
 		if (!bindless)
 		{
-			BV_ASSERT_ONCE(pool.GetHandleCount() == descriptors.Size(), "Missing descriptors");
+			BV_ASSERT_ONCE(pPool->GetHandleCount() == descriptors.Size(), "Missing descriptors");
 		}
 
 		for (auto& descriptor : descriptors)
 		{
 			pDevice->CopyDescriptorsSimple(1, gpuHandle.GetByIndex(descriptor.m_RangeOffset, handleSize), descriptor.m_CPUHandle, heapType);
+
+			if (!bindless)
+			{
+				auto activeDescriptorData = m_pContextData->m_ActiveResources.Emplace(descriptor.m_CPUHandle.ptr, BvVector<ContextDataD3D12::ActiveDescriptorData>{});
+				activeDescriptorData.first->second.PushBack({ BvDescriptorHandle(descriptor.m_CPUHandle), pPool });
+			}
 		}
 	}
 
@@ -108,12 +164,23 @@ void BvFrameDataD3D12::ClearActiveCommandLists()
 }
 
 
+ID3D12Resource* BvFrameDataD3D12::AddASPostBuildBuffer(u64 size)
+{
+	BufferDesc bd;
+	bd.SetSize(size).SetUsageFlags(BufferUsage::kRWStructuredBuffer);
+	auto obj = D3D12Utils::CreateBuffer(m_pDevice, bd, sizeof(u64));
+	BV_ASSERT(SUCCEEDED(obj.first), "Failed to create Acceleration Structure Post Build Buffer");
+
+	PostBuildBuffer pbBuffer{ std::move(obj.second.m_Buffer), std::move(obj.second.m_Allocation) };
+	m_ASPostBuildBuffers.PushBack(std::move(pbBuffer));
+
+	return m_ASPostBuildBuffers.Back().m_Buffer.Get();
+}
+
+
 BvCommandContextD3D12::BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 frameCount, u32 contextIndex, u32 contextGroupIndex, ID3D12CommandQueue* pQueue)
 	: m_pDevice(pDevice), m_CommandQueue(pDevice, pQueue), m_ContextGroupIndex(contextGroupIndex), m_ContextIndex(contextIndex), m_FrameCount(frameCount)
 {
-	// TODO: Add option for query sizes in device
-	//auto pQuerySizes = m_pDevice->GetQueryPoolSizes();
-
 	constexpr u32 kDefaultQueryPoolSizes[kQueryTypeCount] = { 8, 4, 4, 2, 2 };
 
 	m_pContextData = BV_NEW(ContextDataD3D12)();
@@ -134,6 +201,11 @@ BvCommandContextD3D12::~BvCommandContextD3D12()
 		m_pFrames[i].~BvFrameDataD3D12();
 	}
 	BV_FREE(m_pFrames);
+
+	for (auto& poolData : m_pContextData->m_DescriptorPools)
+	{
+		BV_DELETE(poolData.second);
+	}
 
 	BV_DELETE(m_pContextData);
 }
@@ -583,25 +655,33 @@ void BvCommandContextD3D12::DispatchRays(const DispatchRaysCommandArgs& args)
 void BvCommandContextD3D12::DispatchRays(IBvShaderBindingTable* pSBT, u32 rayGenIndex, u32 missIndex, u32 hitIndex, u32 callableIndex,
 	u32 width, u32 height, u32 depth)
 {
-	// TODO: Implement
-	BV_ASSERT(false, "Not Implemented");
-	
-	//DispatchRaysCommandArgs args;
-	//pSBT->GetDeviceAddressRange(ShaderBindingTableGroupType::kRayGen, rayGenIndex, args.m_RayGenShader);
-	//pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kMiss, missIndex, args.m_MissShader);
-	//pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kHit, hitIndex, args.m_HitShader);
-	//pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kCallable, callableIndex, args.m_CallableShader);
-	//args.m_Width = width;
-	//args.m_Height = height;
-	//args.m_Depth = depth;
+	DispatchRaysCommandArgs args;
+	pSBT->GetDeviceAddressRange(ShaderBindingTableGroupType::kRayGen, rayGenIndex, args.m_RayGenShader);
+	pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kMiss, missIndex, args.m_MissShader);
+	pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kHit, hitIndex, args.m_HitShader);
+	pSBT->GetDeviceAddressRangeAndStride(ShaderBindingTableGroupType::kCallable, callableIndex, args.m_CallableShader);
+	args.m_Width = width;
+	args.m_Height = height;
+	args.m_Depth = depth;
 
-	//DispatchRays(args);
+	DispatchRays(args);
 }
 
 
 void BvCommandContextD3D12::DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset)
 {
 	m_pCurrCommandList->DispatchRaysIndirect(pBuffer, offset);
+}
+
+
+void BvCommandContextD3D12::OnResourceDeleted(u32 numHandles, const D3D12_CPU_DESCRIPTOR_HANDLE* pHandles)
+{
+	BvScopedLock lock(m_pContextData->m_DeletedResourceLock);
+	for (auto i = 0; i < numHandles; i++)
+	{
+		m_pContextData->m_DeletedResourceHandles.PushBack(pHandles[i]);
+	}
+	m_pContextData->m_DeletedResourceCounter.fetch_add(numHandles, std::memory_order_relaxed);
 }
 
 

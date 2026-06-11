@@ -4,7 +4,6 @@
 #include <BDeV/Engine/JobSystem/BvParallelJobSystem.h>
 #include <span>
 #include <source_location>
-#include <print>
 
 #include "BDeV/Core/Utils/BvUTF.h"
 
@@ -113,37 +112,12 @@ BvMutex mm;
 
 int main()
 {
-	char c8[48];
-	char8_t cc8[48];
-	char16_t c16[48];
-	constexpr u32 aa = U'ᴚ';
-	constexpr const char* bb = "ᴚ";
-	constexpr const char16_t cc = u'ᴚ';
-	char32_t result; UTFCharTraits::GetChar(bb, bb + std::char_traits<char>::length(bb) + 1, &result, &result + 1);
-	char32_t result2 = UTF16To32(&cc, &cc + 1);
+	auto uu = 64ull;
+	auto vv = BvHash<u64>()(uu);
 
-	auto it1 = UTF32To8(result, c8, c8 + 48);
-	*it1 = 0;
-	//char32_t newv = 0x20AC;
-	auto it2 = UTF32To8(result, cc8, cc8 + 48);
-	*it2 = 0;
-
-	auto len1 = UTFCharTraits::Legnth(c8, c8 + 48);
-
-	auto it3 = UTF32To16(result, c16, c16 + 48);
-	*it3 = 0;
-
-	auto len2 = UTFCharTraits::Legnth(c16, c16 + 48);
-	auto len3 = UTFCharTraits::Legnth(&result, &result + 1);
-
-	char8_t res[32];
-	auto it4 = UTF16To8(c16, c16 + 48,  res, res + 32);
-	*it4 = 0;
-
-	char16_t res2[32];
-	auto it5 = UTF8To16(res, res + 32, res2, res2 + 32);
-	*it5 = 0;
-	return 0;
+	auto currDt = BvTime::GetCurrentDateTime();
+	BvConsole::Print("{}/{}/{} - {} - {}:{}:{}:{}",
+		currDt.m_Month, currDt.m_Day, currDt.m_Year, currDt.m_WeekDay, currDt.m_Hours, currDt.m_Minutes, currDt.m_Seconds, currDt.m_Milliseconds);
 
 	//auto p = BV_SALLOC(1_kb, 32);
 	//BV_SFREE(p);

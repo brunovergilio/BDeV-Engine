@@ -3,6 +3,7 @@
 
 #include "BDeV/Core/BvCore.h"
 #include "BDeV/Core/Utils/BvHash.h"
+#include <string_view>
 
 
 class BvStringId
@@ -34,7 +35,7 @@ public:
 
 	static constexpr BvStringId Empty()
 	{
-		constexpr auto kEmptyStringId = Internal::ConstexprMurmurHash64AHelper("", 1);
+		constexpr auto kEmptyStringId = constexpr_xxh3::XXH3_64bits_const("", 0);
 		return kEmptyStringId;
 	}
 
@@ -43,14 +44,49 @@ private:
 };
 
 
-constexpr BvStringId operator""_sid(const char* pStr, size_t length)
+
+namespace Internal
 {
-	return BvStringId(Internal::ConstexprMurmurHash64AHelper(pStr, length));
+	template <size_t N>
+	struct LiteralFixedString
+	{
+		char data[N]{};
+
+		constexpr LiteralFixedString(const char(&str)[N])
+		{
+			for (std::size_t i = 0; i < N; ++i)
+			{
+				data[i] = str[i];
+			}
+		}
+
+		constexpr std::string_view view() const
+		{
+			return { data, N - 1 };
+		}
+	};
+}
+
+
+template <Internal::LiteralFixedString S>
+constexpr auto operator""_sid()
+{
+	return BvStringId(constexpr_xxh3::XXH3_64bits_const(S.view()));
 }
 
 
 template<>
 struct std::hash<BvStringId>
+{
+	BV_INLINE u64 operator()(const BvStringId& id) const
+	{
+		return id;
+	}
+};
+
+
+template<typename Hasher>
+struct BvHash<BvStringId, Hasher>
 {
 	BV_INLINE u64 operator()(const BvStringId& id) const
 	{

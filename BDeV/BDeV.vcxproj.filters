@@ -89,6 +89,9 @@
     <ClInclude Include="Core\Math\DirectXMath\DirectXPackedVector.h" />
     <ClInclude Include="Core\Math\DirectXMath\sal.h" />
     <ClInclude Include="Core\Utils\BvUTF.h" />
+    <ClInclude Include="Core\Utils\Third Party\rapidhash.h" />
+    <ClInclude Include="Core\Utils\Third Party\constexpr-xxh3.h" />
+    <ClInclude Include="Core\Utils\Third Party\xxhash.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
@@ -122,7 +125,6 @@
     <ClCompile Include="Core\System\Window\Windows\BvWindowWindows.cpp" />
     <ClCompile Include="Core\System\Window\Windows\BvMonitorWindows.cpp" />
     <ClCompile Include="Core\Utils\BvTestUnit.cpp" />
-    <ClCompile Include="Core\Utils\BvHash.cpp" />
     <ClCompile Include="Core\Utils\BvStringId.cpp" />
     <ClCompile Include="Core\Utils\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
@@ -134,6 +136,7 @@
     <ClCompile Include="Core\System\Network\BvNetSocket.cpp" />
     <ClCompile Include="Core\System\Network\BvNetAddress.cpp" />
     <ClCompile Include="Core\System\Network\Windows\BvNetworkWindows.cpp" />
+    <ClCompile Include="Core\Utils\Third Party\xxhash.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Math\BvMathVector.inl" />

@@ -569,7 +569,7 @@ namespace D3D12Utils
 		{
 			auto size = BvTextUtilities::ConvertUTF8CharToWideChar(pShader->GetEntryPoint(), 0, nullptr, 0);
 			BV_ASSERT(size > 0, "Entry point can't be empty");
-			BvTextUtilities::ConvertUTF8CharToWideChar(pShader->GetEntryPoint(), 0, &exportNames.EmplaceBack(size - 1)[0], size);
+			BvTextUtilities::ConvertUTF8CharToWideChar(pShader->GetEntryPoint(), 0, &exportNames.PushBack(BvWString(size - 1))[0], size);
 
 			libs.PushBack({ { pShader->GetShaderBlob().Data(), pShader->GetShaderBlob().Size() }, 1, &exports.PushBack({ exportNames.Back().CStr(), nullptr, D3D12_EXPORT_FLAG_NONE }) });
 

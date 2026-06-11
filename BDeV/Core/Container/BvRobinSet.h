@@ -9,7 +9,7 @@
 #include <utility>
 
 
-template<typename Key, typename Hash = std::hash<Key>, typename Comparer = std::equal_to<Key>>
+template<typename Key, typename Hash = BvHash<Key>, typename Comparer = std::equal_to<Key>>
 class BvRobinSet
 {
 public:
@@ -517,10 +517,10 @@ inline size_t BvRobinSet<Key, Hash, Comparer>::EmplaceInternal(KeyValue* const p
 }
 
 
-template<typename Key, typename Hash, typename Comparer>
-inline const size_t BvRobinSet<Key, Hash, Comparer>::Hash(const Key& key) const
+template<typename Key, typename Hasher, typename Comparer>
+inline const size_t BvRobinSet<Key, Hasher, Comparer>::Hash(const Key& key) const
 {
-	size_t hash = MurmurHash64A(&key, sizeof(Key));
+	size_t hash = Hasher()(key);
 
 	return hash != 0 ? hash : 1;
 }

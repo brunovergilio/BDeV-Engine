@@ -2,19 +2,20 @@
 
 
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Utils/BvTime.h"
-#include <cmath>
+#include <random>
 
 
 class BvSplitMix64
 {
 public:
 	BV_INLINE BvSplitMix64()
-		: m_State(BvTime::GetCurrentTimestampInUs()) {
+	{
+		std::random_device rd;
+		m_State = (static_cast<uint64_t>(rd()) << 32) | rd();
 	}
+
 	BV_INLINE BvSplitMix64(u64 seed)
-		: m_State(seed) {
-	}
+		: m_State(seed) {}
 
 	BV_INLINE u64 Next()
 	{

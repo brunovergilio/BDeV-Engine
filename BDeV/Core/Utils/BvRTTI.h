@@ -40,7 +40,7 @@ struct TypeInfo
 	{
 		static u64 hash = [pName = TypeInfo<T>::GetName()]()
 			{
-				return MurmurHash64A(pName, strlen(pName));
+				return BvRapidHash()(pName, strlen(pName));
 			}();
 
 		return hash;

@@ -23,26 +23,25 @@ void BvTextureViewD3D12::Create()
 	BV_ASSERT(m_TextureViewDesc.m_pTexture != nullptr, "Invalid texture handle");
 
 	auto pRes = TO_D3D12(m_TextureViewDesc.m_pTexture)->GetHandle();
-
-	auto pDevice = m_pDevice->GetHandle();
-
-	auto desc = pRes->GetDesc();
 	auto pShaderHeap = m_pDevice->GetCPUShaderHeap();
-	if (!(desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE))
+	auto pDevice = m_pDevice->GetHandle();
+	auto flags = m_TextureViewDesc.m_pTexture->GetDesc().m_UsageFlags;
+
+	if (EHasAnyFlags(flags, TextureUsage::kShaderResource | TextureUsage::kInputAttachment))
 	{
 		auto srv = GetD3D12SRVDesc(m_TextureViewDesc);
 		m_SRV = pShaderHeap->Allocate();
 		pDevice->CreateShaderResourceView(pRes, &srv, m_SRV);
 	}
 
-	if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
+	if (EHasFlag(flags, TextureUsage::kUnorderedAccess))
 	{
 		auto uav = GetD3D12UAVDesc(m_TextureViewDesc);
 		m_UAV = pShaderHeap->Allocate();
 		pDevice->CreateUnorderedAccessView(pRes, nullptr, &uav, m_UAV);
 	}
 
-	if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+	if (EHasFlag(flags, TextureUsage::kRenderTarget))
 	{
 		auto pRTVHeap = m_pDevice->GetCPURTVHeap();
 		m_RTV = pRTVHeap->Allocate();
@@ -50,7 +49,7 @@ void BvTextureViewD3D12::Create()
 		pDevice->CreateRenderTargetView(pRes, &rtv, m_RTV);
 	}
 
-	if (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+	if (EHasFlag(flags, TextureUsage::kDepthStencilTarget))
 	{
 		auto pDSVHeap = m_pDevice->GetCPUDSVHeap();
 		auto dsv = GetD3D12DSVDesc(m_TextureViewDesc);
@@ -62,4 +61,19 @@ void BvTextureViewD3D12::Create()
 
 void BvTextureViewD3D12::Destroy()
 {
+	u32 numHandles = 0;
+	D3D12_CPU_DESCRIPTOR_HANDLE handles[2];
+	if (m_SRV.ptr)
+	{
+		handles[numHandles++] = m_SRV;
+	}
+	if (m_UAV.ptr)
+	{
+		handles[numHandles++] = m_UAV;
+	}
+
+	if (numHandles)
+	{
+		m_pDevice->OnD3D12HandleDestroyed(numHandles, handles);
+	}
 }

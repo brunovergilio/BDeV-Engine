@@ -363,7 +363,7 @@ enum class ResourceState : u8
 	kShadingRate,
 	kASBuildRead,
 	kASBuildWrite,
-	kASPostBuildBuffer,
+	kRayTracing
 };
 
 
@@ -392,7 +392,6 @@ enum class ResourceAccess : u32
 	kAccelerationStructureRead	= BvBit(19),
 	kAccelerationStructureWrite	= BvBit(20),
 	kShaderBindingTableRead		= BvBit(21),
-	kAccelerationStructurePostBuildWrite = BvBit(22),
 	kAuto						= kU32Max
 };
 BV_USE_ENUM_CLASS_OPERATORS(ResourceAccess);
@@ -1426,6 +1425,7 @@ struct RenderTargetDesc
 	ResourceState m_StateAfter = ResourceState::kShaderResource;
 	ResolveMode m_ResolveMode = ResolveMode::kNone;
 	u32 m_ShadingRateTexelSizes[2]{};
+	ShadingRateCombinerOp m_ShadingRateCombiners[2]{};
 };
 
 

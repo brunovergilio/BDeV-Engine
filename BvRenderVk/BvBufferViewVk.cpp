@@ -21,10 +21,7 @@ void BvBufferViewVk::Destroy()
 	if (m_View)
 	{
 		VkHelpers::DestroyDeviceObject(*m_pDevice, m_View);
-		if (m_View != VK_NULL_HANDLE)
-		{
-			m_pDevice->OnVkHandleDestroyed(u64(m_View), false);
-		}
+		m_pDevice->OnVkHandleDestroyed(u64(m_View), false);
 		m_View = VK_NULL_HANDLE;
 	}
 }

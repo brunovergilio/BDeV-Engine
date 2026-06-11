@@ -24,7 +24,7 @@ BvNetSocket::BvNetSocket(OSSocketHandle handle)
 {
 	if (m_Socket == INVALID_SOCKET)
 	{
-		BV_SYS_FATAL(BV_SOCKET_ERROR_CODE);
+		BV_SYS_ERROR(BV_SOCKET_ERROR_CODE);
 	}
 }
 
@@ -252,6 +252,11 @@ i32 BvNetSocket::WaitForSockets(i32 count, BvNetSocket* pSockets, u32 timeoutMs)
 
 void BvNetSocket::Create(NetAddressFamily af, SocketType type)
 {
+	if (m_Socket != kNullOSSocketHandle)
+	{
+		Close();
+	}
+
 	m_Socket = socket(i32(af), i32(type), 0);
 	if (m_Socket == INVALID_SOCKET)
 	{

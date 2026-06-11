@@ -47,7 +47,6 @@ public:
 	explicit BvStringT(const BvStringT & str, const u32 start, const u32 count, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA);
 	BvStringT(const CharT * const pStr, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA);
 	explicit BvStringT(const CharT * const pStr, const u32 start, const u32 count, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA);
-	BvStringT(const CharT c, IBvMemoryArena* pArena = BV_DEFAULT_MEMORY_ARENA);
 	BvStringT(const BvStringT & rhs);
 	BvStringT(BvStringT && rhs) noexcept;
 
@@ -144,8 +143,6 @@ public:
 	bool EndsWith(const BvStringT& str) const;
 	bool EndsWith(const CharT* pStr) const;
 
-	u64 Hash() const;
-
 	BV_INLINE bool Contains(const CharT c) const { return Find(c) != kInvalidIndex; }
 	BV_INLINE bool Contains(const BvStringT & str) const { return Find(str) != kInvalidIndex; }
 	BV_INLINE bool Contains(const CharT * const pStr) const { return Find(pStr) != kInvalidIndex; }
@@ -179,8 +176,8 @@ public:
 	BV_INLINE i32 Compare(const BvStringT & str) const { return Compare(str.m_pStr, str.m_Size); }
 	BV_INLINE i32 Compare(const CharT* const pStr, u32 size) const;
 
-	BV_INLINE i32 CompareNoCase(const BvStringT& str) const { return CompareNoCase(str.m_pStr, str.m_Size); }
-	BV_INLINE i32 CompareNoCase(const CharT* const pStr, u32 size) const;
+	BV_INLINE i32 CompareNoCase(const BvStringT& str, std::locale loc = std::locale("")) const { return CompareNoCase(str.m_pStr, str.m_Size, loc); }
+	BV_INLINE i32 CompareNoCase(const CharT* const pStr, u32 size, std::locale loc = std::locale("")) const;
 	 
 	BV_INLINE bool operator ==(CharT c) const { return m_Size == 1 && c == m_pStr[0]; }
 	BV_INLINE bool operator ==(const BvStringT & str) const { return Compare(str) == 0; }
@@ -210,16 +207,6 @@ protected:
 	IBvMemoryArena* m_pArena = nullptr;
 	u32 m_Size = 0;
 	u32 m_Capacity = 0;
-};
-
-
-template<typename CharT>
-struct std::hash<BvStringT<CharT>>
-{
-	u64 operator()(const BvStringT<CharT>& val)
-	{
-		return val.Hash();
-	}
 };
 
 
@@ -270,14 +257,6 @@ BvStringT<CharT>::BvStringT(const CharT* const pStr, const u32 start, const u32 
 
 
 template<typename CharT>
-BvStringT<CharT>::BvStringT(const CharT c, IBvMemoryArena* pArena)
-	: m_pArena(pArena)
-{
-	Assign(c);
-}
-
-
-template<typename CharT>
 BvStringT<CharT>::BvStringT(const BvStringT<CharT>& rhs)
 	: m_pArena(rhs.m_pArena)
 {
@@ -299,7 +278,7 @@ BvStringT<CharT>::BvStringT(BvStringT&& rhs) noexcept
 template<typename CharT>
 BvStringT<CharT>& BvStringT<CharT>::operator=(const BvStringT& rhs)
 {
-	if (this != &rhs)
+	if (this != std::addressof(rhs))
 	{
 		Destroy();
 
@@ -313,7 +292,7 @@ BvStringT<CharT>& BvStringT<CharT>::operator=(const BvStringT& rhs)
 template<typename CharT>
 BvStringT<CharT>& BvStringT<CharT>::operator=(BvStringT&& rhs) noexcept
 {
-	if (this != &rhs)
+	if (this != std::addressof(rhs))
 	{
 		Destroy();
 
@@ -1064,13 +1043,6 @@ inline bool BvStringT<CharT>::EndsWith(const CharT* pStr) const
 
 
 template<typename CharT>
-u64 BvStringT<CharT>::Hash() const
-{
-	return m_Size > 0 ? MurmurHash64A(m_pStr, m_Size) : 0;
-}
-
-
-template<typename CharT>
 BvStringT<CharT> BvStringT<CharT>::operator +(const BvStringT& str)
 {
 	BvStringT newStr = *this;
@@ -1129,11 +1101,10 @@ i32 BvStringT<CharT>::Compare(const CharT* const pStr, u32 size) const
 
 
 template<typename CharT>
-i32 BvStringT<CharT>::CompareNoCase(const CharT* const pStr, u32 size) const
+i32 BvStringT<CharT>::CompareNoCase(const CharT* const pStr, u32 size, std::locale loc) const
 {
 	auto pStr1 = m_pStr, pStr2 = pStr;
 	auto count = std::min(m_Size, size);
-	std::locale loc;
 	for (; 0 < count; --count, ++pStr1, ++pStr2)
 	{
 		CharT c1 = std::tolower(*pStr1, loc), c2 = std::tolower(*pStr2, loc);
@@ -1187,3 +1158,23 @@ using BvWString = BvStringT<wchar_t>;
 using BvString8 = BvStringT<char8_t>;
 using BvString16 = BvStringT<char16_t>;
 using BvString32 = BvStringT<char32_t>;
+
+
+template<typename CharT>
+struct std::hash<BvStringT<CharT>>
+{
+	u64 operator()(const BvStringT<CharT>& val)
+	{
+		return BvRapidHash()(val.CStr(), val.Size());
+	}
+};
+
+
+template<typename Hasher, typename CharT>
+struct BvHash<BvStringT<CharT>, Hasher>
+{
+	u64 operator()(const BvStringT<CharT>& val)
+	{
+		return BvRapidHash()(val.CStr(), val.Size());
+	}
+};

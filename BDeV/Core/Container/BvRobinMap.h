@@ -9,7 +9,7 @@
 #include <utility>
 
 
-template<typename Key, typename Value, typename Hash = std::hash<Key>, typename Comparer = std::equal_to<Key>>
+template<typename Key, typename Value, typename Hash = BvHash<Key>, typename Comparer = std::equal_to<Key>>
 class BvRobinMap
 {
 public:
@@ -675,10 +675,10 @@ inline size_t BvRobinMap<Key, Value, Hash, Comparer>::EmplaceInternal(KeyValue* 
 }
 
 
-template<typename Key, typename Value, typename Hash, typename Comparer>
-inline const size_t BvRobinMap<Key, Value, Hash, Comparer>::Hash(const Key & key) const
+template<typename Key, typename Value, typename Hasher, typename Comparer>
+inline const size_t BvRobinMap<Key, Value, Hasher, Comparer>::Hash(const Key & key) const
 {
-	size_t hash = MurmurHash64A(&key, sizeof(Key));
+	size_t hash = Hasher()(key);
 
 	return hash != 0 ? hash : 1;
 }

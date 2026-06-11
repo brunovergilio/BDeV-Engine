@@ -112,13 +112,17 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 	u32 resolveCount = 0;
 	bool hasDepth = false;
 	bool hasStencil = false;
-	bool hasShadingRate = false;
+	bool clearDepth = false;
+	ID3D12Resource* pShadingRateImage = nullptr;
+	D3D12_SHADING_RATE shadingRate = D3D12_SHADING_RATE_1X1;
+	D3D12_SHADING_RATE_COMBINER shadingRateCombiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT]{};
 
 	BvFixedVector<D3D12_CPU_DESCRIPTOR_HANDLE, kMaxRenderTargets> rtvs;
 	BvFixedVector<const f32*, kMaxRenderTargets> rtvColors;
 	D3D12_CPU_DESCRIPTOR_HANDLE dsv{};
 	f32 depthColor{};
 	u8 stencil{};
+	ResolveData resolveData[kMaxRenderTargets]{};
 
 	u32 layerCount = kU32Max;
 	for (u32 i = 0; i < renderTargetCount; i++)
@@ -138,26 +142,34 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 			- viewDesc.m_SubresourceDesc.firstLayer);
 
 		auto fi = BvRenderUtils::GetFormatInfo(viewDesc.m_Format);
-		bool isColorTarget = !fi.m_IsDepth && !fi.m_IsStencil;
 		bool isDepthTarget = fi.m_IsDepth;
 		bool isStencilTarget = fi.m_IsStencil;
+		bool isColorTarget = !isDepthTarget && !isStencilTarget;
 		bool isShadingRate = renderTarget.m_State == ResourceState::kShadingRate
 			|| renderTarget.m_ShadingRateTexelSizes[0] != 0 || renderTarget.m_ShadingRateTexelSizes[1] != 0;
 		bool isResolveImage = renderTarget.m_ResolveMode != ResolveMode::kNone;
 
 		if (isShadingRate)
 		{
-			BV_ASSERT(false, "Not Implemented");
+			pShadingRateImage = TO_D3D12(renderTarget.m_pView->GetDesc().m_pTexture)->GetHandle();
+			shadingRate = GetD3D12ShadingRate(renderTarget.m_ShadingRateTexelSizes);
+			shadingRateCombiners[0] = GetD3D12ShadingRateCombiner(renderTarget.m_ShadingRateCombiners[0]);
+			shadingRateCombiners[1] = GetD3D12ShadingRateCombiner(renderTarget.m_ShadingRateCombiners[1]);
 		}
 		else if (isColorTarget)
 		{
 			if (isResolveImage)
 			{
-				BV_ASSERT(false, "Not Implemented");
+				resolveData[resolveCount].m_pDst = pTexture->GetHandle();
+				resolveData[resolveCount].m_Mode = GetD3D12ResolveMode(renderTarget.m_ResolveMode);
+				resolveCount++;
 			}
-
-			rtvs.EmplaceBack(pView->GetRTV());
-			rtvColors.EmplaceBack(renderTarget.m_ClearValues.colors);
+			else
+			{
+				rtvs.EmplaceBack(pView->GetRTV());
+				rtvColors.EmplaceBack(renderTarget.m_LoadOp == LoadOp::kClear ? renderTarget.m_ClearValues.colors : nullptr);
+				resolveData[colorAttachmentCount++].m_pSrc = pTexture->GetHandle();
+			}
 		}
 		else if (isDepthTarget)
 		{
@@ -165,12 +177,14 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 			hasStencil = isStencilTarget;
 			if (isResolveImage)
 			{
-				BV_ASSERT(false, "Not Implemented");
+				BV_ASSERT(false, "Depth / Stencil resolve is not supported in D3D12");
+				continue;
 			}
 
 			dsv = pView->GetDSV();
 			depthColor = renderTarget.m_ClearValues.depth;
 			stencil = renderTarget.m_ClearValues.stencil;
+			clearDepth = renderTarget.m_LoadOp == LoadOp::kClear;
 		}
 
 		auto pResource = pTexture->GetHandle();
@@ -204,12 +218,33 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 	m_CommandList->OMSetRenderTargets(rtvs.Size(), rtvs.Size() ? rtvs.Data() : nullptr, FALSE, dsv.ptr ? &dsv : nullptr);
 	for (auto i = 0; i < rtvs.Size(); i++)
 	{
-		m_CommandList->ClearRenderTargetView(rtvs[i], rtvColors[i], 0, nullptr);
+		if (rtvColors[i])
+		{
+			m_CommandList->ClearRenderTargetView(rtvs[i], rtvColors[i], 0, nullptr);
+		}
 	}
-	if (hasDepth)
+	if (hasDepth && clearDepth)
 	{
-		m_CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | (hasStencil ? D3D12_CLEAR_FLAG_STENCIL : D3D12_CLEAR_FLAGS(0)),
+		m_CommandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAGS(hasStencil ? D3D12_CLEAR_FLAG_STENCIL : 0),
 			depthColor, stencil, 0, nullptr);
+	}
+
+	if (resolveCount)
+	{
+		BV_ASSERT(colorAttachmentCount >= resolveCount, "Invalid color/resolve attachments");
+
+		m_ResourcesToResolve.Reserve(resolveCount);
+		for (auto i = 0; i < resolveCount; i++)
+		{
+			m_ResourcesToResolve.PushBack(resolveData[i]);
+		}
+	}
+
+	if (pShadingRateImage)
+	{
+		// ID3D12GraphicsCommandList5 is needed here
+		m_CommandList6->RSSetShadingRateImage(pShadingRateImage);
+		m_CommandList6->RSSetShadingRate(shadingRate, shadingRateCombiners);
 	}
 
 	m_CurrentState = State::kRenderTarget;
@@ -254,23 +289,23 @@ void BvCommandListD3D12::SetScissors(u32 scissorCount, const Rect* pScissors)
 
 void BvCommandListD3D12::SetGraphicsPipeline(const IBvGraphicsPipelineState* pPipeline)
 {
-	auto pPSO = TO_D3D12(pPipeline);
-
 	m_pComputePipeline = nullptr;
 	m_pRayTracingPipeline = nullptr;
-	m_pGraphicsPipeline = pPSO;
+	m_pGraphicsPipeline = TO_D3D12(pPipeline);
 	m_pShaderResourceLayout = TO_D3D12(m_pGraphicsPipeline->GetDesc().m_pShaderResourceLayout);
 	
 	m_CommandList->SetPipelineState(m_pGraphicsPipeline->GetHandle());
 	m_CommandList->SetGraphicsRootSignature(m_pGraphicsPipeline->GetRootSig());
-	m_CommandList->IASetPrimitiveTopology(m_pGraphicsPipeline->GetPrimitiveTopology());
+	auto pt = m_pGraphicsPipeline->GetPrimitiveTopology();
+	if (pt != D3D_PRIMITIVE_TOPOLOGY_UNDEFINED)
+	{
+		m_CommandList->IASetPrimitiveTopology(pt);
+	}
 }
 
 
 void BvCommandListD3D12::SetComputePipeline(const IBvComputePipelineState* pPipeline)
 {
-	BV_ASSERT(false, "Not Implemented");
-
 	m_pGraphicsPipeline = nullptr;
 	m_pRayTracingPipeline = nullptr;
 	m_pComputePipeline = TO_D3D12(pPipeline);
@@ -283,8 +318,6 @@ void BvCommandListD3D12::SetComputePipeline(const IBvComputePipelineState* pPipe
 
 void BvCommandListD3D12::SetRayTracingPipeline(const IBvRayTracingPipelineState* pPipeline)
 {
-	BV_ASSERT(false, "Not Implemented");
-
 	m_pGraphicsPipeline = nullptr;
 	m_pComputePipeline = nullptr;
 	m_pRayTracingPipeline = TO_D3D12(pPipeline);
@@ -811,6 +844,7 @@ void BvCommandListD3D12::ResourceBarrier(u32 barrierCount, const ResourceBarrier
 
 			if (pBarriers[i].m_pSrcContext && pBarriers[i].m_pDstContext)
 			{
+				// TODO: Figure out the most complete context and transition only in it
 				BV_ASSERT(false, "Not Implemented");
 			}
 		}
@@ -874,6 +908,16 @@ void BvCommandListD3D12::SetMarker(const char* pName, const BvColor& color)
 void BvCommandListD3D12::BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
 	const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc)
 {
+	ID3D12Resource* pPBResource = nullptr;
+	u64 pbSizePerAS = pPostBuildDesc ? GetD3D12RayTracingAccelerationStructurePostBuildInfoTypeSize(pPostBuildDesc->m_Type) : 0;
+	if (pbSizePerAS)
+	{
+		pPBResource = m_pFrameData->AddASPostBuildBuffer(pbSizePerAS * count);
+	}
+
+	BvVector<D3D12_RESOURCE_BARRIER> barriers;
+	barriers.Reserve(count);
+
 	for (auto asIndex = 0; asIndex < count; asIndex++)
 	{
 		auto& buildDesc = pBuildDescs[asIndex];
@@ -943,26 +987,34 @@ void BvCommandListD3D12::BuildRayTracingAccelerationStructures(u32 count, const 
 		}
 
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC pbDesc{};
-		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC* pPBDesc = nullptr;
-		u32 numPBDesc = 0;
 		if (pPostBuildDesc)
 		{
 			pbDesc.InfoType = GetD3D12RayTracingAccelerationStructurePostBuildInfoType(pPostBuildDesc->m_Type);
-			// TODO: Request UAV buffer
-			//pbDesc.DestBuffer = ;
-			numPBDesc = 1;
-			pPBDesc = &pbDesc;
+			pbDesc.DestBuffer = pPBResource->GetGPUVirtualAddress() + pbSizePerAS * asIndex;
 		}
 
-		m_CommandList4->BuildRaytracingAccelerationStructure(&asDesc, numPBDesc, pPBDesc);
+		m_CommandList4->BuildRaytracingAccelerationStructure(&asDesc, 1, &pbDesc);
 
-		// Barriers
+		auto& barrier = barriers.PushBack({});
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+		barrier.UAV.pResource = pAS->GetBuffer();
+	}
 
-		if (pPostBuildDesc)
+	if (barriers.Size() > 0)
+	{
+		if (pPBResource)
 		{
-			// TODO: Copy UAV data to read-back heap buffer
-			//m_CommandList4->CopyBufferRegion(TO_D3D12(pPostBuildDesc->m_pDstBuffer)->GetHandle(), pPostBuildDesc->m_DstBufferOffset + asIndex * sizeof(u64), , , sizeof(u64));
+			auto& pbBarrier = barriers.PushBack({});
+			pbBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+			pbBarrier.UAV.pResource = pPBResource;
 		}
+
+		m_CommandList4->ResourceBarrier(barriers.Size(), barriers.Data());
+	}
+
+	if (pPBResource)
+	{
+		m_CommandList4->CopyBufferRegion(TO_D3D12(pPostBuildDesc->m_pDstBuffer)->GetHandle(), pPostBuildDesc->m_DstBufferOffset, pPBResource, 0, pbSizePerAS * count);
 	}
 }
 
@@ -974,17 +1026,31 @@ void BvCommandListD3D12::EmitASPostBuild(u32 count, IBvAccelerationStructure* co
 	{
 		handles.PushBack(TO_D3D12(ppAccelerationStructures[i])->GetDeviceAddress());
 	}
+
+	auto pbSize = GetD3D12RayTracingAccelerationStructurePostBuildInfoTypeSize(postBuildDesc.m_Type) * count;
+	auto pResource = m_pFrameData->AddASPostBuildBuffer(pbSize);
+
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC pbDesc
 	{
-		//0, // TODO: Request UAV buffer
+		pResource->GetGPUVirtualAddress(),
 		GetD3D12RayTracingAccelerationStructurePostBuildInfoType(postBuildDesc.m_Type)
 	};
 	m_CommandList4->EmitRaytracingAccelerationStructurePostbuildInfo(&pbDesc, count, handles.Data());
 
-	// Barriers
+	D3D12_RESOURCE_BARRIER pbBarrier;
+	pbBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+	pbBarrier.UAV.pResource = pResource;
 
-	// TODO: Copy UAV data to read-back heap buffer
-	//m_CommandList4->CopyBufferRegion(TO_D3D12(postBuildDesc.m_pDstBuffer)->GetHandle(), postBuildDesc.m_DstBufferOffset, , , sizeof(u64) * count);
+	m_CommandList4->ResourceBarrier(1, &pbBarrier);
+
+	m_CommandList4->CopyBufferRegion(TO_D3D12(postBuildDesc.m_pDstBuffer)->GetHandle(), postBuildDesc.m_DstBufferOffset, pResource, 0, pbSize * count);
+}
+
+
+void BvCommandListD3D12::CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc)
+{
+	m_CommandList4->CopyRaytracingAccelerationStructure(copyDesc.m_pDst->GetDeviceAddress(), copyDesc.m_pSrc->GetDeviceAddress(),
+		GetD3D12RayTracingAccelerationStructureCopyMode(copyDesc.m_CopyMode));
 }
 
 
@@ -1035,6 +1101,7 @@ void BvCommandListD3D12::FlushDescriptorSets()
 			continue;
 		}
 
+		bool bindless = m_pShaderResourceLayout->IsBindless(rootIndex);
 		u32 rangeOffset = 0;
 		for (auto randeIndex = 0; randeIndex < rootParam.DescriptorTable.NumDescriptorRanges; randeIndex++, rangeOffset++)
 		{
@@ -1049,14 +1116,12 @@ void BvCommandListD3D12::FlushDescriptorSets()
 				}
 				else
 				{
-					// TODO: ignore for bindless
-					BV_ASSERT(false, "Needs a valid cpu descriptor handle");
+					BV_ASSERT(bindless, "Needs a valid cpu descriptor handle");
 				}
 			}
 		}
 
-		// TODO: Add bindless option / mapping from layout
-		D3D12_GPU_DESCRIPTOR_HANDLE dstHandle = m_pFrameData->RequestDescriptorHandle(rootIndex, m_pShaderResourceLayout, descriptors, false);
+		D3D12_GPU_DESCRIPTOR_HANDLE dstHandle = m_pFrameData->RequestDescriptorHandle(rootIndex, m_pShaderResourceLayout, descriptors, bindless);
 
 		if (m_pGraphicsPipeline)
 		{
@@ -1082,6 +1147,15 @@ void BvCommandListD3D12::ResetRenderTargets()
 	else if (m_CurrentState == State::kRenderTarget)
 	{
 		m_CommandList->OMSetRenderTargets(0, nullptr, FALSE, nullptr);
+	}
+
+	if (m_ResourcesToResolve.Size() > 0)
+	{
+		for (const auto& rtr : m_ResourcesToResolve)
+		{
+			m_CommandList4->ResolveSubresourceRegion(rtr.m_pDst, 0, 0, 0, rtr.m_pSrc, 0, nullptr, rtr.m_pDst->GetDesc().Format, rtr.m_Mode);
+		}
+		m_ResourcesToResolve.Clear();
 	}
 
 	if (m_PostRenderBarriers.Size() > 0)

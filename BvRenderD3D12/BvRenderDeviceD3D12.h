@@ -58,6 +58,9 @@ public:
 		u64 baseOffset = 0, u64 firstSubresource = 0) const override;
 	u64 GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const override;
 	FormatFeatures GetFormatFeatures(Format format) const override;
+
+	void OnD3D12HandleDestroyed(u32 numHandles, const D3D12_CPU_DESCRIPTOR_HANDLE* pHandles);
+
 	BV_INLINE const BvGPUInfo& GetGPUInfo() const override { return m_GPUInfo; }
 	BV_INLINE const BvVector<Format>& GetSupportedDisplayFormats() const override { return m_SupportedDisplayFormats; }
 

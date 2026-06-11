@@ -117,6 +117,14 @@ BvDescriptorPoolD3D12::~BvDescriptorPoolD3D12()
 
 BvDescriptorHandle BvDescriptorPoolD3D12::Allocate()
 {
+	if (!m_FreeDescriptors.Empty())
+	{
+		auto handle = m_FreeDescriptors.Back();
+		m_FreeDescriptors.PopBack();
+
+		return handle;
+	}
+
 	if (!m_Pools.Size() || (m_Pools[m_CurrPoolIndex].m_CurrAllocations == m_MaxAllocationsPerPool && ++m_CurrPoolIndex == m_Pools.Size()))
 	{
 		m_Pools.EmplaceBack().m_Handle = m_pDescriptorHeap->Allocate(m_HandleCount * m_MaxAllocationsPerPool);
@@ -124,6 +132,12 @@ BvDescriptorHandle BvDescriptorPoolD3D12::Allocate()
 
 	auto& pool = m_Pools[m_CurrPoolIndex];
 	return pool.m_Handle.GetByIndex(m_HandleCount * pool.m_CurrAllocations++, m_pDescriptorHeap->GetDescriptorSize());
+}
+
+
+void BvDescriptorPoolD3D12::RecycleDescriptor(const BvDescriptorHandle& handle)
+{
+	m_FreeDescriptors.PushBack(handle);
 }
 
 

@@ -210,6 +210,11 @@ VkQueryPool BvFrameDataVk::AddASQueryPool(VkQueryType queryType, u32 queryCount)
 
 VkFramebuffer BvFrameDataVk::GetFramebuffer(const FramebufferDesc& fbDesc)
 {
+	if (!m_pContextData->m_pFramebufferManager)
+	{
+		m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(m_pDevice->GetHandle());
+	}
+
 	return m_pContextData->m_pFramebufferManager->GetFramebuffer(fbDesc);
 }
 
@@ -226,12 +231,6 @@ BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount
 {
 	auto pQuerySizes = m_pDevice->GetQueryPoolSizes();
 	m_pContextData = BV_NEW(ContextDataVk)();
-
-	if (pDevice->GetGPUInfo().m_ContextGroups[queueFamilyIndex].SupportsCommandType(CommandType::kGraphics))
-	{
-		auto asQueryPoolSize = m_pDevice->GetAccelerationStructureQueryPoolSize();
-		m_pContextData->m_pFramebufferManager = BV_NEW(BvFramebufferManagerVk)(pDevice->GetHandle());
-	}
 
 	auto pFrameData = reinterpret_cast<u8*>(BV_ALLOC(sizeof(BvFrameDataVk) * m_FrameCount, alignof(BvFrameDataVk)));
 	for (auto i = 0; i < m_FrameCount; ++i)
@@ -250,7 +249,11 @@ BvCommandContextVk::~BvCommandContextVk()
 	}
 	BV_FREE(m_pFrames);
 
-	BV_DELETE(m_pContextData->m_pFramebufferManager);
+	if (m_pContextData->m_pFramebufferManager)
+	{
+		BV_DELETE(m_pContextData->m_pFramebufferManager);
+	}
+
 	for (auto& poolData : m_pContextData->m_DescriptorPools)
 	{
 		BV_DELETE(poolData.second);

@@ -13,7 +13,6 @@ namespace Internal
 		{ t.end() } -> std::sentinel_for<decltype(t.begin())>;
 	};
 
-
 	template<typename It>
 	u32 UTF8To32(It& curr, It end)
 	{
@@ -128,8 +127,45 @@ namespace Internal
 
 struct UTFCharTraits
 {
+	template<typename T>
+	static size_t GlyphSize(T ch)
+	{
+		constexpr auto kTypeSize = sizeof(T);
+
+		static_assert(kTypeSize == 1 || kTypeSize == 2 || kTypeSize == 4, "Src UTF Encoding must be 8/16/32 bit");
+
+		if constexpr (kTypeSize == 1)
+		{
+			if ((ch & 0x80) == 0) { return 1; }
+			else if ((ch & 0xE0) == 0xC0) { return 2; }
+			else if ((ch & 0xF0) == 0xE0) { return 3; }
+			else if ((ch & 0xF8) == 0xF0) { return 4; }
+
+			return 0;
+		}
+		else if constexpr (kTypeSize == 2)
+		{
+			// Check if it's a surrogate pair (0xD800 - 0xDFFF)
+			if (ch >= 0xD800 && ch <= 0xDFFF)
+			{
+				// High surrogate (0xD800-0xDBFF) + Low surrogate (0xDC00-0xDFFF)
+				return 2;
+			}
+
+			return size_t(!(ch >= 0xDC00 && ch <= 0xDFFF));
+		}
+		else if constexpr (kTypeSize == 4)
+		{
+			return size_t((ch <= 0x10FFFF) && (ch < 0xD800 || ch > 0xDFFF));
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
 	template<typename It>
-	static size_t CharLength(It curr)
+	static size_t UTF8ByteCount(It begin, It end)
 	{
 		using UnderlyingType = typename std::iterator_traits<It>::value_type;
 		constexpr auto kTypeSize = sizeof(UnderlyingType);
@@ -138,42 +174,114 @@ struct UTFCharTraits
 
 		if constexpr (kTypeSize == 1)
 		{
-			if ((*curr & 0x80) == 0) { return 1; }
-			else if ((*curr & 0xE0) == 0xC0) { return 2; }
-			else if ((*curr & 0xF0) == 0xE0) { return 3; }
-			else if ((*curr & 0xF8) == 0xF0) { return 4; }
-
-			return 0;
+			return size_t(end - begin);
 		}
-		else if constexpr (kTypeSize == 2)
+		
+		size_t byteCount = 0;
+		for (auto curr = begin; curr < end; curr++)
 		{
-			// Check if it's a surrogate pair (0xD800 - 0xDFFF)
-			if (*curr >= 0xD800 && *curr <= 0xDFFF)
+			if constexpr (kTypeSize == 2)
 			{
-				// High surrogate (0xD800-0xDBFF) + Low surrogate (0xDC00-0xDFFF)
-				return 2;
+				u16 cp = *curr;
+				if (cp < 0x80) { byteCount += 1; }
+				else if (cp < 0x800) { byteCount += 2; }
+				// If it's a high surrogate, it pairs with the next unit to form a 4-byte UTF-8 glyph
+				else if (cp >= 0xD800 && cp <= 0xDBFF) { byteCount += 4; curr++; }
+				else { byteCount += 3; }
 			}
+			else if constexpr (kTypeSize == 4)
+			{
+				u32 cp = *curr;
+				if (cp < 0x80) { byteCount += 1; }
+				else if (cp < 0x800) { byteCount += 2; }
+				else if (cp < 0x10000) { byteCount += 3; }
+				else { byteCount += 4; }
+			}
+		}
 
-			return size_t(!(*curr >= 0xDC00 && *curr <= 0xDFFF));
-		}
-		else if constexpr (kTypeSize == 4)
-		{
-			return size_t((*curr <= 0x10FFFF) && (*curr < 0xD800 || *curr > 0xDFFF));
-		}
-		else
-		{
-			std::unreachable();
-		}
+		return byteCount;
 	}
-	
+
 	template<typename It>
-	static size_t Length(It curr, It end)
+	static size_t UTF16ByteCount(It begin, It end)
+	{
+		using UnderlyingType = typename std::iterator_traits<It>::value_type;
+		constexpr auto kTypeSize = sizeof(UnderlyingType);
+
+		static_assert(kTypeSize == 1 || kTypeSize == 2 || kTypeSize == 4, "Src UTF Encoding must be 8/16/32 bit");
+
+		if constexpr (kTypeSize == 2)
+		{
+			return size_t(end - begin);
+		}
+
+		size_t byteCount = 0;
+		for (auto curr = begin; curr < end; curr++)
+		{
+			if constexpr (kTypeSize == 1)
+			{
+				u8 byte = *curr;
+				if (byte < 0x80) { byteCount += 2; }
+				else if (byte < 0xE0) { byteCount += 2; curr += 1; }
+				else if (byte < 0xF0) { byteCount += 2; curr += 2; }
+				else { byteCount += 4; curr += 3; } // Surrogate pair needed
+			}
+			else if constexpr (kTypeSize == 4)
+			{
+				// Branchless optimization: adds 4 if cp >= 0x10000, else adds 2
+				u32 cp = *curr;
+				byteCount += 2 + 2 * (cp >= 0x10000);
+			}
+		}
+
+		return byteCount;
+	}
+
+	template<typename It>
+	static size_t UTF32ByteCount(It begin, It end)
+	{
+		using UnderlyingType = typename std::iterator_traits<It>::value_type;
+		constexpr auto kTypeSize = sizeof(UnderlyingType);
+
+		static_assert(kTypeSize == 1 || kTypeSize == 2 || kTypeSize == 4, "Src UTF Encoding must be 8/16/32 bit");
+
+		if constexpr (kTypeSize == 4)
+		{
+			return size_t(end - begin);
+		}
+
+		size_t byteCount = 0;
+		for (auto curr = begin; curr < end; curr++, byteCount++)
+		{
+			if constexpr (kTypeSize == 1)
+			{
+				u8 byte = *curr;
+				if (byte < 0x80) {}
+				else if (byte < 0xE0) { curr += 1; }
+				else if (byte < 0xE0) { curr += 2; }
+				else { curr += 3; }
+			}
+			else if constexpr (kTypeSize == 2)
+			{
+				u16 u = *curr;
+				if (u >= 0xD800 && u <= 0xDBFF)
+				{
+					curr++; // Skip low surrogate, they combine into 1 code point
+				}
+			}
+		}
+
+		return byteCount;
+	}
+
+	template<typename It>
+	static size_t StrLength(It curr, It end)
 	{
 		size_t len = 0;
 		auto it = curr;
 		for (; it < end && *it; len++)
 		{
-			auto cl = CharLength(it);
+			auto cl = GlyphSize(*it);
 			if (cl == 0)
 			{
 				return 0;
@@ -186,9 +294,9 @@ struct UTFCharTraits
 	}
 
 	template<Internal::BvIterable It>
-	static size_t Length(It str)
+	static size_t StrLength(It str)
 	{
-		return Length(str.begin(), str.end());
+		return StrLength(str.begin(), str.end());
 	}
 
 
@@ -260,10 +368,6 @@ private:
 		else if constexpr (kSrcTypeSize == 4 && kDstTypeSize == 2)
 		{
 			Internal::UTF32To16(*srcCurr++, dstCurr, dstEnd);
-		}
-		else
-		{
-			std::unreachable();
 		}
 	}
 };

@@ -107,9 +107,9 @@ D3D12_RESOURCE_STATES GetD3D12ResourceState(ResourceState resourceState)
 	case ResourceState::kResolveDst:			return D3D12_RESOURCE_STATE_RESOLVE_DEST;
 	case ResourceState::kPredication:			return D3D12_RESOURCE_STATE_PREDICATION;
 	case ResourceState::kShadingRate:			return D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
+	case ResourceState::kRayTracing:
 	case ResourceState::kASBuildRead:
 	case ResourceState::kASBuildWrite:			return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-	case ResourceState::kASPostBuildBuffer:		return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 	default:									return D3D12_RESOURCE_STATE_COMMON;
 	}
 }
@@ -927,11 +927,29 @@ DXGI_FORMAT GetD3D12IndexFormat(IndexFormat indexFormat)
 }
 
 
+D3D12_RESOLVE_MODE GetD3D12ResolveMode(ResolveMode resolveMode)
+{
+	constexpr D3D12_RESOLVE_MODE kModes[] =
+	{
+		D3D12_RESOLVE_MODE::D3D12_RESOLVE_MODE_AVERAGE,
+		D3D12_RESOLVE_MODE::D3D12_RESOLVE_MODE_AVERAGE,
+		D3D12_RESOLVE_MODE::D3D12_RESOLVE_MODE_MIN,
+		D3D12_RESOLVE_MODE::D3D12_RESOLVE_MODE_MAX
+	};
+
+	return kModes[u8(resolveMode)];
+}
+
 D3D12_SHADING_RATE GetD3D12ShadingRate(ShadingRateDimensions dimensions)
 {
 	return D3D12_SHADING_RATE(dimensions);
 }
 
+
+D3D12_SHADING_RATE GetD3D12ShadingRate(const u32(&texelSizes)[2])
+{
+	return D3D12_SHADING_RATE(((texelSizes[0] >> 1) << 2) | (texelSizes[1] >> 1));
+}
 
 D3D12_SHADING_RATE_COMBINER GetD3D12ShadingRateCombiner(ShadingRateCombinerOp combinerOp)
 {
@@ -1027,4 +1045,28 @@ D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_TYPE GetD3D12RayTracingAc
 	};
 
 	return kPostBuildTypes[u8(type)];
+}
+
+
+u64 GetD3D12RayTracingAccelerationStructurePostBuildInfoTypeSize(RayTracingAccelerationStructurePostBuildType type)
+{
+	constexpr u64 kSizes[] =
+	{
+		sizeof(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_CURRENT_SIZE_DESC),
+		sizeof(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE_DESC)
+	};
+
+	return kSizes[u8(type)];
+}
+
+
+D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE GetD3D12RayTracingAccelerationStructureCopyMode(RayTracingAccelerationStructureCopyMode copyMode)
+{
+	constexpr D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE kCopyModes[] =
+	{
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_CLONE,
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT
+	};
+
+	return kCopyModes[u8(copyMode)];
 }

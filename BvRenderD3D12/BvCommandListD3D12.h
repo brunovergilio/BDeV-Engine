@@ -125,7 +125,6 @@ public:
 	void BuildRayTracingAccelerationStructures(u32 count, const RayTracingAccelerationStructureBuildDesc* pBuildDescs,
 		const RayTracingAccelerationStructurePostBuildDesc* pPostBuildDesc = nullptr);
 	void EmitASPostBuild(u32 count, IBvAccelerationStructure* const* ppAccelerationStructures, const RayTracingAccelerationStructurePostBuildDesc& postBuildDesc);
-	void EmitASPostBuild(u32 count, VkAccelerationStructureKHR* pAS, VkQueryPool queryPool, VkQueryType queryType, VkBuffer buffer, u64 offset);
 	void CopyRayTracingAccelerationStructure(const RayTracingAccelerationStructureCopyDesc& copyDesc);
 	void DispatchRays(const DispatchRaysCommandArgs& args);
 	void DispatchRaysIndirect(const IBvBuffer* pBuffer, u64 offset = 0);
@@ -155,6 +154,13 @@ private:
 
 	BvVector<D3D12_RESOURCE_BARRIER> m_PreRenderBarriers;
 	BvVector<D3D12_RESOURCE_BARRIER> m_PostRenderBarriers;
+	struct ResolveData
+	{
+		ID3D12Resource* m_pSrc;
+		ID3D12Resource* m_pDst;
+		D3D12_RESOLVE_MODE m_Mode;
+	};
+	BvVector<ResolveData> m_ResourcesToResolve;
 
 	const BvGraphicsPipelineStateD3D12* m_pGraphicsPipeline = nullptr;
 	const BvComputePipelineStateD3D12* m_pComputePipeline = nullptr;

@@ -128,7 +128,7 @@ BvQueue<Type>::BvQueue(BvQueue&& rhs) noexcept
 template<typename Type>
 BvQueue<Type>& BvQueue<Type>::operator =(const BvQueue& rhs)
 {
-	if (this != &rhs)
+	if (this != std::addressof(rhs))
 	{
 		Destroy();
 		SetAllocator(rhs.m_pArena);
@@ -147,7 +147,7 @@ BvQueue<Type>& BvQueue<Type>::operator =(const BvQueue& rhs)
 template<typename Type>
 BvQueue<Type>& BvQueue<Type>::operator =(BvQueue&& rhs) noexcept
 {
-	if (this != &rhs)
+	if (this != std::addressof(rhs))
 	{
 		Destroy();
 

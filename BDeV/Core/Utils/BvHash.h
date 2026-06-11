@@ -2,135 +2,91 @@
 
 
 #include "BDeV/Core/Utils/BvUtils.h"
+#include "Third Party/xxhash.h"
+#include "Third Party/rapidhash.h"
+#include "BDeV/Core/Utils/Third Party/constexpr-xxh3.h"
 
 
-#if BV_PLATFORM_WIN32
-#define BV_SUPRESS_HASH_WARNING	 \
-__pragma(warning(suppress:4307)) \
-__pragma(warning(suppress:4100))
-#else
-#define BV_SUPRESS_HASH_WARNING
-#endif
+struct BvXXHash
+{
+	BvXXHash() = default;
+	explicit BvXXHash(u64 seed)
+		: m_Seed(seed) {}
+
+	template<typename T>
+	u64 operator()(const T& value) const
+	{
+		static_assert(std::is_trivially_copyable_v<T>);
+		return XXH3_64bits_withSeed(&value, sizeof(value), m_Seed);
+	}
+
+	u64 operator()(const void* pValue, size_t length) const
+	{
+		return XXH3_64bits_withSeed(pValue, length, m_Seed);
+	}
+
+private:
+	u64 m_Seed = 0;
+};
 
 
-u64 FNV1a64(const void* const pBytes, const size_t size);
-u64 MurmurHash64A(const void* const pBytes, size_t size, u64 seed = 0);
+struct BvRapidHash
+{
+	BvRapidHash() = default;
+	explicit BvRapidHash(u64 seed)
+		: m_Seed(seed) {}
+
+	template<typename T>
+	u64 operator()(const T& value) const
+	{
+		static_assert(std::is_trivially_copyable_v<T>);
+		return rapidhash_withSeed(&value, sizeof(value), m_Seed);
+	}
+
+	u64 operator()(const void* pValue, size_t length) const
+	{
+		return rapidhash_withSeed(pValue, length, m_Seed);
+	}
+
+private:
+	u64 m_Seed = 0;
+};
+
+
+template<typename T, typename Hasher = BvRapidHash>
+struct BvHash
+{
+	u64 operator()(const T& value) const
+	{
+		return Hasher()(value);
+	}
+};
 
 
 // https://github.com/HowardHinnant/hash_append/issues/7
 // https://softwareengineering.stackexchange.com/questions/63595/tea-algorithm-constant-0x9e3779b9-said-to-be-derived-from-golden-ratio-but-the/63599#63599
-template <typename Type, typename... Rest>
+template<typename Type, typename... Rest>
 void HashCombine(u64& seed, const Type& v, Rest... rest)
 {
-	seed ^= MurmurHash64A(&v, sizeof(Type)) + 0x9e3779b97f4a7c15llu + (seed << 12) + (seed >> 4);
+	seed ^= BvXXHash()(&v, sizeof(Type)) + 0x9e3779b97f4a7c15llu + (seed << 12) + (seed >> 4);
 	(HashCombine(seed, rest), ...);
 }
 
 
-namespace Internal
+template<typename Hasher, typename... Args>
+u64 HashCombineSingle(const Hasher& hasher, const Args&... args)
 {
-	template<typename Type, size_t size, size_t done>
-	constexpr Type ConstexprFNV1a64Helper(const char* const pBytes, Type currHash, Type fnvPrime)
-	{
-		if constexpr (done < size)
+	u64 seed = 0;
+
+	auto combineFn = [&](const auto& value)
 		{
-			return ConstexprFNV1aHelper<Type, size, done + 1>(pBytes, (currHash ^ pBytes[done]) * fnvPrime, fnvPrime);
-		}
-		else
-		{
-			return currHash;
-		}
-	}
+			seed ^= hasher(value)
+				+ 0x9e3779b97f4a7c15ull
+				+ (seed << 12)
+				+ (seed >> 4);
+		};
 
+	(combineFn(args), ...);
 
-	namespace MurmurConstants
-	{
-		constexpr const u64 kM = 0xc6a4a7935bd1e995LLU;
-		constexpr const i32 kShift = 47;
-	}
-
-	constexpr u64 MurmurXORShiftLeft(u64 k)
-	{
-		return k ^ (k >> MurmurConstants::kShift);
-	}
-
-
-	constexpr u64 MurmurGet64BitBlock(const char* pBytes, u64 offset = 0)
-	{
-		if (offset == 7)
-		{
-			return u64(pBytes[offset]) << (8 * offset);
-		}
-		else
-		{
-			return u64(pBytes[offset]) << (8 * offset) | MurmurGet64BitBlock(pBytes, offset + 1);
-		}
-	}
-
-	constexpr u64 MurmurMix(const char* pBytes, u64 h, u64 offset)
-	{
-		// k *= m;
-		// k ^= k >> shift;
-		// k *= m;
-		// 
-		// h ^= k;
-		// h *= m;
-		return (h ^ (MurmurXORShiftLeft(MurmurGet64BitBlock(pBytes + offset) * MurmurConstants::kM) * MurmurConstants::kM)) * MurmurConstants::kM;
-	}
-
-
-	constexpr u64 MurmurRemainingBits(const char* pBytes, u64 len, u64 h)
-	{
-		// switch (size & 7)
-		// {
-		// case 7: h ^= (u64)(pData2[6]) << 48; [[fallthrough]];
-		// case 6: h ^= (u64)(pData2[5]) << 40; [[fallthrough]];
-		// case 5: h ^= (u64)(pData2[4]) << 32; [[fallthrough]];
-		// case 4: h ^= (u64)(pData2[3]) << 24; [[fallthrough]];
-		// case 3: h ^= (u64)(pData2[2]) << 16; [[fallthrough]];
-		// case 2: h ^= (u64)(pData2[1]) << 8;	 [[fallthrough]];
-		// case 1: h ^= (u64)(pData2[0]);		 [[fallthrough]];
-		// h *= m;
-		// }
-		if (len > 0)
-		{
-			return MurmurRemainingBits(pBytes, len - 1, h ^ ((u64)pBytes[len - 1]) << ((len - 1) * 8));
-		}
-		else
-		{
-			return h * MurmurConstants::kM;
-		}
-	}
-
-
-	constexpr u64 MurmurFinalRotation(u64 h)
-	{
-		// h ^= h >> shift;
-		// h *= m;
-		// h ^= h >> shift;
-		return MurmurXORShiftLeft(MurmurXORShiftLeft(h) * MurmurConstants::kM);
-	}
-
-
-	constexpr u64 MurmurLoop(const char* pBytes, u64 len, u64 h, u64 offset)
-	{
-		if (len - offset >= 8)
-		{
-			return MurmurLoop(pBytes, len, MurmurMix(pBytes, h, offset), offset + 8);
-		}
-		else
-		{
-			return MurmurFinalRotation(MurmurRemainingBits(pBytes, len - offset, h));
-		}
-	}
-
-
-	constexpr u64 ConstexprMurmurHash64AHelper(const char* pBytes, u64 len, u64 seed = 0)
-	{
-		return Internal::MurmurLoop(pBytes, len, seed ^ (len * Internal::MurmurConstants::kM), 0);
-	}
+	return seed;
 }
-
-
-#define ConstexprFNV1a64(pBytes) BV_SUPRESS_HASH_WARNING Internal::ConstexprFNV1a64Helper<u64, std::char_traits<char>::length(pBytes), 0>(pBytes, 14695981039346656037ull, 1099511628211ull)
-#define ConstexprMurmurHash64A(pBytes) Internal::ConstexprMurmurHash64AHelper(pBytes, std::char_traits<char>::length(pBytes), 0)

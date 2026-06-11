@@ -1,4 +1,5 @@
 #include "BvAccelerationStructureD3D12.h"
+#include "BvBufferD3D12.h"
 
 
 BvAccelerationStructureD3D12::BvAccelerationStructureD3D12(BvRenderDeviceD3D12* pDevice, const RayTracingAccelerationStructureDesc& desc, ComPtr<ID3D12Resource>& buffer,

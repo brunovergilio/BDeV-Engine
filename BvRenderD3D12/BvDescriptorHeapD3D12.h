@@ -119,6 +119,7 @@ public:
     ~BvDescriptorPoolD3D12();
 
 	BvDescriptorHandle Allocate();
+    void RecycleDescriptor(const BvDescriptorHandle& handle);
 	void Reset();
 
     BV_INLINE bool IsValid() const { return m_pDescriptorHeap != nullptr; }
@@ -136,6 +137,7 @@ private:
     BvGPUDescriptorHeapD3D12* m_pDescriptorHeap = nullptr;
     D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
     BvVector<PoolData> m_Pools;
+	BvVector<BvDescriptorHandle> m_FreeDescriptors;
 	u32 m_RootIndex = 0;
 	u32 m_MaxAllocationsPerPool = 0;
 	u32 m_CurrPoolIndex = 0;

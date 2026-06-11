@@ -1,5 +1,5 @@
 #include "BvStringId.h"
-#include "BDeV/Core/Container/BvRobinMap.h"
+#include "BDeV/Core/Utils/BvHash.h"
 
 
 BvStringId::BvStringId(const char* pId)
@@ -11,7 +11,7 @@ BvStringId::BvStringId(const char* pId)
 	}
 
 	u32 len = static_cast<u32>(std::char_traits<char>::length(pId));
-	m_Id = MurmurHash64A(pId, len);
+	m_Id = BvXXHash()(pId, len);
 }
 
 
@@ -46,7 +46,7 @@ BvStringId& BvStringId::operator=(const char* pId)
 	}
 
 	u32 len = static_cast<u32>(std::char_traits<char>::length(pId));
-	m_Id = MurmurHash64A(pId, len);
+	m_Id = BvXXHash()(pId, len);
 
 	return *this;
 }
@@ -62,7 +62,7 @@ BvStringId& BvStringId::operator=(u64 id)
 
 bool BvStringId::operator==(const char* pId) const
 {
-	return m_Id == MurmurHash64A(pId, std::char_traits<char>::length(pId));
+	return m_Id == BvXXHash()(pId, std::char_traits<char>::length(pId));
 }
 
 

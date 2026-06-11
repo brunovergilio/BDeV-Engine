@@ -17,6 +17,7 @@ public:
 
 	BV_INLINE const ShaderResourceLayoutCreateDesc& GetDesc() const { return m_ShaderResourceLayoutDesc; }
 	BV_INLINE auto& GetRootParams() const { return m_RootParams; }
+	BV_INLINE bool IsBindless(u32 rootParamIndex) const { return m_RootParamsBindlessFlags[rootParamIndex]; }
 
 	u32 GetRootSignatureSlot(u32 binding, u32 set) const;
 
@@ -44,6 +45,7 @@ private:
 	ShaderResourceLayoutCreateDesc m_ShaderResourceLayoutDesc;
 	BvVector<CD3DX12_ROOT_PARAMETER1> m_RootParams;
 	BvVector<CD3DX12_DESCRIPTOR_RANGE1> m_Ranges;
+	BvVector<bool> m_RootParamsBindlessFlags;
 	BvRobinMap<ResourceId, u32> m_RootSignatureMap;
 };
 

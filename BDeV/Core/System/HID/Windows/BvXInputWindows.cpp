@@ -227,9 +227,11 @@ const BvXInput::Controller::State& BvXInput::Controller::GetState() const
 }
 
 
-void BvXInput::Controller::SetVibration(u16 leftMotorSpeed, u16 rightMotorSpeed) const
+void BvXInput::Controller::SetVibration(f32 leftMotorSpeed, f32 rightMotorSpeed) const
 {
-	XINPUT_VIBRATION vibration{ leftMotorSpeed, rightMotorSpeed };
+	f32 l = std::clamp(leftMotorSpeed, 0.0f, 1.0f) * 63535.0f + 0.5f;
+	f32 r = std::clamp(leftMotorSpeed, 0.0f, 1.0f) * 63535.0f + 0.5f;
+	XINPUT_VIBRATION vibration{ static_cast<WORD>(l), static_cast<WORD>(r) };
 	XInputSetState(m_Index, &vibration);
 }
 

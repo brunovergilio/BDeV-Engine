@@ -24,6 +24,7 @@ public:
 	BV_INLINE RayTracingAccelerationStructureScratchSize GetBuildSizes() const override { return m_ScratchSizes; }
 	BV_INLINE u64 GetDeviceAddress() const override { return m_Buffer->GetGPUVirtualAddress(); }
 	BV_INLINE BvVector<D3D12_RAYTRACING_GEOMETRY_DESC>& GetGeometries() { return m_Geometries; }
+	BV_INLINE ID3D12Resource* GetBuffer() const { return m_Buffer.Get(); }
 
 private:
 	void Destroy();

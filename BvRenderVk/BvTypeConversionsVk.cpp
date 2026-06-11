@@ -663,8 +663,7 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess)
 	if (EHasFlag(resourceAccess, ResourceAccess::kShadingRateRead		))	{ accessFlags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR; }
 	if (EHasFlag(resourceAccess, ResourceAccess::kPredicationRead		))	{ accessFlags |= VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT; }
 	if (EHasFlag(resourceAccess, ResourceAccess::kAccelerationStructureRead)) { accessFlags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR; }
-	if (EHasFlag(resourceAccess, ResourceAccess::kAccelerationStructureWrite)) { accessFlags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR; }
-	if (EHasFlag(resourceAccess, ResourceAccess::kAccelerationStructurePostBuildWrite)) { accessFlags |= VK_ACCESS_2_TRANSFER_WRITE_BIT; }
+	if (EHasFlag(resourceAccess, ResourceAccess::kAccelerationStructureWrite)) { accessFlags |= VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR; }
 	if (EHasFlag(resourceAccess, ResourceAccess::kShaderBindingTableRead)) { accessFlags |= VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR; }
 
 	return accessFlags;
@@ -691,8 +690,8 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kPredication:		return VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT;
 	case ResourceState::kShadingRate:		return VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
 	case ResourceState::kASBuildRead:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-	case ResourceState::kASBuildWrite:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-	case ResourceState::kASPostBuildBuffer:	return VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	case ResourceState::kASBuildWrite:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+	case ResourceState::kRayTracing:		return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
 	}
 
 	return 0;
@@ -778,7 +777,8 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 	}
 	if (accessFlags & (VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR))
 	{
-		stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+		stageFlags |= VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR
+			| VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR;
 	}
 
 	return stageFlags;

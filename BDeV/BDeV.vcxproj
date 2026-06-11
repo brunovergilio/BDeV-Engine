@@ -56,6 +56,15 @@
     <IntDir>$(SolutionDir)Bin-Int\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>false</VcpkgEnableManifest>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
@@ -133,6 +142,9 @@
     <ClInclude Include="Core\Utils\BvStringId.h" />
     <ClInclude Include="Core\Container\BvVector.h" />
     <ClInclude Include="Core\Utils\BvUTF.h" />
+    <ClInclude Include="Core\Utils\Third Party\constexpr-xxh3.h" />
+    <ClInclude Include="Core\Utils\Third Party\rapidhash.h" />
+    <ClInclude Include="Core\Utils\Third Party\xxhash.h" />
     <ClInclude Include="Engine\JobSystem\BvParallelJobSystem.h" />
     <ClInclude Include="Core\Math\BvMath.h" />
     <ClInclude Include="Core\Utils\BvRTTI.h" />
@@ -201,6 +213,7 @@
     <ClCompile Include="Core\System\HID\Windows\BvXInputWindows.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
     <ClCompile Include="Core\Utils\BvStringId.cpp" />
+    <ClCompile Include="Core\Utils\Third Party\xxhash.c" />
     <ClCompile Include="Engine\JobSystem\BvParallelJobSystem.cpp" />
     <ClCompile Include="Core\Utils\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
@@ -229,7 +242,6 @@
     <ClCompile Include="Core\System\Threading\Windows\BvThreadWindows.cpp" />
     <ClCompile Include="Core\System\Window\Windows\BvMonitorWindows.cpp" />
     <ClCompile Include="Core\System\Window\Windows\BvWindowWindows.cpp" />
-    <ClCompile Include="Core\Utils\BvHash.cpp" />
     <ClCompile Include="Core\Utils\BvTestUnit.cpp" />
     <ClCompile Include="Core\Utils\BvTime.cpp" />
   </ItemGroup>

@@ -125,7 +125,7 @@ inline BvFixedVector<Type, N>::BvFixedVector(const BvFixedVector<Type, X> & rhs)
 	m_Size = N < rhs.Size() ? N : rhs.Size();
 	for (auto i = 0; i < m_Size; i++)
 	{
-		new (&m_pData[i]) Type(rhs[i]);
+		new (std::addressof(m_pData[i])) Type(rhs[i]);
 	}
 }
 
@@ -153,7 +153,7 @@ inline BvFixedVector<Type, N>& BvFixedVector<Type, N>::operator=(const BvFixedVe
 		m_Size = N < rhs.Size() ? N : rhs.Size();
 		for (auto i = 0; i < m_Size; i++)
 		{
-			new (&m_pData[i]) Type(rhs.m_pData[i]);
+			new (std::addressof(m_pData[i])) Type(rhs.m_pData[i]);
 		}
 	}
 
@@ -189,7 +189,7 @@ inline BvFixedVector<Type, N>& BvFixedVector<Type, N>::operator=(std::initialize
 	m_Size = N < list.size() ? N : list.size();
 	for (auto i = 0; i < m_Size; i++)
 	{
-		new (&m_pData[i]) Type(list[i]);
+		new (std::addressof(m_pData[i])) Type(list[i]);
 	}
 
 	return *this;
@@ -235,7 +235,7 @@ inline void BvFixedVector<Type, N>::Resize(const size_t size, const Type & value
 		m_Size = size;
 		for (auto i = prevSize; i < m_Size; i++)
 		{
-			new (&m_pData[i]) Type(value);
+			new (std::addressof(m_pData[i])) Type(value);
 		}
 	}
 	else
@@ -336,7 +336,7 @@ inline void BvFixedVector<Type, N>::Assign(Iterator start, Iterator end)
 	size_t count = 0;
 	for (auto it = start; count < m_Size && it != end; it++, count++)
 	{
-		new (&m_pData[m_Size++]) Type(*it);
+		new (std::addressof(m_pData[m_Size++])) Type(*it);
 	}
 }
 
@@ -348,7 +348,7 @@ inline void BvFixedVector<Type, N>::Assign(const size_t size, const Type & val)
 	m_Size = N < size ? N : size;
 	for (u32 i = 0; i < m_Size; i++)
 	{
-		new (&m_pData[i]) Type(val);
+		new (std::addressof(m_pData[i])) Type(val);
 	}
 }
 
@@ -360,7 +360,7 @@ inline void BvFixedVector<Type, N>::Assign(std::initializer_list<Type> list)
 	m_Size = N < list.size() ? N : list.size();
 	for (auto i = 0; i < m_Size; i++)
 	{
-		new (&m_pData[i]) Type(list[i]);
+		new (std::addressof(m_pData[i])) Type(list[i]);
 	}
 }
 
@@ -372,7 +372,7 @@ inline void BvFixedVector<Type, N>::PushBack(const Type & value)
 		return;
 	}
 
-	new (&m_pData[m_Size++]) Type(value);
+	new (std::addressof(m_pData[m_Size++])) Type(value);
 }
 
 template<class Type, size_t N>
@@ -383,7 +383,7 @@ inline void BvFixedVector<Type, N>::PushBack(Type && value)
 		return;
 	}
 
-	new (&m_pData[m_Size++]) Type(std::move(value));
+	new (std::addressof(m_pData[m_Size++])) Type(std::move(value));
 }
 
 template<class Type, size_t N>
@@ -421,7 +421,7 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(
 		}
 	}
 
-	new (&m_pData[pos]) Type(value);
+	new (std::addressof(m_pData[pos])) Type(value);
 	m_Size++;
 
 	return Iterator(m_pData + pos);
@@ -451,7 +451,7 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(
 
 	for (auto i = 0; i < count; i++)
 	{
-		new (&m_pData[pos + i]) Type(value);
+		new (std::addressof(m_pData[pos + i])) Type(value);
 	}
 	m_Size += count;
 
@@ -484,7 +484,7 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(
 	auto it = first;
 	for (auto i = 0; i < count; i++)
 	{
-		new (&m_pData[pos + i]) Type(*(it++));
+		new (std::addressof(m_pData[pos + i])) Type(*(it++));
 	}
 
 	m_Size += count;
@@ -514,7 +514,7 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(
 		}
 	}
 
-	new (&m_pData[pos]) Type(std::move(value));
+	new (std::addressof(m_pData[pos])) Type(std::move(value));
 	m_Size++;
 
 	return Iterator(m_pData + pos);
@@ -546,7 +546,7 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(
 	auto it = list.begin();
 	for (auto i = 0; i < count; i++)
 	{
-		new (&m_pData[pos + i]) Type(*(it++));
+		new (std::addressof(m_pData[pos + i])) Type(*(it++));
 	}
 
 	m_Size += count;
@@ -669,7 +669,7 @@ inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Emplace
 		}
 	}
 
-	new (&m_pData[pos]) Type(std::forward<Args>(args)...);
+	new (std::addressof(m_pData[pos])) Type(std::forward<Args>(args)...);
 	m_Size++;
 
 	return Iterator(m_pData + pos);
@@ -684,7 +684,7 @@ inline Type& BvFixedVector<Type, N>::EmplaceBack(Args && ...args)
 		return m_pData[m_Size - 1];
 	}
 
-	new (&m_pData[m_Size++]) Type(std::forward<Args>(args)...);
+	new (std::addressof(m_pData[m_Size++])) Type(std::forward<Args>(args)...);
 
 	return m_pData[m_Size - 1];
 }
