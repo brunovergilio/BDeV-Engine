@@ -120,7 +120,6 @@
     <ClInclude Include="Core\BvCore.h" />
     <ClInclude Include="Core\System\File\Windows\BvAsyncFileWindows.h" />
     <ClInclude Include="Core\System\Network\Windows\BvNetworkWindows.h" />
-    <ClInclude Include="Core\Utils\BvText.h" />
     <ClInclude Include="Core\Math\BvGeometryGenerator.h" />
     <ClInclude Include="Core\RenderAPI\BvAccelerationStructure.h" />
     <ClInclude Include="Core\RenderAPI\BvGPUFence.h" />
@@ -208,7 +207,6 @@
     <ClCompile Include="Core\System\Network\BvNetSocket.cpp" />
     <ClCompile Include="Core\System\Diagnostics\BvDiagnostics.cpp" />
     <ClCompile Include="Core\System\Network\Windows\BvNetworkWindows.cpp" />
-    <ClCompile Include="Core\Utils\BvText.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\System\HID\Windows\BvXInputWindows.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />

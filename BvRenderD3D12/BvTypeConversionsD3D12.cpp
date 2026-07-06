@@ -675,7 +675,7 @@ D3D12_CONSTANT_BUFFER_VIEW_DESC GetD3D12CBVDesc(const BufferViewDesc& viewDesc)
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbv{};
 	cbv.BufferLocation = viewDesc.m_pBuffer->GetDeviceAddress() + viewDesc.m_Offset;
-	cbv.SizeInBytes = viewDesc.m_Stride * viewDesc.m_ElementCount;
+	cbv.SizeInBytes = RoundToNearestPowerOf2(viewDesc.m_Stride * viewDesc.m_ElementCount, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
 	return cbv;
 }
@@ -719,34 +719,43 @@ D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const TextureViewDesc& viewDesc)
 	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	auto& subres = viewDesc.m_SubresourceDesc;
+	auto mipCount = subres.mipCount;
+	auto layerCount = subres.layerCount;
+	if (mipCount == kU32Max || layerCount == kU32Max)
+	{
+		auto resDesc = pTex->GetHandle()->GetDesc();
+		mipCount = resDesc.MipLevels;
+		layerCount = resDesc.DepthOrArraySize;
+	}
+
 	switch (srv.ViewDimension)
 	{
 	case D3D12_SRV_DIMENSION_TEXTURE1D:
-		srv.Texture1D = { subres.firstMip, subres.mipCount, 0.0f };
+		srv.Texture1D = { subres.firstMip, mipCount, 0.0f };
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURE1DARRAY:
-		srv.Texture1DArray = { subres.firstMip, subres.mipCount, subres.firstLayer, subres.layerCount, 0.0f };
+		srv.Texture1DArray = { subres.firstMip, mipCount, subres.firstLayer, layerCount, 0.0f };
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURE2D:
-		srv.Texture2D = { subres.firstMip, subres.mipCount, subres.planeSlice, 0.0f };
+		srv.Texture2D = { subres.firstMip, mipCount, subres.planeSlice, 0.0f };
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURE2DMS:
 		srv.Texture2DMS = {};
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
-		srv.Texture2DArray = { subres.firstMip, subres.mipCount, subres.firstLayer, subres.layerCount, subres.planeSlice, 0.0f };
+		srv.Texture2DArray = { subres.firstMip, mipCount, subres.firstLayer, layerCount, subres.planeSlice, 0.0f };
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY:
-		srv.Texture2DMSArray = { subres.firstLayer, subres.layerCount };
+		srv.Texture2DMSArray = { subres.firstLayer, layerCount };
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURECUBE:
-		srv.TextureCube = { subres.firstMip, subres.mipCount, 0.0f };
+		srv.TextureCube = { subres.firstMip, mipCount, 0.0f };
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
-		srv.TextureCubeArray = { subres.firstMip, subres.mipCount, subres.firstLayer, subres.layerCount, 0.0f };
+		srv.TextureCubeArray = { subres.firstMip, mipCount, subres.firstLayer, layerCount / 6, 0.0f };
 		break;
 	case D3D12_SRV_DIMENSION_TEXTURE3D:
-		srv.Texture3D = { subres.firstMip, subres.mipCount, 0.0f };
+		srv.Texture3D = { subres.firstMip, mipCount, 0.0f };
 		break;
 	}
 
@@ -765,13 +774,20 @@ D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const TextureViewDesc& viewDesc
 	uav.ViewDimension = GetD3D12UAVDimension(viewDesc.m_ViewType, pTex->GetDesc().m_SampleCount > 1);
 
 	auto& subres = viewDesc.m_SubresourceDesc;
+	auto layerCount = subres.layerCount;
+	if (layerCount == kU32Max)
+	{
+		auto resDesc = pTex->GetHandle()->GetDesc();
+		layerCount = resDesc.DepthOrArraySize;
+	}
+
 	switch (uav.ViewDimension)
 	{
 	case D3D12_UAV_DIMENSION_TEXTURE1D:
 		uav.Texture1D = { subres.firstMip };
 		break;
 	case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
-		uav.Texture1DArray = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		uav.Texture1DArray = { subres.firstMip, subres.firstLayer, layerCount };
 		break;
 	case D3D12_UAV_DIMENSION_TEXTURE2D:
 		uav.Texture2D = { subres.firstMip, subres.planeSlice };
@@ -780,13 +796,13 @@ D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const TextureViewDesc& viewDesc
 		uav.Texture2DMS = {};
 		break;
 	case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
-		uav.Texture2DArray = { subres.firstMip, subres.firstLayer, subres.layerCount, subres.planeSlice };
+		uav.Texture2DArray = { subres.firstMip, subres.firstLayer, layerCount, subres.planeSlice };
 		break;
 	case D3D12_UAV_DIMENSION_TEXTURE2DMSARRAY:
-		uav.Texture2DMSArray = { subres.firstLayer, subres.layerCount };
+		uav.Texture2DMSArray = { subres.firstLayer, layerCount };
 		break;
 	case D3D12_UAV_DIMENSION_TEXTURE3D:
-		uav.Texture3D = { subres.firstMip, subres.firstLayer, subres.layerCount };
+		uav.Texture3D = { subres.firstMip, subres.firstLayer, layerCount };
 		break;
 	}
 

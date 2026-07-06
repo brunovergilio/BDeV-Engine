@@ -9,7 +9,7 @@
 #include "BvTypeConversionsD3D12.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 #include "BDeV/Core/System/Window/BvWindow.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 #include <dxgi1_5.h>
 
 
@@ -196,9 +196,10 @@ namespace D3D12Utils
 		auto pD3DDevice = pDevice->GetHandle();
 		D3D12MA::ALLOCATION_DESC allocationDesc{};
 		allocationDesc.HeapType = GetD3D12HeapType(textureDesc.m_MemoryType);
+
 		D3D12_RESOURCE_ALLOCATION_INFO allocationInfo = pD3DDevice->GetResourceAllocationInfo(0, 1, &resourceDesc);
 
-		do 
+		do
 		{
 			hr = pAllocator->AllocateMemory(&allocationDesc, &allocationInfo, &allocation);
 			if (FAILED(hr))
@@ -206,8 +207,29 @@ namespace D3D12Utils
 				break;
 			}
 
+			D3D12_CLEAR_VALUE cv{}, * pCV = nullptr;
+			if (EHasFlag(textureDesc.m_UsageFlags, TextureUsage::kRenderTarget))
+			{
+				cv.Color[0] = 0.0f; cv.Color[1] = 0.0f; cv.Color[2] = 0.0f; cv.Color[3] = 1.0f;
+				cv.Format = resourceDesc.Format;
+				pCV = &cv;
+			}
+			else if (EHasFlag(textureDesc.m_UsageFlags, TextureUsage::kDepthStencilTarget))
+			{
+				auto fi = BvRenderUtils::GetFormatInfo(textureDesc.m_Format);
+				if (EHasAnyFlags(textureDesc.m_UsageFlags, TextureUsage::kShaderResource | TextureUsage::kInputAttachment)
+					&& !fi.m_IsTypeless && fi.m_ParentFormat != Format::kUnknown)
+				{
+					resourceDesc.Format = DXGI_FORMAT(fi.m_ParentFormat);
+				}
+
+				cv.Format = resourceDesc.Format;
+				cv.DepthStencil = { 1.0f, 0 };
+				pCV = &cv;
+			}
+
 			hr = pD3DDevice->CreatePlacedResource(allocation->GetHeap(), allocation->GetOffset(), &resourceDesc,
-				initialState, nullptr, IID_PPV_ARGS(&texture));
+				initialState, pCV, IID_PPV_ARGS(&texture));
 			if (FAILED(hr))
 			{
 				allocation = nullptr;
@@ -567,9 +589,11 @@ namespace D3D12Utils
 		BvVector<BvWString> exportNames; exportNames.Reserve(libs.Capacity());
 		for (auto pShader : rayTracingPipelineStateDesc.m_Shaders)
 		{
-			auto size = BvTextUtilities::ConvertUTF8CharToWideChar(pShader->GetEntryPoint(), 0, nullptr, 0);
+			std::string_view sv(pShader->GetEntryPoint());
+			auto size = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end());
 			BV_ASSERT(size > 0, "Entry point can't be empty");
-			BvTextUtilities::ConvertUTF8CharToWideChar(pShader->GetEntryPoint(), 0, &exportNames.PushBack(BvWString(size - 1))[0], size);
+			auto& exportName = exportNames.PushBack(BvWString(size));
+			BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, exportName.Begin(), exportName.End());
 
 			libs.PushBack({ { pShader->GetShaderBlob().Data(), pShader->GetShaderBlob().Size() }, 1, &exports.PushBack({ exportNames.Back().CStr(), nullptr, D3D12_EXPORT_FLAG_NONE }) });
 
@@ -591,9 +615,10 @@ namespace D3D12Utils
 			
 			if (group.m_pName)
 			{
-				auto size = BvTextUtilities::ConvertUTF8CharToWideChar(group.m_pName, 0, nullptr, 0);
-				hitGroupNames.Back().Resize(size - 1);
-				BvTextUtilities::ConvertUTF8CharToWideChar(group.m_pName, 0, &hitGroupNames.Back()[0], size);
+				std::string_view sv(group.m_pName);
+				auto size = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end());
+				hitGroupNames.Back().Resize(size);
+				BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, hitGroupNames.Back().Begin(), hitGroupNames.Back().End());
 			}
 			else
 			{

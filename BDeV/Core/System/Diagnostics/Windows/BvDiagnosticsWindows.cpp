@@ -1,9 +1,9 @@
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 #include <cstdio>
 #include <intrin.h>
+#include "BDeV/Core/Utils/BvUTF.h"
 
 
 constexpr u32 kMaxMessageSize = 2_kb;
@@ -107,9 +107,7 @@ void BvDebug::Printf(const char* pFormat, ...)
 	u32 charsWritten = std::min(u32(vsnprintf(pMessage, kMaxMessageSize, pFormat, args)) + 1, kMaxMessageSize);
 	va_end(args);
 
-	//wchar_t messageW[kMaxMessageSize];
-	//BvTextUtilities::ConvertUTF8CharToWideChar(pMessage, charsWritten, messageW, kMaxMessageSize);
-	PrintInternal(pMessage);
+	PrintInternal(pMessage, charsWritten);
 }
 
 
@@ -136,8 +134,8 @@ void BvDebug::Assert(const char* pCondition, const std::source_location& sourceI
 			"\nSource: %s in %s [%u]", sourceInfo.function_name(), sourceInfo.file_name(), sourceInfo.line())) + 1, remaining);
 	}
 
-	wchar_t errorMessageW[kMaxMessageSize];
-	BvTextUtilities::ConvertUTF8CharToWideChar(pErrorMessage, charsWritten, errorMessageW, kMaxMessageSize);
+	wchar_t errorMessageW[kMaxMessageSize]{};
+	BvUTFCharTraits::GetStr(pErrorMessage, pErrorMessage + charsWritten, errorMessageW, errorMessageW + kMaxMessageSize);
 
 	auto result = MessageBoxW(nullptr, errorMessageW, L"BDeV Assertion Error", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 	if (result == IDABORT)
@@ -157,9 +155,12 @@ void BvDebug::Assert(const char* pCondition, const std::source_location& sourceI
 }
 
 
-void BvDebug::PrintInternal(const char* pMessage)
+void BvDebug::PrintInternal(const char* pMessage, u32 length)
 {
-	OutputDebugStringA(pMessage);
+	wchar_t messageW[kMaxMessageSize];
+	BvUTFCharTraits::GetStr(pMessage, pMessage + length, messageW, messageW + kMaxMessageSize);
+
+	OutputDebugStringW(messageW);
 }
 
 
@@ -168,7 +169,7 @@ namespace Internal
 	void ReportFatalError(const char* pMessage)
 	{
 		wchar_t errorMessageW[kMaxMessageSize]{};
-		BvTextUtilities::ConvertUTF8CharToWideChar(pMessage, 0, errorMessageW, kMaxMessageSize);
+		BvUTFCharTraits::GetStr(pMessage, pMessage + std::char_traits<char>::length(pMessage) + 1, errorMessageW, errorMessageW + kMaxMessageSize);
 
 		MessageBoxW(nullptr, errorMessageW, L"Fatal error", MB_OK);
 		exit(kI32Max);
@@ -189,8 +190,7 @@ namespace Internal
 			errorCode, 0, (LPWSTR)&pErrorMessageW, 0, nullptr))
 		{
 			charsWritten += snprintf(pErrorMessage + charsWritten, kMaxMessageSize - charsWritten, " - ");
-			BvTextUtilities::ConvertWideCharToUTF8Char(pErrorMessageW, errorMessageLength + 1,
-				pErrorMessage + charsWritten, kMaxMessageSize - charsWritten);
+			BvUTFCharTraits::GetStr(pErrorMessageW, pErrorMessageW + errorMessageLength, pErrorMessage + charsWritten, pErrorMessage + kMaxMessageSize);
 			LocalFree(pErrorMessageW);
 		}
 

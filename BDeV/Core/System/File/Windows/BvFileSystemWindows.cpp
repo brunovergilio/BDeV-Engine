@@ -1,18 +1,16 @@
 #include "BDeV/Core/System/File/BvFileSystem.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <winioctl.h>
 
 
 bool BvFileSystem::FileExists(const char * pFilename)
 {
-	DWORD attrib = 0;
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
-		attrib = GetFileAttributesW(pFilenameW);
-	}
+	std::string_view sv(pFilename);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pFilenameW, pFilenameW + sizeNeeded);
+	DWORD attrib = GetFileAttributesW(pFilenameW);
 
 	if (attrib == INVALID_FILE_ATTRIBUTES)
 	{
@@ -30,13 +28,11 @@ bool BvFileSystem::FileExists(const char * pFilename)
 
 bool BvFileSystem::DeleteFile(const char* const pFilename)
 {
-	BOOL result = TRUE;
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
-		result = DeleteFileW(pFilenameW);
-	}
+	std::string_view sv(pFilename);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pFilenameW, pFilenameW + sizeNeeded);
+	BOOL result = DeleteFileW(pFilenameW);
 
 	if (!result)
 	{
@@ -51,13 +47,11 @@ bool BvFileSystem::DeleteFile(const char* const pFilename)
 
 bool BvFileSystem::DirectoryExists(const char * const pDirName)
 {
-	DWORD attrib = 0;
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, pFilenameW, sizeNeeded);
-		attrib = GetFileAttributesW(pFilenameW);
-	}
+	std::string_view sv(pDirName);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pFilenameW, pFilenameW + sizeNeeded);
+	DWORD attrib = GetFileAttributesW(pFilenameW);
 
 	if (attrib == INVALID_FILE_ATTRIBUTES)
 	{
@@ -75,13 +69,11 @@ bool BvFileSystem::DirectoryExists(const char * const pDirName)
 
 bool BvFileSystem::CreateDirectory(const char* const pDirName)
 {
-	BOOL result = TRUE;
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, pFilenameW, sizeNeeded);
-		result = CreateDirectoryW(pFilenameW, nullptr);
-	}
+	std::string_view sv(pDirName);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pFilenameW, pFilenameW + sizeNeeded);
+	BOOL result = CreateDirectoryW(pFilenameW, nullptr);
 
 	if (!result)
 	{
@@ -178,9 +170,10 @@ bool BvFileSystem::DeleteDirectory(const char* const pDirName, bool recurse)
 {
 	bool result = true;
 	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, nullptr, 0);
+		std::string_view sv(pDirName);
+		auto sizeNeeded = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
 		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pDirName, 0, pFilenameW, sizeNeeded);
+		BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pFilenameW, pFilenameW + sizeNeeded);
 		result = Internal::DeleteDirectoryInternal(pFilenameW, recurse);
 	}
 

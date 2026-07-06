@@ -45,6 +45,6 @@ private:
 	BvRCRef<IBvSampler> m_SamplerSkybox;
 	BvRCRef<IBvGraphicsPipelineState> m_PSOSkybox;
 
-	Float44* m_pWVP = nullptr;
-	Float44* m_pWVPSkybox = nullptr;
+	XMFLOAT4X4* m_pWVP = nullptr;
+	XMFLOAT4X4* m_pWVPSkybox = nullptr;
 };

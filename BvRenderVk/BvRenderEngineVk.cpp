@@ -1,3 +1,4 @@
+
 #include "BvRenderEngineVk.h"
 #include "BvUtilsVk.h"
 #include "BvRenderDeviceVk.h"
@@ -401,6 +402,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	ff.meshShader = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_MESH_SHADER_EXTENSION_NAME);
 	ff.accelerationStructure = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
 	ff.rayTracingPipeline = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+	ff.rayTracingMaintenance = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME);
 	ff.rayQuery = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_RAY_QUERY_EXTENSION_NAME);
 	ff.conservativeRasterization = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
 	ff.customBorderColor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME);
@@ -470,6 +472,11 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 			pNextProperty = &deviceInfo.m_ExtendedProperties.rayTracingPipelineProps.pNext;
 
 			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+		}
+
+		if (ff.rayTracingMaintenance)
+		{
+			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME);
 		}
 
 		if (ff.rayQuery)

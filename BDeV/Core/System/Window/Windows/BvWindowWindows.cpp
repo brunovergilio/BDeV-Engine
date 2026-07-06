@@ -1,7 +1,7 @@
 #include "BDeV/Core/System/Window/Windows/BvWindowWindows.h"
 #include "BDeV/Core/System/Application/BvApplication.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 #include "BDeV/Core/System/Window/BvMonitor.h"
 //#include <dwmapi.h>
 
@@ -343,9 +343,11 @@ void BvWindow::Flash()
 
 void BvWindow::SetText(const char* pText)
 {
-	auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, nullptr, 0);
-	wchar_t* pTextW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-	BvTextUtilities::ConvertUTF8CharToWideChar(pText, 0, pTextW, sizeNeeded);
+	std::string_view sv(pText);
+	auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+	wchar_t* pTextW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pTextW, pTextW + length);
+
 	SetWindowTextW(m_hWnd, pTextW);
 }
 
@@ -445,11 +447,9 @@ void BvWindow::Create()
 	auto pChosenWindowName = pDefaultWindowName;
 	if (m_WindowDesc.m_pText)
 	{
-		if (auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_WindowDesc.m_pText, 0, nullptr, 0))
-		{
-			BvTextUtilities::ConvertUTF8CharToWideChar(m_WindowDesc.m_pText, 0, wideName, sizeNeeded);
-			pChosenWindowName = wideName;
-		}
+		std::string_view sv(m_WindowDesc.m_pText);
+		BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, wideName, wideName + kMaxWindowNameSize);
+		pChosenWindowName = wideName;
 	}
 
 	m_hWnd = CreateWindowExW(exStyle, L"BDeVWindowClass", pChosenWindowName, style,

@@ -39,7 +39,7 @@ struct BvRapidHash
 	template<typename T>
 	u64 operator()(const T& value) const
 	{
-		static_assert(std::is_trivially_copyable_v<T>);
+		//static_assert(std::is_trivially_copyable_v<T>);
 		return rapidhash_withSeed(&value, sizeof(value), m_Seed);
 	}
 

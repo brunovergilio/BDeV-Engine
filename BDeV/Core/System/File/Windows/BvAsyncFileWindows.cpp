@@ -2,7 +2,7 @@
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/Threading/BvSync.h"
 #include "BDeV/Core/Utils/BvUtils.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 #include "BDeV/Core/System/Memory/BvMemory.h"
 
 
@@ -171,9 +171,10 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 	}
 
 	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
+		std::string_view sv(pFilename);
+		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+		BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pFilenameW, pFilenameW + length);
 		m_hFile = CreateFileW(pFilenameW, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
 	}
 

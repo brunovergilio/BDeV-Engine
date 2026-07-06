@@ -6,21 +6,6 @@
 #include "BDeV/Core/Container/BvRobinMap.h"
 
 
-class BvNoMemoryTracker
-{
-	BV_NOCOPYMOVE(BvNoMemoryTracker);
-public:
-	BvNoMemoryTracker() {}
-	~BvNoMemoryTracker() {}
-
-	BV_INLINE void OnAllocation(void* pMem, size_t size, size_t alignment, const std::source_location& sourceInfo = std::source_location::current()) {}
-	BV_INLINE void OnDeallocation(void* pMem) {}
-
-	BV_INLINE u32 GetNumAllocations() const { return 0; }
-	BV_INLINE void GetTrackingInfo(void* pMem, BvTrackedAllocationInfo& trackingInfo) const {}
-};
-
-
 class BvSimpleMemoryTracker
 {
 	BV_NOCOPYMOVE(BvSimpleMemoryTracker);

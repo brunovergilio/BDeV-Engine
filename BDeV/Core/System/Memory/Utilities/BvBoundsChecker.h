@@ -1,25 +1,7 @@
 #pragma once
 
 
-#include "BDeV/Core/System/Memory/BvMemory.h"
 #include "BDeV/Core/Container/BvVector.h"
-
-
-class BvNoBoundsChecker
-{
-public:
-	BvNoBoundsChecker() {}
-	~BvNoBoundsChecker() {}
-
-	BV_INLINE void GuardFront(void*) {}
-	BV_INLINE void GuardBack(void*) {}
-	BV_INLINE void CheckFrontGuard(void*) {}
-	BV_INLINE void CheckBackGuard(void*) {}
-
-public:
-	static constexpr size_t kFrontGuardSize = 0;
-	static constexpr size_t kBackGuardSize = 0;
-};
 
 
 class BvSimpleBoundsChecker

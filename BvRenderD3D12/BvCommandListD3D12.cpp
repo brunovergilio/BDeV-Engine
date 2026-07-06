@@ -63,6 +63,12 @@ void BvCommandListD3D12::Close()
 {
 	ResetRenderTargets();
 
+	if (m_EndCommandBarriers.Size() > 0)
+	{
+		m_CommandList->ResourceBarrier(m_EndCommandBarriers.Size(), m_EndCommandBarriers.Data());
+		m_EndCommandBarriers.Clear();
+	}
+
 	m_CommandList->Close();
 }
 
@@ -188,21 +194,36 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 		}
 
 		auto pResource = pTexture->GetHandle();
-		if (renderTarget.m_StateBefore != renderTarget.m_State)
+		auto stateBefore = GetD3D12ResourceState(renderTarget.m_StateBefore);
+		auto state = GetD3D12ResourceState(renderTarget.m_State);
+		auto stateAfter = GetD3D12ResourceState(renderTarget.m_StateAfter);
+
+		if (stateBefore != state)
 		{
 			auto& barrier = m_PreRenderBarriers.PushBack({});
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Transition.StateBefore = GetD3D12ResourceState(renderTarget.m_StateBefore);
-			barrier.Transition.StateAfter = GetD3D12ResourceState(renderTarget.m_State);
+			barrier.Transition.StateBefore = stateBefore;
+			barrier.Transition.StateAfter = state;
 			barrier.Transition.Subresource = kU32Max;
 			barrier.Transition.pResource = pResource;
 		}
-		if (renderTarget.m_State != renderTarget.m_StateAfter)
+
+		if (state != stateAfter)
 		{
 			auto& barrier = m_PostRenderBarriers.PushBack({});
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Transition.StateBefore = GetD3D12ResourceState(renderTarget.m_State);
-			barrier.Transition.StateAfter = GetD3D12ResourceState(renderTarget.m_StateAfter);
+			barrier.Transition.StateBefore = state;
+			barrier.Transition.StateAfter = stateAfter;
+			barrier.Transition.Subresource = kU32Max;
+			barrier.Transition.pResource = pResource;
+		}
+
+		if (stateAfter != D3D12_RESOURCE_STATE_COMMON)
+		{
+			auto& barrier = m_EndCommandBarriers.PushBack({});
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Transition.StateBefore = stateAfter;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
 			barrier.Transition.Subresource = kU32Max;
 			barrier.Transition.pResource = pResource;
 		}
@@ -337,9 +358,10 @@ void BvCommandListD3D12::SetShaderResourceParams(u32 resourceParamsCount, IBvSha
 void BvCommandListD3D12::SetConstantBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetCBV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetCBV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -347,9 +369,10 @@ void BvCommandListD3D12::SetConstantBuffers(u32 count, const IBvBufferView* cons
 void BvCommandListD3D12::SetStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -357,9 +380,10 @@ void BvCommandListD3D12::SetStructuredBuffers(u32 count, const IBvBufferView* co
 void BvCommandListD3D12::SetRWStructuredBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetUAV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetUAV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -417,9 +441,10 @@ void BvCommandListD3D12::SetDynamicRWStructuredBuffer(IBvBufferView* pResource, 
 void BvCommandListD3D12::SetFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -427,9 +452,10 @@ void BvCommandListD3D12::SetFormattedBuffers(u32 count, const IBvBufferView* con
 void BvCommandListD3D12::SetRWFormattedBuffers(u32 count, const IBvBufferView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetUAV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetUAV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -437,9 +463,10 @@ void BvCommandListD3D12::SetRWFormattedBuffers(u32 count, const IBvBufferView* c
 void BvCommandListD3D12::SetTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -447,9 +474,10 @@ void BvCommandListD3D12::SetTextures(u32 count, const IBvTextureView* const* ppR
 void BvCommandListD3D12::SetRWTextures(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetUAV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetUAV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -457,9 +485,10 @@ void BvCommandListD3D12::SetRWTextures(u32 count, const IBvTextureView* const* p
 void BvCommandListD3D12::SetSamplers(u32 count, const IBvSampler* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetHandle(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetHandle(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -467,9 +496,10 @@ void BvCommandListD3D12::SetSamplers(u32 count, const IBvSampler* const* ppResou
 void BvCommandListD3D12::SetInputAttachments(u32 count, const IBvTextureView* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
 	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
 	for (auto i = 0; i < count; ++i)
 	{
-		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), set, binding, startIndex + i);
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), rootIndex, set, binding, startIndex + i);
 	}
 }
 
@@ -1087,16 +1117,11 @@ void BvCommandListD3D12::FlushDescriptorSets()
 
 	u64 hashSeed = 0;
 	auto& params = m_pShaderResourceLayout->GetRootParams();
-	for (auto rootIndex = 0; rootIndex < params.Size(); rootIndex++)
+	for (auto rootIndex = 0u; rootIndex < params.Size(); rootIndex++)
 	{
 		auto& rootParam = params[rootIndex];
-		if (rootParam.ParameterType != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
-		{
-			continue;
-		}
-
-		auto set = rootParam.DescriptorTable.pDescriptorRanges[0].RegisterSpace;
-		if (!rbs.IsDirty(set))
+		if (rootParam.ParameterType != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE
+			|| !rbs.IsDirty(rootIndex))
 		{
 			continue;
 		}
@@ -1109,7 +1134,7 @@ void BvCommandListD3D12::FlushDescriptorSets()
 
 			for (auto descriptorIndex = 0u; descriptorIndex < range.NumDescriptors; descriptorIndex++)
 			{
-				ResourceIdD3D12 resId{ range.RegisterSpace, range.BaseShaderRegister, descriptorIndex };
+				ResourceIdD3D12 resId{ rootIndex, range.RegisterSpace, range.BaseShaderRegister, descriptorIndex };
 				if (auto pResourceData = rbs.GetResource(resId))
 				{
 					descriptors.PushBack({ pResourceData->GetCPUHandle(), rangeOffset });
@@ -1132,7 +1157,7 @@ void BvCommandListD3D12::FlushDescriptorSets()
 			m_CommandList->SetComputeRootDescriptorTable(rootIndex, dstHandle);
 		}
 
-		rbs.MarkClean(set);
+		rbs.MarkClean(rootIndex);
 		descriptors.Clear();
 	}
 }

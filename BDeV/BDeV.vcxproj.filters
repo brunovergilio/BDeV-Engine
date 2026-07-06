@@ -65,7 +65,6 @@
     <ClInclude Include="BDeV.h" />
     <ClInclude Include="Core\System\HID\BvXInput.h" />
     <ClInclude Include="Core\Utils\BvUUID.h" />
-    <ClInclude Include="Core\Utils\BvText.h" />
     <ClInclude Include="Core\RenderAPI\BvShader.h" />
     <ClInclude Include="Core\Utils\BvObject.h" />
     <ClInclude Include="Core\RenderAPI\BvShaderCompiler.h" />
@@ -128,7 +127,6 @@
     <ClCompile Include="Core\Utils\BvStringId.cpp" />
     <ClCompile Include="Core\Utils\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
-    <ClCompile Include="Core\Utils\BvText.cpp" />
     <ClCompile Include="Core\Math\BvGeometryGenerator.cpp" />
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
     <ClCompile Include="Core\System\HID\Windows\BvXInputWindows.cpp" />

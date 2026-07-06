@@ -18,8 +18,8 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 			m_RootSignatureMap.Emplace({ constant.m_Binding, set.m_Index }, paramCount++);
 		}
 
-		bool hasTable = false;
-		u32 tableRootIndex = 0;
+		u32 shaderTableRootIndex = kU32Max;
+		u32 samplerTableRootIndex = kU32Max;
 		for (auto j = 0u; j < set.m_Resources.Size(); ++j)
 		{
 			auto& resource = set.m_Resources[j];
@@ -37,10 +37,24 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 			else
 			{
 				rangeCount++;
-				if (!hasTable)
+				u32 tableRootIndex = kU32Max;
+
+				// For each set, we may need 2 separate descriptor tables, one for CBV / SRV / UAV, and another for Samplers
+				if (resource.m_ShaderResourceType != ShaderResourceType::kSampler)
 				{
-					hasTable = true;
-					tableRootIndex = paramCount++;
+					if (shaderTableRootIndex == kU32Max)
+					{
+						shaderTableRootIndex = paramCount++;
+					}
+					tableRootIndex = shaderTableRootIndex;
+				}
+				else
+				{
+					if (samplerTableRootIndex == kU32Max)
+					{
+						samplerTableRootIndex = paramCount++;
+					}
+					tableRootIndex = samplerTableRootIndex;
 				}
 
 				m_RootSignatureMap.Emplace({ resource.m_Binding, set.m_Index }, tableRootIndex);
@@ -50,24 +64,26 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 
 	m_RootParams.Resize(paramCount);
 	m_Ranges.Resize(rangeCount);
-	m_RootParamsBindlessFlags.Resize(rangeCount, false);
+	m_RootParamsBindlessFlags.Resize(paramCount, false);
+
+	BvVector<CD3DX12_DESCRIPTOR_RANGE1> shaderRanges; shaderRanges.Reserve(rangeCount);
+	BvVector<CD3DX12_DESCRIPTOR_RANGE1> samplerRanges; samplerRanges.Reserve(rangeCount);
 
 	u32 rangeIndex = 0;
 	u32 paramIndex = 0;
-	u32 staticSamplerIndex = 0;
-	ShaderStage allStages = ShaderStage::kUnknown;
 	for (auto i = 0u; i < m_ShaderResourceLayoutDesc.m_ShaderResourceSets.Size(); ++i)
 	{
 		auto& set = m_ShaderResourceLayoutDesc.m_ShaderResourceSets[i];
-		u32 currRangeIndex = rangeIndex;
-		ShaderStage tableStages = ShaderStage::kUnknown;
 		for (auto j = 0u; j < set.m_Constants.Size(); ++j)
 		{
 			auto& constant = set.m_Constants[j];
-			allStages |= constant.m_ShaderStages;
 			m_RootParams[paramIndex++].InitAsConstants(constant.m_Size >> 2, constant.m_Binding, set.m_Index, GetD3D12ShaderVisibility(constant.m_ShaderStages));
 		}
 
+		u32 shaderParamIndex = kU32Max;
+		u32 samplerParamIndex = kU32Max;
+		ShaderStage shaderTableStages = ShaderStage::kUnknown;
+		ShaderStage samplerTableStages = ShaderStage::kUnknown;
 		for (auto j = 0u; j < set.m_Resources.Size(); ++j)
 		{
 			auto& resource = set.m_Resources[j];
@@ -76,7 +92,6 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 				continue;
 			}
 
-			allStages |= resource.m_ShaderStages;
 			auto visibility = GetD3D12ShaderVisibility(resource.m_ShaderStages);
 			if (resource.m_ShaderResourceType == ShaderResourceType::kDynamicConstantBuffer)
 			{
@@ -92,17 +107,64 @@ BvShaderResourceLayoutD3D12::BvShaderResourceLayoutD3D12(BvRenderDeviceD3D12* pD
 			}
 			else
 			{
-				m_Ranges[rangeIndex++] = CD3DX12_DESCRIPTOR_RANGE1(GetD3D12DescriptorRangeType(resource.m_ShaderResourceType), resource.m_Count, resource.m_Binding, set.m_Index,
-					D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
-				tableStages |= resource.m_ShaderStages;
+				auto rangeType = GetD3D12DescriptorRangeType(resource.m_ShaderResourceType);
+				auto tableParamIndex = kU32Max;
+				if (rangeType != D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER)
+				{
+					if (shaderParamIndex == kU32Max)
+					{
+						shaderParamIndex = paramIndex++;
+					}
+
+					shaderTableStages |= resource.m_ShaderStages;
+					tableParamIndex = shaderParamIndex;
+					shaderRanges.EmplaceBack(rangeType, resource.m_Count, resource.m_Binding, set.m_Index, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+				}
+				else
+				{
+					if (samplerParamIndex == kU32Max)
+					{
+						samplerParamIndex = paramIndex++;
+					}
+
+					samplerTableStages |= resource.m_ShaderStages;
+					tableParamIndex = samplerParamIndex;
+					samplerRanges.EmplaceBack(rangeType, resource.m_Count, resource.m_Binding, set.m_Index, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+				}
+
+				m_RootParamsBindlessFlags[tableParamIndex] = set.m_Type == ShaderResourceSetDesc::Type::kBindless;
 			}
 		}
 
-		if (currRangeIndex != rangeIndex)
+		auto moveRangesFn = [this, &rangeIndex](BvVector<CD3DX12_DESCRIPTOR_RANGE1>& src, u32 rootIndex, ShaderStage tableStages)
+			{
+				if (src.Size() == 0)
+				{
+					return;
+				}
+
+				auto currRangeIndex = rangeIndex;
+				for (const auto& i : src)
+				{
+					m_Ranges[rangeIndex++] = i;
+				}
+
+				m_RootParams[rootIndex].InitAsDescriptorTable(rangeIndex - currRangeIndex, &m_Ranges[currRangeIndex], GetD3D12ShaderVisibility(tableStages));
+			};
+
+		if (shaderParamIndex < samplerParamIndex)
 		{
-			m_RootParamsBindlessFlags[paramIndex] = set.m_Type == ShaderResourceSetDesc::Type::kBindless;
-			m_RootParams[paramIndex++].InitAsDescriptorTable(rangeIndex - currRangeIndex, &m_Ranges[currRangeIndex], GetD3D12ShaderVisibility(tableStages));
+			moveRangesFn(shaderRanges, shaderParamIndex, shaderTableStages);
+			moveRangesFn(samplerRanges, samplerParamIndex, samplerTableStages);
 		}
+		else
+		{
+			moveRangesFn(samplerRanges, samplerParamIndex, samplerTableStages);
+			moveRangesFn(shaderRanges, shaderParamIndex, shaderTableStages);
+		}
+
+		shaderRanges.Clear();
+		samplerRanges.Clear();
 	}
 }
 

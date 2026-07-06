@@ -1,9 +1,4 @@
 #include "BvMemory.h"
-#include <utility>
-#include "Utilities/BvBoundsChecker.h"
-#include "Utilities/BvMemoryMarker.h"
-#include "Utilities/BvMemoryTracker.h"
-#include "BDeV/Core/System/Threading/BvSync.h"
 
 
 void* BvMemory::Allocate(size_t size, size_t alignment, size_t offset)
@@ -74,7 +69,7 @@ void* BvMemory::AlignMemory(void* pMem, size_t alignment)
 }
 
 
-using BvDefaultMemoryArena = BvMemoryArena<BvDefaultAllocator, BvNoLock, BvNoBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker, BvNoMemoryLogger>;
+using BvDefaultMemoryArena = BvMemoryArena<BvDefaultAllocator, BvNoMemoryLock, BvNoBoundsChecker, BvNoMemoryMarker, BvNoMemoryTracker, BvNoMemoryLogger>;
 BvDefaultMemoryArena g_DefaultMemoryArena;
 IBvMemoryArena* g_pDefaultMemoryArena = &g_DefaultMemoryArena;
 

@@ -86,11 +86,6 @@ public:
 	Type& PushBack(Type && value);
 	void PopBack();
 	void PopFront();
-	//Iterator Insert(ConstIterator position, const Type & value);
-	//Iterator Insert(ConstIterator position, const size_t count, const Type & value);
-	//Iterator Insert(ConstIterator position, Iterator first, Iterator last);
-	//Iterator Insert(ConstIterator position, Type && value);
-	//Iterator Insert(ConstIterator position, std::initializer_list<Type> list);
 	Iterator Erase(size_t index);
 	Iterator Erase(size_t startIndex, size_t count);
 	Iterator Erase(ConstIterator position);
@@ -286,23 +281,6 @@ inline void BvVector<Type>::SetAllocator(IBvMemoryArena* pArena)
 {
 	BV_ASSERT(pArena != nullptr, "Memory arena can't be nullptr");
 	BV_ASSERT(m_pData == nullptr, "Can't change allocators after allocations have been made");
-	//if (m_pArena == pArena)
-	//{
-	//	return;
-	//}
-
-	//if (m_Capacity > 0)
-	//{
-	//	Type* pNewData = reinterpret_cast<Type*>(m_pArena ? BV_MALLOC(*m_pArena, m_Capacity * sizeof(Type), alignof(Type)) : BV_ALLOC(m_Capacity * sizeof(Type), alignof(Type)));
-	//	for (auto i = 0u; i < m_Size; i++)
-	//	{
-	//		new (&pNewData[i]) Type(std::move(m_pData[i]));
-	//	}
-
-	//	Clear();
-	//	m_pArena ? BV_MFREE(*m_pArena, m_pData) : BV_FREE(m_pData);
-	//	m_pData = pNewData;
-	//}
 
 	m_pArena = pArena;
 }
@@ -515,140 +493,6 @@ inline void BvVector<Type>::PopFront()
 {
 	Erase(cbegin());
 }
-
-
-//template<typename Type>
-//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const Type & value)
-//{
-//	return Insert(position, 1, value);
-//}
-//
-//template<typename Type>
-//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, const size_t count, const Type & value)
-//{
-//	auto pos = position - ConstIterator(m_pData);
-//	if (pos > m_Size)
-//	{
-//		pos = m_Size;
-//	}
-//
-//	if (m_Size + count > m_Capacity)
-//	{
-//		Grow(m_Size + count + 1);
-//	}
-//
-//	if (pos < m_Size)
-//	{
-//		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-//		{
-//			m_pData[i] = std::move(m_pData[i - count]);
-//		}
-//	}
-//
-//	for (auto i = 0; i < count; i++)
-//	{
-//		new (&m_pData[pos + i]) Type(value);
-//	}
-//	m_Size += count;
-//
-//	return Iterator(m_pData + pos);
-//}
-//
-//template<typename Type>
-//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Iterator first, Iterator last)
-//{
-//	auto pos = position - ConstIterator(m_pData);
-//	if (pos > m_Size)
-//	{
-//		pos = m_Size;
-//	}
-//
-//	auto count = last - first;
-//	if (m_Size + count > m_Capacity)
-//	{
-//		Grow(m_Size + count + 1);
-//	}
-//
-//	if (pos < m_Size)
-//	{
-//		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-//		{
-//			m_pData[i] = std::move(m_pData[i - count]);
-//		}
-//	}
-//
-//	auto it = first;
-//	for (auto i = 0; i < count; i++)
-//	{
-//		new (&m_pData[pos + i]) Type(*(it++));
-//	}
-//
-//	m_Size += count;
-//
-//	return Iterator(m_pData + pos);
-//}
-//
-//template<typename Type>
-//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, Type && value)
-//{
-//	auto pos = position - ConstIterator(m_pData);
-//	if (pos > m_Size)
-//	{
-//		pos = m_Size;
-//	}
-//
-//	if (m_Size == m_Capacity)
-//	{
-//		Grow(m_Capacity + 1);
-//	}
-//
-//	if (pos < m_Size)
-//	{
-//		for (auto i = m_Size; i > pos; i--)
-//		{
-//			m_pData[i] = std::move(m_pData[i - 1]);
-//		}
-//	}
-//
-//	new (&m_pData[pos]) Type(std::move(value));
-//	m_Size++;
-//
-//	return Iterator(m_pData + pos);
-//}
-//
-//template<typename Type>
-//inline typename BvVector<Type>::Iterator BvVector<Type>::Insert(ConstIterator position, std::initializer_list<Type> list)
-//{
-//	auto pos = position - ConstIterator(m_pData);
-//	if (pos > m_Size)
-//	{
-//		pos = m_Size;
-//	}
-//
-//	auto count = list.size();
-//	if (m_Size + count > m_Capacity)
-//	{
-//		Grow(m_Size + count + 1);
-//	}
-//
-//	if (pos < m_Size)
-//	{
-//		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-//		{
-//			m_pData[i] = std::move(m_pData[i - count]);
-//		}
-//	}
-//
-//	auto it = list.begin();
-//	for (auto i = 0; i < count; i++)
-//	{
-//		new (&m_pData[pos + i]) Type(*(it++));
-//	}
-//
-//	m_Size += count;
-//
-//	return Iterator(m_pData + pos);
-//}
 
 
 template<typename Type>

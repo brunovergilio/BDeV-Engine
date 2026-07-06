@@ -1,55 +1,14 @@
 #include "Texture.h"
 #include "BDeV/Core/Math/BvGeometryGenerator.h"
 #include "BDeV/Core/Utils/BvRandom.h"
+#include "Shaders.h"
 
 
 struct Vertex
 {
-	Float3 pos;
-	Float2 uv;
+	XMFLOAT3 pos;
+	XMFLOAT2 uv;
 };
-
-
-constexpr const char* g_pVSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec2 inTexCoords;
-
-layout (location = 0) out vec2 outTexCoords;
-
-layout (binding = 0) uniform UBO 
-{
-	mat4 wvp;
-} ubo;
-
-void main() 
-{
-	outTexCoords = inTexCoords;
-	gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
-}
-)raw";
-constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);
-
-
-constexpr const char* g_pPSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec2 inTexCoords;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 1) uniform texture2D samplerTexture;
-layout (binding = 2) uniform sampler samplerObj;
-
-void main()
-{
-	outColor = texture(sampler2D(samplerTexture, samplerObj), inTexCoords);
-}
-)raw";
-constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 
 void Texture::OnInitialize()
@@ -92,9 +51,9 @@ void Texture::OnUpdate()
 	{
 		angleZ = 0.0f;
 	}
-	Store44(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ)
-		* MatrixLookAtLH(VectorSet(0.0f, 0.0f, -5.0f, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f, 1.0f))
-		* MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4), m_pWVP->m);
+	XMStoreFloat4x4(m_pWVP, BvMatrix::RotationX(angleX) * BvMatrix::RotationY(angleY) * BvMatrix::RotationZ(angleZ)
+		* BvMatrix::LookAtLH(BvVec3(0.0f, 0.0f, -5.0f), BvVec3(0.0f, 0.0f, 1.0f), BvVec3(0.0f, 1.0f, 0.0f))
+		* BvMatrix::PerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4));
 }
 
 
@@ -113,7 +72,7 @@ void Texture::OnRender()
 	m_Context->SetRenderTargets(2, targets);
 	m_Context->SetGraphicsPipeline(m_PSO);
 	m_Context->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
-	m_Context->SetScissor({ 0, 0, width, height });
+	m_Context->SetScissor({ 0, 0, i32(width), i32(height) });
 	m_Context->SetConstantBuffer(m_UBView, 0, 0);
 	m_Context->SetTexture(m_TextureView, 0, 1);
 	m_Context->SetSampler(m_Sampler, 0, 2);
@@ -148,22 +107,13 @@ void Texture::OnShutdown()
 
 void Texture::CreateShaderResourceLayout()
 {
-	ShaderResourceDesc resourceDescs[] =
-	{
-		ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex),
-		ShaderResourceDesc::AsTexture(1, ShaderStage::kPixelOrFragment),
-		ShaderResourceDesc::AsSampler(2, ShaderStage::kPixelOrFragment)
-	};
+	ShaderResourceLayoutCreateDesc layoutDesc;
+	layoutDesc.AddResourceSet()
+		.AddConstantBuffer(0, ShaderStage::kVertex)
+		.AddTexture(1, ShaderStage::kPixelOrFragment)
+		.AddSampler(2, ShaderStage::kPixelOrFragment);
 
-	ShaderResourceSetDesc setDesc{};
-	setDesc.m_ResourceCount = 3;
-	setDesc.m_pResources = resourceDescs;
-
-	ShaderResourceLayoutCreateDesc layoutDesc{};
-	layoutDesc.m_ShaderResourceSetCount = 1;
-	layoutDesc.m_pShaderResourceSets = &setDesc;
-
-	m_SRL = m_Device->CreateShaderResourceLayout(layoutDesc);
+	m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 }
 
 
@@ -181,14 +131,10 @@ void Texture::CreatePipeline()
 	pipelineDesc.m_DepthStencilDesc.m_DepthOp = CompareOp::kLessEqual;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-	VertexInputDesc inputDescs[2];
-	inputDescs[0].m_Format = Format::kRGB32_Float;
-	inputDescs[1].m_Format = Format::kRG32_Float;
+	pipelineDesc.AddVertexInput("POSITION", 0, Format::kRGB32_Float);
+	pipelineDesc.AddVertexInput("TEXCOORD", 0, Format::kRG32_Float);
 
-	pipelineDesc.m_VertexInputDescCount = 2;
-	pipelineDesc.m_pVertexInputDescs = inputDescs;
-
-	m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
+	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 }
 
 
@@ -215,33 +161,34 @@ void Texture::CreateBuffers()
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = vertices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_VB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_VB);
 
 	bufferDesc.m_Size = sizeof(u32) * data.m_Indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kIndexBuffer;
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = data.m_Indices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_IB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_IB);
 
-	bufferDesc.m_Size = sizeof(Float44);
+	bufferDesc.m_Size = sizeof(XMFLOAT4X4);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_UB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, &m_UB);
 
 	viewDesc.m_pBuffer = m_UB;
-	viewDesc.m_Stride = sizeof(Float44);
+	viewDesc.m_Stride = sizeof(XMFLOAT4X4);
 	viewDesc.m_ElementCount = 1;
-	m_UBView = m_Device->CreateBufferView(viewDesc);
+	m_Device->CreateBufferView(viewDesc, &m_UBView);
 
-	m_pWVP = m_UB->GetMappedDataAsT<Float44>();
+	m_pWVP = m_UB->GetMappedDataAsT<XMFLOAT4X4>();
 }
 
 
 void Texture::CreateTextures()
 {
-	BvRCRef<IBvTextureBlob> pTextureBlob = m_TextureLoader->LoadTextureFromFile("metal.dds");
+	BvRCRef<IBvTextureBlob> pTextureBlob;
+	m_TextureLoader->LoadTextureFromFile("metal.dds", &pTextureBlob);
 	auto& info = pTextureBlob->GetInfo();
 	TextureDesc texDesc;
 	texDesc.m_Size = { info.m_Width, info.m_Height, info.m_Depth };
@@ -249,20 +196,23 @@ void Texture::CreateTextures()
 	texDesc.m_Format = info.m_Format;
 	texDesc.m_MipLevels = info.m_MipLevels;
 	texDesc.m_ImageType = info.m_TextureType;
-	texDesc.m_ResourceState = ResourceState::kPixelShaderResource;
 	texDesc.m_UsageFlags = TextureUsage::kShaderResource;
 	auto& subresources = pTextureBlob->GetSubresources();
-	TextureInitData initData{ m_Context, u32(subresources.Size()), subresources.Data() };
+	TextureInitData initData;
+	initData.m_pContext = m_Context;
+	initData.m_SubresourceCount = subresources.Size();
+	initData.m_pSubresources = subresources.Data();
+	initData.m_ResourceState = ResourceState::kPixelShaderResource;
 
-	m_Texture = m_Device->CreateTexture(texDesc, &initData);
+	m_Device->CreateTexture(texDesc, initData, &m_Texture);
 
 	TextureViewDesc viewDesc;
 	viewDesc.m_pTexture = m_Texture;
 	viewDesc.m_Format = texDesc.m_Format;
 
-	m_TextureView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_TextureView);
 
-	m_Sampler = m_Device->CreateSampler(SamplerDesc());
+	m_Device->CreateSampler(SamplerDesc(), &m_Sampler);
 }
 
 
@@ -275,12 +225,12 @@ void Texture::CreateRenderTargets()
 	desc.m_Size = { w, h, 1 };
 	desc.m_Format = Format::kD24_UNorm_S8_UInt;
 	desc.m_UsageFlags = TextureUsage::kDepthStencilTarget;
-	m_Depth = m_Device->CreateTexture(desc, nullptr);
+	m_Device->CreateTexture(desc, &m_Depth);
 
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = desc.m_Format;
 	viewDesc.m_pTexture = m_Depth;
-	m_DepthView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_DepthView);
 }
 
 

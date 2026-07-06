@@ -91,10 +91,10 @@ namespace Logging
 				level = 0;
 			}
 
-			auto time = BvTime::GetLocalTime();
+			auto time = BvTime::GetCurrentDateTime();
 
 			BvConsole::Printf(kDefaultColors[level], "[%02d:%02d:%02d] - [%s] [%s]: %s - Function: %s (%s [%u])\n",
-				time.tm_hour, time.tm_min, time.tm_sec, kDefaultLevels[level], pChannel, pMessage,
+				time.m_Hours, time.m_Minutes, time.m_Seconds, kDefaultLevels[level], pChannel, pMessage,
 				sourceInfo.function_name(), sourceInfo.file_name(), sourceInfo.line());
 		}
 	}

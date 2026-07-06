@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/File/BvFile.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 
 
 BvFile::BvFile()
@@ -64,9 +64,10 @@ bool BvFile::Open(const char* pFilename, BvFileAccessMode mode, BvFileAction act
 	}
 
 	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
+		std::string_view sv(pFilename);
+		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.data(), sv.data() + sv.length() + 1);
+		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+		BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length() + 1, pFilenameW, pFilenameW + length);
 		m_hFile = CreateFileW(pFilenameW, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
 	}
 

@@ -176,9 +176,9 @@ u64 BvRenderUtils::GetCopyableFootprints(const TextureDesc& textureDesc, u32 pla
 		u32 mipLevel, arraySlice, planeSlice;
 		DecomposeSubresourceIndex(subresourceIndex, textureDesc.m_MipLevels, textureDesc.m_ArraySize, mipLevel, arraySlice, planeSlice);
 
-		u32 width = RoundToNearestPowerOf2(textureDesc.m_Size.m_Width >> mipLevel, wAlign);
-		u32 height = RoundToNearestPowerOf2(textureDesc.m_Size.m_Height >> mipLevel, hAlign);
-		u32 depth = RoundToNearestPowerOf2(textureDesc.m_Size.m_Depth >> mipLevel, dAlign);
+		u32 width = std::max(RoundToNearestPowerOf2(textureDesc.m_Size.m_Width >> mipLevel, wAlign), 1u);
+		u32 height = std::max(RoundToNearestPowerOf2(textureDesc.m_Size.m_Height >> mipLevel, hAlign), 1u);
+		u32 depth = std::max(RoundToNearestPowerOf2(textureDesc.m_Size.m_Depth >> mipLevel, dAlign), 1u);
 
 		Format planeFormat;
 		u32 minPlanePitchWidth, planeWidth, planeHeight;
@@ -228,6 +228,6 @@ void BvRenderUtils::UpdateSubresources(u32 numSubresources, const SubresourceDat
 	for (auto i = 0; i < numSubresources; ++i)
 	{
 		u8* pData = reinterpret_cast<u8*>(pDst) + pFootprints[i].m_Offset;
-		CopySubresourceRows(pSubresources[i], pDst, pFootprints[i].m_Subresource);
+		CopySubresourceRows(pSubresources[i], pData, pFootprints[i].m_Subresource);
 	}
 }

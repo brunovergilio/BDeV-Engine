@@ -168,6 +168,7 @@ private:
 	State m_CurrentState = State::kRecording;
 	bool m_HasDebugUtils = false;
 	bool m_PushDescriptor = false;
+	bool m_RayTracing = false;
 
 	// TODO: All these objects should be temporary, only used inside a function call
 	BvVector<VkWriteDescriptorSetAccelerationStructureKHR> m_ASWriteSets;

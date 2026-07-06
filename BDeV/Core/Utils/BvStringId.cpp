@@ -37,6 +37,14 @@ BvStringId& BvStringId::operator=(BvStringId&& rhs) noexcept
 }
 
 
+BvStringId& BvStringId::operator=(u64 id)
+{
+	m_Id = id;
+
+	return *this;
+}
+
+
 BvStringId& BvStringId::operator=(const char* pId)
 {
 	if (!pId)
@@ -47,14 +55,6 @@ BvStringId& BvStringId::operator=(const char* pId)
 
 	u32 len = static_cast<u32>(std::char_traits<char>::length(pId));
 	m_Id = BvXXHash()(pId, len);
-
-	return *this;
-}
-
-
-BvStringId& BvStringId::operator=(u64 id)
-{
-	m_Id = id;
 
 	return *this;
 }

@@ -94,6 +94,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Buffers.h" />
+    <ClInclude Include="Shaders.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\BDeV\BDeV.vcxproj">

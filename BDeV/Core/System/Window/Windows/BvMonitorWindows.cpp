@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/Window/BvMonitor.h"
 #include "BDeV/Core/System/Window/BvWindow.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 
 
 BvMonitor::BvMonitor(OSMonitorHandle hMonitor)
@@ -36,12 +36,10 @@ BvMonitor::BvMonitor(OSMonitorHandle hMonitor)
 
 	m_DPIScaleFactor = f32(m_DesktopVideoMode.m_Width) / f32(m_FullscreenArea.m_Right - m_FullscreenArea.m_Left);
 
-	{
-		auto sizeNeeded = sizeof(monitorInfo.szDevice);
-		char* pMonitorName = (char*)BV_STACK_ALLOC(sizeNeeded);
-		BvTextUtilities::ConvertWideCharToUTF8Char(monitorInfo.szDevice, 0, pMonitorName, sizeNeeded);
-		m_Name = pMonitorName;
-	}
+	std::wstring_view sv(monitorInfo.szDevice);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<char>(sv.data(), sv.data() + sv.length() + 1);
+	m_Name.Resize(sizeNeeded);
+	BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length() + 1, m_Name.Begin(), m_Name.End() + 1);
 }
 
 

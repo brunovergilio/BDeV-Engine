@@ -323,7 +323,7 @@ bool UIOverlay::Update(f32 dt, BvWindow* pWindow)
 		{
 			char utf8[5]{};
 			char32_t utf32 = inputs[i].m_CodePoint;
-			BvTextUtilities::ConvertUTF32ToUTF8Char(&utf32, 2, utf8, 5);
+			BvUTFCharTraits::GetChar(&utf32, &utf32 + 2, utf8, utf8 + 5);
 			io.AddInputCharactersUTF8(utf8);
 		}
 	}

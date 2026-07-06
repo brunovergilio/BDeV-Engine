@@ -4,7 +4,7 @@
 #include "BDeV/Core/Container/BvVector.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
-#include <BDeV/Core/Utils/BvText.h>
+#include <BDeV/Core/Utils/BvUTF.h>
 #include <DbgHelp.h>
 #include <bit>
 
@@ -255,12 +255,13 @@ bool BvSystem::GetStackTrace(BvStackTrace& stackTrace, const u32 numFramesToSkip
 		wchar_t moduleNameW[kMaxNameSize]{};
 		if (moduleBase && GetModuleFileNameW((HINSTANCE)moduleBase, moduleNameW, kMaxNameSize))
 		{
-			auto sizeNeeded = BvTextUtilities::ConvertWideCharToUTF8Char(moduleNameW, 0, nullptr, 0);
+			std::wstring_view sv(moduleNameW);
+			auto sizeNeeded = BvUTFCharTraits::LengthFor<char>(sv.begin(), sv.end());
 			if (sizeNeeded > 0)
 			{
 				currFrame.m_Module.SetAllocator(stackTrace.frames.GetAllocator());
-				currFrame.m_Module.Resize(sizeNeeded - 1, ' ');
-				BvTextUtilities::ConvertWideCharToUTF8Char(moduleNameW, 0, &currFrame.m_Module[0], sizeNeeded);
+				currFrame.m_Module.Resize(sizeNeeded, ' ');
+				BvUTFCharTraits::GetStr(sv.begin(), sv.end(), currFrame.m_Module.Begin(), currFrame.m_Module.End() + 1);
 			}
 		}
 

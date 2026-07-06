@@ -4,18 +4,6 @@
 #include "BDeV/Core/System/Memory/BvMemory.h"
 
 
-class BvNoMemoryMarker
-{
-	BV_NOCOPYMOVE(BvNoMemoryMarker);
-public:
-	BvNoMemoryMarker() {}
-	~BvNoMemoryMarker() {}
-
-	BV_INLINE void MarkAllocation(void* pMem, size_t size) {}
-	BV_INLINE void MarkDeallocation(void* pMem, size_t size) {}
-};
-
-
 class BvMemoryMarker
 {
 	BV_NOCOPYMOVE(BvMemoryMarker);

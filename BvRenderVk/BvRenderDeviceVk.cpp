@@ -68,7 +68,7 @@ bool BvRenderDeviceVk::CreateBufferImpl(const BufferDesc& desc, const BufferInit
 	}
 
 	auto& obj = result.second;
-	if (pInitData)
+	if (pInitData && desc.m_MemoryType == MemoryType::kDevice)
 	{
 		VkHelpers::UploadMemoryToGPU(this, obj.m_Buffer, *pInitData);
 	}

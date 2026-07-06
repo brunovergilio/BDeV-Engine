@@ -1,6 +1,6 @@
 #include "BvRenderEngineD3D12.h"
 #include "BvRenderDeviceD3D12.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 
 
 bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvGPUInfo& gpuInfo);
@@ -74,7 +74,7 @@ bool BvRenderEngineD3D12::CreateRenderDeviceImpl(const RenderDeviceDesc& renderD
 	BV_ASSERT_ONCE(pDevice == nullptr, "Render Device has already been created");
 	if (!pDevice)
 	{
-		pDevice = BV_NEW(BvRenderDeviceD3D12)(this, deviceData.m_Adapter.Get(), deviceData.m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], renderDeviceDesc);
+		pDevice = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvRenderDeviceD3D12, this, deviceData.m_Adapter.Get(), deviceData.m_pDeviceInfo, gpuIndex, *m_GPUs[gpuIndex], renderDeviceDesc);
 		if (!pDevice->IsValid())
 		{
 			pDevice->Release();
@@ -132,8 +132,8 @@ void BvRenderEngineD3D12::Create()
 		if (adapterDesc.Flags == 0)
 		{
 			BvGPUInfo gpuInfo{};
-			BvTextUtilities::ConvertWideCharToUTF8Char(adapterDesc.Description, ArraySize(adapterDesc.Description),
-				gpuInfo.m_DeviceName, ArraySize(gpuInfo.m_DeviceName));
+			std::wstring_view sv(adapterDesc.Description);
+			BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length() + 1, gpuInfo.m_DeviceName, gpuInfo.m_DeviceName + BvGPUInfo::kMaxDeviceNameSize);
 			gpuInfo.m_DeviceMemory = adapterDesc.DedicatedVideoMemory;
 			gpuInfo.m_DeviceId = adapterDesc.DeviceId;
 			gpuInfo.m_GraphicsContextCount = kU32Max;

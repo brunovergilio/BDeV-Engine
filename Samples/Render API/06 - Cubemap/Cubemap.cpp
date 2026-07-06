@@ -1,96 +1,13 @@
 #include "Cubemap.h"
 #include "BDeV/Core/Math/BvGeometryGenerator.h"
-#include "BDeV/Core/Utils/BvRandom.h"
+#include "Shaders.h"
 
 
 struct Vertex
 {
-	Float3 pos;
-	Float2 uv;
+	XMFLOAT3 pos;
+	XMFLOAT2 uv;
 };
-
-
-constexpr const char* g_pVSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec2 inTexCoords;
-
-layout (location = 0) out vec2 outTexCoords;
-
-layout (binding = 0) uniform UBO 
-{
-	mat4 wvp;
-} ubo;
-
-void main() 
-{
-	outTexCoords = inTexCoords;
-	gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
-}
-)raw";
-constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);
-
-
-constexpr const char* g_pPSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec2 inTexCoords;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 1) uniform texture2D samplerTexture;
-layout (binding = 2) uniform sampler samplerObj;
-
-void main()
-{
-	outColor = texture(sampler2D(samplerTexture, samplerObj), inTexCoords);
-}
-)raw";
-constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
-
-
-constexpr const char* g_pVSSkyBoxShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec3 inPos;
-
-layout (location = 0) out vec3 outTexCoords;
-
-layout (binding = 0) uniform UBO
-{
-	mat4 wvp;
-} ubo;
-
-void main() 
-{
-	gl_Position = (ubo.wvp * vec4(inPos.xyz, 1.0)).xyww;
-	outTexCoords = inPos;
-}
-)raw";
-constexpr auto g_VSSkyBoxSize = std::char_traits<char>::length(g_pVSSkyBoxShader);
-
-
-constexpr const char* g_pPSSkyBoxShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec3 inTexCoords;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 1) uniform textureCube samplerTexture;
-layout (binding = 2) uniform sampler samplerObj;
-
-void main()
-{
-	outColor = texture(samplerCube(samplerTexture, samplerObj), inTexCoords);
-}
-)raw";
-constexpr auto g_PSSkyBoxSize = std::char_traits<char>::length(g_pPSSkyBoxShader);
 
 
 void Cubemap::OnInitialize()
@@ -143,14 +60,14 @@ void Cubemap::OnUpdate()
 	BvVec3 camPos(0.0f, 0.0f, -5.0f);
 	BvVec3 lookPos(0.0f, 0.0f, 1.0f);
 
-	BvVec3 eyeDir((lookPos - camPos) * MatrixRotationY(camAngleY));
-	BvMatrix v(MatrixLookAt(camPos, eyeDir, VectorSet(0.0f, 1.0f, 0.0f, 1.0f)));
-	BvMatrix p(MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4));
+	BvVec3 eyeDir((lookPos - camPos)/* * BvMatrix::RotationY(camAngleY)*/);
+	BvMatrix v(BvMatrix::LookAtLH(camPos, eyeDir, BvVec3(0.0f, 1.0f, 0.0f)));
+	BvMatrix p(BvMatrix::PerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4));
 	BvMatrix vp(v * p);
-	BvMatrix rot(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ));
+	BvMatrix rot(BvMatrix::RotationX(angleX) * BvMatrix::RotationY(angleY) * BvMatrix::RotationZ(angleZ));
 
-	Store44(rot	* vp, m_pWVP->m);
-	Store44(MatrixTranslation(camPos) * vp, m_pWVPSkybox->m);
+	XMStoreFloat4x4(m_pWVP, rot	* vp);
+	XMStoreFloat4x4(m_pWVPSkybox, BvMatrix::Translation(camPos) * vp);
 }
 
 
@@ -169,7 +86,7 @@ void Cubemap::OnRender()
 	m_Context->SetRenderTargets(2, targets);
 	m_Context->SetGraphicsPipeline(m_PSO);
 	m_Context->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
-	m_Context->SetScissor({ 0, 0, width, height });
+	m_Context->SetScissor({ 0, 0, i32(width), i32(height) });
 	m_Context->SetConstantBuffer(m_UBView, 0, 0);
 	m_Context->SetTexture(m_TextureView, 0, 1);
 	m_Context->SetSampler(m_Sampler, 0, 2);
@@ -221,22 +138,12 @@ void Cubemap::RenderSkybox()
 
 void Cubemap::CreateShaderResourceLayout()
 {
-	ShaderResourceDesc resourceDescs[] =
-	{
-		ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex),
-		ShaderResourceDesc::AsTexture(1, ShaderStage::kPixelOrFragment),
-		ShaderResourceDesc::AsSampler(2, ShaderStage::kPixelOrFragment)
-	};
+	ShaderResourceLayoutCreateDesc layoutDesc;
+	layoutDesc.AddResourceSet().AddConstantBuffer(0, ShaderStage::kVertex)
+		.AddTexture(1, ShaderStage::kPixelOrFragment)
+		.AddSampler(2, ShaderStage::kPixelOrFragment);
 
-	ShaderResourceSetDesc setDesc{};
-	setDesc.m_ResourceCount = 3;
-	setDesc.m_pResources = resourceDescs;
-
-	ShaderResourceLayoutCreateDesc layoutDesc{};
-	layoutDesc.m_ShaderResourceSetCount = 1;
-	layoutDesc.m_pShaderResourceSets = &setDesc;
-
-	m_SRL = m_Device->CreateShaderResourceLayout(layoutDesc);
+	m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 }
 
 
@@ -254,14 +161,10 @@ void Cubemap::CreatePipeline()
 	pipelineDesc.m_DepthStencilDesc.m_DepthOp = CompareOp::kLessEqual;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-	VertexInputDesc inputDescs[2];
-	inputDescs[0].m_Format = Format::kRGB32_Float;
-	inputDescs[1].m_Format = Format::kRG32_Float;
+	pipelineDesc.AddVertexInput("POSITION", 0, Format::kRGB32_Float);
+	pipelineDesc.AddVertexInput("TEXCOORD", 0, Format::kRG32_Float);
 
-	pipelineDesc.m_VertexInputDescCount = 2;
-	pipelineDesc.m_pVertexInputDescs = inputDescs;
-
-	m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
+	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 }
 
 
@@ -271,7 +174,6 @@ void Cubemap::CreateBuffers()
 	gen.GenerateBox();
 	auto& data = gen.GetData();
 	BvVector<Vertex> vertices(data.m_Vertices.Size());
-	BvRandom32 rand;
 
 	for (auto i = 0u; i < vertices.Size(); ++i)
 	{
@@ -288,33 +190,34 @@ void Cubemap::CreateBuffers()
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = vertices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_VB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_VB);
 
 	bufferDesc.m_Size = sizeof(u32) * data.m_Indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kIndexBuffer;
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = data.m_Indices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_IB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_IB);
 
-	bufferDesc.m_Size = sizeof(Float44);
+	bufferDesc.m_Size = sizeof(XMFLOAT4X4);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_UB = m_Device->CreateBuffer(bufferDesc, nullptr);
+	m_Device->CreateBuffer(bufferDesc, &m_UB);
 
 	viewDesc.m_pBuffer = m_UB;
-	viewDesc.m_Stride = sizeof(Float44);
+	viewDesc.m_Stride = sizeof(XMFLOAT4X4);
 	viewDesc.m_ElementCount = 1;
-	m_UBView = m_Device->CreateBufferView(viewDesc);
+	m_Device->CreateBufferView(viewDesc, &m_UBView);
 
-	m_pWVP = m_UB->GetMappedDataAsT<Float44>();
+	m_pWVP = m_UB->GetMappedDataAsT<XMFLOAT4X4>();
 }
 
 
 void Cubemap::CreateTextures()
 {
-	BvRCRef<IBvTextureBlob> pTextureBlob = m_TextureLoader->LoadTextureFromFile("water.dds");
+	BvRCRef<IBvTextureBlob> pTextureBlob;
+	m_TextureLoader->LoadTextureFromFile("water.dds", &pTextureBlob);
 	auto& info = pTextureBlob->GetInfo();
 	TextureDesc texDesc;
 	texDesc.m_Size = { info.m_Width, info.m_Height, info.m_Depth };
@@ -322,20 +225,25 @@ void Cubemap::CreateTextures()
 	texDesc.m_Format = info.m_Format;
 	texDesc.m_MipLevels = info.m_MipLevels;
 	texDesc.m_ImageType = info.m_TextureType;
-	texDesc.m_ResourceState = ResourceState::kPixelShaderResource;
 	texDesc.m_UsageFlags = TextureUsage::kShaderResource;
 	auto& subresources = pTextureBlob->GetSubresources();
-	TextureInitData initData{ m_Context, u32(subresources.Size()), subresources.Data() };
+	TextureInitData initData;
+	initData.m_pContext = m_Context;
+	initData.m_SubresourceCount = subresources.Size();
+	initData.m_pSubresources = subresources.Data();
+	initData.m_ResourceState = ResourceState::kPixelShaderResource;
 
-	m_Texture = m_Device->CreateTexture(texDesc, &initData);
+	m_Device->CreateTexture(texDesc, initData, &m_Texture);
 
 	TextureViewDesc viewDesc;
 	viewDesc.m_pTexture = m_Texture;
 	viewDesc.m_Format = texDesc.m_Format;
 
-	m_TextureView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_TextureView);
 
-	m_Sampler = m_Device->CreateSampler(SamplerDesc());
+	SamplerDesc samDesc;
+	samDesc.SetAddressMode(AddressMode::kClamp, AddressMode::kClamp, AddressMode::kClamp).SetMaxLod(0.0f);
+	m_Device->CreateSampler(samDesc, &m_Sampler);
 }
 
 
@@ -348,18 +256,19 @@ void Cubemap::CreateRenderTargets()
 	desc.m_Size = { w, h, 1 };
 	desc.m_Format = Format::kD24_UNorm_S8_UInt;
 	desc.m_UsageFlags = TextureUsage::kDepthStencilTarget;
-	m_Depth = m_Device->CreateTexture(desc, nullptr);
+	m_Device->CreateTexture(desc, &m_Depth);
 
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = desc.m_Format;
 	viewDesc.m_pTexture = m_Depth;
-	m_DepthView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_DepthView);
 }
 
 
 void Cubemap::CreateSkyboxResources()
 {
-	BvRCRef<IBvTextureBlob> pTextureBlob = m_TextureLoader->LoadTextureFromFile("purplevalley_cube.dds");
+	BvRCRef<IBvTextureBlob> pTextureBlob;
+	m_TextureLoader->LoadTextureFromFile("purplevalley_cube.dds", &pTextureBlob);
 	auto& info = pTextureBlob->GetInfo();
 	TextureDesc texDesc;
 	texDesc.m_Size = { info.m_Width, info.m_Height, info.m_Depth };
@@ -367,41 +276,44 @@ void Cubemap::CreateSkyboxResources()
 	texDesc.m_Format = info.m_Format;
 	texDesc.m_MipLevels = info.m_MipLevels;
 	texDesc.m_ImageType = info.m_TextureType;
-	texDesc.m_ResourceState = ResourceState::kPixelShaderResource;
 	texDesc.m_UsageFlags = TextureUsage::kShaderResource;
 	texDesc.m_CreateFlags = TextureCreateFlags::kCreateCubemap;
 	auto& subresources = pTextureBlob->GetSubresources();
-	TextureInitData initData{ m_Context, u32(subresources.Size()), subresources.Data() };
+	TextureInitData initData;
+	initData.m_pContext = m_Context;
+	initData.m_SubresourceCount = subresources.Size();
+	initData.m_pSubresources = subresources.Data();
+	initData.m_ResourceState = ResourceState::kShaderResource;
 
-	m_TextureSkybox = m_Device->CreateTexture(texDesc, &initData);
+	m_Device->CreateTexture(texDesc, initData, &m_TextureSkybox);
 
 	TextureViewDesc textureViewDesc;
 	textureViewDesc.m_pTexture = m_TextureSkybox;
 	textureViewDesc.m_Format = texDesc.m_Format;
 	textureViewDesc.m_ViewType = TextureViewType::kTextureCube;
 
-	m_TextureViewSkybox = m_Device->CreateTextureView(textureViewDesc);
+	m_Device->CreateTextureView(textureViewDesc, &m_TextureViewSkybox);
 
 	SamplerDesc samDesc;
 	samDesc.m_AddressModeU = samDesc.m_AddressModeV = samDesc.m_AddressModeW = AddressMode::kClamp;
 	samDesc.m_AnisotropyEnable = true;
 	samDesc.m_MaxAnisotropy = 16;
-	m_SamplerSkybox = m_Device->CreateSampler(samDesc);
+	m_Device->CreateSampler(samDesc, &m_SamplerSkybox);
 
 	BufferDesc bufferDesc;
 	BufferViewDesc viewDesc;
 
-	bufferDesc.m_Size = sizeof(Float44);
+	bufferDesc.m_Size = sizeof(XMFLOAT4X4);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_UBSkybox = m_Device->CreateBuffer(bufferDesc, nullptr);
-	m_pWVPSkybox = m_UBSkybox->GetMappedDataAsT<Float44>();
+	m_Device->CreateBuffer(bufferDesc, &m_UBSkybox);
+	m_pWVPSkybox = m_UBSkybox->GetMappedDataAsT<XMFLOAT4X4>();
 
 	viewDesc.m_pBuffer = m_UBSkybox;
-	viewDesc.m_Stride = sizeof(Float44);
+	viewDesc.m_Stride = sizeof(XMFLOAT4X4);
 	viewDesc.m_ElementCount = 1;
-	m_UBViewSkybox = m_Device->CreateBufferView(viewDesc);
+	m_Device->CreateBufferView(viewDesc, &m_UBViewSkybox);
 
 	auto vs = CompileShader(g_pVSSkyBoxShader, g_VSSkyBoxSize, ShaderStage::kVertex);
 	auto ps = CompileShader(g_pPSSkyBoxShader, g_PSSkyBoxSize, ShaderStage::kPixelOrFragment);
@@ -415,14 +327,9 @@ void Cubemap::CreateSkyboxResources()
 	pipelineDesc.m_DepthStencilDesc.m_DepthOp = CompareOp::kLessEqual;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 	pipelineDesc.m_RasterizerStateDesc.m_CullMode = CullMode::kFront;
+	pipelineDesc.AddVertexInput("POSITION", 0, Format::kRGB32_Float);
 
-	VertexInputDesc inputDescs[1];
-	inputDescs[0].m_Format = Format::kRGB32_Float;
-
-	pipelineDesc.m_VertexInputDescCount = 1;
-	pipelineDesc.m_pVertexInputDescs = inputDescs;
-
-	m_PSOSkybox = m_Device->CreateGraphicsPipeline(pipelineDesc);
+	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSOSkybox);
 }
 
 

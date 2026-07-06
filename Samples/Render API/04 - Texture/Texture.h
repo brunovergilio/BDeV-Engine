@@ -35,5 +35,5 @@ private:
 	BvRCRef<IBvTexture> m_Texture;
 	BvRCRef<IBvTextureView> m_TextureView;
 	BvRCRef<IBvSampler> m_Sampler;
-	Float44* m_pWVP = nullptr;
+	XMFLOAT4X4* m_pWVP = nullptr;
 };

@@ -147,13 +147,15 @@ private:
 
 struct ResourceIdD3D12
 {
+    u32 m_RootParamIndex;
 	u32 m_RegisterSpace;
 	u32 m_Binding;
 	u32 m_ArrayIndex;
 
 	friend bool operator==(const ResourceIdD3D12& lhs, const ResourceIdD3D12& rhs)
 	{
-		return lhs.m_RegisterSpace == rhs.m_RegisterSpace && lhs.m_Binding == rhs.m_Binding && lhs.m_ArrayIndex == rhs.m_ArrayIndex;
+		return lhs.m_RootParamIndex == rhs.m_RootParamIndex && lhs.m_RegisterSpace == rhs.m_RegisterSpace
+            && lhs.m_Binding == rhs.m_Binding && lhs.m_ArrayIndex == rhs.m_ArrayIndex;
 	}
 };
 
@@ -164,21 +166,21 @@ public:
 	BvResourceBindingStateD3D12() = default;
 	~BvResourceBindingStateD3D12() = default;
 
-	void SetResource(const BvDescriptorHandle& handle, u32 registerSpace, u32 binding, u32 arrayIndex);
+	void SetResource(const BvDescriptorHandle& handle, u32 rootParamIndex, u32 registerSpace, u32 binding, u32 arrayIndex);
 
 	void Reset();
 
 	const BvDescriptorHandle* GetResource(const ResourceIdD3D12& resId) const;
 
 	BV_INLINE bool IsEmpty() const { return m_Descriptors.Empty(); }
-	BV_INLINE bool IsDirty(u32 registerSpace) const { auto it = m_DirtySets.FindKey(registerSpace); return it != m_DirtySets.cend() ? it->second : false; }
-	BV_INLINE void MarkClean(u32 registerSpace) { m_DirtySets[registerSpace] = false; }
+	BV_INLINE bool IsDirty(u32 rootParamIndex) const { return m_DirtyRootParams[rootParamIndex]; }
+	BV_INLINE void MarkClean(u32 rootParamIndex) { m_DirtyRootParams[rootParamIndex] = false; }
 
 private:
-	std::pair<BvDescriptorHandle*, bool> AddOrRetrieveResourceData(u32 registerSpace, u32 binding, u32 arrayIndex);
+	std::pair<BvDescriptorHandle*, bool> AddOrRetrieveResourceData(u32 rootParamIndex, u32 registerSpace, u32 binding, u32 arrayIndex);
 
 private:
 	BvRobinMap<ResourceIdD3D12, u32> m_Bindings;
 	BvVector<BvDescriptorHandle> m_Descriptors;
-	BvRobinMap<u32, bool> m_DirtySets;
+	BvVector<bool> m_DirtyRootParams;
 };

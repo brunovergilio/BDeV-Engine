@@ -163,6 +163,18 @@ public:
 	BV_INLINE const CharT Front() const { BV_ASSERT(m_Size > 0, "Index out of bounds"); return m_pStr[0]; }
 	BV_INLINE const CharT Back() const { BV_ASSERT(m_Size > 0, "Index out of bounds"); return m_pStr[m_Size - 1]; }
 
+	BV_INLINE CharT* Begin() const { return m_pStr; }
+	BV_INLINE CharT* begin() const { return Begin(); }
+
+	BV_INLINE CharT* End() const { return m_pStr + m_Size; }
+	BV_INLINE CharT* end() const { return End(); }
+
+	BV_INLINE const CharT* CBegin() const { return m_pStr; }
+	BV_INLINE const CharT* cbegin() const { return CBegin(); }
+
+	BV_INLINE const CharT* CEnd() const { return m_pStr + m_Size; }
+	BV_INLINE const CharT* cend() const { return CEnd(); }
+
 	BV_INLINE const CharT* CStr() const { return m_pStr; }
 	BV_INLINE const CharT* LCStr() const { return m_pStr ? m_pStr + m_Size : nullptr; }
 	BV_INLINE u32 Size() const { return m_Size; }

@@ -148,12 +148,17 @@ void BvDescriptorPoolD3D12::Reset()
 }
 
 
-void BvResourceBindingStateD3D12::SetResource(const BvDescriptorHandle& handle, u32 registerSpace, u32 binding, u32 arrayIndex)
+void BvResourceBindingStateD3D12::SetResource(const BvDescriptorHandle& handle, u32 rootParamIndex, u32 registerSpace, u32 binding, u32 arrayIndex)
 {
-	auto [pDescriptor, newElem] = AddOrRetrieveResourceData(registerSpace, binding, arrayIndex);
+	auto [pDescriptor, newElem] = AddOrRetrieveResourceData(rootParamIndex, registerSpace, binding, arrayIndex);
 	if (newElem || pDescriptor->GetCPUHandle() != handle.GetCPUHandle())
 	{
-		m_DirtySets[registerSpace] = true;
+		if (rootParamIndex >= m_DirtyRootParams.Size())
+		{
+			m_DirtyRootParams.Resize(rootParamIndex + 1);
+		}
+
+		m_DirtyRootParams[rootParamIndex] = true;
 		*pDescriptor = handle;
 	}
 }
@@ -173,9 +178,9 @@ const BvDescriptorHandle* BvResourceBindingStateD3D12::GetResource(const Resourc
 }
 
 
-std::pair<BvDescriptorHandle*, bool> BvResourceBindingStateD3D12::AddOrRetrieveResourceData(u32 registerSpace, u32 binding, u32 arrayIndex)
+std::pair<BvDescriptorHandle*, bool> BvResourceBindingStateD3D12::AddOrRetrieveResourceData(u32 rootParamIndex, u32 registerSpace, u32 binding, u32 arrayIndex)
 {
-	ResourceIdD3D12 resId{ registerSpace, binding, arrayIndex };
+	ResourceIdD3D12 resId{ rootParamIndex, registerSpace, binding, arrayIndex };
 	auto bindingIt = m_Bindings.Emplace(resId, 0);
 	u32 index = 0;
 	bool newElem = false;

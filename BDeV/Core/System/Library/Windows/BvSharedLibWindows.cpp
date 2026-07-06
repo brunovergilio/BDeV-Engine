@@ -1,7 +1,7 @@
 #include "BDeV/Core/System/Library/BvSharedLib.h"
-#include "BDeV/Core/Utils/BvText.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include <utility>
+#include "BDeV/Core/Utils/BvUTF.h"
 
 
 BvSharedLib::BvSharedLib()
@@ -44,9 +44,10 @@ BvSharedLib::~BvSharedLib()
 
 bool BvSharedLib::Open(const char* pFilename)
 {
-	auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, nullptr, 0);
-	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-	BvTextUtilities::ConvertUTF8CharToWideChar(pFilename, 0, pFilenameW, sizeNeeded);
+	std::string_view sv(pFilename);
+	auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.data(), sv.data() + sv.length() + 1);
+	auto pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length() + 1, pFilenameW, pFilenameW + length);
 	m_hLib = LoadLibraryW(pFilenameW);
 	if (!m_hLib)
 	{

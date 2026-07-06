@@ -414,6 +414,7 @@ namespace Internal
 // =============================================================
 
 
+// Base interface from which memory arenas can be derived from
 class IBvMemoryArena
 {
 public:
@@ -432,6 +433,8 @@ concept BvMemoryArenaType = std::is_base_of_v<IBvMemoryArena, T>;
 #define BV_USE_MEMORY_ARENA_NAME
 #endif
 
+
+// Templated Memory Arena object which uses policy-based design to add custom features to the allocator, such as debugging and logging
 template<typename AllocatorType, typename LockType, typename BoundsCheckingType, typename MemoryMarkingType, typename MemoryTrackingType, typename MemoryLoggerType>
 class BvMemoryArena final : public IBvMemoryArena
 {
@@ -535,6 +538,60 @@ private:
 	MemoryMarkingType m_MemoryMarking;
 	MemoryTrackingType m_MemoryTracking;
 	MemoryLoggerType m_MemoryLogger;
+};
+
+
+class BvNoMemoryLock
+{
+public:
+	BvNoMemoryLock() {}
+	~BvNoMemoryLock() {}
+
+	BV_INLINE void Lock() {}
+	BV_INLINE void Unlock() {}
+};
+
+
+class BvNoBoundsChecker
+{
+public:
+	BvNoBoundsChecker() {}
+	~BvNoBoundsChecker() {}
+
+	BV_INLINE void GuardFront(void*) {}
+	BV_INLINE void GuardBack(void*) {}
+	BV_INLINE void CheckFrontGuard(void*) {}
+	BV_INLINE void CheckBackGuard(void*) {}
+
+public:
+	static constexpr size_t kFrontGuardSize = 0;
+	static constexpr size_t kBackGuardSize = 0;
+};
+
+
+class BvNoMemoryMarker
+{
+	BV_NOCOPYMOVE(BvNoMemoryMarker);
+public:
+	BvNoMemoryMarker() {}
+	~BvNoMemoryMarker() {}
+
+	BV_INLINE void MarkAllocation(void* pMem, size_t size) {}
+	BV_INLINE void MarkDeallocation(void* pMem, size_t size) {}
+};
+
+class BvNoMemoryTracker
+{
+	BV_NOCOPYMOVE(BvNoMemoryTracker);
+public:
+	BvNoMemoryTracker() {}
+	~BvNoMemoryTracker() {}
+
+	BV_INLINE void OnAllocation(void* pMem, size_t size, size_t alignment, const std::source_location& sourceInfo = std::source_location::current()) {}
+	BV_INLINE void OnDeallocation(void* pMem) {}
+
+	BV_INLINE u32 GetNumAllocations() const { return 0; }
+	BV_INLINE void GetTrackingInfo(void* pMem, BvTrackedAllocationInfo& trackingInfo) const {}
 };
 
 

@@ -1,52 +1,14 @@
 #include "DynamicBuffers.h"
 #include "BDeV/Core/Math/BvGeometryGenerator.h"
 #include "BDeV/Core/Utils/BvRandom.h"
+#include "Shaders.h"
 
 
 struct Vertex
 {
-	Float3 pos;
-	Float4 color;
+	XMFLOAT3 pos;
+	XMFLOAT4 color;
 };
-
-
-constexpr const char* g_pVSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec4 inColor;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 0) uniform UBO 
-{
-	mat4 wvp;
-} ubo;
-
-void main() 
-{
-	outColor = inColor;
-	gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
-}
-)raw";
-constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);
-
-
-constexpr const char* g_pPSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec4 inColor;
-
-layout (location = 0) out vec4 outColor;
-
-void main()
-{
-	outColor = inColor;
-}
-)raw";
-constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 
 void DynamicBuffers::OnInitialize()
@@ -98,14 +60,13 @@ void DynamicBuffers::OnUpdate()
 			for (auto z = 0; z < m_ItemCountPerDimension; ++z)
 			{
 				auto index = x * m_ItemCountPerDimension * m_ItemCountPerDimension + y * m_ItemCountPerDimension + z;
-				auto pWVP = reinterpret_cast<Float44*>(pData + (index * m_ItemStride));
+				auto pWVP = reinterpret_cast<XMFLOAT4X4*>(pData + (index * m_ItemStride));
 				BvVec3 pos((x), (y), (z));
 				pos *= offset;
 				pos += BvSVec((-(f32(m_ItemCountPerDimension) * offset) * 0.5f) + offset * 0.5f);
 
-				Store44(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ) * MatrixTranslation(pos)
-					* MatrixLookAtLH(VectorSet(0.0f, 0.0f, -5.0f * m_ItemCountPerDimension, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f, 1.0f))
-					* MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4), pWVP->m);
+				XMStoreFloat4x4(pWVP, XMMatrixRotationX(angleX) * XMMatrixRotationY(angleY) * XMMatrixRotationZ(angleZ) * XMMatrixTranslationFromVector(pos)
+					* m_Camera.GetViewProj());
 			}
 		}
 	}
@@ -135,7 +96,7 @@ void DynamicBuffers::OnRender()
 	m_Context->SetRenderTargets(2, targets);
 	m_Context->SetGraphicsPipeline(m_PSO);
 	m_Context->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
-	m_Context->SetScissor({ 0, 0, width, height });
+	m_Context->SetScissor({ 0, 0, i32(width), i32(height) });
 	m_Context->SetVertexBufferView(m_VB, sizeof(Vertex));
 	m_Context->SetIndexBufferView(m_IB, IndexFormat::kU32);
 	auto numItems = m_ItemCountPerDimension * m_ItemCountPerDimension * m_ItemCountPerDimension;
@@ -169,15 +130,8 @@ void DynamicBuffers::OnShutdown()
 
 void DynamicBuffers::CreateShaderResourceLayout()
 {
-	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsDynamicConstantBuffer(0, ShaderStage::kVertex);
-
-	ShaderResourceSetDesc setDesc{};
-	setDesc.m_ResourceCount = 1;
-	setDesc.m_pResources = &resourceDesc;
-
 	ShaderResourceLayoutCreateDesc layoutDesc{};
-	layoutDesc.m_ShaderResourceSetCount = 1;
-	layoutDesc.m_pShaderResourceSets = &setDesc;
+	layoutDesc.AddResourceSet().SetType(ShaderResourceSetDesc::Type::kDynamic).AddDynamicConstantBuffer(0, ShaderStage::kVertex);
 
 	m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 }
@@ -197,12 +151,8 @@ void DynamicBuffers::CreatePipeline()
 	pipelineDesc.m_DepthStencilDesc.m_DepthOp = CompareOp::kLessEqual;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-	VertexInputDesc inputDescs[2];
-	inputDescs[0].m_Format = Format::kRGB32_Float;
-	inputDescs[1].m_Format = Format::kRGBA32_Float;
-
-	pipelineDesc.m_VertexInputDescCount = 2;
-	pipelineDesc.m_pVertexInputDescs = inputDescs;
+	pipelineDesc.AddVertexInput("POSITION", 0, Format::kRGB32_Float)
+		.AddVertexInput("COLOR", 0, Format::kRGBA32_Float);
 
 	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 }
@@ -219,7 +169,7 @@ void DynamicBuffers::CreateBuffers()
 	for (auto i = 0u; i < vertices.Size(); ++i)
 	{
 		vertices[i].pos = data.m_Vertices[i].m_Position;
-		vertices[i].color = Float4(rand.NextF<f32>(), rand.NextF<f32>(), rand.NextF<f32>(), 1.0f);
+		vertices[i].color = XMFLOAT4(rand.NextF<f32>(), rand.NextF<f32>(), rand.NextF<f32>(), 1.0f);
 	}
 
 	BufferDesc bufferDesc;
@@ -231,24 +181,24 @@ void DynamicBuffers::CreateBuffers()
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = vertices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_VB);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_VB);
 
 	bufferDesc.m_Size = sizeof(u32) * data.m_Indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kIndexBuffer;
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = data.m_Indices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_IB);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_IB);
 
-	m_ItemStride = m_Device->GetDynamicBufferElementSize(BufferUsage::kConstantBuffer, sizeof(Float44));
+	m_ItemStride = m_Device->GetDynamicBufferElementSize(BufferUsage::kConstantBuffer, sizeof(XMFLOAT4X4));
 	bufferDesc.m_Size = m_ItemStride * size_t(std::pow(m_MaxItemsPerDimension, 3));
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_Device->CreateBuffer(bufferDesc, &bufferData, &m_UB);
+	m_Device->CreateBuffer(bufferDesc, &m_UB);
 
 	viewDesc.m_pBuffer = m_UB;
-	viewDesc.m_Stride = sizeof(Float44);
+	viewDesc.m_Stride = sizeof(XMFLOAT4X4);
 	viewDesc.m_ElementCount = 1;
 	m_Device->CreateBufferView(viewDesc, &m_UBView);
 }

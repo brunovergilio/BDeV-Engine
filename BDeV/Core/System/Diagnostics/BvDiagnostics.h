@@ -113,7 +113,7 @@ public:
 	static void Assert(const char* pCondition, const std::source_location& sourceInfo, const char* pFormat, ...);
 
 private:
-	static void PrintInternal(const char* pMessage);
+	static void PrintInternal(const char* pMessage, u32 length);
 };
 
 

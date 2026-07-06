@@ -1,6 +1,7 @@
 #include "Buffers.h"
 #include "BDeV/Core/Math/BvGeometryGenerator.h"
 #include "BDeV/Core/Utils/BvRandom.h"
+#include "Shaders.h"
 
 
 struct Vertex
@@ -9,46 +10,6 @@ struct Vertex
 	XMFLOAT4 color;
 	XMFLOAT3 normal;
 };
-
-
-constexpr const char* g_pVSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec4 inColor;
-layout (location = 2) in vec3 inNormal;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 0) uniform UBO 
-{
-	mat4 wvp;
-} ubo;
-
-void main() 
-{
-	outColor = inColor;
-	gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
-}
-)raw";
-constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);
-
-
-constexpr const char* g_pPSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec4 inColor;
-
-layout (location = 0) out vec4 outColor;
-
-void main()
-{
-	outColor = inColor;
-}
-)raw";
-constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 
 void Buffers::OnInitialize()
@@ -112,7 +73,7 @@ void Buffers::OnRender()
 	m_Context->SetRenderTargets(2, targets);
 	m_Context->SetGraphicsPipeline(m_PSO);
 	m_Context->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
-	m_Context->SetScissor({ 0, 0, width, height });
+	m_Context->SetScissor({ 0, 0, i32(width), i32(height) });
 	m_Context->SetConstantBuffer(m_UBView, 0, 0);
 	m_Context->SetVertexBufferView(m_VB, sizeof(Vertex));
 	m_Context->SetIndexBufferView(m_IB, IndexFormat::kU32);
@@ -168,7 +129,7 @@ void Buffers::CreatePipeline()
 	pipelineDesc.m_DepthStencilDesc.m_DepthOp = CompareOp::kLessEqual;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-	pipelineDesc.AddVertexInput(nullptr, 0, Format::kRGB32_Float).AddVertexInput(nullptr, 0, Format::kRGBA32_Float);
+	pipelineDesc.AddVertexInput("POSITION", 0, Format::kRGB32_Float).AddVertexInput("COLOR", 0, Format::kRGBA32_Float);
 
 	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 }

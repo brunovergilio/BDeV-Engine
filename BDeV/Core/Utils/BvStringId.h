@@ -17,8 +17,8 @@ public:
 
 	BvStringId& operator=(const BvStringId& rhs);
 	BvStringId& operator=(BvStringId&& rhs) noexcept;
-	BvStringId& operator=(const char* pId);
 	BvStringId& operator=(u64 id);
+	BvStringId& operator=(const char* pId);
 
 	constexpr bool operator==(const BvStringId& rhs) const { return m_Id == rhs.m_Id; }
 	constexpr bool operator!=(const BvStringId& rhs) const { return m_Id != rhs.m_Id; }

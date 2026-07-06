@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/File/BvPath.h"
 #include "BDeV/Core/System/File/BvFileCommon.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 #include "BDeV/Core/System/BvPlatformHeaders.h"
 #include <algorithm>
 
@@ -124,9 +124,9 @@ BvPath BvPath::FromCurrentDirectory()
 			return BvPath();
 		}
 
-		auto sizeNeededForUTF8 = BvTextUtilities::ConvertWideCharToUTF8Char(pFilenameW, sizeNeeded, nullptr, 0);
+		auto sizeNeededForUTF8 = BvUTFCharTraits::LengthFor<char>(pFilenameW, pFilenameW + sizeNeeded);
 		currentPath.m_Path.Resize(sizeNeededForUTF8 - 1, ' ');
-		BvTextUtilities::ConvertWideCharToUTF8Char(pFilenameW, sizeNeeded, &currentPath.m_Path[0], sizeNeededForUTF8);
+		BvUTFCharTraits::GetStr(pFilenameW, pFilenameW + sizeNeeded, &currentPath.m_Path[0], &currentPath.m_Path[0] + sizeNeededForUTF8);
 	}
 
 	return currentPath;
@@ -154,9 +154,9 @@ BvPath BvPath::FromCurrentDrive()
 			return BvPath();
 		}
 
-		auto sizeNeededForUTF8 = BvTextUtilities::ConvertWideCharToUTF8Char(pFilenameW, sizeNeeded, nullptr, 0);
-		currentPath.m_Path.Resize(sizeNeededForUTF8 - 1);
-		BvTextUtilities::ConvertWideCharToUTF8Char(pFilenameW, sizeNeeded, &currentPath.m_Path[0], sizeNeededForUTF8);
+		auto sizeNeededForUTF8 = BvUTFCharTraits::LengthFor<char>(pFilenameW, pFilenameW + sizeNeeded);
+		currentPath.m_Path.Resize(sizeNeededForUTF8 - 1, ' ');
+		BvUTFCharTraits::GetStr(pFilenameW, pFilenameW + sizeNeeded, &currentPath.m_Path[0], &currentPath.m_Path[0] + sizeNeededForUTF8);
 	}
 	currentPath.m_Path.Erase(0, BvPathUtils::GetEndOfRoot(currentPath.m_Path.CStr(), currentPath.m_Path.Size()) + 1);
 
@@ -178,37 +178,31 @@ bool BvPath::IsRelative() const
 
 bool BvPath::IsValid() const
 {
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pFilenameW, sizeNeeded);
-		WIN32_FILE_ATTRIBUTE_DATA fad;
-		return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad);
-	}
+	auto length = BvUTFCharTraits::LengthFor<wchar_t>(m_Path.Begin(), m_Path.End() + 1);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(m_Path.Begin(), m_Path.End() + 1, pFilenameW, pFilenameW + length);
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad);
 }
 
 
 bool BvPath::IsFile() const
 {
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pFilenameW, sizeNeeded);
-		WIN32_FILE_ATTRIBUTE_DATA fad;
-		return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 : false;
-	}
+	auto length = BvUTFCharTraits::LengthFor<wchar_t>(m_Path.Begin(), m_Path.End() + 1);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(m_Path.Begin(), m_Path.End() + 1, pFilenameW, pFilenameW + length);
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 : false;
 }
 
 
 bool BvPath::IsDirectory() const
 {
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pFilenameW, sizeNeeded);
-		WIN32_FILE_ATTRIBUTE_DATA fad;
-		return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 : false;
-	}
+	auto length = BvUTFCharTraits::LengthFor<wchar_t>(m_Path.Begin(), m_Path.End() + 1);
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+	BvUTFCharTraits::GetStr(m_Path.Begin(), m_Path.End() + 1, pFilenameW, pFilenameW + length);
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	return GetFileAttributesExW(pFilenameW, GetFileExInfoStandard, &fad) ? (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 : false;
 }
 
 
@@ -275,31 +269,29 @@ BvPath BvPath::GetAbsolutePath() const
 	}
 
 	BvPath path;
-	u32 sizeNeeded;
 	{
-		sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, nullptr, 0);
-		wchar_t* pPathNameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(m_Path.CStr(), m_Path.Size() + 1, pPathNameW, sizeNeeded);
+		auto length = BvUTFCharTraits::LengthFor<wchar_t>(m_Path.Begin(), m_Path.End() + 1);
+		wchar_t* pPathNameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+		BvUTFCharTraits::GetStr(m_Path.Begin(), m_Path.End() + 1, pPathNameW, pPathNameW + length);
 
-		sizeNeeded = GetFullPathNameW(pPathNameW, 0, nullptr, nullptr);
-		if (sizeNeeded == 0)
+		length = GetFullPathNameW(pPathNameW, 0, nullptr, nullptr);
+		if (length == 0)
 		{
 			BV_SYS_ERROR();
 			return BvPath();
 		}
 
 		BvWString fullPath;
-		fullPath.Resize(sizeNeeded - 1);
-		GetFullPathNameW(pPathNameW, sizeNeeded, &fullPath[0], nullptr);
-		if (sizeNeeded == 0)
+		fullPath.Resize(length - 1);
+		if (GetFullPathNameW(pPathNameW, length, &fullPath[0], nullptr) == 0)
 		{
 			BV_SYS_ERROR();
 			return BvPath();
 		}
 		
-		sizeNeeded = BvTextUtilities::ConvertWideCharToUTF8Char(fullPath.CStr(), fullPath.Size() + 1, nullptr, 0);
-		path.m_Path.Resize(sizeNeeded);
-		BvTextUtilities::ConvertWideCharToUTF8Char(fullPath.CStr(), fullPath.Size() + 1, &path.m_Path[0], sizeNeeded);
+		length = BvUTFCharTraits::LengthFor<char>(fullPath.Begin(), fullPath.end());
+		path.m_Path.Resize(length);
+		BvUTFCharTraits::GetStr(fullPath.Begin(), fullPath.End() + 1, path.m_Path.Begin(), path.m_Path.End() + 1);
 	}
 
 	return path;
@@ -523,19 +515,13 @@ BvAsyncFile BvPath::AsAsyncFile(BvFileAccessMode mode) const
 }
 
 
-void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& path, const BvString& pathWithFilter)
+void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& path, const wchar_t* pPathWithFilter)
 {
-	BvVector<char> filenameBuffer;
+	BvString filenameBuffer;
 
 	WIN32_FIND_DATAW findData;
 	HANDLE hFind;
-	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pathWithFilter.CStr(), pathWithFilter.Size() + 1, nullptr, 0);
-		filenameBuffer.Resize(sizeNeeded * sizeof(wchar_t));
-		wchar_t* pFilenameW = (wchar_t*)&filenameBuffer[0];
-		BvTextUtilities::ConvertUTF8CharToWideChar(pathWithFilter.CStr(), pathWithFilter.Size() + 1, pFilenameW, sizeNeeded);
-		hFind = FindFirstFileW(pFilenameW, &findData);
-	}
+	hFind = FindFirstFileW(pPathWithFilter, &findData);
 
 	if (hFind == INVALID_HANDLE_VALUE)
 	{
@@ -555,13 +541,13 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 			filename.Append(path);
 			filename.Append(L'\\');
 
-			{
-				auto sizeNeeded = BvTextUtilities::ConvertWideCharToUTF8Char(findData.cFileName, 0, nullptr, 0);
-				filenameBuffer.Resize(sizeNeeded);
-				BvTextUtilities::ConvertWideCharToUTF8Char(findData.cFileName, 0, &filenameBuffer[0], sizeNeeded);
+			filenameBuffer.Clear();
+			std::wstring_view sv(findData.cFileName);
+			auto sizeNeeded = BvUTFCharTraits::LengthFor<char>(sv.begin(), sv.end());
+			filenameBuffer.Resize(sizeNeeded);
+			BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, filenameBuffer.Begin(), filenameBuffer.End());
 
-				filename.Append(filenameBuffer.Data());
-			}
+			filename.Append(filenameBuffer.CStr());
 
 			fileList.EmplaceBack(std::move(filename));
 		}
@@ -589,14 +575,19 @@ BvVector<BvPath> BvPath::GetFileList(const char* pFilter) const
 		return fileList;
 	}
 
-	BvString pathWithFilter(m_Path);
-	if (m_Path[m_Path.Size() - 1] != '\\')
+	std::string_view filterSv(pFilter);
+	auto length = BvUTFCharTraits::LengthFor<wchar_t>(m_Path) + BvUTFCharTraits::LengthFor<wchar_t>(filterSv) + 2; // one for '\\' and another for '\0'
+	
+	auto pPathWithFilter = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+	auto it = BvUTFCharTraits::GetStr(m_Path.Begin(), m_Path.End(), pPathWithFilter, pPathWithFilter + length);
+	if (it[-1] != L'\\')
 	{
-		pathWithFilter.Append(L'\\');
+		*it++ = '\\';
 	}
-	pathWithFilter.Append(pFilter);
 
-	GetFileListFromPathWithFilter(fileList, m_Path, pathWithFilter);
+	BvUTFCharTraits::GetStr(filterSv.begin(), filterSv.end(), it, pPathWithFilter + length);
+
+	GetFileListFromPathWithFilter(fileList, m_Path, pPathWithFilter);
 
 	return fileList;
 }

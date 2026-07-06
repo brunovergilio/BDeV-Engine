@@ -91,6 +91,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CubemapArray.h" />
+    <ClInclude Include="Shaders.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CubemapArray.cpp" />

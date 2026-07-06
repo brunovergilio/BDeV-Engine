@@ -43,8 +43,8 @@ void BvFrameDataVk::Reset(bool newFrame)
 			BvScopedLock lock(m_pContextData->m_DeletedResourceLock);
 			for (auto i = 0; i < copyCount; i++)
 			{
-				deletedResources[i] = m_pContextData->m_DeletedResourceHandles[m_pContextData->m_DeletedResourceHandles.Size() - 1 - i];
-				m_pContextData->m_DeletedResourceHandles.PopBack();
+				deletedResources[i] = m_pContextData->m_DeletedResourceHandles[0];
+				m_pContextData->m_DeletedResourceHandles.EraseUnsorted(0);
 			}
 		}
 
@@ -74,7 +74,7 @@ void BvFrameDataVk::Reset(bool newFrame)
 				}
 
 				// If it's a texture, it could be used by the framebuffer
-				if (deletedResources[resourceIndex].m_IsTexture)
+				if (deletedResources[resourceIndex].m_IsTexture && m_pContextData->m_pFramebufferManager)
 				{
 					m_pContextData->m_pFramebufferManager->RemoveFramebuffersWithView(VkImageView(deletedResources[resourceIndex].m_Handle));
 				}
@@ -221,7 +221,10 @@ VkFramebuffer BvFrameDataVk::GetFramebuffer(const FramebufferDesc& fbDesc)
 
 void BvFrameDataVk::RemoveFramebuffers(VkImageView view)
 {
-	m_pContextData->m_pFramebufferManager->RemoveFramebuffersWithView(view);
+	if (m_pContextData->m_pFramebufferManager)
+	{
+		m_pContextData->m_pFramebufferManager->RemoveFramebuffersWithView(view);
+	}
 }
 
 

@@ -93,6 +93,7 @@ struct BvDeviceInfoVk
 		bool meshShader : 1;
 		bool accelerationStructure : 1;
 		bool rayTracingPipeline : 1;
+		bool rayTracingMaintenance : 1;
 		bool rayQuery : 1;
 		bool conservativeRasterization : 1;
 		bool customBorderColor : 1;

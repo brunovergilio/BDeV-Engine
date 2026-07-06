@@ -91,6 +91,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DynamicBuffers.h" />
+    <ClInclude Include="Shaders.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DynamicBuffers.cpp" />

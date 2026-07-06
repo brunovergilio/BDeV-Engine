@@ -47,8 +47,8 @@ private:
 	BvRCRef<IBvShaderResourceLayout> m_SRLSkybox;
 	BvRCRef<IBvGraphicsPipelineState> m_PSOSkybox;
 
-	Float44* m_pWVP = nullptr;
-	Float44* m_pWVPSkybox = nullptr;
+	XMFLOAT4X4* m_pWVP = nullptr;
+	XMFLOAT4X4* m_pWVPSkybox = nullptr;
 
 	i32 m_MaxCubemapIndex = 0;
 	i32 m_CurrCubemapIndex = 0;

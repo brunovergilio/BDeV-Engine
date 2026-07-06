@@ -670,7 +670,7 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess)
 }
 
 
-VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
+VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState, bool rayTracing)
 {
 	switch (resourceState)
 	{
@@ -678,7 +678,7 @@ VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState)
 	case ResourceState::kIndexBuffer:		return VK_ACCESS_2_INDEX_READ_BIT;
 	case ResourceState::kConstantBuffer:	return VK_ACCESS_2_UNIFORM_READ_BIT;
 	case ResourceState::kIndirectBuffer:	return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
-	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+	case ResourceState::kShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | (rayTracing ? VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR : 0);
 	case ResourceState::kPixelShaderResource:	return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
 	case ResourceState::kRWResource:		return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
 	case ResourceState::kTransferSrc:		return VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -714,7 +714,7 @@ VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags, bool includeTransfer)
 }
 
 
-VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
+VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags, bool rayTracing)
 {
 	if (accessFlags == 0)
 	{
@@ -740,7 +740,7 @@ VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags)
 			| VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
 			| VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT
 			| VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT
-			| VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+			| (rayTracing ? VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR : 0);
 	}
 	if (accessFlags & (VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT))
 	{

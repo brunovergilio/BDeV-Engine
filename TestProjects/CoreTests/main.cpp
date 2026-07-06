@@ -1,10 +1,8 @@
 ﻿#include "BDeV/BDeV.h"
 #include "BDeV/Core/Utils/BvRTTI.h"
-#include <format>
 #include <BDeV/Engine/JobSystem/BvParallelJobSystem.h>
 #include <span>
 #include <source_location>
-
 #include "BDeV/Core/Utils/BvUTF.h"
 
 char stack[1024];
@@ -118,6 +116,20 @@ int main()
 	auto currDt = BvTime::GetCurrentDateTime();
 	BvConsole::Print("{}/{}/{} - {} - {}:{}:{}:{}",
 		currDt.m_Month, currDt.m_Day, currDt.m_Year, currDt.m_WeekDay, currDt.m_Hours, currDt.m_Minutes, currDt.m_Seconds, currDt.m_Milliseconds);
+
+
+	auto padb = "asfasf";
+	char32_t utf[32];
+
+	std::string_view v11(padb);
+	std::span<char32_t> v22(utf, 32);
+
+	auto sss = BvUTFCharTraits::Length(v11);
+	auto sfs = BvUTFCharTraits::LengthFor<char32_t>(v11);
+	//auto res1 = BvUTFCharTraits::GetStr(v11, v22);
+	//*res1 = 0;
+	auto res2 = BvUTFCharTraits::GetStr(padb, padb + 7, v22);
+
 
 	//auto p = BV_SALLOC(1_kb, 32);
 	//BV_SFREE(p);

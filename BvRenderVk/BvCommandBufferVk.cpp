@@ -25,7 +25,7 @@
 
 BvCommandBufferVk::BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
 	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetDeviceInfo()->m_HasDebugUtils),
-	m_PushDescriptor(pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor)
+	m_PushDescriptor(pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor), m_RayTracing(pDevice->GetDeviceInfo()->m_FeatureFlags.rayTracingPipeline)
 {
 }
 
@@ -315,8 +315,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			barrier.srcAccessMask = GetVkAccessFlags(renderTarget.m_StateBefore);
 			barrier.dstAccessMask = GetVkAccessFlags(renderTarget.m_State);
 
-			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask);
-			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask);
+			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
+			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
 
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -338,8 +338,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 			barrier.srcAccessMask = GetVkAccessFlags(renderTarget.m_State);
 			barrier.dstAccessMask = GetVkAccessFlags(renderTarget.m_StateAfter);
 
-			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask);
-			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask);
+			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
+			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
 
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1050,12 +1050,12 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
 			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+				GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
 
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+				GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
 		else if (pBarriers[i].m_pBuffer)
 		{
@@ -1085,12 +1085,12 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
 			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+				GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
 
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+				GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
 		else if (pBarriers[i].m_pTexture)
 		{
@@ -1125,12 +1125,12 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
 			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.srcAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+				GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
 
 			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
 				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
 			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.dstAccessMask) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+				GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
 		}
 	}
 
@@ -1662,7 +1662,7 @@ void BvCommandBufferVk::FlushDescriptorSets()
 		if (!m_WriteSets.Empty() || !m_DynamicOffsets.Empty() || resourceSet.IsBindless())
 		{
 			// If we only have dynamic offsets it means we already set this descriptor once
-			VkDescriptorSet descriptorSet = m_WriteSets.Empty() && !m_DynamicOffsets.Empty() ? VK_NULL_HANDLE : m_DescriptorSets[set];
+			VkDescriptorSet descriptorSet = m_WriteSets.Empty() && !m_DynamicOffsets.Empty() ? m_DescriptorSets[set] : VK_NULL_HANDLE;
 			if (isSetDirty || resourceSet.IsBindless())
 			{
 				descriptorSet = m_pFrameData->RequestDescriptorSet(set, m_pShaderResourceLayout, m_WriteSets, descriptorHash, resourceSet.IsBindless());

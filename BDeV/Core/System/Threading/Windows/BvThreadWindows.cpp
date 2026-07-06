@@ -1,6 +1,6 @@
 #include "BDeV/Core/System/Threading/BvThread.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include "BDeV/Core/Utils/BvText.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 #include <utility>
 #include <process.h>
 
@@ -169,9 +169,11 @@ void BvThread::SetName(const char* pThreadName) const
 #if BV_COMPILER_MSVC && BV_COMPILER_VERSION >= 1913
 	HRESULT hr = S_OK;
 	{
-		auto sizeNeeded = BvTextUtilities::ConvertUTF8CharToWideChar(pThreadName, 0, nullptr, 0);
-		wchar_t* pThreadNameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
-		BvTextUtilities::ConvertUTF8CharToWideChar(pThreadName, 0, pThreadNameW, sizeNeeded);
+		std::string_view sv(pThreadName);
+		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+		wchar_t* pThreadNameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+		BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pThreadNameW, pThreadNameW + length);
+
 		hr = SetThreadDescription(m_hThread, pThreadNameW);
 
 		if (FAILED(hr))

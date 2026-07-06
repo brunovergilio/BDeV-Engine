@@ -1169,6 +1169,7 @@ namespace VkHelpers
 		{
 			auto& set = shaderResourceLayoutDesc.m_ShaderResourceSets[i];
 			u32 currSamplerIndex = 0;
+			VkFlags setLayoutFlags = 0;
 			for (auto j = 0u; j < set.m_Resources.Size(); ++j)
 			{
 				auto& currResource = set.m_Resources[j];
@@ -1187,22 +1188,6 @@ namespace VkHelpers
 						currResource.m_Count, GetVkShaderStageFlags(currResource.m_ShaderStages), samplers.Data() + currSamplerIndex });
 					currSamplerIndex += currResource.m_Count;
 				}
-
-				//if (currResource.m_Bindless)
-				//{
-				//	flags.PushBack(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
-				//}
-				//else
-				//{
-				//	flags.PushBack(0);
-				//}
-
-				if (set.m_Type == ShaderResourceSetDesc::Type::kDynamic)
-				{
-					BV_ASSERT(currResource.IsDynamic(), "Dynamic set can only have dynamic resource types");
-					result = VK_ERROR_NOT_PERMITTED;
-					break;
-				}
 			}
 
 			VkDescriptorSetLayoutCreateInfo layoutCI{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -1217,6 +1202,10 @@ namespace VkHelpers
 				flagsCI.pBindingFlags = flags.Data();
 				layoutCI.pNext = &flagsCI;
 				layoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+			}
+			else if (set.m_Type == ShaderResourceSetDesc::Type::kDynamic && pushDescriptor)
+			{
+				layoutCI.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
 			}
 
 			if (layouts.Size() <= set.m_Index)
