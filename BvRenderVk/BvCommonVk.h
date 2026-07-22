@@ -107,6 +107,7 @@ struct BvDeviceInfoVk
 		bool depthBiasControl : 1;
 		bool robustness2 : 1;
 		bool pushDescriptor : 1;
+		bool depthStencilResolve : 1;
 	} m_FeatureFlags;
 
 	bool m_HasDebugUtils = false;

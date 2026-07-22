@@ -38,11 +38,11 @@ private:
 	BvRCRef<IBvTexture> m_Depth;
 	BvRCRef<IBvTextureView> m_DepthView;
 	BvRCRef<IBvSampler> m_Sampler;
-	Float44* m_pWVP = nullptr;
+	XMFLOAT4X4* m_pWVP = nullptr;
 	struct PCData
 	{
-		Float4 m_PosUV[6];
+		XMFLOAT4 m_PosUV[6];
 	} m_PCColor;
-	Float2 m_ScreenSizeAndMid;
+	XMFLOAT2 m_ScreenSizeAndMid;
 	f32 m_ScreenMid = 0.5f;
 };

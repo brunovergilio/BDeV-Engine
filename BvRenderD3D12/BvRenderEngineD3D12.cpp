@@ -265,9 +265,13 @@ bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvG
 	{
 		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kConservativeRasterization;
 	}
-	if (deviceInfo.m_Options6.VariableShadingRateTier != D3D12_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED)
+	if (deviceInfo.m_Options6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_1)
 	{
-		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kShadingRate;
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kShadingRatePerDraw;
+		if (deviceInfo.m_Options6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2)
+		{
+			gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kShadingRateImage;
+		}
 	}
 	if (deviceInfo.m_Options7.MeshShaderTier != D3D12_MESH_SHADER_TIER_NOT_SUPPORTED)
 	{
@@ -280,6 +284,10 @@ bool SetupDeviceInfo(IDXGIAdapter1* pAdapter, BvDeviceInfoD3D12& deviceInfo, BvG
 	if (deviceInfo.m_Options5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 	{
 		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kRayTracing | RenderDeviceCapabilities::kRayQuery;
+	}
+	if (availableFeatureLevel >= D3D_FEATURE_LEVEL_12_0)
+	{
+		gpuInfo.m_DeviceCaps |= RenderDeviceCapabilities::kDepthStencilResolve;
 	}
 
 	{

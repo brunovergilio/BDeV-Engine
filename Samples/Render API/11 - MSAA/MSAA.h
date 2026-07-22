@@ -38,6 +38,6 @@ private:
 	BvRCRef<IBvTextureView> m_DepthView;
 	BvRCRef<IBvTexture> m_DepthMS;
 	BvRCRef<IBvTextureView> m_DepthViewMS;
-	Float44* m_pWVP = nullptr;
+	XMFLOAT4X4* m_pWVP = nullptr;
 	bool m_UseMSAA = true;
 };

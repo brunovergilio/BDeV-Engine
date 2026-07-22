@@ -36,9 +36,9 @@ private:
 	BvRCRef<IBvBufferView> m_UBViewOutline;
 	BvRCRef<IBvTexture> m_Depth;
 	BvRCRef<IBvTextureView> m_DepthView;
-	Float44* m_pWVP = nullptr;
-	Float44* m_pWVPOutline = nullptr;
+	XMFLOAT4X4* m_pWVP = nullptr;
+	XMFLOAT4X4* m_pWVPOutline = nullptr;
 	bool m_DrawOutline = true;
 	f32 m_OutlineScale = 1.05f;
-	Float4 m_OutlineColor{1.0f, 1.0f, 1.0f, 1.0f};
+	XMFLOAT4 m_OutlineColor{1.0f, 1.0f, 1.0f, 1.0f};
 };

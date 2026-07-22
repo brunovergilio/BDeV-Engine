@@ -66,6 +66,28 @@ struct std::hash<FramebufferDesc>
 };
 
 
+template<>
+struct BvHash<FramebufferDesc>
+{
+	size_t operator()(const FramebufferDesc& val) const
+	{
+		u64 hash = 0;
+		HashCombine(hash, val.m_Views.Size());
+		for (auto view : val.m_Views)
+		{
+			HashCombine(hash, view);
+		}
+
+		HashCombine(hash, val.m_RenderPass);
+		HashCombine(hash, val.m_Width);
+		HashCombine(hash, val.m_Height);
+		HashCombine(hash, val.m_LayerCount);
+
+		return hash;
+	}
+};
+
+
 class BvFramebufferManagerVk
 {
 public:

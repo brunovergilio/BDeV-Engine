@@ -417,6 +417,7 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	ff.depthBiasControl = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME);
 	ff.robustness2 = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
 	ff.pushDescriptor = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+	ff.depthStencilResolve = IsPhysicalDeviceExtensionSupported(deviceInfo.m_SupportedExtensions, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
 
 	deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -554,6 +555,11 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 	}
 
+	if (ff.depthStencilResolve)
+	{
+		deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
+	}
+
 	*pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties;
 	pNextProperty = &deviceInfo.m_ExtendedProperties.multiviewProperties.pNext;
 
@@ -605,7 +611,14 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	}
 	if (ff.fragmentShading)
 	{
-		caps |= RenderDeviceCapabilities::kShadingRate;
+		if (deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures.pipelineFragmentShadingRate)
+		{
+			caps |= RenderDeviceCapabilities::kShadingRatePerDraw;
+		}
+		if (deviceInfo.m_ExtendedFeatures.fragmentShadingRateFeatures.attachmentFragmentShadingRate)
+		{
+			caps |= RenderDeviceCapabilities::kShadingRateImage;
+		}
 	}
 	if (ff.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.meshShader && deviceInfo.m_ExtendedFeatures.meshShaderFeatures.taskShader)
 	{
@@ -630,6 +643,10 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 	if (ff.trueFullScreen)
 	{
 		caps |= RenderDeviceCapabilities::kTrueFullScreen;
+	}
+	if (ff.depthStencilResolve)
+	{
+		caps |= RenderDeviceCapabilities::kDepthStencilResolve;
 	}
 
 	strcpy(gpuInfo.m_DeviceName, deviceInfo.m_DeviceProperties.properties.deviceName);

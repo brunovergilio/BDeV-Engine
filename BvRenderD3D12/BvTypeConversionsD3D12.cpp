@@ -1,6 +1,7 @@
 #include "BvTypeConversionsD3D12.h"
 #include "BvTextureD3D12.h"
 #include "BvBufferD3D12.h"
+#include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 #include <bit>
 
 
@@ -34,10 +35,10 @@ D3D12_RESOURCE_FLAGS GetD3D12ResourceFlags(TextureUsage usage)
 	if (EHasFlag(usage, TextureUsage::kDepthStencilTarget))
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-	}
-	if (!(EHasFlag(usage, TextureUsage::kShaderResource) || EHasFlag(usage, TextureUsage::kInputAttachment)))
-	{
-		flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		if (!(EHasFlag(usage, TextureUsage::kShaderResource) || EHasFlag(usage, TextureUsage::kInputAttachment)))
+		{
+			flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
 	}
 	if (EHasFlag(usage, TextureUsage::kUnorderedAccess))
 	{
@@ -103,8 +104,6 @@ D3D12_RESOURCE_STATES GetD3D12ResourceState(ResourceState resourceState)
 	case ResourceState::kDepthStencilRead:		return D3D12_RESOURCE_STATE_DEPTH_READ;
 	case ResourceState::kDepthStencilWrite:		return D3D12_RESOURCE_STATE_DEPTH_WRITE;
 	case ResourceState::kPresent:				return D3D12_RESOURCE_STATE_PRESENT;
-	case ResourceState::kResolveSrc:			return D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-	case ResourceState::kResolveDst:			return D3D12_RESOURCE_STATE_RESOLVE_DEST;
 	case ResourceState::kPredication:			return D3D12_RESOURCE_STATE_PREDICATION;
 	case ResourceState::kShadingRate:			return D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
 	case ResourceState::kRayTracing:
@@ -707,14 +706,49 @@ D3D12_UNORDERED_ACCESS_VIEW_DESC GetD3D12UAVDesc(const BufferViewDesc& viewDesc)
 }
 
 
+DXGI_FORMAT GetD3D12SRVFormatForDepthTexture(DXGI_FORMAT format, bool depth, bool stencil)
+{
+	switch (format)
+	{
+	case DXGI_FORMAT_R32G8X24_TYPELESS:
+		if (depth && stencil)
+		{
+			return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+		}
+		else if (depth)
+		{
+			return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+		}
+		else
+		{
+			return DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
+		}
+	case DXGI_FORMAT_R32_TYPELESS:
+		return DXGI_FORMAT_R32_FLOAT;
+	case DXGI_FORMAT_R24G8_TYPELESS:
+		return depth ? DXGI_FORMAT_R24_UNORM_X8_TYPELESS : DXGI_FORMAT_X24_TYPELESS_G8_UINT;
+	case DXGI_FORMAT_R16_TYPELESS:
+		return DXGI_FORMAT_R16_UNORM;
+	default:
+		return format;
+	}
+}
+
+
 D3D12_SHADER_RESOURCE_VIEW_DESC GetD3D12SRVDesc(const TextureViewDesc& viewDesc)
 {
 	BV_ASSERT(viewDesc.m_pTexture != nullptr, "Invalid texture handle");
 
 	auto pTex = TO_D3D12(viewDesc.m_pTexture);
+	DXGI_FORMAT format = DXGI_FORMAT(viewDesc.m_Format);
+	auto fi = BvRenderUtils::GetFormatInfo(viewDesc.m_Format);
+	if (fi.m_IsDepth || fi.m_IsStencil)
+	{
+		format = GetD3D12SRVFormatForDepthTexture(DXGI_FORMAT(fi.m_ParentFormat), fi.m_IsDepth, fi.m_IsStencil);
+	}
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
-	srv.Format = DXGI_FORMAT(viewDesc.m_Format);
+	srv.Format = format;
 	srv.ViewDimension = GetD3D12SRVDimension(viewDesc.m_ViewType, pTex->GetDesc().m_SampleCount > 1);
 	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 

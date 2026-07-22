@@ -552,24 +552,25 @@ constexpr f32 kPiDiv16 = kPi / 16.0f; //0.196349546313285827637f;
 //#include "BvMathQuaternion.inl"
 
 
-#if 0
-#pragma warning(push, 0)
-#include <DirectXMath.h>
-#include <DirectXCollision.h>
-#include <DirectXPackedVector.h>
-#include <DirectXColors.h>
-#pragma warning(pop)
-#else
 #pragma warning(push, 0)
 #include "DirectXMath/DirectXMath.h"
 #include "DirectXMath/DirectXCollision.h"
 #include "DirectXMath/DirectXPackedVector.h"
 #include "DirectXMath/DirectXColors.h"
 #pragma warning(pop)
-#endif
 
 
 using namespace DirectX;
+
+
+using Float2 = XMFLOAT2;
+using Float2A = XMFLOAT2A;
+using Float3 = XMFLOAT3;
+using Float3A = XMFLOAT3A;
+using Float4 = XMFLOAT4;
+using Float4A = XMFLOAT4A;
+using Float44 = XMFLOAT4X4;
+using Float44A = XMFLOAT4X4;
 
 
 class BvQuat;

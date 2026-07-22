@@ -617,7 +617,7 @@ VkIndexType GetVkIndexType(const IndexFormat indexFormat)
 }
 
 
-VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthStencilFormat, bool isResolveRender)
+VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthStencilFormat)
 {
 	switch (resourceState)
 	{
@@ -631,8 +631,6 @@ VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthSt
 	case ResourceState::kDepthStencilWrite:	return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	case ResourceState::kPresent:			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	case ResourceState::kShadingRate:		return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-	case ResourceState::kResolveSrc:		return isResolveRender ? VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	case ResourceState::kResolveDst:		return isResolveRender ? VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	}
 
 	return VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;

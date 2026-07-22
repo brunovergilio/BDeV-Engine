@@ -27,6 +27,7 @@ class IBvRayTracingPipelineState;
 class IBvShaderResourceParams;
 class BvFrameDataD3D12;
 class BvQueryD3D12;
+class BvRenderPassD3D12;
 
 
 class BvCommandListD3D12 final
@@ -135,6 +136,7 @@ public:
 private:
 	void FlushDescriptorSets();
 	void ResetRenderTargets();
+	void ProcessRenderPass();
 
 private:
 	BvRenderDeviceD3D12* m_pDevice = nullptr;
@@ -160,6 +162,7 @@ private:
 		ID3D12Resource* m_pSrc;
 		ID3D12Resource* m_pDst;
 		D3D12_RESOLVE_MODE m_Mode;
+		D3D12_RESOURCE_STATES m_SrcStateBeforeResolve;
 	};
 	BvVector<ResolveData> m_ResourcesToResolve;
 
@@ -170,6 +173,9 @@ private:
 
 	BvVector<BvQueryD3D12*> m_MeshQueries;
 
+	const BvRenderPassD3D12* m_pRenderPass = nullptr;
+	BvVector<RenderPassTargetDesc> m_RenderPassTargets;
+	u32 m_SubpassIndex = 0;
 	State m_CurrentState = State::kRecording;
 	bool m_HasDebugUtils = false;
 };

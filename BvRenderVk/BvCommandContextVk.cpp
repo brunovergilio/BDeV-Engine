@@ -221,9 +221,9 @@ VkFramebuffer BvFrameDataVk::GetFramebuffer(const FramebufferDesc& fbDesc)
 
 void BvFrameDataVk::RemoveFramebuffers(VkImageView view)
 {
-	if (m_pContextData->m_pFramebufferManager)
+	if (auto pFBM = m_pContextData->m_pFramebufferManager)
 	{
-		m_pContextData->m_pFramebufferManager->RemoveFramebuffersWithView(view);
+		pFBM->RemoveFramebuffersWithView(view);
 	}
 }
 
@@ -787,9 +787,9 @@ void BvCommandContextVk::RemoveSwapChain(BvSwapChainVk* pSwapChain)
 
 void BvCommandContextVk::RemoveFramebuffers(VkImageView view)
 {
-	for (auto i = 0; i < m_FrameCount; ++i)
+	if (auto pFBM = m_pContextData->m_pFramebufferManager)
 	{
-		m_pFrames[i].RemoveFramebuffers(view);
+		pFBM->RemoveFramebuffersWithView(view);
 	}
 }
 

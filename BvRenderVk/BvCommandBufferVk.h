@@ -144,6 +144,7 @@ private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
 	VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
 	BvFrameDataVk* m_pFrameData = nullptr;
+	const VkExtent2D m_ShadingRateTexelSizes{};
 
 	BvVector<BvSwapChainVk*> m_SwapChains;
 

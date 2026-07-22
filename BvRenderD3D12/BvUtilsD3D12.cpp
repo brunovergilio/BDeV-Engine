@@ -5,6 +5,7 @@
 #include "BvShaderResourceD3D12.h"
 #include "BvSamplerD3D12.h"
 #include "BvShaderD3D12.h"
+#include "BvRenderPassD3D12.h"
 #include "BvPipelineStateD3D12.h"
 #include "BvTypeConversionsD3D12.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
@@ -190,6 +191,17 @@ namespace D3D12Utils
 		auto& texture = result.second.m_Texture;
 		auto& allocation = result.second.m_Allocation;
 
+		if (textureDesc.m_SampleCount > 1)
+		{
+			D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msaa{ DXGI_FORMAT(textureDesc.m_Format), textureDesc.m_SampleCount };
+			if (FAILED(pDevice->GetHandle()->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+				&msaa, sizeof(D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS))) || msaa.NumQualityLevels == 0)
+			{
+				hr = E_INVALIDARG;
+				return result;
+			}
+		}
+
 		CD3DX12_RESOURCE_DESC resourceDesc = GetD3D12ResourceDesc(textureDesc);
 
 		auto pAllocator = pDevice->GetAllocator();
@@ -217,15 +229,21 @@ namespace D3D12Utils
 			else if (EHasFlag(textureDesc.m_UsageFlags, TextureUsage::kDepthStencilTarget))
 			{
 				auto fi = BvRenderUtils::GetFormatInfo(textureDesc.m_Format);
+				bool useTypeless = false;
 				if (EHasAnyFlags(textureDesc.m_UsageFlags, TextureUsage::kShaderResource | TextureUsage::kInputAttachment)
 					&& !fi.m_IsTypeless && fi.m_ParentFormat != Format::kUnknown)
 				{
 					resourceDesc.Format = DXGI_FORMAT(fi.m_ParentFormat);
+					useTypeless = true;
 				}
 
 				cv.Format = resourceDesc.Format;
 				cv.DepthStencil = { 1.0f, 0 };
-				pCV = &cv;
+
+				if (!useTypeless)
+				{
+					pCV = &cv;
+				}
 			}
 
 			hr = pD3DDevice->CreatePlacedResource(allocation->GetHeap(), allocation->GetOffset(), &resourceDesc,
@@ -393,13 +411,37 @@ namespace D3D12Utils
 		stream.pRootSignature = rootSig.Get();
 
 		D3D12_RT_FORMAT_ARRAY rtvFormats{};
+		DXGI_FORMAT dsvFormat{};
+		if (auto pRP = graphicsPipelineStateDesc.m_pRenderPass)
+		{
+			auto& desc = pRP->GetDesc();
+			auto& attachments = desc.m_Attachments;
+			auto& sp = desc.m_Subpasses[graphicsPipelineStateDesc.m_SubpassIndex];
+
+			for (auto& ca : sp.m_ColorAttachments)
+			{
+				rtvFormats.RTFormats[rtvFormats.NumRenderTargets++] = DXGI_FORMAT(attachments[ca.m_Index].m_Format);
+			}
+
+			if (sp.m_DepthStencilAttachment.IsValid())
+			{
+				dsvFormat = DXGI_FORMAT(attachments[sp.m_DepthStencilAttachment.m_Index].m_Format);
+			}
+		}
+		else
+		{
+			for (auto i = 0; i < graphicsPipelineStateDesc.m_RenderTargetFormats.Size(); i++)
+			{
+				rtvFormats.RTFormats[rtvFormats.NumRenderTargets++] = DXGI_FORMAT(graphicsPipelineStateDesc.m_RenderTargetFormats[i]);
+			}
+
+			dsvFormat = DXGI_FORMAT(graphicsPipelineStateDesc.m_DepthStencilFormat);
+		}
+		
 		CD3DX12_BLEND_DESC blendDesc{};
 		blendDesc.AlphaToCoverageEnable = graphicsPipelineStateDesc.m_BlendStateDesc.m_AlphaToCoverageEnable;
-		for (auto i = 0; i < graphicsPipelineStateDesc.m_RenderTargetFormats.Size(); i++)
+		for (auto i = 0; i < rtvFormats.NumRenderTargets; i++)
 		{
-			rtvFormats.NumRenderTargets++;
-			rtvFormats.RTFormats[i] = DXGI_FORMAT(graphicsPipelineStateDesc.m_RenderTargetFormats[i]);
-
 			auto& dst = blendDesc.RenderTarget[i];
 			auto& src = graphicsPipelineStateDesc.m_BlendStateDesc.m_BlendAttachments[i];
 			dst.BlendEnable = src.m_BlendEnable;
@@ -415,7 +457,7 @@ namespace D3D12Utils
 		}
 		stream.BlendState = blendDesc;
 		stream.RTVFormats = rtvFormats;
-		stream.DSVFormat = DXGI_FORMAT(graphicsPipelineStateDesc.m_DepthStencilFormat);
+		stream.DSVFormat = dsvFormat;
 		auto& depth = graphicsPipelineStateDesc.m_DepthStencilDesc;
 		stream.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC1(depth.m_DepthTestEnable, depth.m_DepthWriteEnable ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO,
 			GetD3D12ComparisonFunc(depth.m_DepthOp), depth.m_StencilTestEnable, depth.m_StencilReadMask, depth.m_StencilWriteMask,

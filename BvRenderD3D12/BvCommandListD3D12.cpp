@@ -75,30 +75,41 @@ void BvCommandListD3D12::Close()
 
 void BvCommandListD3D12::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 renderPassTargetCount, const RenderPassTargetDesc* pRenderPassTargets)
 {
-	BV_ASSERT(false, "Not implemented");
-
 	BV_ASSERT(pRenderPass != nullptr, "Invalid render pass");
 	BV_ASSERT(pRenderPassTargets != nullptr, "No render / depth targets");
-	BV_ASSERT(renderPassTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
 
 	ResetRenderTargets();
 
+	m_RenderPassTargets.Clear();
+	m_RenderPassTargets.Reserve(renderPassTargetCount);
+	m_SubpassIndex = 0;
+
+	for (auto i = 0; i < renderPassTargetCount; i++)
+	{
+		m_RenderPassTargets.PushBack(pRenderPassTargets[i]);
+	}
+
+	m_PreRenderBarriers.Reserve(renderPassTargetCount);
+
+	m_pRenderPass = TO_D3D12(pRenderPass);
+
 	m_CurrentState = State::kRenderPass;
+
+	ProcessRenderPass();
 }
 
 
 void BvCommandListD3D12::NextSubpass()
 {
-	BV_ASSERT(false, "Not implemented");
+	ProcessRenderPass();
 }
 
 
 void BvCommandListD3D12::EndRenderPass()
 {
-	BV_ASSERT(false, "Not implemented");
+	ProcessRenderPass();
 
-	BV_ASSERT(m_CurrentState == State::kRenderPass, "Command buffer not in render pass");
-
+	m_pRenderPass = nullptr;
 	m_CurrentState = State::kRecording;
 }
 
@@ -112,90 +123,64 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 		return;
 	}
 
-	BV_ASSERT(renderTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
-
-	u32 colorAttachmentCount = 0;
 	u32 resolveCount = 0;
 	bool hasDepth = false;
 	bool hasStencil = false;
 	bool clearDepth = false;
 	ID3D12Resource* pShadingRateImage = nullptr;
-	D3D12_SHADING_RATE shadingRate = D3D12_SHADING_RATE_1X1;
-	D3D12_SHADING_RATE_COMBINER shadingRateCombiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT]{};
 
 	BvFixedVector<D3D12_CPU_DESCRIPTOR_HANDLE, kMaxRenderTargets> rtvs;
 	BvFixedVector<const f32*, kMaxRenderTargets> rtvColors;
 	D3D12_CPU_DESCRIPTOR_HANDLE dsv{};
 	f32 depthColor{};
 	u8 stencil{};
-	ResolveData resolveData[kMaxRenderTargets]{};
+	ResolveData resolveTargets[kMaxRenderTargets]{};
 
 	u32 layerCount = kU32Max;
 	for (u32 i = 0; i < renderTargetCount; i++)
 	{
-		if (colorAttachmentCount >= 8)
+		if (rtvs.Size() == D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
 		{
 			continue;
 		}
 
 		const auto& renderTarget = pRenderTargets[i];
 		auto pView = TO_D3D12(renderTarget.m_pView);
+		auto pResolveView = TO_D3D12(renderTarget.m_pResolveView);
 		auto pTexture = TO_D3D12(renderTarget.m_pView->GetDesc().m_pTexture);
+		auto pResolveTexture = pResolveView ? TO_D3D12(renderTarget.m_pResolveView->GetDesc().m_pTexture) : nullptr;
 		auto& desc = renderTarget.m_pView->GetDesc().m_pTexture->GetDesc();
 		auto& viewDesc = renderTarget.m_pView->GetDesc();
 
 		layerCount = std::min(layerCount, (viewDesc.m_SubresourceDesc.layerCount == kU32Max ? desc.m_ArraySize : viewDesc.m_SubresourceDesc.layerCount)
 			- viewDesc.m_SubresourceDesc.firstLayer);
 
-		auto fi = BvRenderUtils::GetFormatInfo(viewDesc.m_Format);
-		bool isDepthTarget = fi.m_IsDepth;
-		bool isStencilTarget = fi.m_IsStencil;
-		bool isColorTarget = !isDepthTarget && !isStencilTarget;
-		bool isShadingRate = renderTarget.m_State == ResourceState::kShadingRate
-			|| renderTarget.m_ShadingRateTexelSizes[0] != 0 || renderTarget.m_ShadingRateTexelSizes[1] != 0;
-		bool isResolveImage = renderTarget.m_ResolveMode != ResolveMode::kNone;
-
-		if (isShadingRate)
+		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+		if (renderTarget.IsColor())
 		{
-			pShadingRateImage = TO_D3D12(renderTarget.m_pView->GetDesc().m_pTexture)->GetHandle();
-			shadingRate = GetD3D12ShadingRate(renderTarget.m_ShadingRateTexelSizes);
-			shadingRateCombiners[0] = GetD3D12ShadingRateCombiner(renderTarget.m_ShadingRateCombiners[0]);
-			shadingRateCombiners[1] = GetD3D12ShadingRateCombiner(renderTarget.m_ShadingRateCombiners[1]);
+			state = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			rtvs.EmplaceBack(pView->GetRTV());
+			rtvColors.EmplaceBack(renderTarget.m_LoadOp == LoadOp::kClear ? renderTarget.m_ClearValues.colors : nullptr);
 		}
-		else if (isColorTarget)
+		else if (renderTarget.IsDepthStencil() || renderTarget.IsReadOnlyDepthStencil())
 		{
-			if (isResolveImage)
-			{
-				resolveData[resolveCount].m_pDst = pTexture->GetHandle();
-				resolveData[resolveCount].m_Mode = GetD3D12ResolveMode(renderTarget.m_ResolveMode);
-				resolveCount++;
-			}
-			else
-			{
-				rtvs.EmplaceBack(pView->GetRTV());
-				rtvColors.EmplaceBack(renderTarget.m_LoadOp == LoadOp::kClear ? renderTarget.m_ClearValues.colors : nullptr);
-				resolveData[colorAttachmentCount++].m_pSrc = pTexture->GetHandle();
-			}
-		}
-		else if (isDepthTarget)
-		{
+			state = renderTarget.IsDepthStencil() ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_DEPTH_READ;
 			hasDepth = true;
-			hasStencil = isStencilTarget;
-			if (isResolveImage)
-			{
-				BV_ASSERT(false, "Depth / Stencil resolve is not supported in D3D12");
-				continue;
-			}
+			hasStencil = BvRenderUtils::GetFormatInfo(viewDesc.m_Format).m_IsStencil;
 
 			dsv = pView->GetDSV();
 			depthColor = renderTarget.m_ClearValues.depth;
 			stencil = renderTarget.m_ClearValues.stencil;
 			clearDepth = renderTarget.m_LoadOp == LoadOp::kClear;
 		}
+		else if (renderTarget.IsShadingRate())
+		{
+			state = D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
+			pShadingRateImage = TO_D3D12(renderTarget.m_pView->GetDesc().m_pTexture)->GetHandle();
+		}
 
 		auto pResource = pTexture->GetHandle();
 		auto stateBefore = GetD3D12ResourceState(renderTarget.m_StateBefore);
-		auto state = GetD3D12ResourceState(renderTarget.m_State);
 		auto stateAfter = GetD3D12ResourceState(renderTarget.m_StateAfter);
 
 		if (stateBefore != state)
@@ -208,17 +193,17 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 			barrier.Transition.pResource = pResource;
 		}
 
-		if (state != stateAfter)
+		if (state != stateAfter || (pResolveTexture && D3D12_RESOURCE_STATE_RESOLVE_SOURCE != stateAfter))
 		{
 			auto& barrier = m_PostRenderBarriers.PushBack({});
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Transition.StateBefore = state;
+			barrier.Transition.StateBefore = pResolveTexture ? D3D12_RESOURCE_STATE_RESOLVE_SOURCE : state;
 			barrier.Transition.StateAfter = stateAfter;
 			barrier.Transition.Subresource = kU32Max;
 			barrier.Transition.pResource = pResource;
 		}
 
-		if (stateAfter != D3D12_RESOURCE_STATE_COMMON)
+		if (renderTarget.m_LoadOp == LoadOp::kClear && stateAfter != D3D12_RESOURCE_STATE_COMMON)
 		{
 			auto& barrier = m_EndCommandBarriers.PushBack({});
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -226,6 +211,52 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
 			barrier.Transition.Subresource = kU32Max;
 			barrier.Transition.pResource = pResource;
+		}
+
+		if (pResolveTexture)
+		{
+			auto pResolveResource = pResolveTexture->GetHandle();
+			auto resolveStateAfter = GetD3D12ResourceState(renderTarget.m_ResolveStateAfter);
+
+			auto& resolveTarget = resolveTargets[resolveCount];
+			resolveTarget.m_pSrc = pTexture->GetHandle();
+			resolveTarget.m_pDst = pResolveTexture->GetHandle();
+			resolveTarget.m_SrcStateBeforeResolve = state;
+			resolveTarget.m_Mode = GetD3D12ResolveMode(renderTarget.m_ResolveMode);
+
+			auto resolveStateBefore = GetD3D12ResourceState(renderTarget.m_ResolveStateBefore);
+
+			if (resolveStateBefore != D3D12_RESOURCE_STATE_RESOLVE_DEST)
+			{
+				auto& barrier = m_PreRenderBarriers.PushBack({});
+				barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				barrier.Transition.StateBefore = resolveStateBefore;
+				barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_DEST;
+				barrier.Transition.Subresource = kU32Max;
+				barrier.Transition.pResource = pResolveResource;
+			}
+
+			if (resolveStateAfter != D3D12_RESOURCE_STATE_RESOLVE_DEST)
+			{
+				auto& barrier = m_PostRenderBarriers.PushBack({});
+				barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RESOLVE_DEST;
+				barrier.Transition.StateAfter = resolveStateAfter;
+				barrier.Transition.Subresource = kU32Max;
+				barrier.Transition.pResource = pResolveResource;
+			}
+
+			if (resolveStateAfter != D3D12_RESOURCE_STATE_COMMON)
+			{
+				auto& barrier = m_EndCommandBarriers.PushBack({});
+				barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				barrier.Transition.StateBefore = resolveStateAfter;
+				barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+				barrier.Transition.Subresource = kU32Max;
+				barrier.Transition.pResource = pResolveResource;
+			}
+
+			resolveCount++;
 		}
 	}
 
@@ -252,12 +283,10 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 
 	if (resolveCount)
 	{
-		BV_ASSERT(colorAttachmentCount >= resolveCount, "Invalid color/resolve attachments");
-
 		m_ResourcesToResolve.Reserve(resolveCount);
 		for (auto i = 0; i < resolveCount; i++)
 		{
-			m_ResourcesToResolve.PushBack(resolveData[i]);
+			m_ResourcesToResolve.PushBack(resolveTargets[i]);
 		}
 	}
 
@@ -265,7 +294,6 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 	{
 		// ID3D12GraphicsCommandList5 is needed here
 		m_CommandList6->RSSetShadingRateImage(pShadingRateImage);
-		m_CommandList6->RSSetShadingRate(shadingRate, shadingRateCombiners);
 	}
 
 	m_CurrentState = State::kRenderTarget;
@@ -1165,17 +1193,28 @@ void BvCommandListD3D12::FlushDescriptorSets()
 
 void BvCommandListD3D12::ResetRenderTargets()
 {
-	if (m_CurrentState == State::kRenderPass)
-	{
-		EndRenderPass();
-	}
-	else if (m_CurrentState == State::kRenderTarget)
+	if (m_CurrentState != State::kRecording)
 	{
 		m_CommandList->OMSetRenderTargets(0, nullptr, FALSE, nullptr);
 	}
 
 	if (m_ResourcesToResolve.Size() > 0)
 	{
+		for (const auto& rtr : m_ResourcesToResolve)
+		{
+			auto& barrier = m_PreRenderBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+			barrier.Transition.pResource = rtr.m_pSrc;
+			barrier.Transition.StateBefore = rtr.m_SrcStateBeforeResolve;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		}
+
+		if (m_PreRenderBarriers.Size() > 0)
+		{
+			m_CommandList->ResourceBarrier(m_PreRenderBarriers.Size(), m_PreRenderBarriers.Data());
+			m_PreRenderBarriers.Clear();
+		}
+
 		for (const auto& rtr : m_ResourcesToResolve)
 		{
 			m_CommandList4->ResolveSubresourceRegion(rtr.m_pDst, 0, 0, 0, rtr.m_pSrc, 0, nullptr, rtr.m_pDst->GetDesc().Format, rtr.m_Mode);
@@ -1190,4 +1229,216 @@ void BvCommandListD3D12::ResetRenderTargets()
 	}
 
 	m_CurrentState = State::kRecording;
+}
+
+
+void BvCommandListD3D12::ProcessRenderPass()
+{
+	BV_ASSERT(m_CurrentState == State::kRenderPass, "Command buffer not in render pass");
+
+	auto& rpDesc = m_pRenderPass->GetDesc();
+
+	bool* pResolveSrcs = reinterpret_cast<bool*>(BV_STACK_ALLOC(sizeof(bool) * m_RenderPassTargets.Size()));
+	ZeroMemory(pResolveSrcs, sizeof(bool) * m_RenderPassTargets.Size());
+
+	if (m_SubpassIndex > 0)
+	{
+		auto& prevSpDesc = rpDesc.m_Subpasses[m_SubpassIndex - 1];
+		if (prevSpDesc.m_ResolveAttachments.Size() > 0 || prevSpDesc.m_DepthStencilResolveAttachment.IsValid())
+		{
+			for (auto i = 0u; i < prevSpDesc.m_ResolveAttachments.Size(); i++)
+			{
+				auto colorTargetIndex = prevSpDesc.m_ColorAttachments[i].m_Index;
+
+				// We mark as many color attachments as we have resolve attachments to process
+				pResolveSrcs[colorTargetIndex] = true;
+
+				auto& barrier = m_PreRenderBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+				barrier.Transition.pResource = TO_D3D12(m_RenderPassTargets[colorTargetIndex].m_pView->GetDesc().m_pTexture)->GetHandle();
+				barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+				barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+				barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			}
+
+			if (prevSpDesc.m_DepthStencilResolveAttachment.IsValid())
+			{
+				auto depthTargetIndex = prevSpDesc.m_DepthStencilAttachment.m_Index;
+
+				// We mark as many color attachments as we have resolve attachments to process
+				pResolveSrcs[depthTargetIndex] = true;
+
+				auto& barrier = m_PreRenderBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+				barrier.Transition.pResource = TO_D3D12(m_RenderPassTargets[depthTargetIndex].m_pView->GetDesc().m_pTexture)->GetHandle();
+				barrier.Transition.StateBefore = GetD3D12ResourceState(prevSpDesc.m_DepthStencilAttachment.m_ResourceState);
+				barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+				barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			}
+
+			if (m_PreRenderBarriers.Size() > 0)
+			{
+				m_CommandList->ResourceBarrier(m_PreRenderBarriers.Size(), m_PreRenderBarriers.Data());
+				m_PreRenderBarriers.Clear();
+			}
+
+			for (auto i = 0u; i < prevSpDesc.m_ResolveAttachments.Size(); i++)
+			{
+				auto colorTargetIndex = prevSpDesc.m_ColorAttachments[i].m_Index;
+				auto resolveTargetIndex = prevSpDesc.m_ResolveAttachments[i].m_Index;
+
+				auto pSrc = TO_D3D12(m_RenderPassTargets[colorTargetIndex].m_pView->GetDesc().m_pTexture)->GetHandle();
+				auto pDst = TO_D3D12(m_RenderPassTargets[resolveTargetIndex].m_pView->GetDesc().m_pTexture)->GetHandle();
+
+				m_CommandList4->ResolveSubresourceRegion(pDst, 0, 0, 0, pSrc, 0, nullptr, pDst->GetDesc().Format, GetD3D12ResolveMode(prevSpDesc.m_ResolveAttachments[i].m_ResolveMode));
+			}
+
+			if (prevSpDesc.m_DepthStencilResolveAttachment.IsValid())
+			{
+				auto depthTargetIndex = prevSpDesc.m_DepthStencilAttachment.m_Index;
+				auto resolveTargetIndex = prevSpDesc.m_DepthStencilResolveAttachment.m_Index;
+
+				auto pSrc = TO_D3D12(m_RenderPassTargets[depthTargetIndex].m_pView->GetDesc().m_pTexture)->GetHandle();
+				auto pDst = TO_D3D12(m_RenderPassTargets[resolveTargetIndex].m_pView->GetDesc().m_pTexture)->GetHandle();
+
+				m_CommandList4->ResolveSubresourceRegion(pDst, 0, 0, 0, pSrc, 0, nullptr, pDst->GetDesc().Format, GetD3D12ResolveMode(prevSpDesc.m_DepthStencilResolveAttachment.m_ResolveMode));
+			}
+		}
+	}
+
+	auto pBarrierData = m_pRenderPass->GetBarrierData();
+
+	auto [start, count] = pBarrierData->m_SubpassBarrierIndices[m_SubpassIndex];
+	auto& states = pBarrierData->m_States;
+	for (auto i = 0; i < count; i++)
+	{
+		auto& state = states[start + i];
+		auto currState = pResolveSrcs[state.m_Index] ? D3D12_RESOURCE_STATE_RESOLVE_SOURCE : state.m_StateBefore;
+		if (currState == state.m_StateAfter)
+		{
+			continue;
+		}
+
+		auto& barrier = m_PreRenderBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+		barrier.Transition.StateBefore = state.m_StateBefore;
+		barrier.Transition.StateAfter = state.m_StateAfter;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Transition.pResource = TO_D3D12(m_RenderPassTargets[state.m_Index].m_pView->GetDesc().m_pTexture)->GetHandle();
+	}
+
+	if (m_PreRenderBarriers.Size() > 0)
+	{
+		m_CommandList->ResourceBarrier(m_PreRenderBarriers.Size(), m_PreRenderBarriers.Data());
+
+		m_PreRenderBarriers.Clear();
+	}
+
+	if (m_SubpassIndex >= rpDesc.m_Subpasses.Size())
+	{
+		for (auto i = start + count; i < states.Size(); i++)
+		{
+			auto& state = states[i];
+			auto currState = pResolveSrcs[state.m_Index] ? D3D12_RESOURCE_STATE_RESOLVE_SOURCE : state.m_StateBefore;
+			pResolveSrcs[state.m_Index] = false;
+			if (currState == state.m_StateAfter)
+			{
+				continue;
+			}
+
+			auto& barrier = m_EndCommandBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+			barrier.Transition.StateBefore = currState;
+			barrier.Transition.StateAfter = state.m_StateAfter;
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			barrier.Transition.pResource = TO_D3D12(m_RenderPassTargets[state.m_Index].m_pView->GetDesc().m_pTexture)->GetHandle();
+		}
+
+		// Any remaining resolve sources may have to be transitioned back to common
+		for (auto i = 0u; i < m_RenderPassTargets.Size(); i++)
+		{
+			if (!pResolveSrcs[i])
+			{
+				continue;
+			}
+
+			auto& barrier = m_EndCommandBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			barrier.Transition.pResource = TO_D3D12(m_RenderPassTargets[i].m_pView->GetDesc().m_pTexture)->GetHandle();
+		}
+
+		return;
+	}
+
+	bool hasDepth = false;
+	bool hasStencil = false;
+
+	BvFixedVector<D3D12_CPU_DESCRIPTOR_HANDLE, kMaxRenderTargets> rtvs;
+	BvFixedVector<const f32*, kMaxRenderTargets> rtvColors;
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv{};
+	f32 depthColor{};
+	u8 stencil{};
+	ResolveData resolveData[kMaxRenderTargets]{};
+
+	auto& spDesc = rpDesc.m_Subpasses[m_SubpassIndex++];
+	for (auto i = 0; i < spDesc.m_ColorAttachments.Size(); i++)
+	{
+		auto& ref = spDesc.m_ColorAttachments[i];
+		rtvs.PushBack(TO_D3D12(m_RenderPassTargets[ref.m_Index].m_pView)->GetRTV());
+		rtvColors.PushBack(rpDesc.m_Attachments[ref.m_Index].m_LoadOp == LoadOp::kClear ? m_RenderPassTargets[ref.m_Index].m_ClearValues.colors : nullptr);
+	}
+
+	D3D12_CLEAR_FLAGS clearDepthFlags = D3D12_CLEAR_FLAGS(0);
+	if (spDesc.m_DepthStencilAttachment.IsValid())
+	{
+		auto& ref = spDesc.m_DepthStencilAttachment.m_Index;
+		if (rpDesc.m_Attachments[ref].m_LoadOp == LoadOp::kClear)
+		{
+			auto fi = BvRenderUtils::GetFormatInfo(rpDesc.m_Attachments[ref].m_Format);
+			if (fi.m_IsDepth)
+			{
+				clearDepthFlags |= D3D12_CLEAR_FLAG_DEPTH;
+				depthColor = m_RenderPassTargets[ref].m_ClearValues.depth;
+				hasDepth = true;
+			}
+			if (fi.m_IsStencil)
+			{
+				clearDepthFlags |= D3D12_CLEAR_FLAG_STENCIL;
+				stencil = m_RenderPassTargets[ref].m_ClearValues.stencil;
+				hasStencil = true;
+			}
+		}
+		dsv = TO_D3D12(m_RenderPassTargets[ref].m_pView)->GetDSV();
+	}
+
+	m_CommandList->OMSetRenderTargets(rtvs.Size(), rtvs.Size() ? rtvs.Data() : nullptr, FALSE, dsv.ptr ? &dsv : nullptr);
+	for (auto i = 0; i < rtvs.Size(); i++)
+	{
+		if (rtvColors[i])
+		{
+			m_CommandList->ClearRenderTargetView(rtvs[i], rtvColors[i], 0, nullptr);
+		}
+	}
+	if (hasDepth || hasStencil)
+	{
+		m_CommandList->ClearDepthStencilView(dsv, clearDepthFlags, depthColor, stencil, 0, nullptr);
+	}
+
+	// TODO: Resolve and Shading Rate
+	//if (resolveCount)
+	//{
+
+	//	m_ResourcesToResolve.Reserve(resolveCount);
+	//	for (auto i = 0; i < resolveCount; i++)
+	//	{
+	//		m_ResourcesToResolve.PushBack(resolveData[i]);
+	//	}
+	//}
+
+	if (spDesc.m_ShadingRateAttachment.IsValid())
+	{
+		auto& ref = spDesc.m_ShadingRateAttachment;
+		auto pTexture = TO_D3D12(m_RenderPassTargets[ref.m_Index].m_pView->GetDesc().m_pTexture)->GetHandle();
+
+		// ID3D12GraphicsCommandList5 is needed here
+		m_CommandList6->RSSetShadingRateImage(pTexture);
+	}
 }

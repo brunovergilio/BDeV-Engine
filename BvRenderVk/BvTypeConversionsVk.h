@@ -43,7 +43,7 @@ VkShaderStageFlags GetVkShaderStageFlags(const ShaderStage stages);
 VkAttachmentLoadOp GetVkAttachmentLoadOp(const LoadOp loadOp);
 VkAttachmentStoreOp GetVkAttachmentStoreOp(const StoreOp storeOp);
 VkIndexType GetVkIndexType(const IndexFormat indexFormat);
-VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthStencilFormat = false, bool isResolveRender = false);
+VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthStencilFormat = false);
 VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess);
 VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState, bool rayTracing = false);
 VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags, bool includeTransfer = true);

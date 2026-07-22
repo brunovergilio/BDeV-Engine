@@ -25,7 +25,8 @@
 
 BvCommandBufferVk::BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
 	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetDeviceInfo()->m_HasDebugUtils),
-	m_PushDescriptor(pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor), m_RayTracing(pDevice->GetDeviceInfo()->m_FeatureFlags.rayTracingPipeline)
+	m_PushDescriptor(pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor), m_RayTracing(pDevice->GetDeviceInfo()->m_FeatureFlags.rayTracingPipeline),
+	m_ShadingRateTexelSizes(pDevice->GetDeviceInfo()->m_ExtendedProperties.fragmentShadingRateProps.maxFragmentShadingRateAttachmentTexelSize)
 {
 }
 
@@ -100,7 +101,7 @@ void BvCommandBufferVk::BeginRenderPass(const IBvRenderPass* pRenderPass, u32 re
 		fbDesc.m_Views.EmplaceBack(viewVk->GetHandle());
 		if (!IsDepthOrStencilFormat(viewDesc.m_Format))
 		{
-			memcpy(clearValues.EmplaceBack().color.float32, pRenderPassTargets[i].m_ClearValues.colors, sizeof(float) * 4);
+			memcpy(clearValues.EmplaceBack().color.float32, pRenderPassTargets[i].m_ClearValues.colors, sizeof(f32) * 4);
 		}
 		else
 		{
@@ -154,8 +155,6 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		return;
 	}
 
-	BV_ASSERT(renderTargetCount <= kMaxRenderTargetsWithDepth, "Too many render targets");
-
 	VkExtent2D renderArea{ kU32Max, kU32Max };
 
 	VkRenderingAttachmentInfo colorAttachments[kMaxRenderTargets]{};
@@ -165,21 +164,69 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 	VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
 
 	u32 colorAttachmentCount = 0;
-	u32 resolveCount = 0;
 	bool hasDepth = false;
-	bool hasStencil = true;
-	bool hasShadingRate = false;
+	bool hasStencil = false;
+
+	auto transitionLayoutFn = [this](BvTextureViewVk* pView, VkImageAspectFlags aspectFlags, ResourceState stateBefore, ResourceState state, ResourceState stateAfter)
+		{
+			auto& viewDesc = pView->GetDesc();
+			auto isDepthStencil = aspectFlags & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+
+			auto image = TO_VK(viewDesc.m_pTexture)->GetHandle();
+			if (stateBefore != state)
+			{
+				auto& barrier = m_PreRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
+				//barrier.pNext = nullptr;
+				barrier.image = image;
+				barrier.subresourceRange.aspectMask = aspectFlags;
+				barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
+				barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;
+				barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
+				barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
+
+				barrier.oldLayout = GetVkImageLayout(stateBefore, isDepthStencil);
+				barrier.newLayout = GetVkImageLayout(state, isDepthStencil);
+
+				barrier.srcAccessMask = GetVkAccessFlags(stateBefore);
+				barrier.dstAccessMask = GetVkAccessFlags(state);
+
+				barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
+				barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
+
+				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			}
+			if (state != stateAfter)
+			{
+				auto& barrier = m_PostRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
+				//barrier.pNext = nullptr;
+				barrier.image = image;
+				barrier.subresourceRange.aspectMask = aspectFlags;
+				barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
+				barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;
+				barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
+				barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
+
+				barrier.oldLayout = GetVkImageLayout(state, isDepthStencil);
+				barrier.newLayout = GetVkImageLayout(stateAfter, isDepthStencil);
+
+				barrier.srcAccessMask = GetVkAccessFlags(state);
+				barrier.dstAccessMask = GetVkAccessFlags(stateAfter);
+
+				barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
+				barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
+
+				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			}
+		};
 
 	u32 layerCount = kU32Max;
 	for (u32 i = 0; i < renderTargetCount; i++)
 	{
-		if (colorAttachmentCount >= 8)
-		{
-			continue;
-		}
-
 		const auto& renderTarget = pRenderTargets[i];
 		auto pView = TO_VK(renderTarget.m_pView);
+		auto pResolveView = TO_VK(renderTarget.m_pResolveView);
 		auto pTexture = TO_VK(renderTarget.m_pView->GetDesc().m_pTexture);
 		auto& desc = renderTarget.m_pView->GetDesc().m_pTexture->GetDesc();
 		auto& viewDesc = renderTarget.m_pView->GetDesc();
@@ -193,54 +240,41 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 		auto storeOp = GetVkAttachmentStoreOp(renderTarget.m_StoreOp);
 
 		auto aspectFlags = GetVkFormatMap(viewDesc.m_Format).aspectFlags;
-		bool isColorTarget = (aspectFlags & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
 		bool isDepthTarget = (aspectFlags & VK_IMAGE_ASPECT_DEPTH_BIT) != 0;
 		bool isStencilTarget = (aspectFlags & VK_IMAGE_ASPECT_STENCIL_BIT) != 0;
-		bool isShadingRate = renderTarget.m_State == ResourceState::kShadingRate
-			|| renderTarget.m_ShadingRateTexelSizes[0] != 0 || renderTarget.m_ShadingRateTexelSizes[1] != 0;
-		bool isResolveImage = renderTarget.m_ResolveMode != ResolveMode::kNone;
 
-		if (isShadingRate)
+		ResourceState state = ResourceState::kCommon;
+
+		if (renderTarget.IsColor())
 		{
-			shadingRateAttachment.imageView = pView->GetHandle();
-			shadingRateAttachment.imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-			shadingRateAttachment.shadingRateAttachmentTexelSize.width = renderTarget.m_ShadingRateTexelSizes[0];
-			shadingRateAttachment.shadingRateAttachmentTexelSize.height = renderTarget.m_ShadingRateTexelSizes[1];
-			renderingInfo.pNext = &shadingRateAttachment;
-		}
-		else if (isColorTarget)
-		{
-			if (!isResolveImage)
+			state = ResourceState::kRenderTarget;
+
+			colorAttachments[colorAttachmentCount].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			colorAttachments[colorAttachmentCount].imageView = pView->GetHandle();
+			colorAttachments[colorAttachmentCount].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			colorAttachments[colorAttachmentCount].loadOp = loadOp;
+			colorAttachments[colorAttachmentCount].storeOp = storeOp;
+			if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 			{
-				colorAttachments[colorAttachmentCount].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-				colorAttachments[colorAttachmentCount].imageView = pView->GetHandle();
-				colorAttachments[colorAttachmentCount].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				colorAttachments[colorAttachmentCount].loadOp = loadOp;
-				colorAttachments[colorAttachmentCount].storeOp = storeOp;
-				if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
-				{
-					memcpy(colorAttachments[colorAttachmentCount].clearValue.color.float32, renderTarget.m_ClearValues.colors, sizeof(float) * 4);
-				}
-
-				// If any of the view objects happen to be a swap chain texture, we need to request
-				// a semaphore from the swap chain
-				if (auto pSwapChain = pTexture->GetSwapChain())
-				{
-					AddSwapChain(pSwapChain);
-				}
-				++colorAttachmentCount;
+				memcpy(colorAttachments[colorAttachmentCount].clearValue.color.float32, renderTarget.m_ClearValues.colors, sizeof(float) * 4);
 			}
-			else
+
+			// If any of the view objects happen to be a swap chain texture, we need to request
+			// a semaphore from the swap chain
+			if (auto pSwapChain = pTexture->GetSwapChain())
 			{
-				//BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kAverage, "Invalid resolve mode for render target");
-				colorAttachments[resolveCount].resolveImageView = pView->GetHandle();
-				colorAttachments[resolveCount].resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				colorAttachments[resolveCount].resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
-				++resolveCount;
+				AddSwapChain(pSwapChain);
+			}
+
+			if (pResolveView)
+			{
+				colorAttachments[colorAttachmentCount].resolveImageView = pResolveView->GetHandle();
+				colorAttachments[colorAttachmentCount].resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				colorAttachments[colorAttachmentCount].resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
 
 				// If any of the view objects happen to be a swap chain texture, we need to request
 				// a semaphore from the swap chain
-				if (auto pSwapChain = pTexture->GetSwapChain())
+				if (auto pSwapChain = TO_VK(pResolveView->GetDesc().m_pTexture)->GetSwapChain())
 				{
 					if (!m_SwapChains.Contains(pSwapChain))
 					{
@@ -248,43 +282,43 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 					}
 				}
 			}
+
+			++colorAttachmentCount;
 		}
-		else if (isDepthTarget)
+		else if (renderTarget.IsDepthStencil() || renderTarget.IsReadOnlyDepthStencil())
 		{
-			if (!isResolveImage)
+			state = renderTarget.IsDepthStencil() ? ResourceState::kDepthStencilWrite : ResourceState::kDepthStencilRead;
+
+			depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			depthAttachment.imageView = pView->GetHandle();
+			depthAttachment.imageLayout = renderTarget.IsDepthStencil() ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+				: VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+			depthAttachment.loadOp = loadOp;
+			depthAttachment.storeOp = storeOp;
+			if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 			{
-				depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-				depthAttachment.imageView = pView->GetHandle();
-				depthAttachment.imageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-					: VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
-				depthAttachment.loadOp = loadOp;
-				depthAttachment.storeOp = storeOp;
+				depthAttachment.clearValue.depthStencil.depth = renderTarget.m_ClearValues.depth;
+			}
+			hasDepth = true;
+
+			if (isStencilTarget)
+			{
+				stencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+				stencilAttachment.imageView = pView->GetHandle();
+				stencilAttachment.imageLayout = renderTarget.IsDepthStencil() ? VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
+					: VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
+				stencilAttachment.loadOp = loadOp;
+				stencilAttachment.storeOp = storeOp;
 				if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
 				{
-					depthAttachment.clearValue.depthStencil.depth = renderTarget.m_ClearValues.depth;
+					stencilAttachment.clearValue.depthStencil.stencil = renderTarget.m_ClearValues.stencil;
 				}
-				hasDepth = true;
-
-				if (isStencilTarget)
-				{
-					stencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-					stencilAttachment.imageView = pView->GetHandle();
-					stencilAttachment.imageLayout = renderTarget.m_State == ResourceState::kDepthStencilWrite ? VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
-						: VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL;
-					stencilAttachment.loadOp = loadOp;
-					stencilAttachment.storeOp = storeOp;
-					if (loadOp == VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR)
-					{
-						stencilAttachment.clearValue.depthStencil.stencil = renderTarget.m_ClearValues.stencil;
-					}
-					hasStencil = true;
-				}
+				hasStencil = true;
 			}
-			else
+
+			if (pResolveView)
 			{
-				//BV_ASSERT(renderTarget.m_ResolveMode == ResolveMode::kMin || renderTarget.m_ResolveMode == ResolveMode::kMax,
-				//	"Invalid resolve mode for depth stencil target");
-				depthAttachment.resolveImageView = pView->GetHandle();
+				depthAttachment.resolveImageView = pResolveView->GetHandle();
 				depthAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 				depthAttachment.resolveMode = GetVkResolveMode(renderTarget.m_ResolveMode);
 
@@ -295,54 +329,22 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 					stencilAttachment.resolveMode = depthAttachment.resolveMode;
 				}
 			}
+
+		}
+		else if (renderTarget.IsShadingRate())
+		{
+			state = ResourceState::kShadingRate;
+
+			shadingRateAttachment.imageView = pView->GetHandle();
+			shadingRateAttachment.imageLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+			shadingRateAttachment.shadingRateAttachmentTexelSize = m_ShadingRateTexelSizes;
+			renderingInfo.pNext = &shadingRateAttachment;
 		}
 
-		auto textureHandle = pTexture->GetHandle();
-		if (renderTarget.m_StateBefore != renderTarget.m_State)
+		transitionLayoutFn(pView, aspectFlags, renderTarget.m_StateBefore, state, renderTarget.m_StateAfter);
+		if (pResolveView)
 		{
-			auto& barrier = m_PreRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
-			//barrier.pNext = nullptr;
-			barrier.image = textureHandle;
-			barrier.subresourceRange.aspectMask = aspectFlags;
-			barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
-			barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;
-			barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
-			barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
-
-			barrier.oldLayout = GetVkImageLayout(renderTarget.m_StateBefore, isDepthTarget || isStencilTarget);
-			barrier.newLayout = GetVkImageLayout(renderTarget.m_State, isDepthTarget || isStencilTarget);
-
-			barrier.srcAccessMask = GetVkAccessFlags(renderTarget.m_StateBefore);
-			barrier.dstAccessMask = GetVkAccessFlags(renderTarget.m_State);
-
-			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
-			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
-
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		}
-		if (renderTarget.m_State != renderTarget.m_StateAfter)
-		{
-			auto& barrier = m_PostRenderBarriers.EmplaceBack(VkImageMemoryBarrier2{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 });
-			//barrier.pNext = nullptr;
-			barrier.image = textureHandle;
-			barrier.subresourceRange.aspectMask = aspectFlags;
-			barrier.subresourceRange.baseMipLevel = viewDesc.m_SubresourceDesc.firstMip;
-			barrier.subresourceRange.levelCount = viewDesc.m_SubresourceDesc.mipCount;
-			barrier.subresourceRange.baseArrayLayer = viewDesc.m_SubresourceDesc.firstLayer;
-			barrier.subresourceRange.layerCount = viewDesc.m_SubresourceDesc.layerCount;
-
-			barrier.oldLayout = GetVkImageLayout(renderTarget.m_State, isDepthTarget || isStencilTarget);
-			barrier.newLayout = GetVkImageLayout(renderTarget.m_StateAfter, isDepthTarget || isStencilTarget);
-
-			barrier.srcAccessMask = GetVkAccessFlags(renderTarget.m_State);
-			barrier.dstAccessMask = GetVkAccessFlags(renderTarget.m_StateAfter);
-
-			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
-			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
-
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			transitionLayoutFn(pResolveView, aspectFlags, renderTarget.m_ResolveStateBefore, state, renderTarget.m_ResolveStateAfter);
 		}
 	}
 

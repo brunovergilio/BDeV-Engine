@@ -43,9 +43,10 @@ VkFramebuffer BvFramebufferManagerVk::GetFramebuffer(const FramebufferDesc& fram
 
 void BvFramebufferManagerVk::RemoveFramebuffersWithView(VkImageView view)
 {
-	bool found = false;
+	bool found;
 	do
 	{
+		found = false;
 		for (auto& pair : m_Framebuffers)
 		{
 			for (auto i = 0u; i < pair.first.m_Views.Size(); ++i)

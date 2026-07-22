@@ -1,57 +1,24 @@
 #include "MSAARenderPass.h"
 #include "BDeV/Core/Math/BvGeometryGenerator.h"
 #include "BDeV/Core/Utils/BvRandom.h"
+#include "Shaders.h"
+
+
+bool g_HasDepthResolve = false;
 
 
 struct Vertex
 {
-	Float3 pos;
-	Float4 color;
+	XMFLOAT3 pos;
+	XMFLOAT4 color;
 };
 
-
-constexpr const char* g_pVSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec4 inColor;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 0) uniform UBO 
-{
-	mat4 wvp;
-} ubo;
-
-void main() 
-{
-	outColor = inColor;
-	gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
-}
-)raw";
-constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);
-
-
-constexpr const char* g_pPSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec4 inColor;
-
-layout (location = 0) out vec4 outColor;
-
-void main()
-{
-	outColor = inColor;
-}
-)raw";
-constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
 
 
 void MSAARenderPass::OnInitialize()
 {
 	m_AppName = "MSAA (Render Pass)";
+	g_HasDepthResolve = EHasFlag(m_Device->GetGPUInfo().m_DeviceCaps, RenderDeviceCapabilities::kDepthStencilResolve);
 	CreateBuffers();
 	CreateRenderTargets();
 	CreateRenderPass();
@@ -91,9 +58,9 @@ void MSAARenderPass::OnUpdate()
 	{
 		angleZ = 0.0f;
 	}
-	Store44(MatrixRotationX(angleX) * MatrixRotationY(angleY) * MatrixRotationZ(angleZ)
-		* MatrixLookAtLH(VectorSet(0.0f, 0.0f, -2.0f, 1.0f), VectorSet(0.0f, 0.0f, 1.0f, 1.0f), VectorSet(0.0f, 1.0f, 0.0f, 1.0f))
-		* MatrixPerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4), m_pWVP->m);
+	XMStoreFloat4x4(m_pWVP, BvMatrix::RotationX(angleX) * BvMatrix::RotationY(angleY) * BvMatrix::RotationZ(angleZ)
+		* BvMatrix::LookAtLH(BvVec3(0.0f, 0.0f, -5.0f), BvVec3(0.0f, 0.0f, 1.0f), BvVec3(0.0f, 1.0f, 0.0f))
+		* BvMatrix::PerspectiveLH_DX(0.1f, 100.0f, float(width) / float(height), kPiDiv4));
 }
 
 
@@ -135,7 +102,7 @@ void MSAARenderPass::OnRender()
 	}
 	m_Context->SetGraphicsPipeline(m_UseMSAA ? m_PSOMSAA : m_PSO);
 	m_Context->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
-	m_Context->SetScissor({ 0, 0, width, height });
+	m_Context->SetScissor({ 0, 0, i32(width), i32(height) });
 	m_Context->SetConstantBuffer(m_UBView, 0, 0);
 	m_Context->SetVertexBufferView(m_VB, sizeof(Vertex));
 	m_Context->SetIndexBufferView(m_IB, IndexFormat::kU32);
@@ -178,17 +145,10 @@ void MSAARenderPass::OnShutdown()
 
 void MSAARenderPass::CreateShaderResourceLayout()
 {
-	ShaderResourceDesc resourceDesc = ShaderResourceDesc::AsConstantBuffer(0, ShaderStage::kVertex);
+	ShaderResourceLayoutCreateDesc layoutDesc;
+	layoutDesc.AddResourceSet().AddConstantBuffer(0, ShaderStage::kVertex);
 
-	ShaderResourceSetDesc setDesc{};
-	setDesc.m_ResourceCount = 1;
-	setDesc.m_pResources = &resourceDesc;
-
-	ShaderResourceLayoutCreateDesc layoutDesc{};
-	layoutDesc.m_ShaderResourceSetCount = 1;
-	layoutDesc.m_pShaderResourceSets = &setDesc;
-
-	m_SRL = m_Device->CreateShaderResourceLayout(layoutDesc);
+	m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 }
 
 
@@ -204,19 +164,13 @@ void MSAARenderPass::CreatePipeline()
 	pipelineDesc.m_DepthStencilDesc.m_DepthOp = CompareOp::kLessEqual;
 	pipelineDesc.m_pShaderResourceLayout = m_SRL;
 	pipelineDesc.m_pRenderPass = m_RenderPass;
+	pipelineDesc.AddVertexInput("POSITION", 0, Format::kRGB32_Float).AddVertexInput("COLOR", 0, Format::kRGBA32_Float);
 
-	VertexInputDesc inputDescs[2];
-	inputDescs[0].m_Format = Format::kRGB32_Float;
-	inputDescs[1].m_Format = Format::kRGBA32_Float;
+	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 
-	pipelineDesc.m_VertexInputDescCount = 2;
-	pipelineDesc.m_pVertexInputDescs = inputDescs;
-
-	m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
-	
 	pipelineDesc.m_SampleCount = 8;
 	pipelineDesc.m_pRenderPass = m_RenderPassMSAA;
-	m_PSOMSAA = m_Device->CreateGraphicsPipeline(pipelineDesc);
+	m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSOMSAA);
 }
 
 
@@ -231,7 +185,7 @@ void MSAARenderPass::CreateBuffers()
 	for (auto i = 0u; i < vertices.Size(); ++i)
 	{
 		vertices[i].pos = data.m_Vertices[i].m_Position;
-		vertices[i].color = Float4(rand.NextF<f32>(), rand.NextF<f32>(), rand.NextF<f32>(), 1.0f);
+		vertices[i].color = XMFLOAT4(rand.NextF<f32>(), rand.NextF<f32>(), rand.NextF<f32>(), 1.0f);
 	}
 
 	BufferDesc bufferDesc;
@@ -243,27 +197,27 @@ void MSAARenderPass::CreateBuffers()
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = vertices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_VB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_VB);
 
 	bufferDesc.m_Size = sizeof(u32) * data.m_Indices.Size();
 	bufferDesc.m_UsageFlags = BufferUsage::kIndexBuffer;
 	bufferData.m_pContext = m_Context;
 	bufferData.m_pData = data.m_Indices.Data();
 	bufferData.m_Size = bufferDesc.m_Size;
-	m_IB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, bufferData, &m_IB);
 
-	bufferDesc.m_Size = sizeof(Float44);
+	bufferDesc.m_Size = sizeof(XMFLOAT4X4);
 	bufferDesc.m_UsageFlags = BufferUsage::kConstantBuffer;
 	bufferDesc.m_MemoryType = MemoryType::kUpload;
 	bufferDesc.m_CreateFlags = BufferCreateFlags::kCreateMapped;
-	m_UB = m_Device->CreateBuffer(bufferDesc, &bufferData);
+	m_Device->CreateBuffer(bufferDesc, &m_UB);
 
 	viewDesc.m_pBuffer = m_UB;
-	viewDesc.m_Stride = sizeof(Float44);
+	viewDesc.m_Stride = sizeof(XMFLOAT4X4);
 	viewDesc.m_ElementCount = 1;
-	m_UBView = m_Device->CreateBufferView(viewDesc);
+	m_Device->CreateBufferView(viewDesc, &m_UBView);
 
-	m_pWVP = m_UB->GetMappedDataAsT<Float44>();
+	m_pWVP = m_UB->GetMappedDataAsT<XMFLOAT4X4>();
 }
 
 
@@ -276,107 +230,55 @@ void MSAARenderPass::CreateRenderTargets()
 	desc.m_Size = { w, h, 1 };
 	desc.m_Format = Format::kD24_UNorm_S8_UInt;
 	desc.m_UsageFlags = TextureUsage::kDepthStencilTarget;
-	m_Depth = m_Device->CreateTexture(desc, nullptr);
+	m_Device->CreateTexture(desc, &m_Depth);
 
 	desc.m_SampleCount = 8;
-	m_DepthMS = m_Device->CreateTexture(desc, nullptr);
+	m_Device->CreateTexture(desc, &m_DepthMS);
 
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = desc.m_Format;
 	viewDesc.m_pTexture = m_Depth;
-	m_DepthView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_DepthView);
 
 	viewDesc.m_pTexture = m_DepthMS;
-	m_DepthViewMS = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_DepthViewMS);
 
 	desc.m_Format = m_SwapChain->GetDesc().m_Format;
 	desc.m_UsageFlags = TextureUsage::kRenderTarget;
-	m_ColorMS = m_Device->CreateTexture(desc, nullptr);
+	m_Device->CreateTexture(desc, &m_ColorMS);
 
 	viewDesc.m_Format = desc.m_Format;
 	viewDesc.m_pTexture = m_ColorMS;
-	m_ColorViewMS = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_ColorViewMS);
 }
 
 
 void MSAARenderPass::CreateRenderPass()
 {
-	RenderPassAttachment attachments[2];
-	attachments[0].m_Format = m_SwapChain->GetDesc().m_Format;
-	attachments[0].m_StateAfter = ResourceState::kPresent;
-
-	attachments[1].m_Format = m_Depth->GetDesc().m_Format;
-	attachments[1].m_StateAfter = ResourceState::kDepthStencilRead;
-
-	AttachmentRef mainRefs[2];
-	mainRefs[0].m_Index = 0;
-	mainRefs[0].m_ResourceState = ResourceState::kRenderTarget;
-	mainRefs[1].m_Index = 1;
-	mainRefs[1].m_ResourceState = ResourceState::kDepthStencilWrite;
-
-	SubpassDesc subpass;
-	subpass.m_ColorAttachmentCount = 1;
-	subpass.m_pColorAttachments = &mainRefs[0];
-	subpass.m_pDepthStencilAttachment = mainRefs + 1;
-
 	RenderPassDesc rpDesc;
-	rpDesc.m_AttachmentCount = 2;
-	rpDesc.m_pAttachments = attachments;
-	rpDesc.m_SubpassCount = 1;
-	rpDesc.m_pSubpasses = &subpass;
+	rpDesc.AddAttachment(m_SwapChain->GetDesc().m_Format, ResourceState::kPresent);
+	rpDesc.AddAttachment(m_Depth->GetDesc().m_Format, ResourceState::kDepthStencilRead);
+	rpDesc.AddSubpass()
+		.AddColorAttachment(0, ResourceState::kRenderTarget).SetDepthStencilAttachment(1, ResourceState::kDepthStencilWrite);
 
-	m_RenderPass = m_Device->CreateRenderPass(rpDesc);
+	m_Device->CreateRenderPass(rpDesc, &m_RenderPass);
 }
 
 
 void MSAARenderPass::CreateRenderPassMSAA()
 {
-	RenderPassAttachment attachments[4];
-	attachments[0].m_Format = m_ColorMS->GetDesc().m_Format;
-	attachments[0].m_StoreOp = StoreOp::kDontCare;
-	attachments[0].m_StateAfter = ResourceState::kRenderTarget;
-	attachments[0].m_SampleCount = 8;
-
-	attachments[1].m_Format = m_DepthMS->GetDesc().m_Format;
-	attachments[1].m_StoreOp = StoreOp::kDontCare;
-	attachments[1].m_StateAfter = ResourceState::kDepthStencilWrite;
-	attachments[1].m_SampleCount = 8;
-
-	attachments[2].m_Format = m_SwapChain->GetDesc().m_Format;
-	attachments[2].m_StateAfter = ResourceState::kPresent;
-
-	attachments[3].m_Format = m_Depth->GetDesc().m_Format;
-	attachments[3].m_StateAfter = ResourceState::kDepthStencilRead;
-
-	AttachmentRef msaaRefs[2];
-	msaaRefs[0].m_Index = 0;
-	msaaRefs[0].m_ResourceState = ResourceState::kRenderTarget;
-	msaaRefs[1].m_Index = 1;
-	msaaRefs[1].m_ResourceState = ResourceState::kDepthStencilWrite;
-
-	AttachmentRef colorResolveRef;
-	colorResolveRef.m_Index = 2;
-	colorResolveRef.m_ResourceState = ResourceState::kRenderTarget;
-
-	AttachmentRef depthResolveRef;
-	depthResolveRef.m_Index = 3;
-	depthResolveRef.m_ResourceState = ResourceState::kDepthStencilWrite;
-	depthResolveRef.m_ResolveMode = ResolveMode::kMin;
-
-	SubpassDesc subpass;
-	subpass.m_ColorAttachmentCount = 1;
-	subpass.m_pColorAttachments = &msaaRefs[0];
-	subpass.m_pDepthStencilAttachment = msaaRefs + 1;
-	subpass.m_pResolveAttachments = &colorResolveRef;
-	subpass.m_pDepthStencilResolveAttachment = &depthResolveRef;
-
 	RenderPassDesc rpDesc;
-	rpDesc.m_AttachmentCount = 4;
-	rpDesc.m_pAttachments = attachments;
-	rpDesc.m_SubpassCount = 1;
-	rpDesc.m_pSubpasses = &subpass;
+	rpDesc.AddAttachment(m_ColorMS->GetDesc().m_Format, ResourceState::kRenderTarget)
+		.SetStoreOp(StoreOp::kDontCare).SetSampleCount(8);
+	rpDesc.AddAttachment(m_DepthMS->GetDesc().m_Format, ResourceState::kDepthStencilWrite)
+		.SetStoreOp(StoreOp::kDontCare).SetSampleCount(8);;
+	rpDesc.AddAttachment(m_SwapChain->GetDesc().m_Format, ResourceState::kPresent);
+	rpDesc.AddAttachment(m_Depth->GetDesc().m_Format, ResourceState::kDepthStencilRead);
+	rpDesc.AddSubpass()
+		.AddColorAttachment(0, ResourceState::kRenderTarget).SetDepthStencilAttachment(1, ResourceState::kDepthStencilWrite)
+		.AddResolveAttachment(2, ResourceState::kRenderTarget, ResolveMode::kAverage).SetDepthStencilResolveAttachment(3, ResourceState::kDepthStencilWrite, ResolveMode::kMin);
 
-	m_RenderPassMSAA = m_Device->CreateRenderPass(rpDesc);
+	m_Device->CreateRenderPass(rpDesc, &m_RenderPassMSAA);
 }
 
 

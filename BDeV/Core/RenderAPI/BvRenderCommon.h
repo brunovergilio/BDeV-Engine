@@ -78,13 +78,15 @@ enum RenderDeviceCapabilities : u32
 	kCustomBorderColor				= BvBit(7),
 	kPredication					= BvBit(8),
 	kConservativeRasterization		= BvBit(9),
-	kShadingRate					= BvBit(10),
-	kMeshShader						= BvBit(11),
-	kMeshQuery						= BvBit(12),
-	kRayTracing						= BvBit(13),
-	kRayQuery						= BvBit(14),
-	kMultiView						= BvBit(15),
-	kTrueFullScreen					= BvBit(16),
+	kShadingRatePerDraw				= BvBit(10),
+	kShadingRateImage				= BvBit(11),
+	kMeshShader						= BvBit(12),
+	kMeshQuery						= BvBit(13),
+	kRayTracing						= BvBit(14),
+	kRayQuery						= BvBit(15),
+	kMultiView						= BvBit(16),
+	kTrueFullScreen					= BvBit(17),
+	kDepthStencilResolve			= BvBit(18)
 };
 BV_USE_ENUM_CLASS_OPERATORS(RenderDeviceCapabilities);
 
@@ -355,8 +357,6 @@ enum class ResourceState : u8
 	kDepthStencilRead,
 	kDepthStencilWrite,
 	kPresent,
-	kResolveSrc,
-	kResolveDst,
 
 	// Extensions
 	kPredication,
@@ -1180,6 +1180,10 @@ struct ShaderResourceSetDesc
 	auto& AddDynamicStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AddDynamicStructuredBuffer(BvStringId::Empty(), binding, shaderStages); }
 	auto& AddDynamicRWStructuredBuffer(u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { return AddDynamicRWStructuredBuffer(BvStringId::Empty(), binding, shaderStages); }
 
+	auto& AddConstant(const BvStringId& name, u32 binding, u32 size, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, binding, size, shaderStages); return *this; }
+	auto& AddConstant(const BvStringId& name, u32 size, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, 0, size, shaderStages); return *this; }
+	auto& AddConstant(u32 size, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(nullptr, 0, size, shaderStages); return *this; }
+
 	template<typename T> auto& AddConstant(const BvStringId& name, u32 binding, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, binding, sizeof(T), shaderStages); return *this; }
 	template<typename T> auto& AddConstant(const BvStringId& name, ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(name, 0, sizeof(T), shaderStages); return *this; }
 	template<typename T> auto& AddConstant(ShaderStage shaderStages = ShaderStage::kAllStages) { m_Constants.EmplaceBack(nullptr, 0, sizeof(T), shaderStages); return *this; }
@@ -1371,78 +1375,137 @@ enum class ShadingRateCombinerOp : u8
 
 struct RenderTargetDesc
 {
-	constexpr RenderTargetDesc() = default;
-
-	constexpr RenderTargetDesc(IBvTextureView* pView, const ClearColorValue& clearValues, LoadOp loadOp, StoreOp storeOp,
-		ResourceState stateBefore, ResourceState state, ResourceState stateAfter)
-		: m_pView(pView), m_ClearValues(clearValues), m_LoadOp(loadOp), m_StoreOp(storeOp),
-		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter)
+	enum class Type : u8
 	{
-	}
-
-	constexpr RenderTargetDesc(IBvTextureView* pView, const ClearColorValue& clearValues, LoadOp loadOp, StoreOp storeOp,
-		ResourceState stateBefore, ResourceState state, ResourceState stateAfter, ResolveMode resolveMode)
-		: m_pView(pView), m_ClearValues(clearValues), m_LoadOp(loadOp), m_StoreOp(storeOp),
-		m_StateBefore(stateBefore), m_State(state), m_StateAfter(stateAfter), m_ResolveMode(resolveMode)
-	{
-	}
-
-	static constexpr RenderTargetDesc AsRenderTarget(IBvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
-		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
-	{
-		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
-	}
-
-	static constexpr RenderTargetDesc AsSwapChain(IBvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(0.0f, 0.0f, 0.0f), LoadOp loadOp = LoadOp::kClear,
-		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kPresent)
-	{
-		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kRenderTarget, stateAfter);
-	}
-
-	static constexpr RenderTargetDesc AsDepthStencil(IBvTextureView* pView, const ClearColorValue& clearValues = ClearColorValue(1.0f, 0), LoadOp loadOp = LoadOp::kClear,
-		StoreOp storeOp = StoreOp::kStore, ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kShaderResource)
-	{
-		return RenderTargetDesc(pView, clearValues, loadOp, storeOp, stateBefore, ResourceState::kDepthStencilWrite, stateAfter);
-	}
-
-	static constexpr RenderTargetDesc AsColorResolve(IBvTextureView* pView, ResolveMode resolveMode = ResolveMode::kAverage,
-		ResourceState stateBefore = ResourceState::kCommon, ResourceState stateAfter = ResourceState::kRenderTarget)
-	{
-		return RenderTargetDesc(pView, ClearColorValue(), LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kRenderTarget, stateAfter, resolveMode);
-	}
-
-	static constexpr RenderTargetDesc AsDepthResolve(IBvTextureView* pView, ResolveMode resolveMode, ResourceState stateBefore = ResourceState::kCommon)
-	{
-		return RenderTargetDesc(pView, ClearColorValue(), LoadOp::kClear, StoreOp::kStore, stateBefore, ResourceState::kDepthStencilWrite, ResourceState::kDepthStencilWrite, resolveMode);
-	}
+		kNone,
+		kColor,
+		kDepthStencil,
+		kReadOnlyDepthStencil,
+		kShadingRate
+	};
 
 	IBvTextureView* m_pView = nullptr;
+	IBvTextureView* m_pResolveView = nullptr;
 	ClearColorValue m_ClearValues = ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+	Type m_Type = Type::kNone;
 	LoadOp m_LoadOp = LoadOp::kClear;
 	StoreOp m_StoreOp = StoreOp::kStore;
 	ResourceState m_StateBefore = ResourceState::kCommon;
-	ResourceState m_State = ResourceState::kRenderTarget;
-	ResourceState m_StateAfter = ResourceState::kShaderResource;
+	ResourceState m_StateAfter = ResourceState::kCommon;
+	ResourceState m_ResolveStateBefore = ResourceState::kCommon;
+	ResourceState m_ResolveStateAfter = ResourceState::kCommon;
 	ResolveMode m_ResolveMode = ResolveMode::kNone;
-	u32 m_ShadingRateTexelSizes[2]{};
-	ShadingRateCombinerOp m_ShadingRateCombiners[2]{};
+
+	auto& SetView(IBvTextureView* pView, Type type, ResourceState stateBefore = ResourceState::kCommon,
+		ResourceState stateAfter = ResourceState::kCommon)
+	{
+		m_pView = pView;
+		m_Type = type;
+		m_StateBefore = stateBefore;
+		m_StateAfter = stateAfter;
+
+		return *this;
+	}
+
+	auto& SetColorView(IBvTextureView* pView, ResourceState stateBefore = ResourceState::kCommon,
+		ResourceState stateAfter = ResourceState::kPixelShaderResource)
+	{
+		m_pView = pView;
+		m_Type = Type::kColor;
+		m_StateBefore = stateBefore;
+		m_StateAfter = stateAfter;
+
+		return *this;
+	}
+
+	auto& SetDepthStencilView(IBvTextureView* pView, ResourceState stateBefore = ResourceState::kCommon,
+		ResourceState stateAfter = ResourceState::kPixelShaderResource)
+	{
+		m_pView = pView;
+		m_Type = Type::kDepthStencil;
+		m_StateBefore = stateBefore;
+		m_StateAfter = stateAfter;
+
+		return *this;
+	}
+
+	auto& SetReadOnlyDepthStencilView(IBvTextureView* pView, ResourceState stateBefore = ResourceState::kCommon,
+		ResourceState stateAfter = ResourceState::kDepthStencilRead)
+	{
+		m_pView = pView;
+		m_Type = Type::kReadOnlyDepthStencil;
+		m_StateBefore = stateBefore;
+		m_StateAfter = stateAfter;
+
+		return *this;
+	}
+
+	auto& SetShadingRateView(IBvTextureView* pView, ResourceState stateBefore = ResourceState::kCommon,
+		ResourceState stateAfter = ResourceState::kShadingRate)
+	{
+		m_pView = pView;
+		m_Type = Type::kShadingRate;
+		m_StateBefore = stateBefore;
+		m_StateAfter = stateAfter;
+
+		return *this;
+	}
+
+	auto& SetResolveView(IBvTextureView* pView, ResourceState stateBefore = ResourceState::kCommon,
+		ResourceState stateAfter = ResourceState::kCommon, ResolveMode resolveMode = ResolveMode::kNone)
+	{
+		m_pResolveView = pView;
+		m_ResolveStateBefore = stateBefore;
+		m_ResolveStateAfter = stateAfter;
+		m_ResolveMode = resolveMode;
+
+		return *this;
+	}
+
+	auto& SetLoadStoreOps(LoadOp loadOp = LoadOp::kClear, StoreOp storeOp = StoreOp::kStore)
+	{
+		m_LoadOp = loadOp;
+		m_StoreOp = storeOp;
+
+		return *this;
+	}
+
+	bool IsValid() const
+	{
+		return m_pView != nullptr;
+	}
+
+	bool IsColor() const { return m_Type == Type::kColor; }
+	bool IsDepthStencil() const { return m_Type == Type::kDepthStencil; }
+	bool IsReadOnlyDepthStencil() const { return m_Type == Type::kReadOnlyDepthStencil; }
+	bool IsShadingRate() const { return m_Type == Type::kShadingRate; }
+
+	BV_RENDER_VAR(ClearValues);
+	BV_RENDER_VAR(Type);
+	BV_RENDER_VAR(LoadOp);
+	BV_RENDER_VAR(StoreOp);
+	BV_RENDER_VAR(StateBefore);
+	BV_RENDER_VAR(StateAfter);
+	BV_RENDER_VAR(ResolveStateBefore);
+	BV_RENDER_VAR(ResolveStateAfter);
+	BV_RENDER_VAR(ResolveMode);
 };
 
 
 struct RenderPassTargetDesc
 {
-	constexpr RenderPassTargetDesc() = default;
+	RenderPassTargetDesc() = default;
 
-	constexpr RenderPassTargetDesc(IBvTextureView* pView)
+	RenderPassTargetDesc(IBvTextureView* pView)
 		: m_pView(pView) {}
 
-	constexpr RenderPassTargetDesc(IBvTextureView* pView, f32 r, f32 g, f32 b, f32 a = 1.0f)
+	RenderPassTargetDesc(IBvTextureView* pView, f32 r, f32 g, f32 b, f32 a = 1.0f)
 		: m_pView(pView), m_ClearValues(r, g, b, a) {}
 
-	constexpr RenderPassTargetDesc(IBvTextureView* pView, const f32* pColors)
+	RenderPassTargetDesc(IBvTextureView* pView, const f32* pColors)
 		: m_pView(pView), m_ClearValues(pColors) {}
 
-	constexpr RenderPassTargetDesc(IBvTextureView* pView, f32 depth, u8 stencil)
+	RenderPassTargetDesc(IBvTextureView* pView, f32 depth, u8 stencil)
 		: m_pView(pView), m_ClearValues(depth, stencil) {}
 
 	IBvTextureView* m_pView = nullptr;
@@ -1684,16 +1747,12 @@ struct RenderPassDesc
 
 	auto& AddAttachment(Format format, ResourceState stateBefore, ResourceState stateAfter, u8 sampleCount, LoadOp loadOp, StoreOp storeOp)
 	{
-		m_Attachments.EmplaceBack(format, stateBefore, stateAfter, sampleCount, loadOp, storeOp);
-
-		return *this;
+		return m_Attachments.EmplaceBack(format, stateBefore, stateAfter, sampleCount, loadOp, storeOp);
 	}
 
 	auto& AddAttachment(Format format, ResourceState stateAfter)
 	{
-		m_Attachments.EmplaceBack(format, stateAfter);
-
-		return *this;
+		return m_Attachments.EmplaceBack(format, stateAfter);
 	}
 
 	auto& AddSubpass()
