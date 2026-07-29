@@ -15,6 +15,7 @@
 #include "BvGPUFenceD3D12.h"
 #include "BvAccelerationStructureD3D12.h"
 #include "BvShaderBindingTableD3D12.h"
+#include "BvQueryHeapD3D12.h"
 #include "BvUtilsD3D12.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
 
@@ -219,8 +220,9 @@ bool BvRenderDeviceD3D12::CreateQueryHeapImpl(const QueryHeapDesc& queryHeapDesc
 	{
 		return false;
 	}
+	*ppObj = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvQueryHeapD3D12, this, queryHeapDesc, result.second);
 
-	return false;
+	return true;
 }
 
 
@@ -260,7 +262,19 @@ bool BvRenderDeviceD3D12::CreateAccelerationStructureImpl(const RayTracingAccele
 
 bool BvRenderDeviceD3D12::CreateShaderBindingTableImpl(const ShaderBindingTableDesc& sbtDesc, IBvCommandContext* pContext, void** ppObj)
 {
-	return false;
+	BV_ASSERT(ppObj != nullptr, "Invalid pointer");
+
+	auto result = D3D12Utils::CreateShaderBindingTable(this, sbtDesc, TO_D3D12(pContext));
+	if (FAILED(result.first))
+	{
+		return false;
+	}
+
+	auto& obj = result.second;
+	*ppObj = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvShaderBindingTableD3D12, this, sbtDesc, obj.m_Buffer.m_Buffer,
+		obj.m_Buffer.m_Allocation, obj.m_Regions);
+
+	return true;
 }
 
 
@@ -286,7 +300,7 @@ bool BvRenderDeviceD3D12::CreateCommandContextImpl(const CommandContextDesc& com
 	}
 
 	auto contextGroupIndex = u32(commandContextDesc.m_CommandType) - 1;
-	auto pContext = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvCommandContextD3D12, this, 3, m_Contexts[contextGroupIndex].Size(), contextGroupIndex, queue.Get());
+	auto pContext = BV_RC_CREATE_CUSTOM(*BV_DEFAULT_MEMORY_ARENA, BvCommandContextD3D12, this, commandContextDesc.m_FrameCount, m_Contexts[contextGroupIndex].Size(), contextGroupIndex, queue.Get());
 	m_Contexts[contextGroupIndex].EmplaceBack(pContext);
 	*ppObj = pContext;
 
@@ -346,10 +360,30 @@ u64 BvRenderDeviceD3D12::GetDynamicBufferElementSize(BufferUsage usageFlags, u64
 	{
 		elementSize = RoundToNearestPowerOf2(elementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	}
+	else if (EHasFlag(usageFlags, BufferUsage::kRayTracing))
+	{
+		elementSize = RoundToNearestPowerOf2(elementSize, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
+	}
 
 	return elementSize;
 }
 
+
+u64 BvRenderDeviceD3D12::GetBufferOffsetAlignment(BufferUsage usageFlags) const
+{
+	if (EHasFlag(usageFlags, BufferUsage::kRayTracing))
+	{
+		return D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+	}
+	else if (EHasFlag(usageFlags, BufferUsage::kConstantBuffer))
+	{
+		return D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+	}
+	else
+	{
+		return 4;
+	}
+}
 
 FormatFeatures BvRenderDeviceD3D12::GetFormatFeatures(Format format) const
 {
@@ -452,6 +486,7 @@ void BvRenderDeviceD3D12::Create(const RenderDeviceDesc& renderDeviceDesc)
 	{
 		if (SUCCEEDED(m_Device.As(&m_InfoQueue)))
 		{
+
 			// TODO: Work on debug features
 			//m_InfoQueue->RegisterMessageCallback(, , , &m_DebugCallbackCookie);
 		}

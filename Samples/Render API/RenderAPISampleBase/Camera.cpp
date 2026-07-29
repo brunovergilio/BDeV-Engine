@@ -118,14 +118,7 @@ void Camera::SetPerspective(f32 nearZ, f32 farZ, f32 aspectRatio, f32 fovY)
 	m_AspectRatio = aspectRatio;
 	m_FovY = fovY;
 
-	m_Proj = m_FlipViewportY ? BvMatrix::PerspectiveLH_DX(m_NearZ, m_FarZ, m_AspectRatio, m_FovY)
-		: BvMatrix::PerspectiveLH_DX(m_NearZ, m_FarZ, m_AspectRatio, m_FovY);
-}
-
-
-void Camera::SetFlipViewportY(bool flip)
-{
-	m_FlipViewportY = flip;
+	m_Proj = BvMatrix::PerspectiveLH_DX(m_NearZ, m_FarZ, m_AspectRatio, m_FovY);
 }
 
 
@@ -136,8 +129,8 @@ void Camera::Update()
 		return;
 	}
 	BvVec3 l(m_Look.Normalize());
-	BvVec3 u(l.Cross(m_Right).Normalize());
-	BvVec3 r(u.Cross(l));
+	BvVec3 r(m_Up.Cross(l).Normalize());
+	BvVec3 u(l.Cross(r).Normalize());
 
 	f32 x = -(m_Pos.Dot(r));
 	f32 y = -(m_Pos.Dot(u));

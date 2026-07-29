@@ -6,6 +6,8 @@
 #include "BDeV/Core/System/HID/BvMouse.h"
 #include "UIOverlay.h"
 #include "BDeV/Core/RenderAPI/BvRenderEngine.h"
+#include "BDeV/Core/RenderAPI/BvAccelerationStructure.h"
+#include "BDeV/Core/RenderAPI/BvShaderBindingTable.h"
 #include "BDeV/Core/RenderAPI/BvTextureLoader.h"
 #include "FPSCounter.h"
 #include "Camera.h"

@@ -102,6 +102,9 @@ namespace BvDXCUtils
 		arguments.EmplaceBack(L"-T");
 		arguments.EmplaceBack(profile);
 
+		// Force row_major layout for matrices
+		arguments.EmplaceBack(L"-Zpr");
+
 		// Strip reflection data and pdbs
 		arguments.EmplaceBack(L"-Qstrip_debug");
 		arguments.EmplaceBack(L"-Qstrip_reflect");

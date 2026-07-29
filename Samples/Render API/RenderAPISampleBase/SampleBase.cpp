@@ -81,13 +81,13 @@ void SampleBase::Update()
 	auto& mouseState = m_Mouse.GetMouseState();
 	if (m_Keyboard.KeyIsDown(BvKey::kLControl))
 	{
-		if (mouseState.relativeMousePositionY != 0.0f)
+		if (mouseState.relativeMousePositionX != 0)
 		{
-			m_Camera.Pitch(-mouseState.relativeMousePositionY * m_Dt);
+			m_Camera.RotateY(mouseState.relativeMousePositionX * m_Dt);
 		}
-		if (mouseState.relativeMousePositionX != 0.0f)
+		if (mouseState.relativeMousePositionY != 0)
 		{
-			m_Camera.RotateY(-mouseState.relativeMousePositionX * m_Dt);
+			m_Camera.Pitch(mouseState.relativeMousePositionY * m_Dt);
 		}
 	}
 
@@ -219,6 +219,10 @@ void SampleBase::BeginDrawDefaultUI()
 	ImGui::Begin("Render Sample", nullptr);
 	ImGui::TextUnformatted(m_AppName.CStr());
 	ImGui::Text("FPS: %d", m_FPSCounter.GetFPS());
+	auto pos = m_Camera.GetPos();
+	auto look = m_Camera.GetLook();
+	ImGui::Text("Camera Pos: %.2f | %.2f | %.2f", f32(pos.GetX()), f32(pos.GetY()), f32(pos.GetZ()));
+	ImGui::Text("Camera Look: %.2f | %.2f | %.2f", f32(look.GetX()), f32(look.GetY()), f32(look.GetZ()));
 }
 
 

@@ -37,9 +37,9 @@ BvMonitor::BvMonitor(OSMonitorHandle hMonitor)
 	m_DPIScaleFactor = f32(m_DesktopVideoMode.m_Width) / f32(m_FullscreenArea.m_Right - m_FullscreenArea.m_Left);
 
 	std::wstring_view sv(monitorInfo.szDevice);
-	auto sizeNeeded = BvUTFCharTraits::LengthFor<char>(sv.data(), sv.data() + sv.length() + 1);
-	m_Name.Resize(sizeNeeded);
-	BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length() + 1, m_Name.Begin(), m_Name.End() + 1);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<char>(sv.data(), sv.data() + sv.length());
+	m_Name.Resize(sizeNeeded, ' ');
+	BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length(), &m_Name[0], &m_Name[0] + sizeNeeded);
 }
 
 

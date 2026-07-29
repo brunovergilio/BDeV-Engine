@@ -2723,13 +2723,11 @@ struct RayTracingPipelineStateDesc
 	u32 m_MaxPipelineRayRecursionDepth = 0;
 	u32 m_MaxPayloadSize = 0;
 	u32 m_MaxAttributeSize = 0;
-	bool m_ForcePayloadAndAttributeSizes = false; // Vulkan only
 
 	BV_RENDER_VAR_PTR(p, ShaderResourceLayout);
 	BV_RENDER_VAR(MaxPipelineRayRecursionDepth);
 	BV_RENDER_VAR(MaxPayloadSize);
 	BV_RENDER_VAR(MaxAttributeSize);
-	BV_RENDER_VAR(ForcePayloadAndAttributeSizes);
 
 	RayTracingPipelineStateDesc() = default;
 
@@ -2836,6 +2834,7 @@ struct CommandContextDesc
 		: m_ContextGroupIndex(contextGroupIndex) {}
 
 	u32 m_ContextGroupIndex = kU32Max;
+	u32 m_FrameCount = 3;
 	CommandType m_CommandType = CommandType::kNone;
 	bool m_RequireDedicated = false;
 };

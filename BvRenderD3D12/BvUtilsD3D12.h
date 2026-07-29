@@ -74,7 +74,7 @@ namespace D3D12Utils
 	};
 
 	Obj<SwapChainObj> CreateSwapChainD3D12(BvRenderDeviceD3D12* pDevice, BvWindow* pWindow, SwapChainDesc& swapChainDesc, BvCommandContextD3D12* pContext);
-	Obj<BufferObj> CreateBuffer(BvRenderDeviceD3D12* pDevice, const BufferDesc& bufferDesc, u64 minAlignment = 0);
+	Obj<BufferObj> CreateBuffer(BvRenderDeviceD3D12* pDevice, const BufferDesc& bufferDesc, u64 minAlignment = 0, D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_COMMON);
 	Obj<TextureObj> CreateTexture(BvRenderDeviceD3D12* pDevice, const TextureDesc& textureDesc, D3D12_RESOURCE_STATES initialState);
 	Obj<FenceObj> CreateGPUFence(BvRenderDeviceD3D12* pDevice, const GPUFenceDesc& fenceDesc);
 	Obj<GraphicsPSOObj> CreatePipelineState(BvRenderDeviceD3D12* pDevice, const GraphicsPipelineStateDesc& graphicsPipelineStateDesc, ID3D12PipelineLibrary1* pLibrary);

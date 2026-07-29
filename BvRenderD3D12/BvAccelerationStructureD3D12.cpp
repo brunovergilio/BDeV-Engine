@@ -1,5 +1,7 @@
 #include "BvAccelerationStructureD3D12.h"
+#include "BvRenderDeviceD3D12.h"
 #include "BvBufferD3D12.h"
+#include "BvDescriptorHeapD3D12.h"
 
 
 BvAccelerationStructureD3D12::BvAccelerationStructureD3D12(BvRenderDeviceD3D12* pDevice, const RayTracingAccelerationStructureDesc& desc, ComPtr<ID3D12Resource>& buffer,
@@ -17,6 +19,14 @@ BvAccelerationStructureD3D12::BvAccelerationStructureD3D12(BvRenderDeviceD3D12* 
 			}
 		}
 	}
+
+	auto bufferDesc = m_Buffer->GetDesc();
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+	srv.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+	srv.RaytracingAccelerationStructure.Location = m_Buffer->GetGPUVirtualAddress();
+	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	m_SRV = m_pDevice->GetCPUShaderHeap()->Allocate();
+	m_pDevice->GetHandle()->CreateShaderResourceView(nullptr, &srv, m_SRV);
 }
 
 

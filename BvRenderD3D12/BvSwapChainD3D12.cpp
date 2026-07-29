@@ -8,6 +8,7 @@
 #include "BDeV/Core/System/Window/BvWindow.h"
 #include "BDeV/Core/System/Window/BvMonitor.h"
 #include "BDeV/Core/RenderAPI/BvRenderAPIUtils.h"
+#include "BDeV/Core/Utils/BvUTF.h"
 
 
 BvSwapChainD3D12::BvSwapChainD3D12(BvRenderDeviceD3D12* pDevice, BvWindow* pWindow, const SwapChainDesc& swapChainParams, BvCommandContextD3D12* pContext,
@@ -63,11 +64,12 @@ void BvSwapChainD3D12::SetWindowMode(SwapChainMode mode, BvMonitor* pMonitor)
 		}
 	}
 	
+	m_SwapChainDesc.m_WindowMode = mode;
 	m_pWindow->SetFullscreen(mode != SwapChainMode::kWindowed, pMonitor);
+
 	Resize();
 
-	m_SwapChainDesc.m_WindowMode = mode;
-	SetTrueFullscreen(mode == SwapChainMode::kFullscreen);
+	AcquireImage();
 }
 
 
@@ -169,15 +171,26 @@ void BvSwapChainD3D12::Resize()
 	DestroyTextureResources();
 
 	BOOL fs{};
-	if (SUCCEEDED(m_SwapChain->GetFullscreenState(&fs, nullptr)) && fs)
+	m_SwapChain->GetFullscreenState(&fs, nullptr);
+	if (m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen)
 	{
-		m_SwapChain->SetFullscreenState(false, nullptr);
+		if (!fs)
+		{
+			SetTrueFullscreen(true);
+		}
+	}
+	else
+	{
+		if (fs)
+		{
+			SetTrueFullscreen(false);
+		}
 	}
 
 	auto [w, h] = m_pWindow->GetSize();
 	DXGI_SWAP_CHAIN_DESC1 scd{};
 	m_SwapChain->GetDesc1(&scd);
-	m_SwapChain->ResizeBuffers(0, 0, 0, scd.Format, scd.Flags);
+	m_SwapChain->ResizeBuffers(m_SwapChainDesc.m_SwapChainImageCount, w, h, scd.Format, scd.Flags);
 
 	m_Width = w;
 	m_Height = h;
@@ -193,12 +206,41 @@ void BvSwapChainD3D12::Resize()
 
 void BvSwapChainD3D12::SetTrueFullscreen(bool value)
 {
-	if ((m_SwapChainDesc.m_WindowMode == SwapChainMode::kFullscreen && value) || (m_SwapChainDesc.m_WindowMode != SwapChainMode::kFullscreen && !value))
+	if (!value)
 	{
+		m_SwapChain->SetFullscreenState(false, nullptr);
 		return;
 	}
 
-	if (FAILED(m_SwapChain->SetFullscreenState(value, nullptr)) && value)
+	ComPtr<IDXGIOutput> output;
+	if (FAILED(m_SwapChain->GetContainingOutput(&output)))
+	{
+		m_SwapChainDesc.m_WindowMode = SwapChainMode::kBorderlessFullscreen;
+		return;
+	}
+
+	char deviceName[128]{};
+	{
+		DXGI_OUTPUT_DESC desc;
+		output->GetDesc(&desc);
+
+		std::wstring_view sv(desc.DeviceName);
+		BvUTFCharTraits::GetStr(sv.begin(), sv.end(), deviceName, deviceName + 128);
+	}
+
+	auto pMonitor = m_pWindow->GetWindowDesc().m_pMonitor;
+	if (!pMonitor)
+	{
+		pMonitor = BvMonitor::FromWindow(m_pWindow);
+	}
+	BV_ASSERT(pMonitor, "Invalid monitor");
+
+	std::string_view sv1(pMonitor->GetName().CStr());
+	std::string_view sv2(deviceName);
+
+	// We can only switch to true fullscreen mode if the monitor we're currently on is the same
+	// as the swap chain's containing output
+	if (sv1 != sv2 || FAILED(m_SwapChain->SetFullscreenState(true, nullptr)))
 	{
 		m_SwapChainDesc.m_WindowMode = SwapChainMode::kBorderlessFullscreen;
 	}

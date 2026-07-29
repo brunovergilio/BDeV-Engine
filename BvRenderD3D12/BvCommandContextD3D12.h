@@ -91,6 +91,7 @@ public:
 	BV_INLINE u32 GetGroupIndex() const override { return m_ContextGroupIndex; }
 	BV_INLINE u32 GetIndex() const override { return m_ContextIndex; }
 	BV_INLINE u32 GetCurrentFrameIndex() const override { return m_ActiveFrameIndex; }
+	BV_INLINE u32 GetFrameCount() const override { return m_FrameCount; }
 
 	void NewCommandList() override;
 	void AddSignalFence(IBvGPUFence* pFence, u64 value) override;

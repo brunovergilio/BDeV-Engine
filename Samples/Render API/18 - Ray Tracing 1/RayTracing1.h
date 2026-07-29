@@ -33,6 +33,11 @@ private:
 	BvRCRef<IBvAccelerationStructure> m_AS;
 	BvRCRef<IBvShaderBindingTable> m_SBT;
 	BvRCRef<IBvBuffer> m_ScratchBuffer;
+	BvRCRef<IBvBuffer> m_StagingBuffer;
+	BvRCRef<IBvShader> m_RGen;
+	BvRCRef<IBvShader> m_Miss;
+	BvRCRef<IBvShader> m_VS;
+	BvRCRef<IBvShader> m_PS;
 
 	Float3 m_BackColor{};
 };

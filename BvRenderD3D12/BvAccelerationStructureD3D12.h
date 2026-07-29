@@ -25,6 +25,7 @@ public:
 	BV_INLINE u64 GetDeviceAddress() const override { return m_Buffer->GetGPUVirtualAddress(); }
 	BV_INLINE BvVector<D3D12_RAYTRACING_GEOMETRY_DESC>& GetGeometries() { return m_Geometries; }
 	BV_INLINE ID3D12Resource* GetBuffer() const { return m_Buffer.Get(); }
+	BV_INLINE const CD3DX12_CPU_DESCRIPTOR_HANDLE& GetSRV() const { return m_SRV; }
 
 private:
 	void Destroy();
@@ -37,6 +38,7 @@ private:
 	RayTracingAccelerationStructureScratchSize m_ScratchSizes;
 	RayTracingAccelerationStructureDesc m_Desc;
 	BvRobinMap<BvStringId, u32> m_GeometryMap;
+	CD3DX12_CPU_DESCRIPTOR_HANDLE m_SRV{};
 };
 BV_OBJECT_DEFINE_ID(BvAccelerationStructureD3D12, "0A2136AA-D56A-40F1-ACBD-781CC416FBB6");
 BV_CREATE_CAST_TO_D3D12(BvAccelerationStructure)

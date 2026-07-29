@@ -56,7 +56,8 @@ BV_OBJECT_DEFINE_ID(BvComputePipelineStateVk, "7cd60015-65f1-4258-a8db-fd093dd08
 class BvRayTracingPipelineStateVk final : public IBvRayTracingPipelineState, public IBvResourceVk
 {
 public:
-	BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline);
+	BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline,
+		BvVector<VkShaderStageFlagBits>& shaderStages);
 	~BvRayTracingPipelineStateVk();
 
 	BV_INLINE const RayTracingPipelineStateDesc& GetDesc() const override { return m_PipelineStateDesc; }

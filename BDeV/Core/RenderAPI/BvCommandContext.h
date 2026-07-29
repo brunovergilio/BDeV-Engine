@@ -19,6 +19,7 @@ public:
 	virtual u32 GetGroupIndex() const = 0;
 	virtual u32 GetIndex() const = 0;
 	virtual u32 GetCurrentFrameIndex() const = 0;
+	virtual u32 GetFrameCount() const = 0;
 
 	virtual void NewCommandList() = 0;
 	virtual void AddSignalFence(IBvGPUFence* pFence, u64 value) = 0;

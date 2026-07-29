@@ -71,6 +71,12 @@ namespace VkHelpers
 		VkQueryPipelineStatisticFlags m_PSOFlags;
 	};
 
+	struct VkRayTracingPipelineObj
+	{
+		VkPipeline m_PSO;
+		BvVector<VkShaderStageFlagBits> m_ShaderStages;
+	};
+
 	VkObj<VkSurfaceKHR> CreateSurface(VkInstance instance, BvRenderDeviceVk* pDevice, BvWindow* pWindow);
 	VkObj<VkSwapChainObj> CreateSwapChain(BvRenderDeviceVk* pDevice, VkInstance instance, u32 queueFamilyIndex, VkSwapchainKHR oldSwapChain,
 		VkSurfaceKHR surface, SwapChainDesc& swapChainDesc, BvWindow* pWindow);
@@ -84,7 +90,7 @@ namespace VkHelpers
 	VkObj<VkPipelineCache> CreatePipelineCache(BvRenderDeviceVk* pDevice, const PipelineCacheInitData* pInitData);
 	VkObj<VkPipeline> CreateGraphicsPipeline(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	VkObj<VkPipeline> CreateComputePipeline(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
-	VkObj<VkPipeline> CreateRayTracingPipeline(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
+	VkObj<VkRayTracingPipelineObj> CreateRayTracingPipeline(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	VkObj<VkSemaphore> CreateSemaphore(BvRenderDeviceVk* pDevice, const GPUFenceDesc& fenceDesc = {}, bool isTimelineSemaphore = true);
 	VkObj<VkQueryPoolObj> CreateQueryPool(BvRenderDeviceVk* pDevice, const QueryHeapDesc& queryHeapDesc);
 	VkObj<VkQueryPoolObj> CreateQueryPool(BvRenderDeviceVk* pDevice, VkQueryType queryType, u32 queryCount, bool meshPrimitivesPool = false);

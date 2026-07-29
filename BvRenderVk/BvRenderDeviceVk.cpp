@@ -245,7 +245,7 @@ bool BvRenderDeviceVk::CreateRayTracingPipelineImpl(const RayTracingPipelineStat
 		return false;
 	}
 
-	*ppObj = BV_RC_CREATE(BvRayTracingPipelineStateVk, this, rayTracingPipelineStateDesc, result.second);
+	*ppObj = BV_RC_CREATE(BvRayTracingPipelineStateVk, this, rayTracingPipelineStateDesc, result.second.m_PSO, result.second.m_ShaderStages);
 
 	return true;
 }
@@ -363,7 +363,7 @@ bool BvRenderDeviceVk::CreateCommandContextImpl(const CommandContextDesc& comman
 	if (contextGroupIndex < m_Contexts.Size())
 	{
 		auto& commandContextGroup = m_Contexts[contextGroupIndex];
-		pContext = BV_RC_CREATE(BvCommandContextVk, this, 3, contextGroupIndex, commandContextGroup.Size());
+		pContext = BV_RC_CREATE(BvCommandContextVk, this, commandContextDesc.m_FrameCount, contextGroupIndex, commandContextGroup.Size());
 		commandContextGroup.EmplaceBack(pContext);
 	}
 
@@ -425,6 +425,21 @@ u64 BvRenderDeviceVk::GetDynamicBufferElementSize(BufferUsage usageFlags, u64 el
 	return RoundToNearestPowerOf2(elementStride, alignment);
 }
 
+
+u64 BvRenderDeviceVk::GetBufferOffsetAlignment(BufferUsage usageFlags) const
+{
+	auto& limits = m_pDeviceInfo->m_DeviceProperties.properties.limits;
+	if (EHasFlag(usageFlags, BufferUsage::kConstantBuffer))
+	{
+		return limits.minUniformBufferOffsetAlignment;
+	}
+	if (EHasFlag(usageFlags, BufferUsage::kStructuredBuffer) || EHasFlag(usageFlags, BufferUsage::kRWStructuredBuffer))
+	{
+		return limits.minStorageBufferOffsetAlignment;
+	}
+
+	return 4;
+}
 
 FormatFeatures BvRenderDeviceVk::GetFormatFeatures(Format format) const
 {

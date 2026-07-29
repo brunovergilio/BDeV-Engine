@@ -1,114 +1,5 @@
 #include "RayTracing1.h"
-
-
-constexpr const char* g_pRGenShader =
-R"raw(
-#version 460
-#extension GL_EXT_ray_tracing : require
-
-layout(set = 0, binding = 0, rgba32f) uniform image2D outputImage;
-layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
-
-layout(location = 0) rayPayloadEXT vec4 payload;
-
-void main()
-{
-    const uvec2 launchID = gl_LaunchIDEXT.xy;
-    const uvec2 launchSize = gl_LaunchSizeEXT.xy;
-
-    vec2 uv = vec2(launchID) / vec2(launchSize);
-    payload = vec4(uv, 0.0, 1.0); // simple gradient
-    traceRayEXT(
-        topLevelAS,                     // acceleration structure
-        gl_RayFlagsNoneEXT,            // ray flags
-        0xFF,                           // cull mask
-        0,                              // sbt record offset
-        0,                              // sbt record stride
-        0,                              // miss index
-        vec3(0.0, 0.0, 0.0),            // origin
-        0.0,                            // min t
-        vec3(0.0, 0.0, 1.0),            // direction
-        10000.0,                        // max t
-        0                               // payload location
-    );
-
-    imageStore(outputImage, ivec2(launchID), payload);
-}
-)raw";
-constexpr auto g_RGenSize = std::char_traits<char>::length(g_pRGenShader);
-
-
-constexpr const char* g_pRMissShader =
-R"raw(
-#version 460
-#extension GL_EXT_ray_tracing : require
-
-layout(location = 0) rayPayloadInEXT vec4 payload;
-
-layout(push_constant) uniform PC
-{
-	vec3 color;
-} pc;
-
-void main()
-{
-    payload = vec4(pc.color, 1.0);
-}
-)raw";
-constexpr auto g_RMissSize = std::char_traits<char>::length(g_pRMissShader);
-
-
-constexpr const char* g_pVSShader =
-R"raw(
-#version 450
-
-layout (location = 0) out vec2 outUV;
-
-vec2 vertices[] = 
-{
-	vec2(-1.0f,  1.0f),
-	vec2( 1.0f,  1.0f),
-	vec2( 1.0f, -1.0f),
-	vec2(-1.0f,  1.0f),
-	vec2( 1.0f, -1.0f),
-	vec2(-1.0f, -1.0f)
-};
-
-vec2 uvs[] = 
-{
-	vec2(0.0f, 0.0f),
-	vec2(1.0f, 0.0f),
-	vec2(1.0f, 1.0f),
-	vec2(0.0f, 0.0f),
-	vec2(1.0f, 1.0f),
-	vec2(0.0f, 1.0f)
-};
-
-void main()
-{
-	gl_Position = vec4(vertices[gl_VertexIndex], 0.0f, 1.0f);
-	outUV = uvs[gl_VertexIndex];
-}
-)raw";
-constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);
-
-constexpr const char* g_pPSShader =
-R"raw(
-#version 450
-
-layout (location = 0) in vec2 inUV;
-
-layout (location = 0) out vec4 outColor;
-
-layout (binding = 0) uniform texture2D samplerTexture;
-layout (binding = 1) uniform sampler samplerObj;
-
-void main()
-{
-	outColor = texture(sampler2D(samplerTexture, samplerObj), inUV);
-}
-)raw";
-constexpr auto g_PSSize = std::char_traits<char>::length(g_pPSShader);
+#include "Shaders.h"
 
 
 void RayTracing1::OnInitialize()
@@ -128,7 +19,7 @@ void RayTracing1::OnUpdate()
 void RayTracing1::OnUpdateUI()
 {
 	BeginDrawDefaultUI();
-	ImGui::ColorEdit3("Background", m_BackColor.v);
+	ImGui::ColorEdit3("Background", &m_BackColor.x);
 	EndDrawDefaultUI();
 }
 
@@ -155,15 +46,13 @@ void RayTracing1::OnRender()
 	barrier.m_DstState = ResourceState::kPixelShaderResource;
 	m_Context->ResourceBarrier(1, &barrier);
 
-	RenderTargetDesc targets[] =
-	{
-		RenderTargetDesc::AsSwapChain(m_SwapChain->GetCurrentTextureView(), { 0.1f, 0.1f, 0.3f }),
-	};
+	RenderTargetDesc target;
+	target.SetColorView(m_SwapChain->GetCurrentTextureView(), ResourceState::kCommon, ResourceState::kPresent).SetClearValues({ 0.1f, 0.1f, 0.3f });
 
-	m_Context->SetRenderTargets(1, targets);
+	m_Context->SetRenderTarget(target);
 	m_Context->SetGraphicsPipeline(m_PSO);
 	m_Context->SetViewport({ 0.0f, 0.0f, (f32)width, (f32)height, 0.0f, 1.0f });
-	m_Context->SetScissor({ 0, 0, width, height });
+	m_Context->SetScissor(width, height);
 	m_Context->SetTexture(m_TexView, 0, 0);
 	m_Context->SetSampler(m_Sampler, 0, 1);
 	m_Context->Draw(6);
@@ -189,47 +78,28 @@ void RayTracing1::OnShutdown()
 	m_AS.Reset();
 	m_SBT.Reset();
 	m_ScratchBuffer.Reset();
+	m_StagingBuffer.Reset();
 }
 
 
 void RayTracing1::CreateShaderResourceLayout()
 {
 	{
-		ShaderResourceDesc descs[2];
-		descs[0] = ShaderResourceDesc::AsRWTexture(0, ShaderStage::kRayGen);
-		descs[1] = ShaderResourceDesc::AsAccelerationStructure(1, ShaderStage::kRayGen);
+		ShaderResourceLayoutCreateDesc layoutDesc;
+		layoutDesc.AddResourceSet()
+			.AddRWTexture(0, ShaderStage::kRayGen)
+			.AddAccelerationStructure(1, ShaderStage::kRayGen)
+			.AddConstant<Float3>("PC"_sid, 2, ShaderStage::kMiss);
 
-		ShaderResourceConstantDesc constDesc = ShaderResourceConstantDesc::As<Float3>(BV_NAME_ID("PC"), 2, ShaderStage::kMiss);
-
-		ShaderResourceSetDesc setDesc{};
-		setDesc.m_ResourceCount = 2;
-		setDesc.m_pResources = descs;
-		setDesc.m_ConstantCount = 1;
-		setDesc.m_pConstants = &constDesc;
-
-		ShaderResourceLayoutCreateDesc layoutDesc{};
-		layoutDesc.m_ShaderResourceSetCount = 1;
-		layoutDesc.m_pShaderResourceSets = &setDesc;
-
-		m_RaySRL = m_Device->CreateShaderResourceLayout(layoutDesc);
+		m_Device->CreateShaderResourceLayout(layoutDesc, &m_RaySRL);
 	}
 
 	{
-		ShaderResourceDesc resourceDescs[] =
-		{
-			ShaderResourceDesc::AsTexture(0, ShaderStage::kPixelOrFragment),
-			ShaderResourceDesc::AsSampler(1, ShaderStage::kPixelOrFragment)
-		};
+		ShaderResourceLayoutCreateDesc layoutDesc;
+		layoutDesc.AddResourceSet()
+			.AddTexture(0, ShaderStage::kPixelOrFragment).AddSampler(1, ShaderStage::kPixelOrFragment);
 
-		ShaderResourceSetDesc setDesc{};
-		setDesc.m_ResourceCount = 2;
-		setDesc.m_pResources = resourceDescs;
-
-		ShaderResourceLayoutCreateDesc layoutDesc{};
-		layoutDesc.m_ShaderResourceSetCount = 1;
-		layoutDesc.m_pShaderResourceSets = &setDesc;
-
-		m_SRL = m_Device->CreateShaderResourceLayout(layoutDesc);
+		m_Device->CreateShaderResourceLayout(layoutDesc, &m_SRL);
 	}
 }
 
@@ -237,13 +107,8 @@ void RayTracing1::CreateShaderResourceLayout()
 void RayTracing1::CreatePipeline()
 {
 	{
-		auto rgen = CompileShader(g_pRGenShader, g_RGenSize, ShaderStage::kRayGen);
-		auto rmis = CompileShader(g_pRMissShader, g_RMissSize, ShaderStage::kMiss);
-
-		IBvShader* ppShaders[] =
-		{
-			rgen, rmis
-		};
+		m_RGen = CompileShader(g_pRGenShader, g_RGenSize, ShaderStage::kRayGen);
+		m_Miss = CompileShader(g_pRMissShader, g_RMissSize, ShaderStage::kMiss);
 
 		ShaderGroupDesc groupDescs[2];
 		groupDescs[0].m_Type = ShaderGroupType::kGeneral;
@@ -253,26 +118,24 @@ void RayTracing1::CreatePipeline()
 		groupDescs[1].m_General = 1;
 
 		RayTracingPipelineStateDesc pipelineDesc;
-		pipelineDesc.m_ShaderGroupCount = 2;
-		pipelineDesc.m_pShaderGroupDescs = groupDescs;
-		pipelineDesc.m_ShaderCount = 2;
-		pipelineDesc.m_ppShaders = ppShaders;
+		pipelineDesc.AddShader(m_RGen).AddShader(m_Miss).AddGeneralShaderGroup("", 0).AddGeneralShaderGroup("", 1);
 		pipelineDesc.m_pShaderResourceLayout = m_RaySRL;
 		pipelineDesc.m_MaxPipelineRayRecursionDepth = 1;
+		pipelineDesc.m_MaxPayloadSize = sizeof(Float4);
 
-		m_RayPSO = m_Device->CreateRayTracingPipeline(pipelineDesc);
+		m_Device->CreateRayTracingPipeline(pipelineDesc, &m_RayPSO);
 	}
 
 	{
-		auto vs = CompileShader(g_pVSShader, g_VSSize, ShaderStage::kVertex);
-		auto ps = CompileShader(g_pPSShader, g_PSSize, ShaderStage::kPixelOrFragment);
+		m_VS = CompileShader(g_pVSShader, g_VSSize, ShaderStage::kVertex);
+		m_PS = CompileShader(g_pPSShader, g_PSSize, ShaderStage::kPixelOrFragment);
 		GraphicsPipelineStateDesc pipelineDesc;
-		pipelineDesc.m_Shaders[0] = vs;
-		pipelineDesc.m_Shaders[1] = ps;
+		pipelineDesc.m_Shaders[0] = m_VS;
+		pipelineDesc.m_Shaders[1] = m_PS;
 		pipelineDesc.m_RenderTargetFormats[0] = m_SwapChain->GetDesc().m_Format;
 		pipelineDesc.m_pShaderResourceLayout = m_SRL;
 
-		m_PSO = m_Device->CreateGraphicsPipeline(pipelineDesc);
+		m_Device->CreateGraphicsPipeline(pipelineDesc, &m_PSO);
 	}
 }
 
@@ -282,46 +145,53 @@ void RayTracing1::CreateResources()
 	TextureDesc desc;
 	desc.m_Size = { m_pWindow->GetWidth(), m_pWindow->GetHeight(), 1 };
 	desc.m_Format = Format::kRGBA32_Float;
-	desc.m_ResourceState = ResourceState::kPixelShaderResource;
 	desc.m_UsageFlags = TextureUsage::kUnorderedAccess | TextureUsage::kShaderResource;
 	TextureInitData initData{};
 	initData.m_pContext = m_Context;
-	m_Tex = m_Device->CreateTexture(desc, &initData);
+	initData.m_ResourceState = ResourceState::kPixelShaderResource;
+	m_Device->CreateTexture(desc, initData, &m_Tex);
 
 	TextureViewDesc viewDesc;
 	viewDesc.m_Format = desc.m_Format;
 	viewDesc.m_pTexture = m_Tex;
-	m_TexView = m_Device->CreateTextureView(viewDesc);
+	m_Device->CreateTextureView(viewDesc, &m_TexView);
 
-	m_Sampler = m_Device->CreateSampler(SamplerDesc());
+	m_Device->CreateSampler(SamplerDesc(), &m_Sampler);
 
 	RayTracingAccelerationStructureDesc asDesc;
 	asDesc.m_Type = RayTracingAccelerationStructureType::kTopLevel;
 	asDesc.m_Flags = RayTracingAccelerationStructureFlags::kPreferFastTrace;
-	asDesc.m_TLAS.m_InstanceCount = 0;
-	m_AS = m_Device->CreateAccelerationStructure(asDesc);
+	asDesc.m_Geometries.EmplaceBack().m_Instance.m_InstanceCount = 0;
+	m_Device->CreateAccelerationStructure(asDesc, &m_AS);
 	
 	BufferDesc buffDesc;
 	buffDesc.m_Size = m_AS->GetBuildSizes().m_Build;
 	buffDesc.m_UsageFlags = BufferUsage::kRayTracing;
-	m_ScratchBuffer = m_Device->CreateBuffer(buffDesc);
+	m_Device->CreateBuffer(buffDesc, &m_ScratchBuffer);
 
-	TLASInstanceDesc dummyInstance;
-	m_AS->WriteTopLevelInstances(1, &dummyInstance);
+	buffDesc.m_UsageFlags = BufferUsage::kNone;
+	buffDesc.m_Size = sizeof(RayTracingAccelerationStructureInstanceDesc);
+	buffDesc.m_MemoryType = MemoryType::kUpload;
+	m_Device->CreateBuffer(buffDesc, &m_StagingBuffer);
+
+	RayTracingAccelerationStructureInstanceDesc dummyInstance;
+	m_AS->WriteTopLevelInstances(m_StagingBuffer, 1, &dummyInstance);
 	
-	auto pInstanceBuffer = m_AS->GetTopLevelStagingInstanceBuffer();
-	TLASBuildDesc build;
-	build.m_InstanceCount = 0;
-	build.m_pInstanceBuffer = pInstanceBuffer;
-	build.m_pTLAS = m_AS;
+	RayTracingAccelerationStructureBuildDesc build;
+	auto& instance = build.m_Geometries.EmplaceBack();
+	instance.m_Instance.m_Count = 0;
+	instance.m_Instance.m_pBuffer = m_StagingBuffer;
+	build.m_Type = RayTracingAccelerationStructureType::kTopLevel;
+	build.m_pAS = m_AS;
 	build.m_pScratchBuffer = m_ScratchBuffer;
+
 	m_Context->NewCommandList();
-	m_Context->BuildTLAS(build);
+	m_Context->BuildRayTracingAccelerationStructure(build);
 	m_Context->ExecuteAndWait();
 
 	ShaderBindingTableDesc sbtDesc;
 	sbtDesc.m_pPSO = m_RayPSO;
-	m_SBT = m_Device->CreateShaderBindingTable(sbtDesc, m_Context);
+	m_Device->CreateShaderBindingTable(sbtDesc, m_Context, &m_SBT);
 }
 
 

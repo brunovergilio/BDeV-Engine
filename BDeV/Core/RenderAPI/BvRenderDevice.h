@@ -40,6 +40,7 @@ public:
 	virtual void GetCopyableFootprints(const TextureDesc& textureDesc, u32 subresourceCount, SubresourceFootprint* pSubresources, u64* pTotalBytes = nullptr,
 		u64 baseOffset = 0, u64 firstSubresource = 0) const = 0;
 	virtual u64 GetDynamicBufferElementSize(BufferUsage usageFlags, u64 elementStride) const = 0;
+	virtual u64 GetBufferOffsetAlignment(BufferUsage usageFlags) const = 0;
 	virtual FormatFeatures GetFormatFeatures(Format format) const = 0;
 
 	virtual const BvGPUInfo& GetGPUInfo() const = 0;

@@ -37,10 +37,18 @@ private:
 	BvRCRef<IBvAccelerationStructure> m_TLAS;
 	BvRCRef<IBvShaderBindingTable> m_SBT;
 	BvRCRef<IBvBuffer> m_ScratchTLAS;
+	BvRCRef<IBvBuffer> m_StagingBuffer;
 	BvRCRef<IBvBuffer> m_VB;
 	BvRCRef<IBvBuffer> m_IB;
 	BvRCRef<IBvBufferView> m_VBView;
 	BvRCRef<IBvBufferView> m_IBView;
+
+	BvRCRef<IBvShader> m_RGen;
+	BvRCRef<IBvShader> m_Miss;
+	BvRCRef<IBvShader> m_CHit;
+	BvRCRef<IBvShader> m_MissShadow;
+	BvRCRef<IBvShader> m_VS;
+	BvRCRef<IBvShader> m_PS;
 
 	BvRCRef<IBvBuffer> m_UBRayData;
 	BvRCRef<IBvBufferView> m_UBViewRayData;
@@ -49,7 +57,9 @@ private:
 		Float44 viewInv;
 		Float44 projInv;
 	} *m_pRayData = nullptr;
-	TLASInstanceDesc m_Instances[2];
+	RayTracingAccelerationStructureInstanceDesc m_Instances[2]{};
+
+	RayTracingAccelerationStructureBuildDesc m_TLASUpdate;
 
 	BvRCRef<IBvBuffer> m_UBHitData;
 	BvRCRef<IBvBufferView> m_UBViewHitData;

@@ -53,8 +53,9 @@ void BvComputePipelineStateVk::Destroy()
 }
 
 
-BvRayTracingPipelineStateVk::BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline)
-	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_Pipeline(pipeline)
+BvRayTracingPipelineStateVk::BvRayTracingPipelineStateVk(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline,
+	BvVector<VkShaderStageFlagBits>& shaderStages)
+	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_Pipeline(pipeline), m_ShaderStages(std::move(shaderStages))
 {
 }
 

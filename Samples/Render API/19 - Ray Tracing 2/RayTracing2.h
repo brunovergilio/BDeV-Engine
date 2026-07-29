@@ -39,6 +39,11 @@ private:
 	BvRCRef<IBvBuffer> m_IBTri;
 	BvRCRef<IBvBuffer> m_UBRayData;
 	BvRCRef<IBvBufferView> m_UBViewRayData;
+	BvRCRef<IBvShader> m_RGen;
+	BvRCRef<IBvShader> m_Miss;
+	BvRCRef<IBvShader> m_CHit;
+	BvRCRef<IBvShader> m_VS;
+	BvRCRef<IBvShader> m_PS;
 	struct RayData
 	{
 		Float44 viewInv;

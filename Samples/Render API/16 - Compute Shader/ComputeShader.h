@@ -20,6 +20,7 @@ public:
 private:
 	void CreateShaderResourceLayout();
 	void CreatePipeline();
+	void CreateBuffers();
 	void CreateTextures();
 
 private:
@@ -31,7 +32,10 @@ private:
 	BvRCRef<IBvTextureView> m_RWTexView;
 	BvRCRef<IBvSampler> m_Sampler;
 	BvRCRef<IBvQueryHeap> m_Query;
+	BvRCRef<IBvBuffer> m_QueryBuffer;
+	u8* m_pQueryData = nullptr;
 	PipelineStatistics m_PSOStats{};
+	u32 m_QuerySize{};
 	struct PC
 	{
 		Float2 res;

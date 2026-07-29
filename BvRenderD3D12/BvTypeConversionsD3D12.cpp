@@ -8,18 +8,18 @@
 D3D12_RESOURCE_FLAGS GetD3D12ResourceFlags(BufferUsage usage)
 {
 	D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-	if (!EHasFlag(usage, BufferUsage::kStructuredBuffer))
+	if (!EHasAnyFlags(usage, BufferUsage::kStructuredBuffer | BufferUsage::kRayTracing))
 	{
 		flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 	}
-	if (EHasFlag(usage, BufferUsage::kRWStructuredBuffer))
+	if (EHasAnyFlags(usage, BufferUsage::kRWStructuredBuffer | BufferUsage::kRayTracing))
 	{
 		flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	}
-	if (EHasFlag(usage, BufferUsage::kRayTracing))
-	{
-		flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	}
+	//if (EHasFlag(usage, BufferUsage::kRayTracing))
+	//{
+	//	flags |= D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	//}
 
 	return flags;
 }
@@ -127,6 +127,7 @@ D3D12_DESCRIPTOR_RANGE_TYPE GetD3D12DescriptorRangeType(ShaderResourceType type)
 	case ShaderResourceType::kRWFormattedBuffer:
 	case ShaderResourceType::kRWTexture: return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 	case ShaderResourceType::kSampler: return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+	case ShaderResourceType::kAccelerationStructure: return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	default:
 		BV_ASSERT(false, "Should never get here");
 	}

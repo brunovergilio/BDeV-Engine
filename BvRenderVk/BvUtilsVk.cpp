@@ -1608,8 +1608,14 @@ namespace VkHelpers
 	}
 
 
-	VkObj<VkPipeline> CreateRayTracingPipeline(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache)
+	VkObj<VkRayTracingPipelineObj> CreateRayTracingPipeline(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache)
 	{
+		VkObj<VkRayTracingPipelineObj> obj;
+		auto& result = obj.first;
+		auto& pipeline = obj.second.m_PSO;
+		auto& shaderStageFlags = obj.second.m_ShaderStages;
+		shaderStageFlags.Resize(pipelineStateDesc.m_Shaders.Size());
+		
 		BvVector<VkPipelineShaderStageCreateInfo> shaderStages(pipelineStateDesc.m_Shaders.Size(), { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO });
 		BvVector<VkRayTracingShaderGroupCreateInfoKHR> groups(pipelineStateDesc.m_ShaderGroupDescs.Size(), { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR });
 
@@ -1620,6 +1626,7 @@ namespace VkHelpers
 			const auto& byteCode = pipelineStateDesc.m_Shaders[i]->GetShaderBlob();
 			shaderStage.pName = pipelineStateDesc.m_Shaders[i]->GetEntryPoint();
 			shaderStage.stage = GetVkShaderStageFlagBits(pipelineStateDesc.m_Shaders[i]->GetShaderStage());
+			shaderStageFlags[i] = shaderStage.stage;
 			auto shaderObj = CreateShaderModule(device, byteCode.Size(), byteCode.Data());
 			shaderStage.module = shaderObj.second;
 		}
@@ -1637,8 +1644,8 @@ namespace VkHelpers
 			group.intersectionShader = groupDesc.m_Intersection;
 		}
 
-		VkRayTracingPipelineInterfaceCreateInfoKHR pici{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR, nullptr,
-			pipelineStateDesc.m_MaxPayloadSize, pipelineStateDesc.m_MaxAttributeSize };
+		//VkRayTracingPipelineInterfaceCreateInfoKHR pici{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR, nullptr,
+		//	pipelineStateDesc.m_MaxPayloadSize, pipelineStateDesc.m_MaxAttributeSize };
 
 		VkRayTracingPipelineCreateInfoKHR ci{ VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR };
 		ci.groupCount = u32(groups.Size());
@@ -1647,20 +1654,19 @@ namespace VkHelpers
 		ci.pStages = shaderStages.Data();
 		ci.maxPipelineRayRecursionDepth = pipelineStateDesc.m_MaxPipelineRayRecursionDepth;
 		ci.layout = TO_VK(pipelineStateDesc.m_pShaderResourceLayout)->GetPipelineLayoutHandle();
-		if (pipelineStateDesc.m_ForcePayloadAndAttributeSizes)
-		{
-			ci.pLibraryInterface = &pici;
-		}
+		//if (pipelineStateDesc.m_ForcePayloadAndAttributeSizes)
+		//{
+		//	ci.pLibraryInterface = &pici;
+		//}
 
-		VkPipeline pipeline = VK_NULL_HANDLE;
-		auto result = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, pipelineCache, 1, &ci, nullptr, &pipeline);
+		result = vkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, pipelineCache, 1, &ci, nullptr, &pipeline);
 
 		for (auto i = 0u; i < shaderStages.Size(); i++)
 		{
 			DestroyDeviceObject(device, shaderStages[i].module);
 		}
 
-		return std::make_pair(result, pipeline);
+		return obj;
 	}
 
 

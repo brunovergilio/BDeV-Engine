@@ -33,7 +33,11 @@ private:
 	BvRCRef<IBvTexture> m_Depth;
 	BvRCRef<IBvTextureView> m_DepthView;
 	BvRCRef<IBvQueryHeap> m_Query;
-	PipelineStatistics m_PSOStats{};
+	BvRCRef<IBvBuffer> m_QueryBuffer;
+	u8* m_pQueryData = nullptr;
+	MeshPipelineStatistics m_PSOStats{};
+	u32 m_QuerySize{};
+	bool m_MeshQueriesSupported = false;
 
 	struct PushConstants
 	{

@@ -38,8 +38,8 @@ void BvFrameDataD3D12::Reset(bool newFrame /*= true*/)
 			BvScopedLock lock(m_pContextData->m_DeletedResourceLock);
 			for (auto i = 0; i < copyCount; i++)
 			{
-				deletedResources[i] = m_pContextData->m_DeletedResourceHandles[m_pContextData->m_DeletedResourceHandles.Size() - 1 - i];
-				m_pContextData->m_DeletedResourceHandles.PopBack();
+				deletedResources[i] = m_pContextData->m_DeletedResourceHandles[0];
+				m_pContextData->m_DeletedResourceHandles.EraseUnsorted(0);
 			}
 		}
 

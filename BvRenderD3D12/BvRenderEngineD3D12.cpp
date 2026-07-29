@@ -181,6 +181,12 @@ void BvRenderEngineD3D12::Create()
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&m_DebugController))))
 	{
 		m_DebugController->EnableDebugLayer();
+
+		Microsoft::WRL::ComPtr<ID3D12Debug1> debugController1;
+		if (SUCCEEDED(m_DebugController.As(&debugController1)))
+		{
+			debugController1->SetEnableGPUBasedValidation(TRUE);
+		}
 	}
 }
 

@@ -534,7 +534,12 @@ void BvCommandListD3D12::SetInputAttachments(u32 count, const IBvTextureView* co
 
 void BvCommandListD3D12::SetAccelerationStructures(u32 count, const IBvAccelerationStructure* const* ppResources, u32 set, u32 binding, u32 startIndex)
 {
-	BV_ASSERT(false, "Not Implemented");
+	auto& bindingState = m_pFrameData->GetResourceBindingState();
+	auto rootIndex = m_pShaderResourceLayout->GetRootSignatureSlot(binding, set);
+	for (auto i = 0; i < count; ++i)
+	{
+		bindingState.SetResource(TO_D3D12(ppResources[i])->GetSRV(), rootIndex, set, binding, startIndex + i);
+	}
 }
 
 
@@ -907,6 +912,8 @@ void BvCommandListD3D12::ResourceBarrier(u32 barrierCount, const ResourceBarrier
 			}
 		}
 	}
+
+	m_CommandList->ResourceBarrier(barriers.Size(), barriers.Data());
 }
 
 
@@ -993,6 +1000,11 @@ void BvCommandListD3D12::BuildRayTracingAccelerationStructures(u32 count, const 
 		asDesc.ScratchAccelerationStructureData = buildDesc.m_pScratchBuffer->GetDeviceAddress() + buildDesc.m_ScratchBufferOffset;
 		asDesc.Inputs.Type = GetD3D12RayTracingAccelerationStructureType(buildDesc.m_Type);
 		asDesc.Inputs.Flags = GetD3D12RayTracingAccelerationStructureBuildFlags(pAS->GetDesc().m_Flags);
+		if (buildDesc.m_Update)
+		{
+			asDesc.SourceAccelerationStructureData = pAS->GetDeviceAddress();
+			asDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+		}
 		asDesc.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
 
 		if (buildDesc.m_Type == RayTracingAccelerationStructureType::kBottomLevel)
@@ -1045,13 +1057,18 @@ void BvCommandListD3D12::BuildRayTracingAccelerationStructures(u32 count, const 
 		}
 
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC pbDesc{};
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC* pPBDesc = nullptr;
+		u32 pbCount = 0;
 		if (pPostBuildDesc)
 		{
 			pbDesc.InfoType = GetD3D12RayTracingAccelerationStructurePostBuildInfoType(pPostBuildDesc->m_Type);
 			pbDesc.DestBuffer = pPBResource->GetGPUVirtualAddress() + pbSizePerAS * asIndex;
+
+			pPBDesc = &pbDesc;
+			pbCount = 1;
 		}
 
-		m_CommandList4->BuildRaytracingAccelerationStructure(&asDesc, 1, &pbDesc);
+		m_CommandList4->BuildRaytracingAccelerationStructure(&asDesc, pbCount, pPBDesc);
 
 		auto& barrier = barriers.PushBack({});
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
@@ -1072,6 +1089,16 @@ void BvCommandListD3D12::BuildRayTracingAccelerationStructures(u32 count, const 
 
 	if (pPBResource)
 	{
+		barriers.Clear();
+		auto& pbBarrier = barriers.PushBack({});
+		pbBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		pbBarrier.Transition.pResource = pPBResource;
+		pbBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		pbBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		pbBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+		m_CommandList4->ResourceBarrier(barriers.Size(), barriers.Data());
+
 		m_CommandList4->CopyBufferRegion(TO_D3D12(pPostBuildDesc->m_pDstBuffer)->GetHandle(), pPostBuildDesc->m_DstBufferOffset, pPBResource, 0, pbSizePerAS * count);
 	}
 }
@@ -1109,6 +1136,11 @@ void BvCommandListD3D12::CopyRayTracingAccelerationStructure(const RayTracingAcc
 {
 	m_CommandList4->CopyRaytracingAccelerationStructure(copyDesc.m_pDst->GetDeviceAddress(), copyDesc.m_pSrc->GetDeviceAddress(),
 		GetD3D12RayTracingAccelerationStructureCopyMode(copyDesc.m_CopyMode));
+
+	m_PreRenderBarriers.Clear();
+	auto& barrier = m_PreRenderBarriers.PushBack({});
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+	barrier.UAV.pResource = TO_D3D12(copyDesc.m_pDst)->GetBuffer();
 }
 
 

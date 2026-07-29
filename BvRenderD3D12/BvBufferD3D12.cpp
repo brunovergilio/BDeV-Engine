@@ -25,6 +25,11 @@ void* const BvBufferD3D12::Map(u64 size, u64 offset)
 		return m_pMapped;
 	}
 
+	if (size == kU64Max)
+	{
+		size = m_BufferDesc.m_Size;
+	}
+
 	m_Range = D3D12_RANGE{ offset, offset + size };
 	auto hr = m_Buffer->Map(0, &m_Range, &m_pMapped);
 	if (FAILED(hr))

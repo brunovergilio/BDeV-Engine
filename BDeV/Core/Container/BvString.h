@@ -566,51 +566,45 @@ template<typename CharT>
 void BvStringT<CharT>::Format(const CharT* format, ...)
 {
 	u32 size = 0;
-	{
-		va_list args;
-		va_start(args, format);
-		va_list argsCopy;
-		va_copy(argsCopy, args);
+	va_list lengthArgs;
+	va_start(lengthArgs, format);
+	va_list resultArgs;
+	va_copy(resultArgs, lengthArgs);
 
-		if constexpr (std::is_same_v<CharT, char>)
-		{
-			size = vsnprintf(nullptr, 0, format, argsCopy) + 1;
-		}
-		else if constexpr (std::is_same_v<CharT, wchar_t>)
-		{
-			size = vswprintf(nullptr, 0, format, argsCopy) + 1;
-		}
-		else
-		{
-			size = 1;
-		}
-		va_end(argsCopy);
-		va_end(args);
-
-		if (size == 1)
-		{
-			return;
-		}
-	}
-
-	if (size >= m_Capacity)
-	{
-		Resize(size);
-	}
-
-	va_list args;
-	va_start(args, format);
 	if constexpr (std::is_same_v<CharT, char>)
 	{
-		vsnprintf(m_pStr, size, format, args);
+		size = vsnprintf(nullptr, 0, format, lengthArgs);
 	}
 	else if constexpr (std::is_same_v<CharT, wchar_t>)
 	{
-		vswprintf(m_pStr, size, format, args);
+		size = vswprintf(nullptr, 0, format, lengthArgs);
 	}
-	va_end(args);
+	else
+	{
+		size = 1;
+	}
+	va_end(lengthArgs);
 
-	m_pStr[size] = CharT();
+	if (size > 1)
+	{
+		if (size >= m_Capacity)
+		{
+			Resize(size);
+		}
+
+		if constexpr (std::is_same_v<CharT, char>)
+		{
+			vsnprintf(m_pStr, size + 1, format, resultArgs);
+		}
+		else if constexpr (std::is_same_v<CharT, wchar_t>)
+		{
+			vswprintf(m_pStr, size + 1, format, resultArgs);
+		}
+
+		m_Size = size;
+	}
+
+	va_end(resultArgs);
 }
 
 
