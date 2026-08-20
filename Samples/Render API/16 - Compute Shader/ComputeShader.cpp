@@ -53,6 +53,7 @@ void ComputeShader::OnRender()
 	auto currFrame = m_Context->GetCurrentFrameIndex();
 
 	m_Context->NewCommandList();
+	m_Context->ResetQueryHeap(m_Query, currFrame, 1);
 	m_Context->BeginQuery(m_Query, currFrame);
 	ResourceBarrierDesc barrier;
 	barrier.m_pTexture = m_RWTex;

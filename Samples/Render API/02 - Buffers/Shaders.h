@@ -27,7 +27,7 @@ VSOutput main(VSInput input)
 {
     VSOutput output;
     output.outColor = input.inColor;
-    output.position = mul(wvp, float4(input.inPos, 1.0f));
+    output.position = mul(float4(input.inPos, 1.0f), wvp);
     return output;
 }
 )raw";
@@ -53,6 +53,8 @@ constexpr const char* g_pVSShader =
 R"raw(
 #version 450
 
+layout(row_major) uniform;
+
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec4 inColor;
 layout (location = 2) in vec3 inNormal;
@@ -67,7 +69,7 @@ layout (binding = 0) uniform UBO
 void main() 
 {
 	outColor = inColor;
-	gl_Position = ubo.wvp * vec4(inPos.xyz, 1.0);
+	gl_Position = vec4(inPos.xyz, 1.0) * ubo.wvp;
 }
 )raw";
 constexpr auto g_VSSize = std::char_traits<char>::length(g_pVSShader);

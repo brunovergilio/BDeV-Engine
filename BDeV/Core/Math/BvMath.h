@@ -571,11 +571,21 @@ using Float4 = XMFLOAT4;
 using Float4A = XMFLOAT4A;
 using Float44 = XMFLOAT4X4;
 using Float44A = XMFLOAT4X4;
+using Int2 = XMINT2;
+using Int3 = XMINT3;
+using Int4 = XMINT4;
+using UInt2 = XMUINT2;
+using UInt3 = XMUINT3;
+using UInt4 = XMUINT4;
 
+using vf32 = XMVECTOR;
+using cvf32 = FXMVECTOR;
+
+using mf32 = XMMATRIX;
+using cmf32 = FXMMATRIX;
 
 class BvQuat;
 class BvMatrix;
-
 
 class BvBoolVec
 {
@@ -584,7 +594,7 @@ public:
 
 	BV_INLINE BvBoolVec() {}
 	BV_INLINE BvBoolVec(bool s) : m_Vec(XMVectorReplicateInt(u32(s) * kU32Max)) {}
-	BV_INLINE explicit BvBoolVec(FXMVECTOR v) : m_Vec(v) {}
+	BV_INLINE explicit BvBoolVec(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE bool AnyTrue() const { return XMVector4NotEqualInt(m_Vec, XMVectorFalseInt()); }
 	BV_INLINE bool AllTrue() const { return XMVector4EqualInt(m_Vec, XMVectorTrueInt()); }
@@ -595,10 +605,17 @@ public:
 	BV_INLINE bool operator!=(const BvBoolVec& rhs) const { return !(*this == rhs); }
 	
 	BV_INLINE operator bool() const { return AllTrue(); }
-	BV_INLINE operator XMVECTOR() const { return m_Vec; }
+	BV_INLINE operator vf32() const { return m_Vec; }
+
+	BV_INLINE bool operator[](u32 index) const
+	{
+		alignas(16) i32 arr[4];
+		_mm_store_si128((__m128i*)arr, _mm_castps_si128(m_Vec));
+		return arr[index & 3];
+	}
 
 private:
-	XMVECTOR m_Vec;
+	vf32 m_Vec;
 };
 
 
@@ -609,7 +626,7 @@ public:
 
 	BV_INLINE BvSVec() {}
 	BV_INLINE BvSVec(f32 s)	: m_Vec(XMVectorReplicate(s)) {}
-	BV_INLINE explicit BvSVec(FXMVECTOR v) : m_Vec(v) {}
+	BV_INLINE explicit BvSVec(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE BvSVec operator+() const { return BvSVec(m_Vec); }
 	BV_INLINE BvSVec operator-() const { return BvSVec(XMVectorNegate(m_Vec)); }
@@ -646,11 +663,11 @@ public:
 	BV_INLINE BvBoolVec operator<(const BvSVec& v) const { return BvBoolVec(XMVectorLess(m_Vec, v.m_Vec)); }
 	BV_INLINE BvBoolVec operator<=(const BvSVec& v) const { return BvBoolVec(XMVectorLessOrEqual(m_Vec, v.m_Vec)); }
 
-	BV_INLINE operator XMVECTOR() const { return m_Vec; }
+	BV_INLINE operator vf32() const { return m_Vec; }
 	BV_INLINE operator f32() const { return XMVectorGetX(m_Vec); }
 
 private:
-	XMVECTOR m_Vec;
+	vf32 m_Vec;
 };
 
 
@@ -667,7 +684,7 @@ public:
 	BV_INLINE BvVec2(const XMFLOAT2& v) : m_Vec(XMLoadFloat2(&v)) {}
 	BV_INLINE BvVec2(const XMFLOAT2A& v) : m_Vec(XMLoadFloat2A(&v)) {}
 	
-	BV_INLINE explicit BvVec2(XMVECTOR v) : m_Vec(v) {}
+	BV_INLINE explicit BvVec2(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE static BvVec2 Zero() { return BvVec2(XMVectorZero()); }
 	BV_INLINE static BvVec2 One() { return BvVec2(XMVectorSet(1.0f, 1.0f, 0.0f, 0.0f)); }
@@ -679,6 +696,7 @@ public:
 
 	BV_INLINE void SetX(f32 x) { m_Vec = XMVectorSetX(m_Vec, x); }
 	BV_INLINE void SetY(f32 y) { m_Vec = XMVectorSetY(m_Vec, y); }
+	BV_INLINE void Set(f32 x, f32 y) { m_Vec = XMVectorSet(x, y, 0.0f, 0.0f); }
 
 	BV_INLINE BvVec2 operator+() const { return BvVec2(m_Vec); }
 	BV_INLINE BvVec2 operator-() const { return BvVec2(XMVectorAndInt(XMVectorNegate(m_Vec), g_XMMaskXY)); }
@@ -725,6 +743,8 @@ public:
 	BV_INLINE BvVec2 Lerp(const BvVec2& v, f32 t) const { return BvVec2(XMVectorLerp(m_Vec, v.m_Vec, t)); }
 	BV_INLINE BvVec2 Rotate(f32 rad) const { return BvVec2(XMVector2TransformNormal(m_Vec, XMMatrixRotationZ(rad))); }
 	BV_INLINE BvVec2 InvRotate(f32 rad) const { return BvVec2(XMVector2TransformNormal(m_Vec, XMMatrixRotationZ(-rad))); }
+	BV_INLINE BvVec2 GetOrthoCW() { return BvVec2(GetY(), -GetX()); }
+	BV_INLINE BvVec2 GetOrthoCCW() { return BvVec2(-GetY(), GetX()); }
 	BV_INLINE BvVec2 TransformPoint(const BvMatrix& m) const;
 	BV_INLINE BvVec2 TransformNormal(const BvMatrix& m) const;
 
@@ -735,11 +755,11 @@ public:
 	BV_INLINE BvBoolVec operator<(const BvVec2& v) const { return BvBoolVec(XMVector2Less(m_Vec, v.m_Vec)); }
 	BV_INLINE BvBoolVec operator<=(const BvVec2& v) const { return BvBoolVec(XMVector2LessOrEqual(m_Vec, v.m_Vec)); }
 
-	BV_INLINE operator XMVECTOR() const { return m_Vec; }
+	BV_INLINE operator vf32() const { return m_Vec; }
 	BV_INLINE XMFLOAT2 ToFloat() const { XMFLOAT2 result; XMStoreFloat2(&result, m_Vec); return result; }
 
 private:
-	XMVECTOR m_Vec;
+	vf32 m_Vec;
 };
 
 
@@ -760,7 +780,7 @@ public:
 	
 	BV_INLINE explicit BvVec3(const BvVec2& xy, f32 z) : m_Vec(XMVectorSetZ(xy, z)) {}
 	BV_INLINE explicit BvVec3(f32 x, const BvVec2& yz) : m_Vec(XMVectorSetX(yz, x)) {}
-	BV_INLINE explicit BvVec3(XMVECTOR v) : m_Vec(XMVectorSetW(v, 0.0f)) {}
+	BV_INLINE explicit BvVec3(cvf32 v) : m_Vec(XMVectorSetW(v, 0.0f)) {}
 
 	BV_INLINE static BvVec3 Zero() { return BvVec3(XMVectorZero()); }
 	BV_INLINE static BvVec3 One() { return BvVec3(g_XMOne3); }
@@ -833,11 +853,11 @@ public:
 	BV_INLINE BvBoolVec operator<(const BvVec3& v) const { return BvBoolVec(XMVector3Less(m_Vec, v.m_Vec)); }
 	BV_INLINE BvBoolVec operator<=(const BvVec3& v) const { return BvBoolVec(XMVector3LessOrEqual(m_Vec, v.m_Vec)); }
 
-	BV_INLINE operator XMVECTOR() const { return m_Vec; }
+	BV_INLINE operator vf32() const { return m_Vec; }
 	BV_INLINE XMFLOAT3 ToFloat() const { XMFLOAT3 result; XMStoreFloat3(& result, m_Vec); return result; }
 
 private:
-	XMVECTOR m_Vec;
+	vf32 m_Vec;
 };
 
 
@@ -867,7 +887,7 @@ public:
 	BV_INLINE explicit BvVec4(f32 x, f32 y, const BvVec2& zw) : m_Vec(XMVectorPermute<4, 5, 0, 1>(zw, XMVectorSet(x, y, 0.0f, 0.0f))) {}
 	BV_INLINE explicit BvVec4(const BvVec2& xy, const BvVec2& zw) : m_Vec(XMVectorPermute<0, 1, 4, 5>(xy, zw)) {}
 	
-	BV_INLINE explicit BvVec4(FXMVECTOR v) : m_Vec(v) {}
+	BV_INLINE explicit BvVec4(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE static BvVec4 Zero() { return BvVec4(XMVectorZero()); }
 	BV_INLINE static BvVec4 One() { return BvVec4(g_XMOne); }
@@ -932,11 +952,11 @@ public:
 	BV_INLINE BvBoolVec operator<(const BvVec4& v) const { return BvBoolVec(XMVectorLess(m_Vec, v.m_Vec)); }
 	BV_INLINE BvBoolVec operator<=(const BvVec4& v) const { return BvBoolVec(XMVectorLessOrEqual(m_Vec, v.m_Vec)); }
 
-	BV_INLINE operator XMVECTOR() const { return m_Vec; }
+	BV_INLINE operator vf32() const { return m_Vec; }
 	BV_INLINE XMFLOAT4 ToFloat() const { XMFLOAT4 result; XMStoreFloat4(&result, m_Vec); return result; }
 
 private:
-	XMVECTOR m_Vec;
+	vf32 m_Vec;
 };
 
 
@@ -953,7 +973,7 @@ public:
 	BV_INLINE BvMatrix(const BvVec3& r0, const BvVec3& r1, const BvVec3& r2) : m_Mat(r0, r1, r2, g_XMIdentityR3) {}
 	BV_INLINE BvMatrix(const BvVec4& r0, const BvVec4& r1, const BvVec4& r2, const BvVec4& r3) : m_Mat(r0, r1, r2, r3) {}
 	BV_INLINE explicit BvMatrix(const BvQuat& q);
-	BV_INLINE explicit BvMatrix(FXMMATRIX m) : m_Mat(m) {}
+	BV_INLINE explicit BvMatrix(cmf32 m) : m_Mat(m) {}
 
 	BV_INLINE static BvMatrix Identity() { return BvMatrix(XMMatrixIdentity()); }
 	BV_INLINE static BvMatrix Scale(f32 x, f32 y, f32 z) { return BvMatrix(XMMatrixScaling(x, y, z)); }
@@ -1025,10 +1045,10 @@ public:
 
 	BV_INLINE BvVec4 operator[](size_t index) const { return BvVec4(m_Mat.r[index]); }
 
-	BV_INLINE operator XMMATRIX() const { return m_Mat; }
+	BV_INLINE operator mf32() const { return m_Mat; }
 
 private:
-	XMMATRIX m_Mat;
+	mf32 m_Mat;
 };
 
 
@@ -1044,7 +1064,7 @@ public:
 	BV_INLINE explicit BvQuat(const BvVec3& v) : m_Vec(XMVectorSetW(v, 0.0f)) {}
 	BV_INLINE explicit BvQuat(const BvVec3& axis, f32 rad) : m_Vec(XMQuaternionNormalize(XMQuaternionRotationAxis(axis, rad))) {}
 	BV_INLINE explicit BvQuat(const BvMatrix& m) : m_Vec(XMQuaternionRotationMatrix(m)) {}
-	BV_INLINE explicit BvQuat(FXMVECTOR v) : m_Vec(v) {}
+	BV_INLINE explicit BvQuat(cvf32 v) : m_Vec(v) {}
 
 	BV_INLINE static BvQuat Identity() { return BvQuat(XMQuaternionIdentity()); }
 	BV_INLINE static BvQuat RotationAxis(const BvVec3& v, f32 rad) { return BvQuat(XMQuaternionNormalize(XMQuaternionRotationAxis(v, rad))); }
@@ -1084,10 +1104,10 @@ public:
 	BV_INLINE BvBoolVec operator<(const BvQuat& q) const { return BvBoolVec(XMVectorLess(m_Vec, q.m_Vec)); }
 	BV_INLINE BvBoolVec operator<=(const BvQuat& q) const { return BvBoolVec(XMVectorLessOrEqual(m_Vec, q.m_Vec)); }
 
-	BV_INLINE operator XMVECTOR() const { return m_Vec; }
+	BV_INLINE operator vf32() const { return m_Vec; }
 
 private:
-	XMVECTOR m_Vec;
+	vf32 m_Vec;
 };
 
 BV_INLINE BvVec2 BvVec2::operator*(const BvMatrix& m) const
@@ -1162,3 +1182,355 @@ BV_INLINE BvMatrix::BvMatrix(const BvQuat& q)
 	: m_Mat(XMMatrixRotationQuaternion(q))
 {
 }
+
+
+namespace Internal
+{
+#if BV_PLATFORM_WIN32
+#if ((__AVX2__) || (__AVX__) || (__SSE2__))
+	using vi32 = __m128i;
+	using cvi32 = const vi32;
+
+	BV_INLINE bool IVectorCheckMask(cvi32 v, i32 mask)
+	{
+		auto m = _mm_movemask_epi8(v);
+
+		return (m & mask) == mask;
+	}
+
+	template<u32 N = 4>
+	BV_INLINE bool IVectorBool(cvi32 v)
+	{
+		return IVectorCheckMask(v, 0xFFFF);
+	}
+
+	template<>
+	BV_INLINE bool IVectorBool<2>(cvi32 v)
+	{
+		return IVectorCheckMask(v, 0x00FF);
+	}
+
+	template<>
+	BV_INLINE bool IVectorBool<3>(cvi32 v)
+	{
+		return IVectorCheckMask(v, 0x0FFF);
+	}
+
+	BV_INLINE auto IVectorAdd(cvi32 a, cvi32 b)
+	{
+		return _mm_add_epi32(a, b);
+	}
+
+	BV_INLINE auto IVectorSub(cvi32 a, cvi32 b)
+	{
+		return _mm_sub_epi32(a, b);
+	}
+
+	BV_INLINE auto IVectorMul(cvi32 a, cvi32 b)
+	{
+		return _mm_mul_epi32(a, b);
+	}
+
+	BV_INLINE auto IVectorDiv(cvi32 a, cvi32 b)
+	{
+		return _mm_div_epi32(a, b);
+	}
+
+	template<u32 N = 4>
+	BV_INLINE auto IVectorEqual(cvi32 a, cvi32 b)
+	{
+		return IVectorBool<N>(_mm_cmpeq_epi32(a, b));
+	}
+
+	template<u32 N = 4>
+	BV_INLINE auto IVectorGreater(cvi32 a, cvi32 b)
+	{
+		return IVectorBool<N>(_mm_cmpgt_epi32(a, b));
+	}
+
+	template<u32 N = 4>
+	BV_INLINE auto IVectorGreaterEqual(cvi32 a, cvi32 b)
+	{
+		return IVectorBool<N>(_mm_cmplt_epi32(b, a));
+	}
+
+	template<u32 N = 4>
+	BV_INLINE auto IVectorLess(cvi32 a, cvi32 b)
+	{
+		return IVectorBool<N>(_mm_cmplt_epi32(a, b));
+	}
+
+	template<u32 N = 4>
+	BV_INLINE auto IVectorLessEqual(cvi32 a, cvi32 b)
+	{
+		return IVectorBool<N>(_mm_cmpgt_epi32(b, a));
+	}
+
+	BV_INLINE auto IVectorLoad(const Int4& v)
+	{
+		return _mm_loadu_epi32(&v);
+	}
+
+	BV_INLINE auto IVectorLoad2(const Int2& v)
+	{
+		return _mm_loadl_epi64((const vi32*)&v);
+	}
+
+	BV_INLINE auto IVectorLoad3(const Int3& v)
+	{
+		vi32 low = _mm_loadl_epi64((vi32 const*)&v);
+
+		vi32 high = _mm_cvtsi32_si128(v.z);
+
+		return _mm_unpacklo_epi64(low, high);
+	}
+
+	BV_INLINE auto IVectorSet(i32 x, i32 y = 0, i32 z = 0, i32 w = 0)
+	{
+		return _mm_setr_epi32(x, y, z, w);
+	}
+
+	BV_INLINE auto IVector2Store(Int2& res, cvi32 v)
+	{
+		_mm_storel_epi64((vi32*)&res.x, v);
+	}
+
+	BV_INLINE auto IVector3Store(Int3& res, cvi32 v)
+	{
+		_mm_storel_epi64((vi32*)&res.x, v);
+
+		res.z = _mm_cvtsi128_si32(_mm_srli_si128(v, 8));
+	}
+
+	BV_INLINE auto IVectorStore(Int4& res, vi32 v)
+	{
+		_mm_storeu_epi32(&res.x, v);
+	}
+
+	BV_INLINE auto IVectorGetX(cvi32 v)
+	{
+		return _mm_cvtsi128_si32(v);
+	}
+
+	BV_INLINE auto IVectorGetY(cvi32 v)
+	{
+		auto shuf1 = _mm_shuffle_epi32(v, _MM_SHUFFLE(1, 1, 1, 1));
+		return _mm_cvtsi128_si32(shuf1);
+	}
+
+	BV_INLINE auto IVectorGetZ(cvi32 v)
+	{
+		auto shuf1 = _mm_shuffle_epi32(v, _MM_SHUFFLE(2, 2, 2, 2));
+		return _mm_cvtsi128_si32(shuf1);
+	}
+
+	BV_INLINE auto IVectorGetW(cvi32 v)
+	{
+		auto shuf1 = _mm_shuffle_epi32(v, _MM_SHUFFLE(3, 3, 3, 3));
+		return _mm_cvtsi128_si32(shuf1);
+	}
+
+	BV_INLINE auto IVectorSetX(cvi32 v, i32 val)
+	{
+		auto r = v;
+		((i32*)&r)[0] = val;
+
+		return r;
+	}
+
+	BV_INLINE auto IVectorSetY(cvi32 v, i32 val)
+	{
+		auto r = v;
+		((i32*)&r)[1] = val;
+
+		return r;
+	}
+
+	BV_INLINE auto IVectorSetZ(cvi32 v, i32 val)
+	{
+		auto r = v;
+		((i32*)&r)[2] = val;
+
+		return r;
+	}
+
+	BV_INLINE auto IVectorSetW(cvi32 v, i32 val)
+	{
+		auto r = v;
+		((i32*)&r)[3] = val;
+
+		return r;
+	}
+
+	BV_INLINE auto IVectorNegate(cvi32 v)
+	{
+		vi32 zero = _mm_setzero_si128();
+		return _mm_sub_epi32(zero, v);
+	}
+#else
+#error "Not supported"
+#endif
+#endif
+}
+
+
+class BvIVec2
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvIVec2);
+
+	BV_INLINE BvIVec2() {}
+	BV_INLINE BvIVec2(i32 s) : m_Vec(Internal::IVectorSet(s, s)) {}
+	BV_INLINE BvIVec2(i32 x, i32 y) : m_Vec(Internal::IVectorSet(x, y)) {}
+	BV_INLINE BvIVec2(const Int2& v) : m_Vec(Internal::IVectorLoad2(v)) {}
+	BV_INLINE explicit BvIVec2(Internal::cvi32 v) : m_Vec(v) {}
+	
+	BV_INLINE static BvIVec2 Zero() { return BvIVec2(0, 0); }
+	BV_INLINE static BvIVec2 One() { return BvIVec2(1, 1); }
+	BV_INLINE static BvIVec2 UnitX() { return BvIVec2(1, 0); }
+	BV_INLINE static BvIVec2 UnitY() { return BvIVec2(0, 1); }
+
+	BV_INLINE i32 GetX() const { return Internal::IVectorGetX(m_Vec); }
+	BV_INLINE i32 GetY() const { return Internal::IVectorGetY(m_Vec); }
+
+	BV_INLINE void SetX(i32 x) { m_Vec = Internal::IVectorSetX(m_Vec, x); }
+	BV_INLINE void SetY(i32 y) { m_Vec = Internal::IVectorSetY(m_Vec, y); }
+	BV_INLINE void Set(i32 x, i32 y) { m_Vec = Internal::IVectorSet(x, y); }
+	
+	BV_INLINE BvIVec2 GetOrthoCW() { return BvIVec2(GetY(), -GetX()); }
+	BV_INLINE BvIVec2 GetOrthoCCW() { return BvIVec2(-GetY(), GetX()); }
+
+	BV_INLINE BvIVec2 operator+() const { return BvIVec2(m_Vec); }
+	BV_INLINE BvIVec2 operator-() const { return BvIVec2(Internal::IVectorNegate(m_Vec)); }
+
+	BV_INLINE BvIVec2 operator+(const BvIVec2& v) const { return BvIVec2(Internal::IVectorAdd(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec2 operator-(const BvIVec2& v) const { return BvIVec2(Internal::IVectorSub(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec2 operator*(const BvIVec2& v) const { return BvIVec2(Internal::IVectorMul(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec2 operator/(const BvIVec2& v) const { return BvIVec2(Internal::IVectorDiv(m_Vec, v.m_Vec)); }
+
+	BV_INLINE BvIVec2& operator+=(const BvIVec2& v) { m_Vec = Internal::IVectorAdd(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec2& operator-=(const BvIVec2& v) { m_Vec = Internal::IVectorSub(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec2& operator*=(const BvIVec2& v) { m_Vec = Internal::IVectorMul(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec2& operator/=(const BvIVec2& v) { m_Vec = Internal::IVectorDiv(m_Vec, v.m_Vec); return *this; }
+
+	BV_INLINE auto operator==(const BvIVec2& v) const { return Internal::IVectorEqual<2>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator!=(const BvIVec2& v) const { return !(*this == v); }
+	BV_INLINE auto operator>(const BvIVec2& v) const { return Internal::IVectorGreater<2>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator>=(const BvIVec2& v) const { return Internal::IVectorGreaterEqual<2>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator<(const BvIVec2& v) const { return Internal::IVectorLess<2>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator<=(const BvIVec2& v) const { return Internal::IVectorLessEqual<2>(m_Vec, v.m_Vec); }
+
+	BV_INLINE operator Int2() const { Int2 res; Internal::IVector2Store(res, m_Vec); return res; }
+
+private:
+	Internal::vi32 m_Vec;
+};
+
+
+class BvIVec3
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvIVec3);
+
+	BV_INLINE BvIVec3() {}
+	BV_INLINE BvIVec3(i32 s) : m_Vec(Internal::IVectorSet(s, s, s)) {}
+	BV_INLINE BvIVec3(i32 x, i32 y, i32 z) : m_Vec(Internal::IVectorSet(x, y, z)) {}
+	BV_INLINE BvIVec3(const Int3& v) : m_Vec(Internal::IVectorLoad3(v)) {}
+	BV_INLINE explicit BvIVec3(Internal::cvi32 v) : m_Vec(v) {}
+
+	BV_INLINE static BvIVec3 Zero() { return BvIVec3(0, 0, 0); }
+	BV_INLINE static BvIVec3 One() { return BvIVec3(1, 1, 1); }
+	BV_INLINE static BvIVec3 UnitX() { return BvIVec3(1, 0, 0); }
+	BV_INLINE static BvIVec3 UnitY() { return BvIVec3(0, 1, 0); }
+	BV_INLINE static BvIVec3 UnitZ() { return BvIVec3(0, 0, 1); }
+
+	BV_INLINE i32 GetX() const { return Internal::IVectorGetX(m_Vec); }
+	BV_INLINE i32 GetY() const { return Internal::IVectorGetY(m_Vec); }
+	BV_INLINE i32 GetZ() const { return Internal::IVectorGetZ(m_Vec); }
+
+	BV_INLINE void SetX(i32 x) { m_Vec = Internal::IVectorSetX(m_Vec, x); }
+	BV_INLINE void SetY(i32 y) { m_Vec = Internal::IVectorSetY(m_Vec, y); }
+	BV_INLINE void SetZ(i32 z) { m_Vec = Internal::IVectorSetZ(m_Vec, z); }
+	BV_INLINE void Set(i32 x, i32 y, i32 z) { m_Vec = Internal::IVectorSet(x, y, z); }
+
+	BV_INLINE BvIVec3 operator+() const { return BvIVec3(m_Vec); }
+	BV_INLINE BvIVec3 operator-() const { return BvIVec3(Internal::IVectorNegate(m_Vec)); }
+
+	BV_INLINE BvIVec3 operator+(const BvIVec3& v) const { return BvIVec3(Internal::IVectorAdd(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec3 operator-(const BvIVec3& v) const { return BvIVec3(Internal::IVectorSub(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec3 operator*(const BvIVec3& v) const { return BvIVec3(Internal::IVectorMul(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec3 operator/(const BvIVec3& v) const { return BvIVec3(Internal::IVectorDiv(m_Vec, v.m_Vec)); }
+
+	BV_INLINE BvIVec3& operator+=(const BvIVec3& v) { m_Vec = Internal::IVectorAdd(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec3& operator-=(const BvIVec3& v) { m_Vec = Internal::IVectorSub(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec3& operator*=(const BvIVec3& v) { m_Vec = Internal::IVectorMul(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec3& operator/=(const BvIVec3& v) { m_Vec = Internal::IVectorDiv(m_Vec, v.m_Vec); return *this; }
+
+	BV_INLINE auto operator==(const BvIVec3& v) const { return Internal::IVectorEqual<3>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator!=(const BvIVec3& v) const { return !(*this == v); }
+	BV_INLINE auto operator>(const BvIVec3& v) const { return Internal::IVectorGreater<3>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator>=(const BvIVec3& v) const { return Internal::IVectorGreaterEqual<3>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator<(const BvIVec3& v) const { return Internal::IVectorLess<3>(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator<=(const BvIVec3& v) const { return Internal::IVectorLessEqual<3>(m_Vec, v.m_Vec); }
+
+	BV_INLINE operator Int3() const { Int3 res; Internal::IVector3Store(res, m_Vec); return res; }
+
+private:
+	Internal::vi32 m_Vec;
+};
+
+
+class BvIVec4
+{
+public:
+	BV_DEFAULTCOPYMOVE(BvIVec4);
+
+	BV_INLINE BvIVec4() {}
+	BV_INLINE BvIVec4(i32 s) : m_Vec(Internal::IVectorSet(s, s, s, s)) {}
+	BV_INLINE BvIVec4(i32 x, i32 y, i32 z, i32 w) : m_Vec(Internal::IVectorSet(x, y, z, w)) {}
+	BV_INLINE BvIVec4(const Int4& v) : m_Vec(Internal::IVectorLoad(v)) {}
+	BV_INLINE explicit BvIVec4(Internal::cvi32 v) : m_Vec(v) {}
+
+	BV_INLINE static BvIVec4 Zero() { return BvIVec4(0, 0, 0, 0); }
+	BV_INLINE static BvIVec4 One() { return BvIVec4(1, 1, 1, 1); }
+	BV_INLINE static BvIVec4 UnitX() { return BvIVec4(1, 0, 0, 0); }
+	BV_INLINE static BvIVec4 UnitY() { return BvIVec4(0, 1, 0, 0); }
+	BV_INLINE static BvIVec4 UnitZ() { return BvIVec4(0, 0, 1, 0); }
+	BV_INLINE static BvIVec4 UnitW() { return BvIVec4(0, 0, 0, 1); }
+
+	BV_INLINE i32 GetX() const { return Internal::IVectorGetX(m_Vec); }
+	BV_INLINE i32 GetY() const { return Internal::IVectorGetY(m_Vec); }
+	BV_INLINE i32 GetZ() const { return Internal::IVectorGetZ(m_Vec); }
+	BV_INLINE i32 GetW() const { return Internal::IVectorGetW(m_Vec); }
+
+	BV_INLINE void SetX(i32 x) { m_Vec = Internal::IVectorSetX(m_Vec, x); }
+	BV_INLINE void SetY(i32 y) { m_Vec = Internal::IVectorSetY(m_Vec, y); }
+	BV_INLINE void SetZ(i32 z) { m_Vec = Internal::IVectorSetZ(m_Vec, z); }
+	BV_INLINE void SetW(i32 w) { m_Vec = Internal::IVectorSetZ(m_Vec, w); }
+	BV_INLINE void Set(i32 x, i32 y, i32 z, i32 w) { m_Vec = Internal::IVectorSet(x, y, z, w); }
+
+	BV_INLINE BvIVec4 operator+() const { return BvIVec4(m_Vec); }
+	BV_INLINE BvIVec4 operator-() const { return BvIVec4(Internal::IVectorNegate(m_Vec)); }
+
+	BV_INLINE BvIVec4 operator+(const BvIVec4& v) const { return BvIVec4(Internal::IVectorAdd(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec4 operator-(const BvIVec4& v) const { return BvIVec4(Internal::IVectorSub(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec4 operator*(const BvIVec4& v) const { return BvIVec4(Internal::IVectorMul(m_Vec, v.m_Vec)); }
+	BV_INLINE BvIVec4 operator/(const BvIVec4& v) const { return BvIVec4(Internal::IVectorDiv(m_Vec, v.m_Vec)); }
+
+	BV_INLINE BvIVec4& operator+=(const BvIVec4& v) { m_Vec = Internal::IVectorAdd(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec4& operator-=(const BvIVec4& v) { m_Vec = Internal::IVectorSub(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec4& operator*=(const BvIVec4& v) { m_Vec = Internal::IVectorMul(m_Vec, v.m_Vec); return *this; }
+	BV_INLINE BvIVec4& operator/=(const BvIVec4& v) { m_Vec = Internal::IVectorDiv(m_Vec, v.m_Vec); return *this; }
+
+	BV_INLINE auto operator==(const BvIVec4& v) const { return Internal::IVectorEqual(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator!=(const BvIVec4& v) const { return !(*this == v); }
+	BV_INLINE auto operator>(const BvIVec4& v) const { return Internal::IVectorGreater(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator>=(const BvIVec4& v) const { return Internal::IVectorGreaterEqual(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator<(const BvIVec4& v) const { return Internal::IVectorLess(m_Vec, v.m_Vec); }
+	BV_INLINE auto operator<=(const BvIVec4& v) const { return Internal::IVectorLessEqual(m_Vec, v.m_Vec); }
+
+	BV_INLINE operator Int4() const { Int4 res; Internal::IVectorStore(res, m_Vec); return res; }
+
+private:
+	Internal::vi32 m_Vec;
+};

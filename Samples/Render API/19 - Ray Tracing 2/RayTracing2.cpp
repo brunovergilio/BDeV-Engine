@@ -12,7 +12,6 @@ void RayTracing2::OnInitialize()
 	CreateTLAS();
 	
 	m_Camera.SetPos(0.0f, 0.0f, -2.0f);
-	m_Camera.SetFlipViewportY(true);
 }
 
 
@@ -225,7 +224,7 @@ void RayTracing2::CreateBLAS()
 	m_Device->CreateAccelerationStructure(blasDesc, &m_BLAS);
 
 	BufferDesc bufferDesc;
-	bufferDesc.m_Size = RoundToNearestPowerOf2(m_BLAS->GetBuildSizes().m_Build, m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
+	bufferDesc.m_Size = RoundToNearestMultipleP2(m_BLAS->GetBuildSizes().m_Build, m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	BvRCRef<IBvBuffer> scratchAS;
 	m_Device->CreateBuffer(bufferDesc, &scratchAS);
@@ -260,7 +259,7 @@ void RayTracing2::CreateTLAS()
 	m_Device->CreateAccelerationStructure(tlasDesc, &m_TLAS);
 
 	BufferDesc bufferDesc;
-	bufferDesc.m_Size = RoundToNearestPowerOf2(m_TLAS->GetBuildSizes().m_Build, m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
+	bufferDesc.m_Size = RoundToNearestMultipleP2(m_TLAS->GetBuildSizes().m_Build, m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	BvRCRef<IBvBuffer> scratchAS;
 	m_Device->CreateBuffer(bufferDesc, &scratchAS);

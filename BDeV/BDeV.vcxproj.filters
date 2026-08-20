@@ -91,6 +91,8 @@
     <ClInclude Include="Core\Utils\Third Party\rapidhash.h" />
     <ClInclude Include="Core\Utils\Third Party\constexpr-xxh3.h" />
     <ClInclude Include="Core\Utils\Third Party\xxhash.h" />
+    <ClInclude Include="Core\Container\BvFlatMap.h" />
+    <ClInclude Include="Core\Container\BvFlatHashMap.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />

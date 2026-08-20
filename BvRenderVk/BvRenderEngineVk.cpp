@@ -477,6 +477,9 @@ void SetupDeviceInfo(VkPhysicalDevice physicalDevice, BvDeviceInfoVk& deviceInfo
 
 		if (ff.rayTracingMaintenance)
 		{
+			*pNextFeature = &deviceInfo.m_ExtendedFeatures.rayTracingMaintenance1Features;
+			pNextFeature = &deviceInfo.m_ExtendedFeatures.rayTracingMaintenance1Features.pNext;
+
 			deviceInfo.m_EnabledExtensions.PushBack(VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME);
 		}
 

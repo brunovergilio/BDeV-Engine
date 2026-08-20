@@ -206,6 +206,43 @@ bool BvPath::IsDirectory() const
 }
 
 
+bool BvPath::HasName(const char* pName, bool ignoreCase) const
+{
+	auto nameIndex = BvPathUtils::FindName(m_Path.CStr(), m_Path.Size());
+	auto extIndex = BvPathUtils::FindExtension(m_Path.CStr(), m_Path.Size());
+	auto count = extIndex - nameIndex;
+
+	std::string_view v1(pName), v2(m_Path.CStr() + nameIndex, count);
+
+	return ignoreCase ? std::ranges::equal(v1, v2, {},
+		[](char c) { return std::tolower(static_cast<u8>(c)); },
+		[](char c) { return std::tolower(static_cast<u8>(c)); }) : v1 == v2;
+}
+
+
+bool BvPath::HasNameAndExtension(const char* pNameWithExt, bool ignoreCase) const
+{
+	auto nameIndex = BvPathUtils::FindName(m_Path.CStr(), m_Path.Size());
+
+	std::string_view v1(pNameWithExt), v2(m_Path.CStr() + nameIndex);
+
+	return ignoreCase ? std::ranges::equal(v1, v2, {},
+		[](char c) { return std::tolower(static_cast<u8>(c)); },
+		[](char c) { return std::tolower(static_cast<u8>(c)); }) : v1 == v2;
+}
+
+
+bool BvPath::HasExtension(const char* pExt, bool ignoreCase) const
+{
+	auto extIndex = BvPathUtils::FindExtension(m_Path.CStr(), m_Path.Size());
+
+	std::string_view v1(pExt), v2(m_Path.CStr() + extIndex);
+
+	return ignoreCase ? std::ranges::equal(v1, v2, {},
+		[](char c) { return std::tolower(static_cast<u8>(c)); },
+		[](char c) { return std::tolower(static_cast<u8>(c)); }) : v1 == v2;
+}
+
 BvString BvPath::GetName() const
 {
 	auto nameIndex = BvPathUtils::FindName(m_Path.CStr(), m_Path.Size());
@@ -544,8 +581,8 @@ void GetFileListFromPathWithFilter(BvVector<BvPath>& fileList, const BvString& p
 			filenameBuffer.Clear();
 			std::wstring_view sv(findData.cFileName);
 			auto sizeNeeded = BvUTFCharTraits::LengthFor<char>(sv.begin(), sv.end());
-			filenameBuffer.Resize(sizeNeeded);
-			BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, filenameBuffer.Begin(), filenameBuffer.End());
+			filenameBuffer.Resize(sizeNeeded, ' ');
+			BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length() + 1, filenameBuffer.Begin(), filenameBuffer.End());
 
 			filename.Append(filenameBuffer.CStr());
 
@@ -579,6 +616,7 @@ BvVector<BvPath> BvPath::GetFileList(const char* pFilter) const
 	auto length = BvUTFCharTraits::LengthFor<wchar_t>(m_Path) + BvUTFCharTraits::LengthFor<wchar_t>(filterSv) + 2; // one for '\\' and another for '\0'
 	
 	auto pPathWithFilter = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
+	memset(pPathWithFilter, 0, length * sizeof(wchar_t));
 	auto it = BvUTFCharTraits::GetStr(m_Path.Begin(), m_Path.End(), pPathWithFilter, pPathWithFilter + length);
 	if (it[-1] != L'\\')
 	{

@@ -71,6 +71,12 @@ namespace VkHelpers
 		VkQueryPipelineStatisticFlags m_PSOFlags;
 	};
 
+	struct VkGraphicsPipelineObj
+	{
+		VkPipeline m_PSO;
+		bool m_HasMeshShaders;
+	};
+
 	struct VkRayTracingPipelineObj
 	{
 		VkPipeline m_PSO;
@@ -88,7 +94,7 @@ namespace VkHelpers
 	VkObj<VkRenderPass> CreateRenderPass(BvRenderDeviceVk* pDevice, const RenderPassDesc& renderPassDesc);
 	VkObj<VkSRLObj> CreateShaderResourceLayout(BvRenderDeviceVk* pDevice, const ShaderResourceLayoutCreateDesc& shaderResourceLayoutDesc);
 	VkObj<VkPipelineCache> CreatePipelineCache(BvRenderDeviceVk* pDevice, const PipelineCacheInitData* pInitData);
-	VkObj<VkPipeline> CreateGraphicsPipeline(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
+	VkObj<VkGraphicsPipelineObj> CreateGraphicsPipeline(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	VkObj<VkPipeline> CreateComputePipeline(BvRenderDeviceVk* pDevice, const ComputePipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	VkObj<VkRayTracingPipelineObj> CreateRayTracingPipeline(BvRenderDeviceVk* pDevice, const RayTracingPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 	VkObj<VkSemaphore> CreateSemaphore(BvRenderDeviceVk* pDevice, const GPUFenceDesc& fenceDesc = {}, bool isTimelineSemaphore = true);

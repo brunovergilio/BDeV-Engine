@@ -10,14 +10,14 @@ constexpr u32 kCubeCount = 64;
 void MeshShader::OnInitialize()
 {
 	m_AppName = "Mesh Shader";
+	m_MeshQueriesSupported = EHasFlag(m_Device->GetGPUInfo().m_DeviceCaps, RenderDeviceCapabilities::kMeshQuery);
+
 	CreateRenderTargets();
 	CreateShaderResourceLayout();
 	CreatePipeline();
 	CreateBuffers();
 
 	m_Camera.SetPos(0.0f, 0.0f, -10.0f);
-
-	m_MeshQueriesSupported = EHasFlag(m_Device->GetGPUInfo().m_DeviceCaps, RenderDeviceCapabilities::kMeshQuery);
 }
 
 
@@ -79,6 +79,7 @@ void MeshShader::OnRender()
 	m_Context->NewCommandList();
 	if (m_MeshQueriesSupported)
 	{
+		m_Context->ResetQueryHeap(m_Query, currFrame, 1);
 		m_Context->BeginQuery(m_Query, currFrame);
 	}
 	m_Context->SetRenderTargets(2, targets);
@@ -112,7 +113,7 @@ void MeshShader::OnShutdown()
 	m_Depth.Reset();
 	m_DepthView.Reset();
 	m_Query.Reset();
-
+	m_QueryBuffer.Reset();
 	m_PSO.Reset();
 	m_SRL.Reset();
 }
@@ -218,7 +219,7 @@ void MeshShader::CreateBuffers()
 
 	if (m_MeshQueriesSupported)
 	{
-		QueryHeapDesc qhd(QueryType::kPipelineStatistics, m_Context->GetFrameCount());
+		QueryHeapDesc qhd(QueryType::kMeshPipelineStatistics, m_Context->GetFrameCount());
 		m_Device->CreateQueryHeap(qhd, &m_Query);
 		m_QuerySize = m_Query->GetQuerySize();
 

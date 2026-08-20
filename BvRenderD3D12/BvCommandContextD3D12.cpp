@@ -9,8 +9,8 @@
 #include "BvUtilsD3D12.h"
 
 
-BvFrameDataD3D12::BvFrameDataD3D12(BvRenderDeviceD3D12* pDevice, ContextDataD3D12* pContextData, CommandType commandType, u32 frameIndex)
-	: m_pDevice(pDevice), m_pContextData(pContextData), m_CommandAllocator(pDevice, commandType), m_FrameIndex(frameIndex)
+BvFrameDataD3D12::BvFrameDataD3D12(BvRenderDeviceD3D12* pDevice, BvCommandContextD3D12* pContext, ContextDataD3D12* pContextData, CommandType commandType, u32 frameIndex)
+	: m_pDevice(pDevice), m_pContextData(pContextData), m_CommandAllocator(pDevice, commandType), m_FrameIndex(frameIndex), m_pContext(pContext)
 {
 	auto fenceObj = D3D12Utils::CreateGPUFence(pDevice, { 0 });
 	BV_ASSERT(SUCCEEDED(fenceObj.first), "Error creating gpu fence");
@@ -188,7 +188,7 @@ BvCommandContextD3D12::BvCommandContextD3D12(BvRenderDeviceD3D12* pDevice, u32 f
 	auto pFrameData = reinterpret_cast<u8*>(BV_ALLOC(sizeof(BvFrameDataD3D12) * m_FrameCount, alignof(BvFrameDataD3D12)));
 	for (auto i = 0; i < m_FrameCount; ++i)
 	{
-		new(pFrameData + i * sizeof(BvFrameDataD3D12)) BvFrameDataD3D12(pDevice, m_pContextData, CommandType(contextGroupIndex + 1), i);
+		new(pFrameData + i * sizeof(BvFrameDataD3D12)) BvFrameDataD3D12(pDevice, this, m_pContextData, CommandType(contextGroupIndex + 1), i);
 	}
 	m_pFrames = reinterpret_cast<BvFrameDataD3D12*>(pFrameData);
 }

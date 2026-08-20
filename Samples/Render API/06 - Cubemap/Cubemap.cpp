@@ -75,12 +75,9 @@ void Cubemap::OnRender()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
-	RenderTargetDesc targets[] =
-	{
-		RenderTargetDesc::AsSwapChain(m_SwapChain->GetCurrentTextureView(), { 0.1f, 0.1f, 0.3f }),
-		RenderTargetDesc::AsDepthStencil(m_DepthView)
-	};
-	targets[1].m_StateAfter = ResourceState::kDepthStencilRead;
+	RenderTargetDesc targets[2];
+	targets[0].SetColorView(m_SwapChain->GetCurrentTextureView(), ResourceState::kCommon, ResourceState::kPresent).SetClearValues({ 0.1f, 0.1f, 0.3f });
+	targets[1].SetDepthStencilView(m_DepthView, ResourceState::kCommon, ResourceState::kDepthStencilRead).SetClearValues({ 1.0f, 0 });
 
 	m_Context->NewCommandList();
 	m_Context->SetRenderTargets(2, targets);

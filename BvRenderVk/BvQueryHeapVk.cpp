@@ -36,29 +36,37 @@ BvQueryHeapVk::~BvQueryHeapVk()
 
 void BvQueryHeapVk::MapPSOStats(void* pDstData, u32 dstDataSize, void* pSrcData) const
 {
+	const bool isMesh = m_PSOFlags & VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT;
+
 	u64* pDstValues = reinterpret_cast<u64*>(pDstData);
 	const u64* pSrcValues = reinterpret_cast<u64*>(pSrcData);
 	const u32 u64ValueCount = dstDataSize / 8;
 
-	const bool gs = m_PSOFlags & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT;
-	const bool ts = m_PSOFlags & VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT;
-	const bool ms = m_PSOFlags & VK_QUERY_PIPELINE_STATISTIC_MESH_SHADER_INVOCATIONS_BIT_EXT;
-	for (auto dstIndex = 0, srcIndex = 0; dstIndex < u64ValueCount; dstIndex++, srcIndex++)
+	if (!isMesh)
 	{
-		if (dstIndex == 3 && !gs)
-		{
-			dstIndex += 2;
-		}
-		else if (dstIndex == 8 && !ts)
-		{
-			dstIndex += 2;
-		}
-		else if (dstIndex == 11 && !ms)
-		{
-			break;
-		}
+		const bool gs = m_PSOFlags & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT;
+		const bool ts = m_PSOFlags & VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT;
 
-		pDstValues[dstIndex] = pSrcValues[srcIndex];
+		for (auto dstIndex = 0, srcIndex = 0; dstIndex < u64ValueCount; dstIndex++, srcIndex++)
+		{
+			if (dstIndex == 3 && !gs)
+			{
+				dstIndex += 2;
+			}
+			else if (dstIndex == 8 && !ts)
+			{
+				dstIndex += 2;
+			}
+
+			pDstValues[dstIndex] = pSrcValues[srcIndex];
+		}
+	}
+	else
+	{
+		pDstValues[7] = pSrcValues[0];
+		pDstValues[11] = pSrcValues[1];
+		pDstValues[12] = pSrcValues[2];
+		pDstValues[13] = pSrcValues[3];
 	}
 }
 

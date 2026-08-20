@@ -19,7 +19,8 @@ void Triangle::OnRender()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
-	auto renderTarget = RenderTargetDesc::AsSwapChain(m_SwapChain->GetCurrentTextureView(), { 0.1f, 0.1f, 0.3f });
+	RenderTargetDesc renderTarget;
+	renderTarget.SetColorView(m_SwapChain->GetCurrentTextureView(), ResourceState::kCommon, ResourceState::kPresent).SetClearValues({ 0.1f, 0.1f, 0.3f });
 
 	m_Context->NewCommandList();
 	m_Context->SetRenderTarget(renderTarget);

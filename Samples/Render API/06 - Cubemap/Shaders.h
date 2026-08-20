@@ -28,7 +28,7 @@ VSOutput main(VSInput input)
 {
     VSOutput output;
     output.outTexCoords = input.inTexCoords;
-    output.position = mul(wvp, float4(input.inPos, 1.0f));
+    output.position = mul(float4(input.inPos, 1.0f), wvp);
     return output;
 }
 )raw";
@@ -78,7 +78,7 @@ SkyBoxVSOutput main(SkyBoxVSInput input)
     output.outTexCoords = input.inPos;
     
     // Transform coordinates and perform the skybox depth trick (.xyww)
-    float4 clipPos = mul(wvp, float4(input.inPos, 1.0f));
+    float4 clipPos = mul(float4(input.inPos, 1.0f), wvp);
     output.position = clipPos.xyww;
     
     return output;

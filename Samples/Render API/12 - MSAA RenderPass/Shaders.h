@@ -28,7 +28,7 @@ VSOutput main(VSInput input)
 {
     VSOutput output;
     output.outColor = input.inColor;
-    output.position = mul(wvp, float4(input.inPos, 1.0f));
+    output.position = mul(float4(input.inPos, 1.0f), wvp);
     return output;
 }
 )raw";

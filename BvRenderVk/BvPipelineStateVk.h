@@ -11,7 +11,7 @@ class BvRenderDeviceVk;
 class BvGraphicsPipelineStateVk final : public IBvGraphicsPipelineState, public IBvResourceVk
 {
 public:
-	BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline);
+	BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline, bool hasMeshShaders);
 	~BvGraphicsPipelineStateVk();
 
 	BV_INLINE const GraphicsPipelineStateDesc& GetDesc() const override { return m_PipelineStateDesc; }
@@ -27,7 +27,6 @@ private:
 	VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	GraphicsPipelineStateDesc m_PipelineStateDesc;
 	bool m_HasMeshShaders = false;
-	bool m_HasTessellationShaders = false;
 };
 BV_OBJECT_DEFINE_ID(BvGraphicsPipelineStateVk, "55186b73-74c0-418f-918f-89a434b5ba0e");
 

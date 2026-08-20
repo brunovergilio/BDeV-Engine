@@ -10,7 +10,7 @@ void* BvMemory::Allocate(size_t size, size_t alignment, size_t offset)
 	// the alignment and alignment offset, and we also add another (kPointerSize * 2)
 	// bytes, that way we can store the total allocation size as well as the
 	// original address, in order to free it later
-	auto totalSize = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + offset, kPointerSize) + (kPointerSize << 1);
+	auto totalSize = RoundToNearestMultipleP2(size + std::max(alignment, kPointerSize) + offset, kPointerSize) + (kPointerSize << 1);
 	MemType unalignedMem{ std::malloc(totalSize) };
 
 	// We align the memory with the added offset and kPointerSize

@@ -76,7 +76,42 @@
 	#define BV_NO_INLINE __declspec(noinline)
 
 	#define BV_STACK_ALLOC(size) _alloca(size)
-	
+
+//#include <mmintrin.h>  // MMX
+//#include <xmmintrin.h> // SSE
+//#include <emmintrin.h> // SSE2
+//#include <pmmintrin.h> // SSE3
+//#include <tmmintrin.h> // SSSE3
+//#include <smmintrin.h> // SSE4.1
+//#include <nmmintrin.h> // SSE4.2
+//#include <ammintrin.h> // SSE4A
+//#include <wmmintrin.h> // AES
+
+	#if defined(__AVX2__)
+		#define BV_HAS_AVX2 1
+		#define BV_HAS_AVX  1
+		#define BV_HAS_SSE4_2 1
+		#define BV_HAS_SSE4_1 1
+		#define BV_HAS_SSSE3 1
+		#define BV_HAS_SSE3 1
+		#define BV_HAS_SSE2 1
+	#elif defined(__AVX__)
+		#define BV_HAS_AVX  1
+		#define BV_HAS_SSE4_2 1
+		#define BV_HAS_SSE4_1 1
+		#define BV_HAS_SSSE3 1
+		#define BV_HAS_SSE3 1
+		#define BV_HAS_SSE2 1
+	#elif defined(_M_X64) || defined(_WIN64)
+		#define BV_HAS_SSE2 1
+	#endif
+
+	#if BV_HAS_AVX
+		#include <immintrin.h> // AVX, AVX2, FMA
+	#else
+		#include <emmintrin.h> // SSE2
+	#endif
+
 	#pragma warning(disable:4100)	// unref
 	#pragma warning(disable:4103)	// alignment changed after including header, may be due to missing #pragma pack(pop)
 	#pragma warning(disable:4189)	// init but unref
@@ -104,6 +139,7 @@
 	#pragma warning(disable:6386)	// Buffer overrun
 	#pragma warning(disable:6385)	// Reading invalid data
 	#pragma warning(disable:4828)
+	#pragma warning(disable:4200)	// empty array
 
 	#define BV_API
 

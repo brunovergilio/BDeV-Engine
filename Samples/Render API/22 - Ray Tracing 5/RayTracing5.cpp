@@ -362,7 +362,7 @@ void RayTracing5::CreateBLAS()
 	}
 
 	const auto alignment = m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing);
-	u64 sizes[] = { RoundToNearestPowerOf2(blas[0]->GetBuildSizes().m_Build, alignment), RoundToNearestPowerOf2(blas[1]->GetBuildSizes().m_Build, alignment) };
+	u64 sizes[] = { RoundToNearestMultipleP2(blas[0]->GetBuildSizes().m_Build, alignment), RoundToNearestMultipleP2(blas[1]->GetBuildSizes().m_Build, alignment) };
 
 	BufferDesc bufferDesc;
 	bufferDesc.m_Size = sizes[0] + sizes[1];
@@ -457,7 +457,7 @@ void RayTracing5::CreateTLAS()
 
 	BufferDesc bufferDesc;
 	auto [build, update] = m_TLAS->GetBuildSizes();
-	bufferDesc.m_Size = RoundToNearestPowerOf2(std::max(build, update), m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
+	bufferDesc.m_Size = RoundToNearestMultipleP2(std::max(build, update), m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	m_Device->CreateBuffer(bufferDesc, &m_ScratchTLAS);
 

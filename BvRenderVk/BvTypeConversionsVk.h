@@ -47,7 +47,7 @@ VkImageLayout GetVkImageLayout(const ResourceState resourceState, bool isDepthSt
 VkAccessFlags2 GetVkAccessFlags(const ResourceAccess resourceAccess);
 VkAccessFlags2 GetVkAccessFlags(const ResourceState resourceState, bool rayTracing = false);
 VkAccessFlags2 GetVkAccessFlags(BufferUsage usageFlags, bool includeTransfer = true);
-VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags, bool rayTracing = false);
+VkPipelineStageFlags2 GetVkPipelineStageFlags(const VkAccessFlags2 accessFlags, bool geom, bool tess, bool mesh, bool rt, bool rt1);
 VkPipelineStageFlags2 GetVkPipelineStageFlags(const PipelineStage pipelineStage);
 VkQueryType GetVkQueryType(QueryType queryHeapType, bool meshPrimitivesPool = false);
 VkQueryPipelineStatisticFlags GetVkQueryPipelineFlags(bool geometryShader = true, bool tessellationShader = true, bool meshShader = false);

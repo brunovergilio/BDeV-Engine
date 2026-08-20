@@ -109,7 +109,10 @@ struct ContextGroup
 	CommandType m_DedicatedCommandType;
 	BvFixedVector<CommandType, 5> m_SupportedCommandTypes;
 
-	bool SupportsCommandType(CommandType commandType) const { return m_SupportedCommandTypes.Contains(commandType); }
+	bool SupportsCommandType(CommandType commandType) const
+	{
+		return std::find(m_SupportedCommandTypes.cbegin(), m_SupportedCommandTypes.cend(), commandType) != m_SupportedCommandTypes.cend();
+	}
 };
 
 
@@ -859,13 +862,16 @@ struct ResourceBarrierDesc
 	ResourceState m_SrcState = ResourceState::kCommon;
 	ResourceState m_DstState = ResourceState::kCommon;
 	Type m_Type = Type::kStateTransition;
-	IBvCommandContext* m_pSrcContext = nullptr;
-	IBvCommandContext* m_pDstContext = nullptr;
+
+	IBvCommandContext* m_pOwnershipContext = nullptr;
+	bool m_AcquireOwnership = false;
+
 	// These fields can be used for more detailed barriers (in Vulkan)
 	ResourceAccess m_SrcAccess = ResourceAccess::kAuto;
 	ResourceAccess m_DstAccess = ResourceAccess::kAuto;
 	PipelineStage m_SrcPipelineStage = PipelineStage::kAuto;
 	PipelineStage m_DstPipelineStage = PipelineStage::kAuto;
+
 	SubresourceDesc m_Subresource;
 
 	BV_RENDER_VAR_PTR(p, Texture);
@@ -873,8 +879,8 @@ struct ResourceBarrierDesc
 	BV_RENDER_VAR(SrcState);
 	BV_RENDER_VAR(DstState);
 	BV_RENDER_VAR(Type);
-	BV_RENDER_VAR_PTR(p, SrcContext);
-	BV_RENDER_VAR_PTR(p, DstContext);
+	BV_RENDER_VAR_PTR(p, OwnershipContext);
+	BV_RENDER_VAR(AcquireOwnership);
 	BV_RENDER_VAR(SrcAccess);
 	BV_RENDER_VAR(DstAccess);
 	BV_RENDER_VAR(SrcPipelineStage);

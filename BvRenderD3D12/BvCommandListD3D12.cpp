@@ -55,6 +55,13 @@ void BvCommandListD3D12::Begin()
 
 	m_CommandList->SetDescriptorHeaps(2, pHeaps);
 
+	auto& decayBarriers = m_pFrameData->GetDecayRTBarriers();
+	if (decayBarriers.Size() > 0)
+	{
+		m_CommandList->ResourceBarrier(decayBarriers.Size(), decayBarriers.Data());
+		decayBarriers.Clear();
+	}
+
 	m_CurrentState = State::kRecording;
 }
 
@@ -62,12 +69,6 @@ void BvCommandListD3D12::Begin()
 void BvCommandListD3D12::Close()
 {
 	ResetRenderTargets();
-
-	if (m_EndCommandBarriers.Size() > 0)
-	{
-		m_CommandList->ResourceBarrier(m_EndCommandBarriers.Size(), m_EndCommandBarriers.Data());
-		m_EndCommandBarriers.Clear();
-	}
 
 	m_CommandList->Close();
 }
@@ -136,6 +137,7 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 	u8 stencil{};
 	ResolveData resolveTargets[kMaxRenderTargets]{};
 
+	auto& decayBarriers = m_pFrameData->GetDecayRTBarriers();
 	u32 layerCount = kU32Max;
 	for (u32 i = 0; i < renderTargetCount; i++)
 	{
@@ -205,7 +207,7 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 
 		if (renderTarget.m_LoadOp == LoadOp::kClear && stateAfter != D3D12_RESOURCE_STATE_COMMON)
 		{
-			auto& barrier = m_EndCommandBarriers.PushBack({});
+			auto& barrier = decayBarriers.PushBack({});
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 			barrier.Transition.StateBefore = stateAfter;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
@@ -248,7 +250,7 @@ void BvCommandListD3D12::SetRenderTargets(u32 renderTargetCount, const RenderTar
 
 			if (resolveStateAfter != D3D12_RESOURCE_STATE_COMMON)
 			{
-				auto& barrier = m_EndCommandBarriers.PushBack({});
+				auto& barrier = decayBarriers.PushBack({});
 				barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 				barrier.Transition.StateBefore = resolveStateAfter;
 				barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
@@ -881,16 +883,44 @@ void BvCommandListD3D12::ResourceBarrier(u32 barrierCount, const ResourceBarrier
 
 	for (auto i = 0; i < barrierCount; i++)
 	{
-		auto& barrier = barriers.PushBack({});
 		auto pResource = pBarriers[i].m_pTexture ? TO_D3D12(pBarriers[i].m_pTexture)->GetHandle() :
 			(pBarriers[i].m_pBuffer ? TO_D3D12(pBarriers[i].m_pBuffer)->GetHandle() : nullptr);
 		if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kMemory)
 		{
+			auto& barrier = barriers.PushBack({});
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 			barrier.UAV.pResource = pResource;
 		}
 		else if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kStateTransition)
 		{
+			if (pBarriers[i].m_pOwnershipContext)
+			{
+				auto pThisContext = m_pFrameData->GetCommandContext();
+				auto pOtherContext = TO_D3D12(pBarriers[i].m_pOwnershipContext);
+
+				u32 srcGroup = 0;
+				u32 dstGroup = 0;
+
+				if (pBarriers[i].m_AcquireOwnership)
+				{
+					srcGroup = pOtherContext->GetGroupIndex();
+					dstGroup = pThisContext->GetGroupIndex();
+				}
+				else
+				{
+					srcGroup = pThisContext->GetGroupIndex();
+					dstGroup = pOtherContext->GetGroupIndex();
+				}
+
+				// Prefer queues that support more states to perform the transition (smaller CommandType enum value), so if
+				// that is the case, or, if the command types are the same and the destination context is this one, we bail
+				if (srcGroup > dstGroup || (srcGroup == dstGroup && pBarriers[i].m_AcquireOwnership))
+				{
+					continue;
+				}
+			}
+
+			auto& barrier = barriers.PushBack({});
 			auto& subresource = pBarriers[i].m_Subresource;
 			u32 subresourceIndex = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 			if (subresource.mipCount == 1 && subresource.layerCount == 1 && pBarriers[i].m_pTexture)
@@ -904,12 +934,6 @@ void BvCommandListD3D12::ResourceBarrier(u32 barrierCount, const ResourceBarrier
 			barrier.Transition.Subresource = subresourceIndex;
 			barrier.Transition.StateBefore = GetD3D12ResourceState(pBarriers[i].m_SrcState);
 			barrier.Transition.StateAfter = GetD3D12ResourceState(pBarriers[i].m_DstState);
-
-			if (pBarriers[i].m_pSrcContext && pBarriers[i].m_pDstContext)
-			{
-				// TODO: Figure out the most complete context and transition only in it
-				BV_ASSERT(false, "Not Implemented");
-			}
 		}
 	}
 
@@ -1363,6 +1387,7 @@ void BvCommandListD3D12::ProcessRenderPass()
 		m_PreRenderBarriers.Clear();
 	}
 
+	auto& decayBarriers = m_pFrameData->GetDecayRTBarriers();
 	if (m_SubpassIndex >= rpDesc.m_Subpasses.Size())
 	{
 		for (auto i = start + count; i < states.Size(); i++)
@@ -1375,7 +1400,7 @@ void BvCommandListD3D12::ProcessRenderPass()
 				continue;
 			}
 
-			auto& barrier = m_EndCommandBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+			auto& barrier = decayBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
 			barrier.Transition.StateBefore = currState;
 			barrier.Transition.StateAfter = state.m_StateAfter;
 			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
@@ -1390,7 +1415,7 @@ void BvCommandListD3D12::ProcessRenderPass()
 				continue;
 			}
 
-			auto& barrier = m_EndCommandBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
+			auto& barrier = decayBarriers.PushBack({ D3D12_RESOURCE_BARRIER_TYPE_TRANSITION });
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
 			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;

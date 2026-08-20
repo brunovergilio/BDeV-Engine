@@ -21,7 +21,6 @@ void RayTracing4::OnInitialize()
 	CreateTLAS();
 
 	m_Camera.SetPos(0.0f, 0.0f, -2.0f);
-	m_Camera.SetFlipViewportY(true);
 }
 
 
@@ -358,7 +357,7 @@ void RayTracing4::CreateBLAS()
 	}
 
 	const auto alignment = m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing);
-	u64 sizes[] = { RoundToNearestPowerOf2(m_BLAS[0]->GetBuildSizes().m_Build, alignment), RoundToNearestPowerOf2(m_BLAS[1]->GetBuildSizes().m_Build, alignment) };
+	u64 sizes[] = { RoundToNearestMultipleP2(m_BLAS[0]->GetBuildSizes().m_Build, alignment), RoundToNearestMultipleP2(m_BLAS[1]->GetBuildSizes().m_Build, alignment) };
 
 	BufferDesc bufferDesc;
 	bufferDesc.m_Size = sizes[0] + sizes[1];
@@ -410,7 +409,7 @@ void RayTracing4::CreateTLAS()
 
 	BufferDesc bufferDesc;
 	auto [build, update] = m_TLAS->GetBuildSizes();
-	bufferDesc.m_Size = RoundToNearestPowerOf2(std::max(build, update), m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
+	bufferDesc.m_Size = RoundToNearestMultipleP2(std::max(build, update), m_Device->GetBufferOffsetAlignment(BufferUsage::kRayTracing));
 	bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	m_Device->CreateBuffer(bufferDesc, &m_ScratchTLAS);
 

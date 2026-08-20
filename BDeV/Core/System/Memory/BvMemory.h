@@ -107,7 +107,7 @@ namespace Internal
 	BV_INLINE void DestructArray(Type* pObjs, size_t count)
 	{
 		// Only call the dtor if needed
-		if constexpr (!std::is_trivially_destructible_v<Type>)
+		if constexpr (!IsPodV<Type> && !std::is_trivially_destructible_v<Type>)
 		{
 			if (count)
 			{

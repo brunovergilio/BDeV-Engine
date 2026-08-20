@@ -49,7 +49,7 @@ void BvStackAllocator::Set(size_t size)
 
 void* BvStackAllocator::Allocate(size_t size, size_t alignment, size_t alignmentOffset /*= 0*/)
 {
-	size = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + (kPointerSize << 1);
+	size = RoundToNearestMultipleP2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds
 	if (m_pCurrent + size > m_pEnd)
@@ -118,7 +118,7 @@ BvGrowableStackAllocator::BvGrowableStackAllocator(void* pStart, void* pEnd, siz
 	m_pStart(m_pVirtualStart), m_pEnd(m_pVirtualStart), m_pCurrent(m_pVirtualStart)
 {
 	auto& systemInfo = BvSystem::GetSystemInfo();
-	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	m_GrowSize = growSize > 0 ? RoundToNearestMultipleP2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 }
 
 
@@ -126,8 +126,8 @@ BvGrowableStackAllocator::BvGrowableStackAllocator(size_t maxSize, size_t growSi
 	: m_HasOwnMemory(true)
 {
 	auto& systemInfo = BvSystem::GetSystemInfo();
-	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
-	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
+	m_GrowSize = growSize > 0 ? RoundToNearestMultipleP2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	maxSize = RoundToNearestMultipleP2(maxSize, m_GrowSize);
 	m_pVirtualStart = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
 	m_pVirtualEnd = m_pVirtualStart + maxSize;
 	m_pStart = m_pEnd = m_pCurrent = m_pVirtualStart;
@@ -147,7 +147,7 @@ void BvGrowableStackAllocator::Set(void* pStart, void* pEnd, size_t growSize)
 {
 	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
-	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	m_GrowSize = growSize > 0 ? RoundToNearestMultipleP2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	m_pVirtualStart = reinterpret_cast<char*>(pStart);
 	m_pVirtualEnd = reinterpret_cast<char*>(pEnd);
 	m_pStart = m_pEnd = m_pCurrent = m_pVirtualStart;
@@ -158,8 +158,8 @@ void BvGrowableStackAllocator::Set(size_t maxSize, size_t growSize)
 {
 	BV_ASSERT(m_pStart == nullptr, "Memory already set");
 	auto& systemInfo = BvSystem::GetSystemInfo();
-	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
-	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
+	m_GrowSize = growSize > 0 ? RoundToNearestMultipleP2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	maxSize = RoundToNearestMultipleP2(maxSize, m_GrowSize);
 	m_pVirtualStart = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
 	m_pVirtualEnd = m_pVirtualStart + maxSize;
 	m_pStart = m_pEnd = m_pCurrent = m_pVirtualStart;
@@ -169,7 +169,7 @@ void BvGrowableStackAllocator::Set(size_t maxSize, size_t growSize)
 
 void* BvGrowableStackAllocator::Allocate(size_t size, size_t alignment /*= kDefaultAlignmentSize*/, size_t alignmentOffset /*= 0*/)
 {
-	size = RoundToNearestPowerOf2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + (kPointerSize << 1);
+	size = RoundToNearestMultipleP2(size + std::max(alignment, kPointerSize) + alignmentOffset, kPointerSize) + (kPointerSize << 1);
 
 	// Make sure we're not going out of bounds; if we are, try committing more memory
 	if (m_pCurrent + size > m_pEnd && !CommitMemory(size))
@@ -247,7 +247,7 @@ void BvGrowableStackAllocator::Purge()
 bool BvGrowableStackAllocator::CommitMemory(size_t size)
 {
 	// Round the size needed to a multiple of the grow size
-	auto sizeNeeded = RoundToNearestPowerOf2(size, m_GrowSize);
+	auto sizeNeeded = RoundToNearestMultipleP2(size, m_GrowSize);
 	// Check if it's more than we reserved; if it is we can't allocate
 	if (m_pEnd + sizeNeeded > m_pVirtualEnd)
 	{

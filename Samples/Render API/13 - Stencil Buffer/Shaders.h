@@ -27,7 +27,7 @@ cbuffer UBO : register(b0)
 VSOutput main(VSInput input)
 {
 	VSOutput output;
-	output.outPos = mul(wvp, float4(input.inPos, 1.0));
+	output.outPos = mul(float4(input.inPos, 1.0), wvp);
 	output.outColor = input.inColor;
 
 	return output;

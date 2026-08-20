@@ -27,7 +27,7 @@ cbuffer UBO : register(b0)
 VSOutput main(VSInput input)
 {
 	VSOutput output;
-	output.outPos = mul(wvp, float4(input.inPos, 1.0));
+	output.outPos = mul(float4(input.inPos, 1.0), wvp);
 	output.outColor = input.inColor;
 
 	return output;
@@ -108,11 +108,11 @@ void main(triangle GSInput input[3], inout LineStream<GSOutput> outputStream)
 		float3 pos = input[i].inPos.xyz;
 		float3 normal = input[i].inNormal;
 
-		output.outPos = mul(vp, mul(w, float4(pos, 1.0f)));
+		output.outPos = mul(mul(float4(pos, 1.0f), w), vp);
 		output.outColor = float4(1.0f, 0.0f, 0.0f, 1.0f);
 		outputStream.Append(output);
 
-		output.outPos = mul(vp, mul(w, float4(pos + normal * normalLength, 1.0f)));
+		output.outPos = mul(mul(float4(pos + normal * normalLength, 1.0f), w), vp);
 		output.outColor = float4(0.0f, 0.0f, 1.0f, 1.0f);
 		outputStream.Append(output);
 

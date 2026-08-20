@@ -211,7 +211,7 @@ bool BvRenderDeviceVk::CreateGraphicsPipelineImpl(const GraphicsPipelineStateDes
 		return false;
 	}
 
-	*ppObj = BV_RC_CREATE(BvGraphicsPipelineStateVk, this, graphicsPipelineStateDesc, result.second);
+	*ppObj = BV_RC_CREATE(BvGraphicsPipelineStateVk, this, graphicsPipelineStateDesc, result.second.m_PSO, result.second.m_HasMeshShaders);
 
 	return true;
 }
@@ -422,7 +422,7 @@ u64 BvRenderDeviceVk::GetDynamicBufferElementSize(BufferUsage usageFlags, u64 el
 		alignment = std::max(limits.minStorageBufferOffsetAlignment, alignment);
 	}
 	
-	return RoundToNearestPowerOf2(elementStride, alignment);
+	return RoundToNearestMultipleP2(elementStride, alignment);
 }
 
 

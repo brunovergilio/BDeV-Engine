@@ -12,9 +12,8 @@
 #include "BvUtilsVk.h"
 
 
-BvFrameDataVk::BvFrameDataVk(BvRenderDeviceVk *pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData)
-	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_FrameIndex(frameIndex),
-	m_pContextData(pContextData)
+BvFrameDataVk::BvFrameDataVk(BvRenderDeviceVk *pDevice, BvCommandContextVk* pContext, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData)
+	: m_pDevice(pDevice), m_CommandPool(pDevice, queueFamilyIndex), m_FrameIndex(frameIndex), m_pContextData(pContextData), m_pContext(pContext)
 {
 	auto result = VkHelpers::CreateSemaphore(pDevice, {});
 	BV_ASSERT(result.first == VK_SUCCESS, "Couldn't create fence for BvFrameDataVk");
@@ -238,7 +237,7 @@ BvCommandContextVk::BvCommandContextVk(BvRenderDeviceVk* pDevice, u32 frameCount
 	auto pFrameData = reinterpret_cast<u8*>(BV_ALLOC(sizeof(BvFrameDataVk) * m_FrameCount, alignof(BvFrameDataVk)));
 	for (auto i = 0; i < m_FrameCount; ++i)
 	{
-		new(pFrameData + i * sizeof(BvFrameDataVk)) BvFrameDataVk(pDevice, queueFamilyIndex, i, m_pContextData);
+		new(pFrameData + i * sizeof(BvFrameDataVk)) BvFrameDataVk(pDevice, this, queueFamilyIndex, i, m_pContextData);
 	}
 	m_pFrames = reinterpret_cast<BvFrameDataVk*>(pFrameData);
 }

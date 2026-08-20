@@ -2,6 +2,7 @@
 
 
 #include <utility>
+#include <iterator>
 
 
 template<class Type>
@@ -10,6 +11,12 @@ class RandomIterator
 	RandomIterator() {}
 
 public:
+	using value_type = Type;
+	using difference_type = std::ptrdiff_t;
+	using iterator_category = std::random_access_iterator_tag;
+	using pointer = Type*;
+	using reference = Type&;
+
 	RandomIterator(Type * const pData) : m_pData(pData) {}
 	RandomIterator(const RandomIterator & rhs) : m_pData(rhs.m_pData) {}
 	RandomIterator & operator =(const RandomIterator & rhs) { if (this != &rhs) { m_pData = rhs.m_pData; } return *this; }
@@ -21,10 +28,10 @@ public:
 	bool operator > (const RandomIterator & rhs) const { return m_pData > rhs.m_pData; }
 	bool operator >=(const RandomIterator & rhs) const { return m_pData >= rhs.m_pData; }
 
-	Type & operator *() { return *m_pData; }
-	Type * operator ->() { return m_pData; }
-	Type & operator [](const size_t index) { return m_pData[index]; }
-	const Type & operator [](const size_t index) const { return m_pData[index]; }
+	reference operator *() const { return *m_pData; }
+	pointer operator ->() { return m_pData; }
+	reference operator [](const size_t index) { return m_pData[index]; }
+	const reference operator [](const size_t index) const { return m_pData[index]; }
 	void Swap(RandomIterator & rhs) { Type pTmp = *m_pData; *m_pData = *rhs.m_pData; *rhs.m_pData = *pTmp; }
 
 	RandomIterator operator++(int) { RandomIterator it(*this); m_pData++; return it; }
@@ -42,7 +49,7 @@ public:
 	friend RandomIterator operator+(const size_t n, const RandomIterator & rhs) { RandomIterator it; it.m_pData = rhs.m_pData + n; return it; }
 	friend RandomIterator operator-(const size_t n, const RandomIterator & rhs) { RandomIterator it; it.m_pData = rhs.m_pData - n; return it; }
 
-	friend size_t operator-(const RandomIterator & lhs, const RandomIterator & rhs) { return lhs.m_pData - rhs.m_pData; }
+	friend difference_type operator-(const RandomIterator & lhs, const RandomIterator & rhs) { return (difference_type)(lhs.m_pData - rhs.m_pData); }
 
 	operator RandomIterator<const Type>() { return RandomIterator<const Type>(m_pData); }
 

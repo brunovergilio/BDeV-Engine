@@ -6,706 +6,589 @@
 
 
 #include "BDeV/Core/BvCore.h"
-#include "BDeV/Core/Container/BvIterator.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
-#include <utility>
+#include <iterator>
 
 
-template<class Type, size_t N>
+template<typename T, size_t N>
 class BvFixedVector
 {
+	static_assert(N > 0, "BvFixedVector requires a non-zero capacity");
+
 public:
-	using Iterator = RandomIterator<Type>;
-	using ConstIterator = RandomIterator<const Type>;
-	using ReverseIterator = RandomReverseIterator<Type>;
-	using ConstReverseIterator = RandomReverseIterator<const Type>;
+	// Types required by standard container interfaces
+	using value_type = T;
+	using size_type = std::size_t;
+	using difference_type = std::ptrdiff_t;
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
 
-	BvFixedVector(); // Default
-	explicit BvFixedVector(const size_t size, const Type & val = Type()); // Fill
-	explicit BvFixedVector(Iterator start, Iterator end); // Range
-	template<size_t X>
-	BvFixedVector(const BvFixedVector<Type, X> & rhs); // Copy
-	template<size_t X>
-	BvFixedVector(BvFixedVector<Type, X> && rhs); // Move
-	BvFixedVector(std::initializer_list<Type> list); // Initializer List
+	// C++20 Random Access / Contiguous Iterators
+	using iterator = value_type*;
+	using const_iterator = const value_type*;
+	using reverse_iterator = std::reverse_iterator<iterator>;
+	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-	template<size_t X>
-	BvFixedVector<Type, N> & operator =(const BvFixedVector<Type, X> & rhs); // Copy Assignment
-	template<size_t X>
-	BvFixedVector<Type, N> & operator =(BvFixedVector<Type, X> && rhs); // Move Assignment
-	BvFixedVector<Type, N> & operator =(std::initializer_list<Type> list); // Copy Assignment
+	BvFixedVector() // Default
+	{}
 
-	~BvFixedVector();
-
-	// Iterator
-	Iterator begin() { return Iterator(m_pData); }
-	Iterator end() { return Iterator(m_pData + m_Size); }
-	ConstIterator begin() const { return ConstIterator(m_pData); }
-	ConstIterator end() const { return ConstIterator(m_pData + m_Size); }
-	ConstIterator cbegin() const { return begin(); }
-	ConstIterator cend() const { return end(); }
-
-	// Reverse Iterator
-	ReverseIterator rbegin() { return ReverseIterator(m_pData); }
-	ReverseIterator rend() { return ReverseIterator(m_pData + m_Size); }
-	ConstReverseIterator rbegin() const { return ConstReverseIterator(m_pData); }
-	ConstReverseIterator rend() const { ConstReverseIterator(m_pData + m_Size); }
-	ConstReverseIterator crbegin() const { return rbegin(); }
-	ConstReverseIterator crend() const { return rend(); }
-
-	// Capacity
-	const size_t Size() const;
-	const size_t Capacity() const;
-	const bool Empty() const;
-	void Resize(const size_t size, const Type & value = Type());
-
-	// Element Access
-	Type & operator [](const size_t index);
-	const Type & operator [](const size_t index) const;
-	Type & At(const size_t index);
-	const Type & At(const size_t index) const;
-	Type & Front();
-	const Type & Front() const;
-	Type & Back();
-	const Type & Back() const;
-	Type * Data();
-	const Type * const Data() const;
-
-	// Modifiers
-	void Assign(Iterator start, Iterator end); // Range
-	void Assign(const size_t size, const Type & val); // Fill
-	void Assign(std::initializer_list<Type> list); // Initializer List
-	void PushBack(const Type & value);
-	void PushBack(Type && value);
-	void PopBack();
-	Iterator Insert(ConstIterator position, const Type & value);
-	Iterator Insert(ConstIterator position, const size_t count, const Type & value);
-	Iterator Insert(ConstIterator position, Iterator first, Iterator last);
-	Iterator Insert(ConstIterator position, Type && value);
-	Iterator Insert(ConstIterator position, std::initializer_list<Type> list);
-	Iterator Erase(size_t index);
-	Iterator Erase(size_t startIndex, size_t count);
-	Iterator Erase(ConstIterator position);
-	Iterator Erase(ConstIterator first, ConstIterator last);
-	void Clear();
-	template <class... Args>
-	Iterator Emplace(ConstIterator position, Args&&... args);
-	template <class... Args>
-	Type& EmplaceBack(Args&&... args);
-	size_t Find(const Type& value) const;
-	bool Contains(const Type& value) const;
-
-private:
-	Type m_pData[N];
-	size_t m_Size = 0;
-};
-
-template<class Type, size_t N>
-inline BvFixedVector<Type, N>::BvFixedVector()
-{
-}
-
-
-template<class Type, size_t N>
-inline BvFixedVector<Type, N>::BvFixedVector(const size_t size, const Type & val)
-{
-	Assign(size, val);
-}
-
-template<class Type, size_t N>
-inline BvFixedVector<Type, N>::BvFixedVector(Iterator start, Iterator end)
-{
-	Assign(start, end);
-}
-
-template<class Type, size_t N>
-template<size_t X>
-inline BvFixedVector<Type, N>::BvFixedVector(const BvFixedVector<Type, X> & rhs)
-{
-	m_Size = N < rhs.Size() ? N : rhs.Size();
-	for (auto i = 0; i < m_Size; i++)
+	explicit BvFixedVector(size_type size, const value_type& val = value_type()) // Fill
 	{
-		new (std::addressof(m_pData[i])) Type(rhs[i]);
+		Assign(size, val);
 	}
-}
 
-template<class Type, size_t N>
-template<size_t X>
-inline BvFixedVector<Type, N>::BvFixedVector(BvFixedVector<Type, X> && rhs)
-{
-	*this = std::move(rhs);
-}
-
-template<class Type, size_t N>
-inline BvFixedVector<Type, N>::BvFixedVector(std::initializer_list<Type> list)
-{
-	Assign(list);
-}
-
-template<class Type, size_t N>
-template<size_t X>
-inline BvFixedVector<Type, N>& BvFixedVector<Type, N>::operator=(const BvFixedVector<Type, X> & rhs)
-{
-	if (m_pData != rhs.Data())
+	template<std::input_iterator It>
+	explicit BvFixedVector(It start, It end) // Range
 	{
-		Clear();
+		Assign(start, end);
+	}
 
-		m_Size = N < rhs.Size() ? N : rhs.Size();
-		for (auto i = 0; i < m_Size; i++)
+	explicit BvFixedVector(size_type size, const value_type* pElements) // Range
+	{
+		Assign(size, pElements);
+	}
+
+	BvFixedVector(std::initializer_list<value_type> list) // Initializer List
+	{
+		Assign(list);
+	}
+
+	template<size_t M>
+	BvFixedVector(const BvFixedVector<value_type, M>& rhs) // Copy
+	{
+		auto count = std::min(N, M);
+		for (auto i = 0; i < count; i++)
 		{
-			new (std::addressof(m_pData[i])) Type(rhs.m_pData[i]);
+			PushBack(rhs.m_pData[i]);
 		}
 	}
 
-	return *this;
-}
-
-template<class Type, size_t N>
-template<size_t X>
-inline BvFixedVector<Type, N>& BvFixedVector<Type, N>::operator=(BvFixedVector<Type, X> && rhs)
-{
-	if (m_pData != rhs.Data())
+	BvFixedVector(BvFixedVector&& rhs) noexcept // Move
 	{
-		Clear();
-
-		auto size = N < rhs.Size() ? N : rhs.Size();
-		for (auto i = 0U; i < size; i++)
+		for (auto i = 0; i < rhs.m_Size; i++)
 		{
-			m_pData[i] = std::move(rhs.m_pData[i]);
+			new (std::addressof(m_pData[i])) value_type(std::move(rhs.m_pData[i]));
 		}
-		m_Size = size;
 
-		memset(&rhs, 0, sizeof(BvFixedVector<Type, X>));
+		rhs.Clear();
 	}
 
-	return *this;
-}
-
-template<class Type, size_t N>
-inline BvFixedVector<Type, N>& BvFixedVector<Type, N>::operator=(std::initializer_list<Type> list)
-{
-	Clear();
-
-	m_Size = N < list.size() ? N : list.size();
-	for (auto i = 0; i < m_Size; i++)
+	template<size_t M>
+	BvFixedVector& operator=(const BvFixedVector<value_type, M>& rhs) // Copy Assignment
 	{
-		new (std::addressof(m_pData[i])) Type(list[i]);
-	}
-
-	return *this;
-}
-
-template<class Type, size_t N>
-inline BvFixedVector<Type, N>::~BvFixedVector()
-{
-	Clear();
-}
-
-template<class Type, size_t N>
-inline const size_t BvFixedVector<Type, N>::Size() const
-{
-	return m_Size;
-}
-
-template<class Type, size_t N>
-inline const size_t BvFixedVector<Type, N>::Capacity() const
-{
-	return N;
-}
-
-template<class Type, size_t N>
-inline const bool BvFixedVector<Type, N>::Empty() const
-{
-	return m_Size == 0;
-}
-
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::Resize(const size_t size, const Type & value)
-{
-	if (size > N)
-	{
-		return;
-	}
-
-	if (size > m_Size)
-	{
-		auto prevSize = m_Size;
-
-		m_Size = size;
-		for (auto i = prevSize; i < m_Size; i++)
+		if constexpr (N == M)
 		{
-			new (std::addressof(m_pData[i])) Type(value);
-		}
-	}
-	else
-	{
-		if constexpr (!std::is_trivially_destructible_v<Type>)
-		{
-			for (auto i = m_Size; i > size; i--)
+			if (this == &rhs)
 			{
-				m_pData[i - 1].~Type();
+				return *this;
 			}
 		}
 
-		m_Size = size;
-	}
-}
+		Clear();
 
-
-template<class Type, size_t N>
-inline Type & BvFixedVector<Type, N>::operator[](const size_t index)
-{
-	BV_ASSERT(index < N, "Index out of bounds");
-	if (index >= m_Size)
-	{
-		m_Size = index + 1;
-	}
-	return m_pData[index];
-}
-
-template<class Type, size_t N>
-inline const Type & BvFixedVector<Type, N>::operator[](const size_t index) const
-{
-	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
-	return m_pData[index];
-}
-
-template<class Type, size_t N>
-inline Type & BvFixedVector<Type, N>::At(const size_t index)
-{
-	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
-	return m_pData[index];
-}
-
-template<class Type, size_t N>
-inline const Type & BvFixedVector<Type, N>::At(const size_t index) const
-{
-	BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
-	return m_pData[index];
-}
-
-template<class Type, size_t N>
-inline Type & BvFixedVector<Type, N>::Front()
-{
-	BV_ASSERT(m_Size > 0, "Vector is empty");
-	return m_pData[0];
-}
-
-template<class Type, size_t N>
-inline const Type & BvFixedVector<Type, N>::Front() const
-{
-	BV_ASSERT(m_Size > 0, "Vector is empty");
-	return m_pData[0];
-}
-
-template<class Type, size_t N>
-inline Type & BvFixedVector<Type, N>::Back()
-{
-	BV_ASSERT(m_Size > 0, "Vector is empty");
-	return m_pData[m_Size - 1];
-}
-
-template<class Type, size_t N>
-inline const Type & BvFixedVector<Type, N>::Back() const
-{
-	BV_ASSERT(m_Size > 0, "Vector is empty");
-	return m_pData[m_Size - 1];
-}
-
-template<class Type, size_t N>
-inline Type * BvFixedVector<Type, N>::Data()
-{
-	return m_pData;
-}
-
-template<class Type, size_t N>
-inline const Type * const BvFixedVector<Type, N>::Data() const
-{
-	return m_pData;
-}
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::Assign(Iterator start, Iterator end)
-{
-	Clear();
-
-	auto size = end - start;
-
-	m_Size = N < size ? N : size;
-	size_t count = 0;
-	for (auto it = start; count < m_Size && it != end; it++, count++)
-	{
-		new (std::addressof(m_pData[m_Size++])) Type(*it);
-	}
-}
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::Assign(const size_t size, const Type & val)
-{
-	Clear();
-
-	m_Size = N < size ? N : size;
-	for (u32 i = 0; i < m_Size; i++)
-	{
-		new (std::addressof(m_pData[i])) Type(val);
-	}
-}
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::Assign(std::initializer_list<Type> list)
-{
-	Clear();
-
-	m_Size = N < list.size() ? N : list.size();
-	for (auto i = 0; i < m_Size; i++)
-	{
-		new (std::addressof(m_pData[i])) Type(list[i]);
-	}
-}
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::PushBack(const Type & value)
-{
-	if (m_Size == N)
-	{
-		return;
-	}
-
-	new (std::addressof(m_pData[m_Size++])) Type(value);
-}
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::PushBack(Type && value)
-{
-	if (m_Size == N)
-	{
-		return;
-	}
-
-	new (std::addressof(m_pData[m_Size++])) Type(std::move(value));
-}
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::PopBack()
-{
-	if (m_Size > 0)
-	{
-		if constexpr (!std::is_trivially_destructible_v<Type>)
+		auto count = std::min(N, M);
+		for (auto i = 0; i < count; i++)
 		{
-			m_pData[m_Size - 1].~Type();
+			PushBack(rhs.m_pData[i]);
 		}
-		--m_Size;
-	}
-}
 
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(ConstIterator position, const Type & value)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		return Iterator(m_pData + N);
+		return *this;
 	}
 
-	if (m_Size == N)
+	BvFixedVector& operator=(BvFixedVector&& rhs) noexcept // Move Assignment
 	{
-		return Iterator(m_pData + N);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size; i > pos; i--)
+		if (this != &rhs)
 		{
-			m_pData[i] = std::move(m_pData[i - 1]);
+			Clear();
+
+			for (auto i = 0; i < rhs.m_Size; i++)
+			{
+				new (std::addressof(m_pData[i])) value_type(std::move(rhs.m_pData[i]));
+			}
+
+			rhs.Clear();
+		}
+
+		return *this;
+	}
+
+	BvFixedVector& operator=(std::initializer_list<value_type> list) // Copy Assignment
+	{
+		Clear();
+
+		auto size = list.size();
+
+		auto count = std::min(size, N);
+		for (auto i = 0; i < count; i++)
+		{
+			PushBack(list[i]);
+		}
+
+		return *this;
+	}
+
+	~BvFixedVector()
+	{
+		Clear();
+	}
+
+	// Forward Iterators
+	iterator begin() noexcept { return m_pData; }
+	iterator end() noexcept { return m_pData + m_Size; }
+
+	const_iterator begin() const noexcept { return m_pData; }
+	const_iterator end() const noexcept { return m_pData + m_Size; }
+
+	const_iterator cbegin() const noexcept { return m_pData; }
+	const_iterator cend() const noexcept { return m_pData + m_Size; }
+
+	// Reverse Iterators
+	reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+	reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
+
+	const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+	const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
+
+	const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+	const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
+
+	// Capacity
+	size_type Size() const { return m_Size; }
+	size_type ByteSize() const { return m_Size * sizeof(value_type); }
+	size_type Capacity() const { return N; }
+	bool Empty() const { return m_Size == 0; }
+	void Resize(size_type size, const value_type& value = value_type())
+	{
+		if (size > N)
+		{
+			size = N;
+		}
+
+		if (size > m_Size)
+		{
+			for (auto i = m_Size; i < size; i++)
+			{
+				PushBack(value);
+			}
+		}
+		else if (size < m_Size)
+		{
+			if constexpr (!std::is_trivially_destructible_v<value_type>)
+			{
+				for (auto i = m_Size; i > size; i--)
+				{
+					m_pData[i - 1].~value_type();
+				}
+			}
+
+			m_Size = size;
 		}
 	}
 
-	new (std::addressof(m_pData[pos])) Type(value);
-	m_Size++;
-
-	return Iterator(m_pData + pos);
-}
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(ConstIterator position, const size_t count, const Type & value)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
+	// Element Access
+	reference operator[](size_type index)
 	{
-		return Iterator(m_pData + N);
+		BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
+		return m_pData[index];
 	}
 
-	if (m_Size + count > N)
+	const_reference operator[](size_type index) const
 	{
-		return Iterator(m_pData + N);
+		BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
+		return m_pData[index];
 	}
 
-	if (pos < m_Size)
+	reference At(size_type index)
 	{
-		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - count]);
-		}
+		BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
+		return m_pData[index];
 	}
 
-	for (auto i = 0; i < count; i++)
+	const_reference At(size_type index) const
 	{
-		new (std::addressof(m_pData[pos + i])) Type(value);
-	}
-	m_Size += count;
-
-	return Iterator(m_pData + pos);
-}
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(ConstIterator position, Iterator first, Iterator last)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		return Iterator(m_pData + N);
+		BV_ASSERT(m_Size > 0 && index < m_Size, "Index out of bounds");
+		return m_pData[index];
 	}
 
-	auto count = last - first;
-	if (m_Size + count > N)
+	reference Front()
 	{
-		return Iterator(m_pData + N);
+		BV_ASSERT(m_Size > 0, "Vector is empty");
+		return m_pData[0];
 	}
 
-	if (pos < m_Size)
+	const_reference Front() const
 	{
-		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - count]);
-		}
+		BV_ASSERT(m_Size > 0, "Vector is empty");
+		return m_pData[0];
 	}
 
-	auto it = first;
-	for (auto i = 0; i < count; i++)
+	reference Back()
 	{
-		new (std::addressof(m_pData[pos + i])) Type(*(it++));
-	}
-
-	m_Size += count;
-
-	return Iterator(m_pData + pos);
-}
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(ConstIterator position, Type && value)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		return Iterator(m_pData + N);
-	}
-
-	if (m_Size == N)
-	{
-		return Iterator(m_pData + N);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size; i > pos; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - 1]);
-		}
-	}
-
-	new (std::addressof(m_pData[pos])) Type(std::move(value));
-	m_Size++;
-
-	return Iterator(m_pData + pos);
-}
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Insert(ConstIterator position, std::initializer_list<Type> list)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		return Iterator(m_pData + N);
-	}
-
-	auto count = list.size();
-	if (m_Size + count > N)
-	{
-		return Iterator(m_pData + N);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size + count - 1; i > pos + count - 1; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - count]);
-		}
-	}
-
-	auto it = list.begin();
-	for (auto i = 0; i < count; i++)
-	{
-		new (std::addressof(m_pData[pos + i])) Type(*(it++));
-	}
-
-	m_Size += count;
-
-	return Iterator(m_pData + pos);
-}
-
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Erase(size_t index)
-{
-	if (index >= m_Size)
-	{
-		return Iterator(m_pData + m_Size);
-	}
-
-	if constexpr (!std::is_trivially_destructible_v<Type>)
-	{
-		m_pData[index].~Type();
-	}
-
-	if (index < m_Size - 1)
-	{
-		for (auto i = index; i < m_Size - 1; i++)
-		{
-			m_pData[i] = std::move(m_pData[i + 1]);
-		}
-	}
-
-	m_Size--;
-
-	return Iterator(m_pData + index);
-}
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Erase(size_t startIndex, size_t count)
-{
-	if (startIndex >= m_Size)
-	{
-		return Iterator(m_pData + m_Size);
-	}
-
-	if (startIndex + count > m_Size)
-	{
-		count = m_Size - startIndex;
-	}
-
-	if constexpr (!std::is_trivially_destructible_v<Type>)
-	{
-		for (auto i = startIndex; i < startIndex + count; i++)
-		{
-			m_pData[startIndex].~Type();
-		}
-	}
-
-	if (startIndex < m_Size - 1)
-	{
-		for (auto i = startIndex + count; i < m_Size; i++)
-		{
-			m_pData[i - count] = std::move(m_pData[i]);
-		}
-	}
-
-	m_Size -= count;
-
-	return Iterator(m_pData + startIndex);
-}
-
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Erase(ConstIterator position)
-{
-	auto index = position - ConstIterator(m_pData);
-	return Erase(index);
-}
-
-template<class Type, size_t N>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Erase(ConstIterator first, ConstIterator last)
-{
-	auto index = first - ConstIterator(m_pData);
-	auto count = last - first;
-
-	return Erase(index, count);
-}
-
-template<class Type, size_t N>
-inline void BvFixedVector<Type, N>::Clear()
-{
-	if constexpr (!std::is_trivially_destructible_v<Type>)
-	{
-		for (size_t i = m_Size; i > 0; i--)
-		{
-			m_pData[i - 1].~Type();
-		}
-	}
-
-	m_Size = 0;
-}
-
-template<class Type, size_t N>
-template<class ...Args>
-inline typename BvFixedVector<Type, N>::Iterator BvFixedVector<Type, N>::Emplace(ConstIterator position, Args && ...args)
-{
-	auto pos = position - ConstIterator(m_pData);
-	if (pos > m_Size)
-	{
-		return Iterator(m_pData + N);
-	}
-
-	if (m_Size == N)
-	{
-		return Iterator(m_pData + N);
-	}
-
-	if (pos < m_Size)
-	{
-		for (auto i = m_Size; i > pos; i--)
-		{
-			m_pData[i] = std::move(m_pData[i - 1]);
-		}
-	}
-
-	new (std::addressof(m_pData[pos])) Type(std::forward<Args>(args)...);
-	m_Size++;
-
-	return Iterator(m_pData + pos);
-}
-
-template<class Type, size_t N>
-template<class ...Args>
-inline Type& BvFixedVector<Type, N>::EmplaceBack(Args && ...args)
-{
-	if (m_Size == N)
-	{
+		BV_ASSERT(m_Size > 0, "Vector is empty");
 		return m_pData[m_Size - 1];
 	}
 
-	new (std::addressof(m_pData[m_Size++])) Type(std::forward<Args>(args)...);
-
-	return m_pData[m_Size - 1];
-}
-
-
-template<typename Type, size_t N>
-size_t BvFixedVector<Type, N>::Find(const Type& value) const
-{
-	for (auto i = 0; i < m_Size; i++)
+	const_reference Back() const
 	{
-		if (value == m_pData[i])
+		BV_ASSERT(m_Size > 0, "Vector is empty");
+		return m_pData[m_Size - 1];
+	}
+
+	pointer Data() { return m_pData; }
+	const_pointer Data() const { return m_pData; }
+
+	// Modifiers
+	template<std::input_iterator It>
+	void Assign(It start, It end) // Range
+	{
+		Clear();
+
+		for (; start != end && m_Size < N; start++)
 		{
-			return i;
+			PushBack(*start);
 		}
 	}
 
-	return kU64Max;
-}
+	void Assign(size_type size, const value_type* pElements) // Range
+	{
+		BV_ASSERT(pElements, "Invalid pointer");
 
-template<typename Type, size_t N>
-inline bool BvFixedVector<Type, N>::Contains(const Type& value) const
-{
-	return Find(value) != kU64Max;
-}
+		Clear();
+
+		for (auto i = 0; i < size && m_Size < N; ++i)
+		{
+			PushBack(pElements[i]);
+		}
+	}
+
+	void Assign(size_type size, const value_type& val) // Fill
+	{
+		Clear();
+
+
+		for (u32 i = 0; i < size && m_Size < N; i++)
+		{
+			PushBack(val);
+		}
+	}
+
+	void Assign(std::initializer_list<value_type> list) // Initializer List
+	{
+		Clear();
+
+		auto size = list.size();
+
+		for (auto i = 0; i < size && m_Size < N; i++)
+		{
+			PushBack(list[i]);
+		}
+	}
+
+	value_type& PushBack(const value_type& value)
+	{
+		return EmplaceBack(value);
+	}
+
+	value_type& PushBack(value_type&& value)
+	{
+		return EmplaceBack(std::move(value));
+	}
+
+	value_type* TryPushBack(const value_type& value)
+	{
+		if (m_Size == N)
+		{
+			return nullptr;
+		}
+
+		PushBack(value);
+		return &back();
+	}
+
+	value_type* TryPushBack(value_type&& value)
+	{
+		if (m_Size == N)
+		{
+			return nullptr;
+		}
+
+		PushBack(std::move(value));
+		return &back();
+	}
+
+	void PopBack()
+	{
+		if (m_Size > 0)
+		{
+			if constexpr (!std::is_trivially_destructible_v<value_type>)
+			{
+				m_pData[m_Size - 1].~value_type();
+			}
+			--m_Size;
+		}
+	}
+
+	void Clear()
+	{
+		if constexpr (!std::is_trivially_destructible_v<value_type>)
+		{
+			for (auto i = 0; i < m_Size; i++)
+			{
+				m_pData[i].~value_type();
+			}
+		}
+		m_Size = 0;
+	}
+
+	template <class... Args>
+	reference EmplaceBack(Args&&... args)
+	{
+		BV_ASSERT(m_Size < N, "Already at maximum capacity");
+
+		auto pVal = new (std::addressof(m_pData[m_Size++])) value_type(std::forward<Args>(args)...);
+
+		return *pVal;
+	}
+
+	template <class... Args>
+	value_type* TryEmplaceBack(Args&&... args)
+	{
+		if (m_Size == N)
+		{
+			return nullptr;
+		}
+
+		EmplaceBack(std::forward<Args>(args)...);
+		return &back();
+	}
+
+	template <class... Args>
+	iterator Emplace(size_type index, Args&&... args)
+	{
+		BV_ASSERT(m_Size < N, "Already at maximum capacity");
+
+		if (index >= m_Size)
+		{
+			EmplaceBack(std::forward<Args>(args)...);
+			return end() - 1;
+		}
+
+		// Move-construct the last element into the newly available slot.
+		new (std::addressof(m_pData[m_Size])) value_type(std::move(m_pData[m_Size - 1]));
+
+		// Shift elements backwards using construction/destruction rather
+		// than move assignment.
+		for (auto i = m_Size - 1; i > index; --i)
+		{
+			m_pData[i].~value_type();
+
+			new (std::addressof(m_pData[i])) value_type(std::move(m_pData[i - 1]));
+		}
+
+		// The old object at index is now replaced by the inserted object.
+		m_pData[index].~value_type();
+
+		new (std::addressof(m_pData[index])) value_type(std::forward<Args>(args)...);
+
+		++m_Size;
+
+		return m_pData + index;
+	}
+
+	template <class... Args>
+	iterator Emplace(const_iterator it, Args&&... args)
+	{
+		size_type index = std::distance(cbegin(), it);
+		return Emplace(index, std::forward<Args>(args)...);
+	}
+
+	iterator Erase(size_type index)
+	{
+		if (index >= m_Size)
+		{
+			return end();
+		}
+
+		for (auto i = index; i < m_Size - 1; ++i)
+		{
+			m_pData[i].~value_type();
+
+			new (std::addressof(m_pData[i])) value_type(std::move(m_pData[i + 1]));
+		}
+
+		m_pData[m_Size - 1].~value_type();
+
+		m_Size--;
+
+		return iterator(m_pData + index);
+	}
+
+	iterator Erase(size_type startIndex, size_type count)
+	{
+		if (startIndex >= m_Size)
+		{
+			return end();
+		}
+
+		if (count == 0)
+		{
+			return m_pData + startIndex;
+		}
+
+		if (count > m_Size - startIndex)
+		{
+			count = m_Size - startIndex;
+		}
+
+		auto remaining = m_Size - (startIndex + count);
+		for (auto i = 0; i < remaining; i++)
+		{
+			m_pData[startIndex + i].~value_type();
+
+			new (std::addressof(m_pData[startIndex + i])) value_type(std::move(m_pData[startIndex + count + i]));
+		}
+
+		for (auto i = startIndex + remaining; i < m_Size; i++)
+		{
+			m_pData[i].~value_type();
+		}
+
+		m_Size -= count;
+
+		return iterator(m_pData + startIndex);
+	}
+
+	iterator Erase(const_iterator it)
+	{
+		size_type index = std::distance(cbegin(), it);
+		return Erase(index);
+	}
+
+	iterator Erase(const_iterator first, const_iterator last)
+	{
+		size_type index = std::distance(cbegin(), first);
+		size_type count = std::distance(first, last);
+		return Erase(index, count);
+	}
+
+	template <class... Args>
+	iterator EmplaceUnsorted(size_type index, Args&&... args)
+	{
+		if (index > m_Size)
+		{
+			index = m_Size;
+		}
+
+		EmplaceBack(std::forward<Args>(args)...);
+
+		if (index < m_Size - 1)
+		{
+			value_type tmp(std::move(m_pData[index]));
+
+			m_pData[index].~value_type();
+
+			new (std::addressof(m_pData[index])) value_type(std::move(m_pData[m_Size - 1]));
+
+			m_pData[m_Size - 1].~value_type();
+
+			new (std::addressof(m_pData[m_Size - 1])) value_type(std::move(tmp));
+		}
+
+		return iterator(m_pData + index);
+	}
+
+	template <class... Args>
+	iterator EmplaceUnsorted(const_iterator it, Args&&... args)
+	{
+		size_type index = std::distance(cbegin(), it);
+		return EmplaceUnsorted(index, std::forward<Args>(args)...);
+	}
+
+	void EraseUnsorted(size_type index)
+	{
+		BV_ASSERT(index < m_Size, "Index out of bounds");
+		if (index < m_Size - 1)
+		{
+			m_pData[index].~value_type();
+
+			new (std::addressof(m_pData[index])) value_type(std::move(m_pData[m_Size - 1]));
+		}
+
+		m_pData[m_Size - 1].~value_type();
+		--m_Size;
+	}
+
+	void EraseUnsorted(const_iterator it)
+	{
+		size_type index = std::distance(cbegin(), it);
+		EraseUnsorted(index);
+	}
+
+	size_type size() const { return Size(); }
+	size_type byte_size() const { return ByteSize(); }
+	size_type capacity() const { return Capacity(); }
+	bool empty() const { return Empty(); }
+	void resize(size_type size, const value_type& value = value_type()) { Resize(size, value); }
+	reference at(size_type index) { return At(index); }
+	const_reference at(size_type index) const { return At(index); }
+	reference front() { return Front(); }
+	const_reference front() const { return Front(); }
+	reference back() { return Back(); }
+	const_reference back() const { return Back(); }
+	pointer data() { return Data(); }
+	const_pointer data() const { return Data(); }
+	template<std::input_iterator It>
+	void assign(It start, It end) { Assign(start, end); }
+	void assign(size_type size, const value_type* pElements) { Assign(size, pElements); }
+	void assign(size_type size, const value_type& val) { Assign(size, val); }
+	void assign(std::initializer_list<value_type> list) { Assign(list); }
+	value_type& push_back(const value_type& value) { return PushBack(value); }
+	value_type& push_back(value_type&& value) { return PushBack(std::move(value)); }
+	value_type* try_push_back(const value_type& value) { return TryPushBack(value); }
+	value_type* try_push_back(value_type&& value) { return TryPushBack(std::move(value)); }
+	void pop_back() { PopBack(); }
+	void clear() { Clear(); }
+	template <class... Args>
+	reference emplace_back(Args&&... args) { return EmplaceBack(std::forward<Args>(args)...); }
+	template <class... Args>
+	value_type* try_emplace_back(Args&&... args) {return TryEmplaceBack(std::forward<Args>(args)...); }
+	template <class... Args>
+	iterator emplace(size_type index, Args&&... args) { return Emplace(index, std::forward<Args>(args)...); }
+	template <class... Args>
+	iterator emplace(const_iterator it, Args&&... args) { return Emplace(it, std::forward<Args>(args)...); }
+	iterator erase(size_type index) { return Erase(index); }
+	iterator erase(size_type startIndex, size_type count) { return Erase(startIndex, count); }
+	iterator erase(const_iterator it) { return Erase(it); }
+	iterator erase(const_iterator first, const_iterator last) { return Erase(first, last); }
+	template <class... Args>
+	iterator emplace_unsorted(size_type index, Args&&... args) { return EmplaceUnsorted(index, std::forward<Args>(args)...); }
+	template <class... Args>
+	iterator emplace_unsorted(const_iterator it, Args&&... args) { return EmplaceUnsorted(it, std::forward<Args>(args)...); }
+	void erase_unsorted(size_type index) { EraseUnsorted(index); }
+	void erase_unsorted(const_iterator it) { EraseUnsorted(it); }
+
+	friend bool operator==(const BvFixedVector& lhs, const BvFixedVector& rhs)
+	{
+		if (lhs.m_Size != rhs.m_Size)
+		{
+			return false;
+		}
+
+		for (auto i = 0; i < lhs.m_Size; i++)
+		{
+			if (lhs[i] != rhs[i])
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+private:
+	alignas(alignof(value_type)) u8 m_Mem[sizeof(value_type) * N]{};
+	value_type* m_pData = reinterpret_cast<value_type*>(m_Mem);
+	size_type m_Size = 0;
+};

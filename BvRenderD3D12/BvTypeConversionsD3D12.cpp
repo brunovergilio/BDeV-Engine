@@ -675,7 +675,7 @@ D3D12_CONSTANT_BUFFER_VIEW_DESC GetD3D12CBVDesc(const BufferViewDesc& viewDesc)
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbv{};
 	cbv.BufferLocation = viewDesc.m_pBuffer->GetDeviceAddress() + viewDesc.m_Offset;
-	cbv.SizeInBytes = RoundToNearestPowerOf2(viewDesc.m_Stride * viewDesc.m_ElementCount, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	cbv.SizeInBytes = RoundToNearestMultipleP2(viewDesc.m_Stride * viewDesc.m_ElementCount, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
 	return cbv;
 }

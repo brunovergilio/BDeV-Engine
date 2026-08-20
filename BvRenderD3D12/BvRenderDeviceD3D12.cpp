@@ -358,11 +358,11 @@ u64 BvRenderDeviceD3D12::GetDynamicBufferElementSize(BufferUsage usageFlags, u64
 	u64 elementSize = elementStride;
 	if (EHasFlag(usageFlags, BufferUsage::kConstantBuffer))
 	{
-		elementSize = RoundToNearestPowerOf2(elementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+		elementSize = RoundToNearestMultipleP2(elementSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	}
 	else if (EHasFlag(usageFlags, BufferUsage::kRayTracing))
 	{
-		elementSize = RoundToNearestPowerOf2(elementSize, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
+		elementSize = RoundToNearestMultipleP2(elementSize, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
 	}
 
 	return elementSize;

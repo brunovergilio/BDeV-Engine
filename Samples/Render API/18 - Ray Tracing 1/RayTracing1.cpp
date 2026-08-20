@@ -169,7 +169,7 @@ void RayTracing1::CreateResources()
 	buffDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	m_Device->CreateBuffer(buffDesc, &m_ScratchBuffer);
 
-	buffDesc.m_UsageFlags = BufferUsage::kNone;
+	buffDesc.m_UsageFlags = BufferUsage::kRayTracing;
 	buffDesc.m_Size = sizeof(RayTracingAccelerationStructureInstanceDesc);
 	buffDesc.m_MemoryType = MemoryType::kUpload;
 	m_Device->CreateBuffer(buffDesc, &m_StagingBuffer);

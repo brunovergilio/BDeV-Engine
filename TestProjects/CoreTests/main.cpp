@@ -4,6 +4,8 @@
 #include <span>
 #include <source_location>
 #include "BDeV/Core/Utils/BvUTF.h"
+#include "BDeV/Core/Container/BvFlatMap.h"
+#include "BDeV/Core/Container/BvFlatHashMap.h"
 
 char stack[1024];
 char stack2[1024];
@@ -108,27 +110,43 @@ BvMutex mm;
 
 
 
+
+
 int main()
 {
-	auto uu = 64ull;
-	auto vv = BvHash<u64>()(uu);
+	BvFlatMap<u32, u32> fm;
+	fm.Emplace(1, 2);
+	fm.Emplace(3, 3);
+	fm.Emplace(2, 4);
+	fm.Insert(std::make_pair(2u, 3u));
+	std::pair testu(4u, 3u);
+	fm.Insert(testu);
+	fm.Erase(1);
+	auto res = fm.Emplace(1, 2);
+	printf("%u, %u", res.first->first, res.first->second);
+	fm.InsertOrAssign(2, 24);
+	fm.InsertOrAssign(testu.first, testu.second);
 
-	auto currDt = BvTime::GetCurrentDateTime();
-	BvConsole::Print("{}/{}/{} - {} - {}:{}:{}:{}",
-		currDt.m_Month, currDt.m_Day, currDt.m_Year, currDt.m_WeekDay, currDt.m_Hours, currDt.m_Minutes, currDt.m_Seconds, currDt.m_Milliseconds);
+	testu.first = 10;
+	auto res2 = fm.Find(2);
+	auto res3 = fm.Find(testu.first);
 
+	BvFlatHashMap<i32, i32> hm;
+	hm.Emplace(1, 1);
+	hm.Erase(1);
+	hm.Emplace(1, 1);
+	hm.Erase(1);
+	hm.Emplace(1, 1);
+	hm.Erase(1);
+	hm.Emplace(2, 2);
+	hm.Emplace(1, 1);
+	hm.Erase(1);
+	hm.Emplace(3, 3);
+	hm.Emplace(4, 4);
 
-	auto padb = "asfasf";
-	char32_t utf[32];
+	//hm.Resize(16);
 
-	std::string_view v11(padb);
-	std::span<char32_t> v22(utf, 32);
-
-	auto sss = BvUTFCharTraits::Length(v11);
-	auto sfs = BvUTFCharTraits::LengthFor<char32_t>(v11);
-	//auto res1 = BvUTFCharTraits::GetStr(v11, v22);
-	//*res1 = 0;
-	auto res2 = BvUTFCharTraits::GetStr(padb, padb + 7, v22);
+	return 0;
 
 
 	//auto p = BV_SALLOC(1_kb, 32);

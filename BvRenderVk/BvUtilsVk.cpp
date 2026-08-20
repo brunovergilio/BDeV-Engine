@@ -498,10 +498,6 @@ namespace VkHelpers
 			VmaAllocationCreateInfo vmaACI = {};
 			vmaACI.requiredFlags = GetVkMemoryPropertyFlags(bufferDesc.m_MemoryType);
 			vmaACI.preferredFlags = vmaACI.requiredFlags | GetPreferredVkMemoryPropertyFlags(bufferDesc.m_MemoryType);
-			if (EHasFlag(bufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped))
-			{
-				vmaACI.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-			}
 			VmaAllocationInfo vmaAI{};
 
 			result = vmaCreateBuffer(vma, &bufferCreateInfo, &vmaACI, &buffer, &vmaA, &vmaAI);
@@ -510,6 +506,14 @@ namespace VkHelpers
 				break;
 			}
 
+			if (EHasFlag(bufferDesc.m_CreateFlags, BufferCreateFlags::kCreateMapped))
+			{
+				result = vmaMapMemory(vma, vmaA, &pMappedMemory);
+				if (result != VK_SUCCESS)
+				{
+					break;
+				}
+			}
 			//result = vkCreateBuffer(device, &bufferCreateInfo, nullptr, &buffer);
 			//BV_ASSERT(result == VK_SUCCESS, "Failed to create buffer");
 			//if (result != VK_SUCCESS)
@@ -533,7 +537,7 @@ namespace VkHelpers
 			//	break;
 			//}
 
-			pMappedMemory = vmaAI.pMappedData;
+			//pMappedMemory = vmaAI.pMappedData;
 
 			if (bufferCreateInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
 			{
@@ -1009,7 +1013,13 @@ namespace VkHelpers
 			}
 		}
 
-		auto getVkFlagsFn = [&renderPassDesc](u32 subpassIndex, VkAccessFlags2& accessFlags, VkPipelineStageFlags2& stageFlags)
+		auto pInfo = pDevice->GetDeviceInfo();
+		bool geom = pInfo->m_DeviceFeatures.features.geometryShader;
+		bool tess = pInfo->m_DeviceFeatures.features.tessellationShader;
+		bool mesh = pInfo->m_ExtendedFeatures.meshShaderFeatures.meshShader;
+		bool ray = pInfo->m_ExtendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline;
+		bool rayCopy = pInfo->m_ExtendedFeatures.rayTracingMaintenance1Features.rayTracingMaintenance1;
+		auto getVkFlagsFn = [&renderPassDesc, geom, tess, mesh, ray, rayCopy](u32 subpassIndex, VkAccessFlags2& accessFlags, VkPipelineStageFlags2& stageFlags)
 			{
 				auto& subpass = renderPassDesc.m_Subpasses[subpassIndex];
 				if (subpass.m_ColorAttachments.Size() > 0)
@@ -1028,7 +1038,7 @@ namespace VkHelpers
 				{
 					accessFlags |= VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
 				}
-				stageFlags |= GetVkPipelineStageFlags(accessFlags);
+				stageFlags |= GetVkPipelineStageFlags(accessFlags, geom, tess, mesh, ray, rayCopy);
 				if (accessFlags & VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT)
 				{
 					stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
@@ -1288,7 +1298,7 @@ namespace VkHelpers
 	}
 
 
-	VkObj<VkPipeline> CreateGraphicsPipeline(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache)
+	VkObj<VkGraphicsPipelineObj> CreateGraphicsPipeline(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipelineCache pipelineCache)
 	{
 		BvFixedVector<VkVertexInputAttributeDescription, kMaxVertexBindings> attributeDescs;
 		BvFixedVector<VkVertexInputBindingDescription, kMaxVertexBindings> bindingDescs;
@@ -1581,7 +1591,9 @@ namespace VkHelpers
 			DestroyDeviceObject(pDevice->GetHandle(), shaderStages[i].module);
 		}
 
-		return std::make_pair(result, pipeline);
+		VkGraphicsPipelineObj obj{ pipeline, hasMeshShaders };
+
+		return std::make_pair(result, obj);
 	}
 
 
@@ -1713,7 +1725,7 @@ namespace VkHelpers
 			bool geometryShader = pDeviceInfo->m_DeviceFeatures.features.geometryShader;
 			bool tessellationShader = pDeviceInfo->m_DeviceFeatures.features.tessellationShader;
 			bool meshShader = pDeviceInfo->m_ExtendedFeatures.meshShaderFeatures.meshShaderQueries;
-			qpCI.pipelineStatistics = GetVkQueryPipelineFlags(geometryShader, tessellationShader, meshPrimitivesPool && meshShader);
+			qpCI.pipelineStatistics = psoFlags = GetVkQueryPipelineFlags(geometryShader, tessellationShader, meshPrimitivesPool && meshShader);
 		}
 
 		auto device = pDevice->GetHandle();
@@ -1929,15 +1941,15 @@ namespace VkHelpers
 			return sbtObj;
 		}
 
-		u64 handleSizeAligned = RoundToNearestPowerOf2(handleSize, groupHandleAlignment);
-		sbt.m_Regions[0].stride = RoundToNearestPowerOf2(handleSizeAligned, baseGroupAlignment);
+		u64 handleSizeAligned = RoundToNearestMultipleP2(handleSize, groupHandleAlignment);
+		sbt.m_Regions[0].stride = RoundToNearestMultipleP2(handleSizeAligned, baseGroupAlignment);
 		sbt.m_Regions[0].size = sbt.m_Regions[0].stride;
 		sbt.m_Regions[1].stride = handleSizeAligned;
-		sbt.m_Regions[1].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[1].Size(), baseGroupAlignment);
+		sbt.m_Regions[1].size = RoundToNearestMultipleP2(handleSizeAligned * groupIndices[1].Size(), baseGroupAlignment);
 		sbt.m_Regions[2].stride = handleSizeAligned;
-		sbt.m_Regions[2].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[2].Size(), baseGroupAlignment);
+		sbt.m_Regions[2].size = RoundToNearestMultipleP2(handleSizeAligned * groupIndices[2].Size(), baseGroupAlignment);
 		sbt.m_Regions[3].stride = handleSizeAligned;
-		sbt.m_Regions[3].size = RoundToNearestPowerOf2(handleSizeAligned * groupIndices[3].Size(), baseGroupAlignment);
+		sbt.m_Regions[3].size = RoundToNearestMultipleP2(handleSizeAligned * groupIndices[3].Size(), baseGroupAlignment);
 
 		BufferDesc bufferDesc;
 		bufferDesc.m_UsageFlags = BufferUsage::kRayTracing;
@@ -2013,6 +2025,7 @@ namespace VkHelpers
 		pContext->GetCurrentCommandBuffer()->CopyBuffer(stagingBuffer.second.m_Buffer, buffer, { 0, 0, initData.m_Size });
 		pContext->ExecuteAndWait();
 
+		vmaUnmapMemory(pDevice->GetAllocator(), stagingBuffer.second.m_Memory);
 		DestroyDeviceObject(*pDevice, stagingBuffer.second.m_Buffer, pDevice->GetAllocator(), stagingBuffer.second.m_Memory);
 	}
 
@@ -2026,6 +2039,13 @@ namespace VkHelpers
 			return;
 		}
 		
+		auto pInfo = pDevice->GetDeviceInfo();
+		bool geom = pInfo->m_DeviceFeatures.features.geometryShader;
+		bool tess = pInfo->m_DeviceFeatures.features.tessellationShader;
+		bool mesh = pInfo->m_ExtendedFeatures.meshShaderFeatures.meshShader;
+		bool ray = pInfo->m_ExtendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline;
+		bool rayCopy = pInfo->m_ExtendedFeatures.rayTracingMaintenance1Features.rayTracingMaintenance1;
+
 		ResourceState currState = initialState;
 
 		VkImageMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
@@ -2088,11 +2108,11 @@ namespace VkHelpers
 
 			barrier.oldLayout = GetVkImageLayout(initialState);
 			barrier.srcAccessMask = GetVkAccessFlags(initialState);
-			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask);
+			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, geom, tess, mesh, ray, rayCopy);
 
 			barrier.newLayout = GetVkImageLayout(currState);
 			barrier.dstAccessMask = GetVkAccessFlags(currState);
-			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask);
+			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, geom, tess, mesh, ray, rayCopy);
 
 			auto pCB = pContext->GetCurrentCommandBuffer();
 			pCB->ResourceBarrier(0, nullptr, 1, &barrier, 0, nullptr);
@@ -2103,11 +2123,11 @@ namespace VkHelpers
 		{
 			barrier.oldLayout = GetVkImageLayout(currState);
 			barrier.srcAccessMask = GetVkAccessFlags(currState);
-			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask);
+			barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, geom, tess, mesh, ray, rayCopy);
 
 			barrier.newLayout = GetVkImageLayout(initData.m_ResourceState);
 			barrier.dstAccessMask = GetVkAccessFlags(initData.m_ResourceState);
-			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask);
+			barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, geom, tess, mesh, ray, rayCopy);
 
 			pContext->GetCurrentCommandBuffer()->ResourceBarrier(0, nullptr, 1, &barrier, 0, nullptr);
 		}
@@ -2116,6 +2136,7 @@ namespace VkHelpers
 
 		if (stagingBuffer.second.m_Buffer)
 		{
+			vmaUnmapMemory(pDevice->GetAllocator(), stagingBuffer.second.m_Memory);
 			DestroyDeviceObject(*pDevice, stagingBuffer.second.m_Buffer, pDevice->GetAllocator(), stagingBuffer.second.m_Memory);
 		}
 	}

@@ -156,7 +156,6 @@ private:
 
 	BvVector<D3D12_RESOURCE_BARRIER> m_PreRenderBarriers;
 	BvVector<D3D12_RESOURCE_BARRIER> m_PostRenderBarriers;
-	BvVector<D3D12_RESOURCE_BARRIER> m_EndCommandBarriers;
 	struct ResolveData
 	{
 		ID3D12Resource* m_pSrc;

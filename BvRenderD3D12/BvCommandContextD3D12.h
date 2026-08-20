@@ -15,6 +15,7 @@ class BvBufferD3D12;
 class BvTextureD3D12;
 class BvSwapChainD3D12;
 class BvGPUFenceD3D12;
+class BvCommandContextD3D12;
 
 
 struct DescriptorData
@@ -39,6 +40,7 @@ struct ContextDataD3D12
 	BvRobinMap<u64, BvVector<ActiveDescriptorData>> m_ActiveResources;
 	BvAdaptiveMutex m_DeletedResourceLock;
 	BvVector<D3D12_CPU_DESCRIPTOR_HANDLE> m_DeletedResourceHandles;
+	BvVector<D3D12_RESOURCE_BARRIER> m_DecayRTBarriers;
 	std::atomic<u32> m_DeletedResourceCounter{};
 };
 
@@ -46,7 +48,7 @@ struct ContextDataD3D12
 class BvFrameDataD3D12 final
 {
 public:
-	BvFrameDataD3D12(BvRenderDeviceD3D12* pDevice, ContextDataD3D12* pContextData, CommandType commandType, u32 frameIndex);
+	BvFrameDataD3D12(BvRenderDeviceD3D12* pDevice, BvCommandContextD3D12* pContext, ContextDataD3D12* pContextData, CommandType commandType, u32 frameIndex);
 	~BvFrameDataD3D12();
 
 	void Reset(bool newFrame = true);
@@ -62,6 +64,8 @@ public:
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
 	BV_INLINE u64 UpdateFenceValue() { return ++m_FenceValue; }
 	BV_INLINE u64 GetFenceValue() const { return m_FenceValue; }
+	BV_INLINE auto GetCommandContext() const { return m_pContext; }
+	BV_INLINE auto& GetDecayRTBarriers() { return m_pContextData->m_DecayRTBarriers; }
 
 private:
 	struct PostBuildBuffer
@@ -79,6 +83,7 @@ private:
 	BvVector<PostBuildBuffer> m_ASPostBuildBuffers;
 	u64 m_FenceValue = 0;
 	u32 m_FrameIndex;
+	BvCommandContextD3D12* m_pContext = nullptr;
 };
 
 

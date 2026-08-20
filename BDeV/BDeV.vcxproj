@@ -109,6 +109,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BDeV.h" />
+    <ClInclude Include="Core\Container\BvFlatHashMap.h" />
+    <ClInclude Include="Core\Container\BvFlatMap.h" />
     <ClInclude Include="Core\Math\DirectXMath\DirectXCollision.h" />
     <ClInclude Include="Core\Math\DirectXMath\DirectXColors.h" />
     <ClInclude Include="Core\Math\DirectXMath\DirectXMath.h" />

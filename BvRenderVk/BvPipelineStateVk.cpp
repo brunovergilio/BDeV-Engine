@@ -9,8 +9,8 @@
 #include <string_view>
 
 
-BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline)
-	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_Pipeline(pipeline)
+BvGraphicsPipelineStateVk::BvGraphicsPipelineStateVk(BvRenderDeviceVk* pDevice, const GraphicsPipelineStateDesc& pipelineStateDesc, VkPipeline pipeline, bool hasMeshShaders)
+	: m_PipelineStateDesc(pipelineStateDesc), m_pDevice(pDevice), m_Pipeline(pipeline), m_HasMeshShaders(hasMeshShaders)
 {
 }
 

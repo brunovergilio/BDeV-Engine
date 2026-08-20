@@ -23,17 +23,17 @@ void MakeFreeList(void* pFreeList, void* pEnd, size_t elementSize)
 // Pool Allocator
 // ===============================================
 BvPoolAllocator::BvPoolAllocator(void* pStart, void* pEnd, size_t elementSize, size_t alignment)
-	: m_pFreeList(BvMemory::AlignMemory(pStart, alignment)), m_ElementSize(std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment)))
+	: m_pFreeList(BvMemory::AlignMemory(pStart, alignment)), m_ElementSize(std::max(kPointerSize, RoundToNearestMultipleP2(elementSize, alignment)))
 {
 	MakeFreeList(m_pFreeList, pEnd, m_ElementSize);
 }
 
 
 BvPoolAllocator::BvPoolAllocator(size_t size, size_t elementSize, size_t alignment)
-	: m_pBaseAddress(BvMemory::Allocate(RoundToNearestPowerOf2(size, alignment), alignment)), m_pFreeList(m_pBaseAddress),
-	m_ElementSize(std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment))), m_HasOwnMemory(true)
+	: m_pBaseAddress(BvMemory::Allocate(RoundToNearestMultipleP2(size, alignment), alignment)), m_pFreeList(m_pBaseAddress),
+	m_ElementSize(std::max(kPointerSize, RoundToNearestMultipleP2(elementSize, alignment))), m_HasOwnMemory(true)
 {
-	MakeFreeList(m_pFreeList, reinterpret_cast<char*>(m_pFreeList) + RoundToNearestPowerOf2(size, alignment), m_ElementSize);
+	MakeFreeList(m_pFreeList, reinterpret_cast<char*>(m_pFreeList) + RoundToNearestMultipleP2(size, alignment), m_ElementSize);
 }
 
 
@@ -50,7 +50,7 @@ void BvPoolAllocator::Set(void* pStart, void* pEnd, size_t elementSize, size_t a
 {
 	BV_ASSERT(m_pFreeList == nullptr, "Memory already set");
 	m_pFreeList = BvMemory::AlignMemory(pStart, alignment);
-	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	m_ElementSize = std::max(kPointerSize, RoundToNearestMultipleP2(elementSize, alignment));
 	MakeFreeList(m_pFreeList, pEnd, m_ElementSize);
 }
 
@@ -58,11 +58,11 @@ void BvPoolAllocator::Set(void* pStart, void* pEnd, size_t elementSize, size_t a
 void BvPoolAllocator::Set(size_t size, size_t elementSize, size_t alignment)
 {
 	BV_ASSERT(m_pFreeList == nullptr, "Memory already set");
-	m_pBaseAddress = BvMemory::Allocate(RoundToNearestPowerOf2(size, alignment), alignment);
+	m_pBaseAddress = BvMemory::Allocate(RoundToNearestMultipleP2(size, alignment), alignment);
 	m_pFreeList = m_pBaseAddress;
-	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	m_ElementSize = std::max(kPointerSize, RoundToNearestMultipleP2(elementSize, alignment));
 	m_HasOwnMemory = true;
-	MakeFreeList(m_pFreeList, reinterpret_cast<char*>(m_pFreeList) + RoundToNearestPowerOf2(size, alignment), m_ElementSize);
+	MakeFreeList(m_pFreeList, reinterpret_cast<char*>(m_pFreeList) + RoundToNearestMultipleP2(size, alignment), m_ElementSize);
 }
 
 
@@ -100,7 +100,7 @@ void BvPoolAllocator::Free(void* pMem)
 BvGrowablePoolAllocator::BvGrowablePoolAllocator(void* pStart, void* pEnd, size_t growSize, size_t elementSize, size_t alignment)
 {
 	auto& systemInfo = BvSystem::GetSystemInfo();
-	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	m_GrowSize = growSize > 0 ? RoundToNearestMultipleP2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
 	size_t maxSize = size_t(pEnd) - size_t(pStart);
 
 	auto numPages = maxSize / systemInfo.m_PageSize;
@@ -108,10 +108,10 @@ BvGrowablePoolAllocator::BvGrowablePoolAllocator(void* pStart, void* pEnd, size_
 
 	m_pVirtualBase = reinterpret_cast<char*>(pStart);
 	BvVirtualMemory::Commit(m_pVirtualBase, m_GrowSize);
-	m_pVirtualStart = reinterpret_cast<char*>(RoundToNearestPowerOf2(size_t(m_pVirtualBase) + metadataSize, alignment));
+	m_pVirtualStart = reinterpret_cast<char*>(RoundToNearestMultipleP2(size_t(m_pVirtualBase) + metadataSize, alignment));
 	m_pVirtualEnd = m_pVirtualBase + maxSize;
 	m_pCurrent = m_pVirtualBase + m_GrowSize;
-	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	m_ElementSize = std::max(kPointerSize, RoundToNearestMultipleP2(elementSize, alignment));
 	MakeFreeList(m_pVirtualStart, m_pCurrent, m_ElementSize);
 
 	// First page will always be allocated since we need to store metadata information
@@ -125,18 +125,18 @@ BvGrowablePoolAllocator::BvGrowablePoolAllocator(size_t maxSize, size_t growSize
 	: m_HasOwnMemory(true)
 {
 	auto& systemInfo = BvSystem::GetSystemInfo();
-	m_GrowSize = growSize > 0 ? RoundToNearestPowerOf2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
-	maxSize = RoundToNearestPowerOf2(maxSize, m_GrowSize);
+	m_GrowSize = growSize > 0 ? RoundToNearestMultipleP2(growSize, systemInfo.m_PageSize) : systemInfo.m_PageSize;
+	maxSize = RoundToNearestMultipleP2(maxSize, m_GrowSize);
 
 	auto numPages = maxSize / systemInfo.m_PageSize;
 	auto metadataSize = sizeof(u32) * numPages;
 
 	m_pVirtualBase = reinterpret_cast<char*>(BvVirtualMemory::Reserve(maxSize));
 	BvVirtualMemory::Commit(m_pVirtualBase, m_GrowSize);
-	m_pVirtualStart = reinterpret_cast<char*>(RoundToNearestPowerOf2(size_t(m_pVirtualBase) + metadataSize, alignment));
+	m_pVirtualStart = reinterpret_cast<char*>(RoundToNearestMultipleP2(size_t(m_pVirtualBase) + metadataSize, alignment));
 	m_pVirtualEnd = m_pVirtualBase + maxSize;
 	m_pCurrent = m_pVirtualBase + m_GrowSize;
-	m_ElementSize = std::max(kPointerSize, RoundToNearestPowerOf2(elementSize, alignment));
+	m_ElementSize = std::max(kPointerSize, RoundToNearestMultipleP2(elementSize, alignment));
 	MakeFreeList(m_pVirtualStart, m_pCurrent, m_ElementSize);
 
 	// First page will always be allocated since we need to store metadata information

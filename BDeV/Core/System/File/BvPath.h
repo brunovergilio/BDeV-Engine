@@ -32,6 +32,10 @@ public:
 	bool IsFile() const;
 	bool IsDirectory() const;
 
+	bool HasName(const char* pName, bool ignoreCase = true) const;
+	bool HasNameAndExtension(const char* pNameWithExt, bool ignoreCase = true) const;
+	bool HasExtension(const char* pExt, bool ignoreCase = true) const;
+
 	BvString GetName() const;
 	BvString GetNameAndExtension() const;
 	BvString GetExtension() const;

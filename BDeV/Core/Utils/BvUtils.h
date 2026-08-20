@@ -38,7 +38,7 @@ constexpr u32 ArraySize(Type(&)[N])
 
 
 template<typename Type1, typename Type2>
-constexpr std::conditional_t<(sizeof(Type1) >= sizeof(Type2)), Type1, Type2> RoundToNearestPowerOf2(Type1 value, Type2 multiple)
+constexpr std::conditional_t<(sizeof(Type1) >= sizeof(Type2)), Type1, Type2> RoundToNearestMultipleP2(Type1 value, Type2 multiple)
 {
 	const std::conditional_t<(sizeof(Type1) >= sizeof(Type2)), Type1, Type2> mask = multiple - 1;
 	return (value + mask) & (~mask);

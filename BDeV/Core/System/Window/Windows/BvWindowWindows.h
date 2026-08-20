@@ -35,6 +35,8 @@ public:
 	bool HasFocus() const;
 
 	BV_INLINE std::pair<u32, u32> GetSize() const { return std::make_pair(m_WindowDesc.m_Width, m_WindowDesc.m_Height); }
+	BV_INLINE std::pair<i32, i32> GetSignedSize() const { return std::make_pair(i32(m_WindowDesc.m_Width), i32(m_WindowDesc.m_Height)); }
+	BV_INLINE std::pair<i32, i32> GetSizeF() const { return std::make_pair(f32(i32(m_WindowDesc.m_Width)), f32(i32(m_WindowDesc.m_Height))); }
 	BV_INLINE std::pair<i32, i32> GetPosition() const { return std::make_pair(m_WindowDesc.m_X, m_WindowDesc.m_Y); }
 	BV_INLINE i32 GetX() const { return m_WindowDesc.m_X; }
 	BV_INLINE i32 GetY() const { return m_WindowDesc.m_Y; }

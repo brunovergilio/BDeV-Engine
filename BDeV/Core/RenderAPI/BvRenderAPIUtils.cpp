@@ -14,7 +14,7 @@ u32 BvRenderUtils::CalcRowPitch(Format format, u32 width)
 	}
 	else
 	{
-		numUnits = RoundToNearestPowerOf2(width, wAlign);
+		numUnits = RoundToNearestMultipleP2(width, wAlign);
 	}
 
 	return (fi.m_BitsPerPixel * numUnits) >> 3;
@@ -172,13 +172,13 @@ u64 BvRenderUtils::GetCopyableFootprints(const TextureDesc& textureDesc, u32 pla
 			break;
 		}
 
-		totalBytes = RoundToNearestPowerOf2(totalBytes, placementAlignment);
+		totalBytes = RoundToNearestMultipleP2(totalBytes, placementAlignment);
 		u32 mipLevel, arraySlice, planeSlice;
 		DecomposeSubresourceIndex(subresourceIndex, textureDesc.m_MipLevels, textureDesc.m_ArraySize, mipLevel, arraySlice, planeSlice);
 
-		u32 width = std::max(RoundToNearestPowerOf2(textureDesc.m_Size.m_Width >> mipLevel, wAlign), 1u);
-		u32 height = std::max(RoundToNearestPowerOf2(textureDesc.m_Size.m_Height >> mipLevel, hAlign), 1u);
-		u32 depth = std::max(RoundToNearestPowerOf2(textureDesc.m_Size.m_Depth >> mipLevel, dAlign), 1u);
+		u32 width = std::max(RoundToNearestMultipleP2(textureDesc.m_Size.m_Width >> mipLevel, wAlign), 1u);
+		u32 height = std::max(RoundToNearestMultipleP2(textureDesc.m_Size.m_Height >> mipLevel, hAlign), 1u);
+		u32 depth = std::max(RoundToNearestMultipleP2(textureDesc.m_Size.m_Depth >> mipLevel, dAlign), 1u);
 
 		Format planeFormat;
 		u32 minPlanePitchWidth, planeWidth, planeHeight;
@@ -196,7 +196,7 @@ u64 BvRenderUtils::GetCopyableFootprints(const TextureDesc& textureDesc, u32 pla
 		u32 numRows = fi.m_IsPlanar ? planeHeight : (height / hAlign);
 
 		footprint.m_Subresource.m_NumRows = numRows;
-		footprint.m_Subresource.m_RowPitch = RoundToNearestPowerOf2(minPlaneRowPitch, fi.m_IsPlanar ? placementAlignment : pitchAlignment);
+		footprint.m_Subresource.m_RowPitch = RoundToNearestMultipleP2(minPlaneRowPitch, fi.m_IsPlanar ? placementAlignment : pitchAlignment);
 		footprint.m_Subresource.m_RowSize = CalcRowPitch(planeFormat, planeWidth);
 		footprint.m_Subresource.m_SlicePitch = footprint.m_Subresource.m_NumRows * footprint.m_Subresource.m_RowPitch;
 		footprint.m_Offset = totalBytes + baseOffset;

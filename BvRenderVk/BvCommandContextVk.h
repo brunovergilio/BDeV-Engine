@@ -17,6 +17,7 @@ class BvBufferVk;
 class BvTextureVk;
 class BvSwapChainVk;
 class BvFramebufferManagerVk;
+class BvCommandContextVk;
 
 
 struct ContextDataVk
@@ -50,7 +51,7 @@ class BvFrameDataVk final
 	BV_NOCOPY(BvFrameDataVk);
 
 public:
-	BvFrameDataVk(BvRenderDeviceVk* pDevice, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData);
+	BvFrameDataVk(BvRenderDeviceVk* pDevice, BvCommandContextVk* pContext, u32 queueFamilyIndex, u32 frameIndex, ContextDataVk* pContextData);
 	~BvFrameDataVk();
 
 	void Reset(bool newFrame = true);
@@ -70,6 +71,7 @@ public:
 	BV_INLINE u32 GetFrameIndex() const { return m_FrameIndex; }
 	BV_INLINE u64 UpdateFenceValue() { return ++m_FenceValue; }
 	BV_INLINE u64 GetFenceValue() const { return m_FenceValue; }
+	BV_INLINE BvCommandContextVk* GetCommandContext() const { return m_pContext; }
 
 private:
 	BvRenderDeviceVk* m_pDevice = nullptr;
@@ -80,8 +82,9 @@ private:
 	BvRCRef<BvGPUFenceVk> m_pFence;
 	u64 m_FenceValue = 0;
 	//std::pair<u64, u64> m_SignaValueIndex;
-	u32 m_FrameIndex;
+	u32 m_FrameIndex = 0;
 	BvVector<VkQueryPool> m_RayTracingQueryPools;
+	BvCommandContextVk* m_pContext;
 };
 
 

@@ -95,11 +95,9 @@ void Offscreen::RenderOffscreen()
 {
 	auto width = m_pWindow->GetWidth();
 	auto height = m_pWindow->GetHeight();
-	RenderTargetDesc targets[] =
-	{
-		RenderTargetDesc::AsRenderTarget(m_ColorView, { 0.1f, 0.1f, 0.3f }),
-		RenderTargetDesc::AsDepthStencil(m_DepthView)
-	};
+	RenderTargetDesc targets[2];
+	targets[0].SetColorView(m_ColorView, ResourceState::kCommon, ResourceState::kPixelShaderResource).SetClearValues({ 0.1f, 0.1f, 0.3f });
+	targets[1].SetDepthStencilView(m_DepthView, ResourceState::kCommon, ResourceState::kDepthStencilRead).SetClearValues({ 1.0f, 0 });
 
 	m_Context->SetRenderTargets(2, targets);
 	m_Context->SetGraphicsPipeline(m_PSOOffscreen);
@@ -118,7 +116,8 @@ void Offscreen::OnRender()
 	f32 height = m_pWindow->GetHeight();
 	m_ScreenSizeAndMid.y = m_ScreenMid;
 
-	RenderTargetDesc mainTarget = RenderTargetDesc::AsSwapChain(m_SwapChain->GetCurrentTextureView(), { 0.1f, 0.1f, 0.3f });
+	RenderTargetDesc mainTarget;
+	mainTarget.SetColorView(m_SwapChain->GetCurrentTextureView(), ResourceState::kCommon, ResourceState::kPresent).SetClearValues({ 0.1f, 0.1f, 0.3f });
 
 	m_Context->NewCommandList();
 	RenderOffscreen();

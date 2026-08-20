@@ -27,7 +27,7 @@ PSInput main(VSInput input)
 {
 	PSInput result;
 
-	result.position = mul(wvp, float4(input.inPos, 0.0f, 1.0f));
+	result.position = mul(float4(input.inPos, 0.0f, 1.0f), wvp);
 	result.color = input.inColor;
 	result.uv = input.inUV;
 

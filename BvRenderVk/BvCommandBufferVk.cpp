@@ -25,7 +25,7 @@
 
 BvCommandBufferVk::BvCommandBufferVk(BvRenderDeviceVk* pDevice, VkCommandBuffer commandBuffer, BvFrameDataVk* pFrameData)
 	: m_pDevice(pDevice), m_CommandBuffer(commandBuffer), m_pFrameData(pFrameData), m_HasDebugUtils(pDevice->GetDeviceInfo()->m_HasDebugUtils),
-	m_PushDescriptor(pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor), m_RayTracing(pDevice->GetDeviceInfo()->m_FeatureFlags.rayTracingPipeline),
+	m_PushDescriptor(pDevice->GetDeviceInfo()->m_FeatureFlags.pushDescriptor),
 	m_ShadingRateTexelSizes(pDevice->GetDeviceInfo()->m_ExtendedProperties.fragmentShadingRateProps.maxFragmentShadingRateAttachmentTexelSize)
 {
 }
@@ -190,8 +190,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 				barrier.srcAccessMask = GetVkAccessFlags(stateBefore);
 				barrier.dstAccessMask = GetVkAccessFlags(state);
 
-				barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
-				barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
+				barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, false, false, false, false, false);
+				barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, false, false, false, false, false);
 
 				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -213,8 +213,8 @@ void BvCommandBufferVk::SetRenderTargets(u32 renderTargetCount, const RenderTarg
 				barrier.srcAccessMask = GetVkAccessFlags(state);
 				barrier.dstAccessMask = GetVkAccessFlags(stateAfter);
 
-				barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing);
-				barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing);
+				barrier.srcStageMask = GetVkPipelineStageFlags(barrier.srcAccessMask, false, false, false, false, false);
+				barrier.dstStageMask = GetVkPipelineStageFlags(barrier.dstAccessMask, false, false, false, false, false);
 
 				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -1041,23 +1041,92 @@ void BvCommandBufferVk::ResourceBarrier(u32 bufferBarrierCount, const VkBufferMe
 
 void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierDesc* pBarriers)
 {
+	auto pInfo = m_pDevice->GetDeviceInfo();
+	bool geom = pInfo->m_DeviceFeatures.features.geometryShader;
+	bool tess = pInfo->m_DeviceFeatures.features.tessellationShader;
+	bool mesh = pInfo->m_ExtendedFeatures.meshShaderFeatures.meshShader;
+	bool ray = pInfo->m_ExtendedFeatures.rayTracingPipelineFeatures.rayTracingPipeline;
+	bool rayCopy = pInfo->m_ExtendedFeatures.rayTracingMaintenance1Features.rayTracingMaintenance1;
+
 	VkDependencyFlags dependencyFlags = 0;
 	for (auto i = 0u; i < barrierCount; i++)
 	{
-		bool isResourceOwnershipTransfer = pBarriers[i].m_pSrcContext && pBarriers[i].m_pDstContext;
+		bool isBufferWithRayTracingUsage = pBarriers[i].m_pBuffer ? EHasFlag(pBarriers[i].m_pBuffer->GetDesc().m_UsageFlags, BufferUsage::kRayTracing) : false;
+
+		VkAccessFlags2 srcAccess = 0, dstAccess = 0;
+		VkPipelineStageFlags2 srcStage = 0, dstStage = 0;
+		if (pBarriers[i].m_SrcState == ResourceState::kCommon)
+		{
+			srcAccess = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+			srcStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		}
+		else
+		{
+			srcAccess = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
+				GetVkAccessFlags(pBarriers[i].m_SrcState, ray && isBufferWithRayTracingUsage) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
+			srcStage = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
+				GetVkPipelineStageFlags(srcAccess, geom, tess, mesh, ray, rayCopy) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
+		}
+
+		if (pBarriers[i].m_DstState == ResourceState::kCommon)
+		{
+			dstAccess = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+			dstStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+		}
+		else
+		{
+			dstAccess = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
+				GetVkAccessFlags(pBarriers[i].m_DstState, ray && isBufferWithRayTracingUsage) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
+			dstStage = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
+				GetVkPipelineStageFlags(dstAccess, geom, tess, mesh, ray, rayCopy) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+		}
+
+		u32 srcFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		u32 dstFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+		if (pBarriers[i].m_pOwnershipContext)
+		{
+			BV_ASSERT(pBarriers[i].m_Type != ResourceBarrierDesc::Type::kMemory, "Invalid barrier type");
+
+			auto pThisContext = m_pFrameData->GetCommandContext();
+			auto pOtherContext = TO_VK(pBarriers[i].m_pOwnershipContext);
+
+			if (pBarriers[i].m_AcquireOwnership)
+			{
+				srcFamilyIndex = pOtherContext->GetGroupIndex();
+				dstFamilyIndex = pThisContext->GetGroupIndex();
+			}
+			else
+			{
+				srcFamilyIndex = pThisContext->GetGroupIndex();
+				dstFamilyIndex = pOtherContext->GetGroupIndex();
+			}
+
+			if (srcFamilyIndex == dstFamilyIndex)
+			{
+				// If the queue families are the same, only apply the barrier when releasing the ownership
+				if (pBarriers[i].m_AcquireOwnership)
+				{
+					continue;
+				}
+
+				srcFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				dstFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			}
+			else
+			{
+				dependencyFlags |= VK_DEPENDENCY_QUEUE_FAMILY_OWNERSHIP_TRANSFER_USE_ALL_STAGES_BIT_KHR;
+			}
+		}
+
 		if (pBarriers[i].m_Type == ResourceBarrierDesc::Type::kMemory && pBarriers[i].m_pBuffer == nullptr && pBarriers[i].m_pTexture == nullptr)
 		{
 			auto& barrier = m_MemoryBarriers.EmplaceBack(VkMemoryBarrier2{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 });
 			//barrier.pNext = nullptr;
-			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
-
-			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+			barrier.srcAccessMask = srcAccess;
+			barrier.srcStageMask = srcStage;
+			barrier.dstAccessMask = dstAccess;
+			barrier.dstStageMask = dstStage;
 		}
 		else if (pBarriers[i].m_pBuffer)
 		{
@@ -1068,31 +1137,13 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.size = VK_WHOLE_SIZE;
 			//barrier.offset = 0;
 
-			if (!isResourceOwnershipTransfer)
-			{
-				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			}
-			else
-			{
-				auto pSrcContext = TO_VK(pBarriers[i].m_pSrcContext);
-				auto pDstContext = TO_VK(pBarriers[i].m_pDstContext);
-				BV_ASSERT(pSrcContext->GetGroupIndex() != pDstContext->GetGroupIndex(), "Command Types must be different for acquire/release transitions");
-				barrier.srcQueueFamilyIndex = pSrcContext->GetGroupIndex();
-				barrier.dstQueueFamilyIndex = pDstContext->GetGroupIndex();
+			barrier.srcAccessMask = srcAccess;
+			barrier.srcStageMask = srcStage;
+			barrier.dstAccessMask = dstAccess;
+			barrier.dstStageMask = dstStage;
 
-				dependencyFlags |= VK_DEPENDENCY_QUEUE_FAMILY_OWNERSHIP_TRANSFER_USE_ALL_STAGES_BIT_KHR;
-			}
-
-			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
-
-			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+			barrier.srcQueueFamilyIndex = srcFamilyIndex;
+			barrier.dstQueueFamilyIndex = dstFamilyIndex;
 		}
 		else if (pBarriers[i].m_pTexture)
 		{
@@ -1105,34 +1156,16 @@ void BvCommandBufferVk::ResourceBarrier(u32 barrierCount, const ResourceBarrierD
 			barrier.subresourceRange.baseArrayLayer = pBarriers[i].m_Subresource.firstLayer;
 			barrier.subresourceRange.layerCount = pBarriers[i].m_Subresource.layerCount;
 
-			if (!isResourceOwnershipTransfer)
-			{
-				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			}
-			else
-			{
-				auto pSrcContext = TO_VK(pBarriers[i].m_pSrcContext);
-				auto pDstContext = TO_VK(pBarriers[i].m_pDstContext);
-				BV_ASSERT(pSrcContext->GetGroupIndex() != pDstContext->GetGroupIndex(), "Command Types must be different for acquire/release transitions");
-				barrier.srcQueueFamilyIndex = pSrcContext->GetGroupIndex();
-				barrier.dstQueueFamilyIndex = pDstContext->GetGroupIndex();
-
-				dependencyFlags |= VK_DEPENDENCY_QUEUE_FAMILY_OWNERSHIP_TRANSFER_USE_ALL_STAGES_BIT_KHR;
-			}
+			barrier.srcAccessMask = srcAccess;
+			barrier.srcStageMask = srcStage;
+			barrier.dstAccessMask = dstAccess;
+			barrier.dstStageMask = dstStage;
 
 			barrier.oldLayout = GetVkImageLayout(pBarriers[i].m_SrcState);
 			barrier.newLayout = GetVkImageLayout(pBarriers[i].m_DstState);
 
-			barrier.srcAccessMask = pBarriers[i].m_SrcAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_SrcState) : GetVkAccessFlags(pBarriers[i].m_SrcAccess);
-			barrier.srcStageMask = pBarriers[i].m_SrcPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.srcAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_SrcPipelineStage);
-
-			barrier.dstAccessMask = pBarriers[i].m_DstAccess == ResourceAccess::kAuto ?
-				GetVkAccessFlags(pBarriers[i].m_DstState) : GetVkAccessFlags(pBarriers[i].m_DstAccess);
-			barrier.dstStageMask = pBarriers[i].m_DstPipelineStage == PipelineStage::kAuto ?
-				GetVkPipelineStageFlags(barrier.dstAccessMask, m_RayTracing) : GetVkPipelineStageFlags(pBarriers[i].m_DstPipelineStage);
+			barrier.srcQueueFamilyIndex = srcFamilyIndex;
+			barrier.dstQueueFamilyIndex = dstFamilyIndex;
 		}
 	}
 
@@ -1173,6 +1206,8 @@ void BvCommandBufferVk::SetPredication(const IBvBuffer* pBuffer, u64 offset, Pre
 
 void BvCommandBufferVk::ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex, u32 queryCount)
 {
+	ResetRenderTargets();
+
 	auto pQueryHeapVk = TO_VK(pQueryHeap);
 	vkCmdResetQueryPool(m_CommandBuffer, pQueryHeapVk->GetHandle(), startIndex, queryCount);
 	if (pQueryHeapVk->GetDesc().m_Type == QueryType::kMeshPipelineStatistics)
@@ -1184,6 +1219,8 @@ void BvCommandBufferVk::ResetQueryHeap(IBvQueryHeap* pQueryHeap, u32 startIndex,
 
 void BvCommandBufferVk::BeginQuery(IBvQueryHeap* pQueryHeap, u32 index)
 {
+	ResetRenderTargets();
+
 	auto queryType = pQueryHeap->GetDesc().m_Type;
 	if (queryType == QueryType::kTimestamp)
 	{
@@ -1400,10 +1437,10 @@ void BvCommandBufferVk::BuildRayTracingAccelerationStructures(u32 count, const R
 
 		rangeInfos.PushBack(ranges.Data());
 
+		asHandles.PushBack(buildInfo.dstAccelerationStructure);
+
 		if (pPostBuildDesc && count == 1)
 		{
-			asHandles.PushBack(buildInfo.dstAccelerationStructure);
-
 			bufferBarrier.buffer = pAS->GetBuffer();
 			bufferBarrier.size = VK_WHOLE_SIZE;
 			bufferBarrier.srcAccessMask = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
@@ -1417,7 +1454,7 @@ void BvCommandBufferVk::BuildRayTracingAccelerationStructures(u32 count, const R
 
 	if (pPostBuildDesc)
 	{
-		if (asHandles.Size() == 1)
+		if (count == 1)
 		{
 			ResourceBarrier(1, &bufferBarrier, 0, nullptr, 0, nullptr);
 		}
@@ -1462,6 +1499,8 @@ void BvCommandBufferVk::EmitASPostBuild(u32 count, IBvAccelerationStructure* con
 
 void BvCommandBufferVk::EmitASPostBuild(u32 count, VkAccelerationStructureKHR* pAS, VkQueryPool queryPool, VkQueryType queryType, VkBuffer buffer, u64 offset)
 {
+	vkCmdResetQueryPool(m_CommandBuffer, queryPool, 0, count);
+
 	vkCmdWriteAccelerationStructuresPropertiesKHR(m_CommandBuffer, count, pAS, queryType, queryPool, 0);
 
 	VkMemoryBarrier2 memBarrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
@@ -1474,7 +1513,7 @@ void BvCommandBufferVk::EmitASPostBuild(u32 count, VkAccelerationStructureKHR* p
 	ResourceBarrier(0, nullptr, 0, nullptr, 1, &memBarrier);
 
 	constexpr VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT;
-	vkCmdCopyQueryPoolResults(m_CommandBuffer, queryPool, 0, 1, buffer, offset, sizeof(u64), flags);
+	vkCmdCopyQueryPoolResults(m_CommandBuffer, queryPool, 0, count, buffer, offset, sizeof(u64), flags);
 
 	// Make it visible to host after queue executes this
 	VkBufferMemoryBarrier2 bufferBarrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };

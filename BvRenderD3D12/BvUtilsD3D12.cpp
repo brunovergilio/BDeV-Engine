@@ -124,11 +124,11 @@ namespace D3D12Utils
 		u64 alignedSize = bufferDesc.m_Size;
 		if (EHasFlag(bufferDesc.m_UsageFlags, BufferUsage::kConstantBuffer))
 		{
-			alignedSize = RoundToNearestPowerOf2(alignedSize, u64(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+			alignedSize = RoundToNearestMultipleP2(alignedSize, u64(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 		}
 		else if (EHasFlag(bufferDesc.m_UsageFlags, BufferUsage::kRayTracing))
 		{
-			alignedSize = RoundToNearestPowerOf2(alignedSize, u64(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT));
+			alignedSize = RoundToNearestMultipleP2(alignedSize, u64(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT));
 		}
 		const_cast<BufferDesc&>(bufferDesc).m_Size = alignedSize;
 
@@ -929,23 +929,23 @@ namespace D3D12Utils
 		auto& groupNames = pPSO->GetGroupNames();
 		auto& groupDescs = pPSO->GetDesc().m_ShaderGroupDescs;
 
-		constexpr u64 handleSizeAligned = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+		constexpr u64 handleSizeAligned = RoundToNearestMultipleP2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
 
 		//sbtRegions[0].StartAddress = 0;
-		sbtRegions[0].StrideInBytes = RoundToNearestPowerOf2(handleSizeAligned, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+		sbtRegions[0].StrideInBytes = RoundToNearestMultipleP2(handleSizeAligned, D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 		sbtRegions[0].SizeInBytes = sbtRegions[0].StrideInBytes;
 
 		//sbtRegions[1].StartAddress = 0;
 		sbtRegions[1].StrideInBytes = handleSizeAligned;
-		sbtRegions[1].SizeInBytes = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[1].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+		sbtRegions[1].SizeInBytes = RoundToNearestMultipleP2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[1].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
 		//sbtRegions[2].StartAddress = 0;
 		sbtRegions[2].StrideInBytes = handleSizeAligned;
-		sbtRegions[2].SizeInBytes = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[2].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+		sbtRegions[2].SizeInBytes = RoundToNearestMultipleP2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[2].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
 		//sbtRegions[3].StartAddress = 0;
 		sbtRegions[3].StrideInBytes = handleSizeAligned;
-		sbtRegions[3].SizeInBytes = RoundToNearestPowerOf2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[3].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
+		sbtRegions[3].SizeInBytes = RoundToNearestMultipleP2(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * groupIndexLists[3].Size(), D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
 
 		BufferDesc bufferDesc;
 		bufferDesc.m_Size = sbtRegions[0].StrideInBytes * groupIndexLists[0].Size() + sbtRegions[1].SizeInBytes + sbtRegions[2].SizeInBytes + sbtRegions[3].SizeInBytes;
