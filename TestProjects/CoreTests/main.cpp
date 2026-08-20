@@ -123,7 +123,7 @@ int main()
 	fm.Insert(testu);
 	fm.Erase(1);
 	auto res = fm.Emplace(1, 2);
-	printf("%u, %u", res.first->first, res.first->second);
+	//printf("%u, %u", res.first->first, res.first->second);
 	fm.InsertOrAssign(2, 24);
 	fm.InsertOrAssign(testu.first, testu.second);
 
@@ -143,6 +143,26 @@ int main()
 	hm.Erase(1);
 	hm.Emplace(3, 3);
 	hm.Emplace(4, 4);
+	hm.Insert(BvFlatHashMap<i32, i32>::value_type(5, 5));
+	const i32 ci = 6;
+	BvFlatHashMap<i32, i32>::value_type ipair(ci, 6);
+	hm.Insert(ipair);
+	hm.Insert(std::make_pair(5u, 5u));
+	hm.InsertOrAssign(5, 15);
+	hm.InsertOrAssign(ci, 15);
+	hm.InsertOrAssign(5u, 15);
+
+	BvFlatHashMap<i32, i32> hm2(hm);
+
+	for (const auto& it : hm)
+	{
+		printf("%d, %d\n", it.first, it.second);
+	}
+
+	for (auto it = hm2.cbegin(); it != hm2.cend(); ++it)
+	{
+		printf("%d, %d\n", it->first, it->second);
+	}
 
 	//hm.Resize(16);
 

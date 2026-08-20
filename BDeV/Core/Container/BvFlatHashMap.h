@@ -19,6 +19,12 @@ namespace Internal
 	constexpr i8 kSentinel = -1; // 0xFF
 	constexpr i8 kTemporary = -3; // 0xFD
 
+	BV_INLINE bool IsFull(i8 ctrl) { return ctrl >= 0; }
+	BV_INLINE bool IsEmpty(i8 ctrl) { return ctrl == kEmpty; }
+	BV_INLINE bool IsDeleted(i8 ctrl) { return ctrl == kDeleted; }
+	BV_INLINE bool IsEmptyOrDeleted(i8 ctrl) { return IsEmpty(ctrl) || IsDeleted(ctrl); }
+	BV_INLINE bool IsEnd(i8 ctrl) { return ctrl == kSentinel; }
+
 	struct HashParts
 	{
 		size_t m_H1;
@@ -60,8 +66,7 @@ namespace Internal
 			return static_cast<u16>(_mm_movemask_epi8(_mm_cmpeq_epi8(m_Ctrl, match)));
 		}
 
-		// Matches ANY writable slot (either truly empty OR a tombstone)
-		u16 MatchWritable() const
+		u16 MatchEmptyOrDeleted() const
 		{
 			return MatchEmpty() | MatchDeleted();
 		}
@@ -102,41 +107,43 @@ public:
 	using mapped_type = V;
 	using value_type = std::pair<const key_type, mapped_type>;
 	using key_compare = C;
-	//using reference = std::pair<const key_type&, mapped_type&>; // TODO: Figure these out
-	//using const_reference = std::pair<const key_type&, const mapped_type&>;
+	using reference = std::pair<const key_type, mapped_type>&;
+	using const_reference = const reference;
 	using size_type = size_t;
 	using difference_type = ptrdiff_t;
 	using control_type = i8;
 
+	template<bool IsConst>
 	class Iterator
 	{
 	public:
+		friend class BvFlatHashMap;
+
 		using iterator_category = std::forward_iterator_tag;
 		using iterator_concept = std::forward_iterator_tag;
 
-		using value_type = std::pair<const key_type, mapped_type>;
+		using value_type = std::conditional_t<(IsConst), const value_type, value_type>;
+		using reference = std::conditional_t<(IsConst), const value_type&, value_type&>;
+		using pointer = std::remove_reference_t<reference>*;
 		using difference_type = std::ptrdiff_t;
-		using pointer = value_type*;
-		using reference = value_type&;
-
-		Iterator(control_type* pCtrls, value_type* pSlots)
-			: m_pCtrls(pCtrls), m_pSlots(pSlots)
-		{
-		}
 
 		reference operator*() const
 		{
-			return m_pSlots[m_Index];
+			BV_ASSERT(Internal::IsFull(*m_pCtrls), "Empty slot");
+			return *m_pSlots;
 		}
 
 		pointer operator->() const
 		{
-			return std::addressof(m_pSlots[m_Index]);
+			return std::addressof(*m_pSlots);
 		}
 
 		Iterator& operator++()
 		{
-			Advance();
+			BV_ASSERT(Internal::IsFull(*m_pCtrls), "Empty slot");
+			m_pCtrls++;
+			m_pSlots++;
+			SkipEmptyOrDeleted();
 			return *this;
 		}
 
@@ -148,40 +155,50 @@ public:
 		}
 
 		friend bool operator==(const Iterator&, const Iterator&) = default;
+
 	private:
-		void Advance()
+		Iterator(control_type* pCtrls, value_type* pSlots)
+			: m_pCtrls(pCtrls), m_pSlots(pSlots)
 		{
-			++m_Index;
+			BV_ASSERT(m_pCtrls && m_pSlots, "Invalid data");
+			SkipEmptyOrDeleted();
+		}
 
-			while (m_Index < m_Capacity)
+		Iterator(control_type* pCtrls, value_type* pSlots, i32 end)
+			: m_pCtrls(pCtrls), m_pSlots(pSlots)
+		{
+			BV_ASSERT(m_pCtrls && m_pSlots, "Invalid data");
+		}
+
+		void SkipEmptyOrDeleted()
+		{
+			[[unlikely]]
+			if (Internal::IsEnd(*m_pCtrls))
 			{
-				Internal::GroupMatcher group(m_pCtrls + m_Index);
-
-				auto matches = group.MatchFull();
-
-				// Don't allow the group to advance beyond the real table.
-				const auto remaining = m_Capacity - m_Index;
-
-				if (remaining < Internal::kGroupSize)
-				{
-					matches &= static_cast<u16>(
-						(u32{ 1 } << remaining) - 1);
-				}
-
-				if (matches)
-				{
-					m_Index += std::countr_zero(matches);
-					return;
-				}
-
-				m_Index += Internal::kGroupSize;
+				return;
 			}
+
+			u16 matches = 0;
+			size_t groupIndex = 0;
+			do
+			{
+				Internal::GroupMatcher group(m_pCtrls + groupIndex);
+				// Should hit, even if it's just the sentinel
+				matches = ~group.MatchEmptyOrDeleted();
+				groupIndex += Internal::kGroupSize;
+			} while (!matches);
+
+			auto offset = std::countr_zero(matches);
+			m_pCtrls += offset;
+			m_pSlots += offset;
 		}
 
 		control_type* m_pCtrls = nullptr;
 		value_type* m_pSlots = nullptr;
-		size_type m_Index = 0;
 	};
+
+	using iterator = Iterator<false>;
+	using const_iterator = Iterator<true>;
 
 private:
 	struct Table
@@ -196,7 +213,6 @@ private:
 		size_t m_Index;
 		i8 m_H2;
 		bool m_Found;
-		//bool m_WasTombstone;
 	};
 
 	class GroupWalker
@@ -207,6 +223,8 @@ private:
 
 		void Next() { m_Offset = (m_Offset + Internal::kGroupSize) & (m_Capacity - 1); }
 
+		size_t SlotIndex() const { return m_Offset; }
+
 		template<std::integral T> size_t SlotIndex(T value) const
 		{
 			auto newOffset = m_Offset + value;
@@ -215,7 +233,6 @@ private:
 
 			return (newOffset - size_t(newOffset > m_Capacity) * (m_Capacity + 1)) & (m_Capacity - 1);
 		}
-		size_t SlotIndex() const { return m_Offset; }
 
 	private:
 		size_t m_Capacity;
@@ -243,7 +260,7 @@ public:
 		Resize(IdealCapacity(size));
 		for (auto i = 0; i < size; i++)
 		{
-			// TODO: Insert elements
+			Insert(pElements[i]);
 		}
 	}
 
@@ -254,7 +271,7 @@ public:
 		Resize(IdealCapacity(size));
 		for (auto i = 0; i < size; i++)
 		{
-			// TODO: Add elements
+			Insert(list[i]);
 		}
 	}
 
@@ -264,9 +281,9 @@ public:
 		if (auto pData = rhs.m_Table.m_pData)
 		{
 			Resize(pData->m_Capacity);
-			for (auto i = 0; i < pData->m_Capacity; i++)
+			for (auto it = rhs.begin(); it != rhs.end(); it++)
 			{
-				// TODO: Add elements
+				Insert(*it);
 			}
 		}
 	}
@@ -282,13 +299,13 @@ public:
 		if (this != &rhs)
 		{
 			Clear(true);
-			//SetAllocator(rhs.m_pArena);
+			SetAllocator(rhs.m_pArena);
 			if (auto pData = rhs.m_Table.m_pData)
 			{
 				Resize(pData->m_Capacity);
-				for (auto i = 0; i < pData->m_Capacity; i++)
+				for (auto it = rhs.begin(); it != rhs.end(); it++)
 				{
-					// TODO: Add elements
+					Insert(*it);
 				}
 			}
 		}
@@ -319,7 +336,7 @@ public:
 		Resize(IdealCapacity(size));
 		for (auto i = 0; i < size; i++)
 		{
-			// TODO: Add elements
+			Insert(list[i]);
 		}
 
 		return *this;
@@ -328,6 +345,19 @@ public:
 	~BvFlatHashMap()
 	{
 		Clear(true);
+	}
+
+	IBvMemoryArena* GetAllocator() const
+	{
+		return m_pArena;
+	}
+
+	void SetAllocator(IBvMemoryArena* pArena)
+	{
+		BV_ASSERT(pArena != nullptr, "Memory arena can't be nullptr");
+		BV_ASSERT(m_Table.m_pData == nullptr, "Can't change allocators after allocations have been made");
+
+		m_pArena = pArena;
 	}
 
 	void Clear(bool purge = false)
@@ -400,26 +430,81 @@ public:
 		m_Table = table;
 	}
 
-	// TODO: Return std::pair<iterator, bool> in the future
 	template<typename... Args>
-	std::pair<value_type*, bool> Emplace(const key_type& key, Args&&... args)
+	std::pair<iterator, bool> Emplace(const key_type& key, Args&&... args)
 	{
 		PrepareForInsert();
 
 		return EmplaceInternal(m_Table, key, std::forward<Args>(args)...);
 	}
 
-	// TODO: Return std::pair<iterator, bool> in the future
-	//std::pair<value_type*, bool> Insert(const value_type& keyValue)
-	//{
-	//	PrepareForInsert();
-	//}
+	template<typename... Args>
+	std::pair<iterator, bool> Emplace(key_type&& key, Args&&... args)
+	{
+		PrepareForInsert();
 
-	// TODO: Return std::pair<iterator, bool> in the future
-	//std::pair<value_type*, bool> Insert(value_type&& keyValue)
-	//{
-	//	PrepareForInsert();
-	//}
+		return EmplaceInternal(m_Table, std::move(key), std::forward<Args>(args)...);
+	}
+
+	std::pair<iterator, bool> Insert(const value_type& keyValue)
+	{
+		PrepareForInsert();
+
+		return InsertInternal(m_Table, keyValue);
+	}
+
+	std::pair<iterator, bool> Insert(value_type&& keyValue)
+	{
+		PrepareForInsert();
+
+		return InsertInternal(m_Table, std::move(keyValue));
+	}
+
+	template<typename KV>
+		requires (!std::same_as<std::remove_cvref_t<KV>, value_type>)
+	std::pair<iterator, bool> Insert(KV&& keyValue)
+	{
+		PrepareForInsert();
+
+		return InsertInternal(m_Table, std::forward<KV>(keyValue));
+	}
+
+	template<typename NV>
+	std::pair<iterator, bool> InsertOrAssign(const key_type& key, NV&& value)
+	{
+		auto result = Emplace(key, std::forward<NV>(value));
+		if (!result.second)
+		{
+			result.first->second = std::forward<NV>(value);
+		}
+
+		return result;
+	}
+
+	template<typename NV>
+	std::pair<iterator, bool> InsertOrAssign(key_type&& key, NV&& value)
+	{
+		auto result = Emplace(std::forward<key_type>(key), std::forward<NV>(value));
+		if (!result.second)
+		{
+			result.first->second = std::forward<NV>(value);
+		}
+
+		return result;
+	}
+
+	template<typename NK, typename NV>
+		requires (!std::same_as<std::remove_cvref_t<NK>, key_type>)
+	std::pair<iterator, bool> InsertOrAssign(NK&& key, NV&& value)
+	{
+		auto result = Emplace(std::forward<NK>(key), std::forward<NV>(value));
+		if (!result.second)
+		{
+			result.first->second = std::forward<NV>(value);
+		}
+
+		return result;
+	}
 
 	bool Erase(const key_type& key)
 	{
@@ -442,8 +527,7 @@ public:
 		return true;
 	}
 
-	// TODO: Return iterator in the future
-	value_type* Find(const key_type& key)
+	iterator Find(const key_type& key)
 	{
 		auto index = FindIndex(key);
 		if (index == kInvalidPos)
@@ -454,8 +538,7 @@ public:
 		return std::addressof(m_Table.m_pSlots[index]);
 	}
 
-	// TODO: Return iterator in the future
-	const value_type* Find(const key_type& key) const
+	const_iterator Find(const key_type& key) const
 	{
 		auto index = FindIndex(key);
 		if (index == kInvalidPos)
@@ -465,6 +548,16 @@ public:
 
 		return std::addressof(m_Table.m_pSlots[index]);
 	}
+
+	// Forward Iterators
+	iterator begin() noexcept { return iterator{ m_Table.m_pCtrls, m_Table.m_pSlots }; }
+	iterator end() noexcept { return iterator{ m_Table.m_pCtrls + m_Table.m_pData->m_Capacity, m_Table.m_pSlots + m_Table.m_pData->m_Capacity, {} }; }
+
+	const_iterator begin() const noexcept { return const_iterator{ m_Table.m_pCtrls, m_Table.m_pSlots }; }
+	const_iterator end() const noexcept { return const_iterator{ m_Table.m_pCtrls + m_Table.m_pData->m_Capacity, m_Table.m_pSlots + m_Table.m_pData->m_Capacity, {} }; }
+
+	const_iterator cbegin() const noexcept { return const_iterator{ m_Table.m_pCtrls, m_Table.m_pSlots }; }
+	const_iterator cend() const noexcept { return const_iterator{ m_Table.m_pCtrls + m_Table.m_pData->m_Capacity, m_Table.m_pSlots + m_Table.m_pData->m_Capacity, {} }; }
 
 private:
 	static constexpr size_t GetCtrlOffset()
@@ -610,12 +703,12 @@ private:
 	}
 
 	template<typename C, typename... Args>
-	static std::pair<value_type*, bool> EmplaceInternal(Table& table, C&& key, Args&&... args)
+	static std::pair<iterator, bool> EmplaceInternal(Table& table, C&& key, Args&&... args)
 	{
 		FindResult findResult = FindInsertIndex(table, key);
 		if (findResult.m_Found)
 		{
-			return { &table.m_pSlots[findResult.m_Index], false };
+			return { iterator{ table.m_pCtrls + findResult.m_Index, table.m_pSlots + findResult.m_Index }, false };
 		}
 
 		BV_ASSERT(table.m_pData->m_GrowthLeft > 0, "Table can't be full");
@@ -631,7 +724,31 @@ private:
 		table.m_pData->m_Size++;
 		table.m_pData->m_GrowthLeft--;
 
-		return { std::addressof(table.m_pSlots[findResult.m_Index]), true };
+		return { iterator{ table.m_pCtrls + findResult.m_Index, table.m_pSlots + findResult.m_Index }, true };
+	}
+
+	template<typename KV>
+	static std::pair<iterator, bool> InsertInternal(Table& table, KV&& keyValue)
+	{
+		FindResult findResult = FindInsertIndex(table, keyValue.first);
+		if (findResult.m_Found)
+		{
+			return { iterator{ table.m_pCtrls + findResult.m_Index, table.m_pSlots + findResult.m_Index }, false };
+		}
+
+		BV_ASSERT(table.m_pData->m_GrowthLeft > 0, "Table can't be full");
+
+		// Create object
+		new (std::addressof(table.m_pSlots[findResult.m_Index])) value_type(std::forward<KV>(keyValue));
+
+		// Set control value
+		SetControlValue(table.m_pCtrls, table.m_pData->m_Capacity, findResult.m_Index, findResult.m_H2);
+
+		// Update table stats
+		table.m_pData->m_Size++;
+		table.m_pData->m_GrowthLeft--;
+
+		return { iterator{ table.m_pCtrls + findResult.m_Index, table.m_pSlots + findResult.m_Index }, true };
 	}
 
 	size_t FindIndex(const key_type& key) const

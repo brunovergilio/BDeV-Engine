@@ -387,6 +387,24 @@ public:
 		return { begin() + index, true };
 	}
 
+	template<typename KV>
+		requires (!std::same_as<std::remove_cvref_t<KV>, value_type>)
+	std::pair<iterator, bool> Insert(KV&& keyVal)
+	{
+		key_compare comp;
+		auto keyIt = std::upper_bound(m_Keys.begin(), m_Keys.end(), keyVal.first, comp);
+		auto index = keyIt - m_Keys.begin();
+		if (keyIt != m_Keys.begin() && !comp(*(keyIt - 1), keyVal.first))
+		{
+			return { begin() + (index - 1), false };
+		}
+
+		m_Keys.Emplace(index, std::forward<key_type>(keyVal.first));
+		m_Values.Emplace(index, std::forward<mapped_type>(keyVal.second));
+
+		return { begin() + index, true };
+	}
+
 	template<typename NV>
 	std::pair<iterator, bool> InsertOrAssign(const key_type& key, NV&& value)
 	{
@@ -412,6 +430,7 @@ public:
 	}
 
 	template<typename NK, typename NV>
+		requires (!std::same_as<std::remove_cvref_t<NK>, key_type>)
 	std::pair<iterator, bool> InsertOrAssign(NK&& key, NV&& value)
 	{
 		auto result = Emplace(std::forward<NK>(key), std::forward<NV>(value));
