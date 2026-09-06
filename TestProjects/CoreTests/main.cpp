@@ -1,99 +1,14 @@
-﻿#include "BDeV/BDeV.h"
+﻿#define BV_ENABLE_JOBSYSTEM_TESTS
+
+#include "BDeV/BDeV.h"
 #include "BDeV/Core/Utils/BvRTTI.h"
-#include <BDeV/Engine/JobSystem/BvParallelJobSystem.h>
 #include <span>
 #include <source_location>
 #include "BDeV/Core/Utils/BvUTF.h"
 #include "BDeV/Core/Container/BvFlatMap.h"
 #include "BDeV/Core/Container/BvFlatHashMap.h"
-
-char stack[1024];
-char stack2[1024];
-char stack3[1024];
-char stack4[100];
-
-
-//BV_INIT_TEST_UNIT_SYSTEM();
-//
-//BV_TEST_UNIT(abc)
-//{
-//	BV_TEST(1 == 3);
-//	BV_TEST(2 == 2);
-//	BV_TEST(0.0f == 0.0f);
-//	BV_TEST(true == 1);
-//}
-//
-//
-//BV_TEST_UNIT(def)
-//{
-//	BV_TEST(1 == 3);
-//	BV_TEST(2 == 2);
-//	BV_TEST(0.0f == 0.0f);
-//	BV_TEST(true == 1);
-//}
-
-
-struct WE
-{
-	//BV_RTTI(WE);
-	int f();
-	int ff() {}
-	int a = int(0);
-	int (*A)();
-};
-
-
-BV_ROBJECT() struct TestStruct
-{
-	BV_RMETHOD() TestStruct() {}
-	BV_RMETHOD() void afsgg(int sedf, char b = '\\');
-	BV_RMETHOD() void abc(int sedf);
-	BV_RMETHOD() virtual float ff() {}
-	BV_RMETHOD() int cc()
-	{
-		return 0;
-	}
-	BV_RMETHOD() int (*pfn(int, int))() { return nullptr; }
-
-	BV_RVAR() int a = 0;
-	BV_RVAR() int *b = nullptr;
-	BV_RVAR() int (*c);
-	BV_RVAR() int (*d)(int);
-	BV_RVAR() int* (*e)(int);
-	BV_RVAR() int (f) = 0;
-	BV_RVAR() int g[2];
-	BV_RVAR() int (h[2]);
-	BV_RVAR() int i[2][3];
-};
-
-
-BV_ROBJECT() class TestStruct2 : public TestStruct
-{
-	int d()
-	{
-		return 0;
-	}
-	int e;
-	int f;
-};
-
-struct A
-{
-	A() {}
-	A(const A& a) : b(a.b) {} /*
-							  test comm */
-	BvRobinMap<int, int> b;
-};
-
-
-struct alignas(64) MyStruct
-{
-	char c[64];
-};
-
-constexpr BvUUID fa1 = MakeUUID("7b134b6e-b092-465f-9c00-af77a562ba2b");
-constexpr BvUUID fa2 = MakeUUID("7b134b6e-b092-465f-9c00-a127a562ba2b");
-constexpr BvUUID fa3 = MakeUUID("7b134b6e-b092-465f-9c00-af77a5cdba2b");
+#include "BDeV/Core/Container/Third Party/MPMCQueue.h"
+#include "BDeV/Engine/JobSystem/BvJobSystem.h"
 
 
 #include <iostream>
@@ -101,70 +16,93 @@ constexpr BvUUID fa3 = MakeUUID("7b134b6e-b092-465f-9c00-af77a5cdba2b");
 
 
 
-thread_local int a = 0;
-BvFiber* pFb = nullptr;
-BvFiber* pFb2 = nullptr;
-
-BvAdaptiveMutex am;
-BvMutex mm;
-
-
-
+JobSystem::BvJobSystem js;
 
 
 int main()
 {
-	BvFlatMap<u32, u32> fm;
-	fm.Emplace(1, 2);
-	fm.Emplace(3, 3);
-	fm.Emplace(2, 4);
-	fm.Insert(std::make_pair(2u, 3u));
-	std::pair testu(4u, 3u);
-	fm.Insert(testu);
-	fm.Erase(1);
-	auto res = fm.Emplace(1, 2);
-	//printf("%u, %u", res.first->first, res.first->second);
-	fm.InsertOrAssign(2, 24);
-	fm.InsertOrAssign(testu.first, testu.second);
+	JobSystem::BvJobSystemDesc desc;
+	desc.m_NumWorkerThreads = 8;
+	desc.m_PersistentPoolSizes.m_JobListPoolSize = 10000;
+	desc.m_PersistentPoolSizes.m_JobPoolSize = 150000;
+	desc.m_PersistentPoolSizes.m_ChildJobListPoolSize = 100;
+	desc.m_DynamicPoolSizes.m_JobListPoolSize = 10;
+	desc.m_DynamicPoolSizes.m_JobPoolSize = 150;
+	desc.m_DynamicPoolSizes.m_ChildJobListPoolSize = 10;
+	desc.m_WorkerQueueSize = 100000;
+	js.Initialize(desc);
 
-	testu.first = 10;
-	auto res2 = fm.Find(2);
-	auto res3 = fm.Find(testu.first);
+	//JobSystem::Tests::RunAll(js);
 
-	BvFlatHashMap<i32, i32> hm;
-	hm.Emplace(1, 1);
-	hm.Erase(1);
-	hm.Emplace(1, 1);
-	hm.Erase(1);
-	hm.Emplace(1, 1);
-	hm.Erase(1);
-	hm.Emplace(2, 2);
-	hm.Emplace(1, 1);
-	hm.Erase(1);
-	hm.Emplace(3, 3);
-	hm.Emplace(4, 4);
-	hm.Insert(BvFlatHashMap<i32, i32>::value_type(5, 5));
-	const i32 ci = 6;
-	BvFlatHashMap<i32, i32>::value_type ipair(ci, 6);
-	hm.Insert(ipair);
-	hm.Insert(std::make_pair(5u, 5u));
-	hm.InsertOrAssign(5, 15);
-	hm.InsertOrAssign(ci, 15);
-	hm.InsertOrAssign(5u, 15);
+	std::atomic<u32> sum;
+	auto p = js.ParallelFor([&sum](u32 i)
+		{
+			sum.fetch_add(i, std::memory_order_relaxed);
+		}, 4, 8);
+	p->Wait();
 
-	BvFlatHashMap<i32, i32> hm2(hm);
+	printf("%u", sum.load());
+	js.Shutdown();
 
-	for (const auto& it : hm)
-	{
-		printf("%d, %d\n", it.first, it.second);
-	}
+	//BvFlatMap<u32, u32> fm;
+	//fm.Emplace(1, 2);
+	//fm.Emplace(3, 3);
+	//fm.Emplace(2, 4);
+	//fm.Insert(std::make_pair(2u, 3u));
+	//std::pair testu(4u, 3u);
+	//fm.Insert(testu);
+	//fm.Erase(1);
+	//auto res = fm.Emplace(1, 2);
+	////printf("%u, %u", res.first->first, res.first->second);
+	//fm.InsertOrAssign(2, 24);
+	//fm.InsertOrAssign(testu.first, testu.second);
 
-	for (auto it = hm2.cbegin(); it != hm2.cend(); ++it)
-	{
-		printf("%d, %d\n", it->first, it->second);
-	}
+	//testu.first = 10;
+	//auto res2 = fm.Find(2);
+	//auto res3 = fm.Find(testu.first);
 
-	//hm.Resize(16);
+	//BvFlatHashMap<i32, i32> hm;
+	//hm.Emplace(1, 1);
+	//hm.Erase(1);
+	//hm.Emplace(1, 1);
+	//hm.Erase(1);
+	//hm.Emplace(1, 1);
+	//hm.Erase(1);
+	//hm.Emplace(2, 2);
+	//hm.Emplace(1, 1);
+	//hm.Erase(1);
+	//hm.Emplace(3, 3);
+	//hm.Emplace(4, 4);
+	//hm.Insert(BvFlatHashMap<i32, i32>::value_type(5, 5));
+	//const i32 ci = 6;
+	//BvFlatHashMap<i32, i32>::value_type ipair(ci, 6);
+	//hm.Insert(ipair);
+	//hm.Insert(std::make_pair(5u, 5u));
+	//hm.InsertOrAssign(5, 15);
+	//hm.InsertOrAssign(ci, 15);
+	//hm.InsertOrAssign(5u, 15);
+	//hm[5u] = 16;
+
+	//BvFlatHashMap<i32, i32> hm2(hm);
+
+	//for (const auto& it : hm)
+	//{
+	//	printf("%d, %d\n", it.first, it.second);
+	//}
+
+	//hm2.Erase(hm2.cbegin());
+	//for (auto it = hm2.cbegin(); it != hm2.cend(); ++it)
+	//{
+	//	printf("%d, %d\n", it->first, it->second);
+	//}
+
+	//BvFlatHashMap<std::string, i32, std::hash<std::string>, std::equal_to<>> hm3;
+	//hm3.InsertOrAssign("abc", 1);
+	//hm3.InsertOrAssign("abc", 2);
+
+	//BvFlatHashSet<i32> hm4;
+	//hm4.Insert(34u);
+
 
 	return 0;
 

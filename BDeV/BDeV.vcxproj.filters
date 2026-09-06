@@ -25,7 +25,6 @@
     <ClInclude Include="Core\RenderAPI\BvShaderResource.h" />
     <ClInclude Include="Core\RenderAPI\BvSwapChain.h" />
     <ClInclude Include="Core\RenderAPI\BvTexture.h" />
-    <ClInclude Include="Engine\JobSystem\BvParallelJobSystem.h" />
     <ClInclude Include="Core\Utils\BvRTTI.h" />
     <ClInclude Include="Core\System\File\BvAsyncFile.h" />
     <ClInclude Include="Core\System\File\BvFile.h" />
@@ -93,13 +92,14 @@
     <ClInclude Include="Core\Utils\Third Party\xxhash.h" />
     <ClInclude Include="Core\Container\BvFlatMap.h" />
     <ClInclude Include="Core\Container\BvFlatHashMap.h" />
+    <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
+    <ClInclude Include="Core\Container\Third Party\MPMCQueue.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="BvCore.natvis" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\Utils\BvTime.cpp" />
-    <ClCompile Include="Engine\JobSystem\BvParallelJobSystem.cpp" />
     <ClCompile Include="Core\System\File\Windows\BvAsyncFileWindows.cpp" />
     <ClCompile Include="Core\System\File\Windows\BvFileSystemWindows.cpp" />
     <ClCompile Include="Core\System\File\Windows\BvFileWindows.cpp" />
@@ -137,6 +137,7 @@
     <ClCompile Include="Core\System\Network\BvNetAddress.cpp" />
     <ClCompile Include="Core\System\Network\Windows\BvNetworkWindows.cpp" />
     <ClCompile Include="Core\Utils\Third Party\xxhash.c" />
+    <ClCompile Include="Engine\JobSystem\BvJobSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Math\BvMathVector.inl" />

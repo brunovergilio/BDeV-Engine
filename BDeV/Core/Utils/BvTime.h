@@ -25,5 +25,8 @@ public:
 	static i64 GetCurrentUTCTimestampInMs();
 	static i64 GetCurrentUTCTimestampInUs();
 
+	static u64 GetClockCycles();
+	static u64 GetClockCyclesSerial();
+
 	static BvTime::DateTime GetCurrentDateTime();
 };

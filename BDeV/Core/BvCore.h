@@ -16,6 +16,26 @@
 
 
 // =================================
+// Processor definitions
+// =================================
+#if defined(_M_X64) || defined(_M_AMD64) || defined(__x86_64__) || defined(__amd64__)
+#define BV_ARCH_X64
+#elif defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__)
+#if !defined(BV_PLATFORM_MACOS)
+#error "ARM only supported for MacOS"
+#else
+#define BV_ARCH_ARM64
+	// Core profiling definitions for macOS on ARM64
+extern "C" uint64_t m1_get_pmu_cycles();
+// Uses Apple's internal system call framework to query the core's PMU
+#define HAS_APPLE_PMU
+#endif // #if !defined(BV_PLATFORM_MACOS)
+#else
+#error "Unsupported processor architecture"
+#endif // #if defined(_M_X64) || defined(_M_AMD64) || defined(__x86_64__) || defined(__amd64__)
+
+
+// =================================
 // Compiler definitions
 // =================================
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -233,6 +253,8 @@ constexpr bool IsPodV = std::is_trivial_v<Type> && std::is_standard_layout_v<Typ
 constexpr size_t kCacheLineSize = std::hardware_destructive_interference_size;
 
 constexpr size_t kPointerSize = sizeof(void*);
+static_assert(kPointerSize >= 8, "Only 64-bit platform is supported");
+
 constexpr size_t kDefaultAlignmentSize = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
 constexpr size_t kInvalidPos = kU64Max;

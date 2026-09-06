@@ -111,6 +111,7 @@
     <ClInclude Include="BDeV.h" />
     <ClInclude Include="Core\Container\BvFlatHashMap.h" />
     <ClInclude Include="Core\Container\BvFlatMap.h" />
+    <ClInclude Include="Core\Container\Third Party\MPMCQueue.h" />
     <ClInclude Include="Core\Math\DirectXMath\DirectXCollision.h" />
     <ClInclude Include="Core\Math\DirectXMath\DirectXColors.h" />
     <ClInclude Include="Core\Math\DirectXMath\DirectXMath.h" />
@@ -146,7 +147,7 @@
     <ClInclude Include="Core\Utils\Third Party\constexpr-xxh3.h" />
     <ClInclude Include="Core\Utils\Third Party\rapidhash.h" />
     <ClInclude Include="Core\Utils\Third Party\xxhash.h" />
-    <ClInclude Include="Engine\JobSystem\BvParallelJobSystem.h" />
+    <ClInclude Include="Engine\JobSystem\BvJobSystem.h" />
     <ClInclude Include="Core\Math\BvMath.h" />
     <ClInclude Include="Core\Utils\BvRTTI.h" />
     <ClInclude Include="Core\RenderAPI\BvBuffer.h" />
@@ -214,7 +215,7 @@
     <ClCompile Include="Core\System\Diagnostics\Windows\BvDiagnosticsWindows.cpp" />
     <ClCompile Include="Core\Utils\BvStringId.cpp" />
     <ClCompile Include="Core\Utils\Third Party\xxhash.c" />
-    <ClCompile Include="Engine\JobSystem\BvParallelJobSystem.cpp" />
+    <ClCompile Include="Engine\JobSystem\BvJobSystem.cpp" />
     <ClCompile Include="Core\Utils\BvColor.cpp" />
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
     <ClCompile Include="Core\System\File\BvMemoryFile.cpp" />

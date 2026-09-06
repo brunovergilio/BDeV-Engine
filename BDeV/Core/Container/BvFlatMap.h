@@ -355,6 +355,24 @@ public:
 		return { begin() + index, true };
 	}
 
+	template<typename Q, class... Args>
+		requires (!std::same_as<std::remove_cvref_t<Q>, key_type>&& std::constructible_from<key_type, Q>)
+	std::pair<iterator, bool> Emplace(Q&& key, Args&&... args)
+	{
+		key_compare comp;
+		auto keyIt = std::upper_bound(m_Keys.begin(), m_Keys.end(), key, comp);
+		auto index = keyIt - m_Keys.begin();
+		if (keyIt != m_Keys.begin() && !comp(*(keyIt - 1), key))
+		{
+			return { begin() + (index - 1), false };
+		}
+
+		m_Keys.Emplace(index, std::forward<Q>(key));
+		m_Values.Emplace(index, std::forward<Args>(args)...);
+
+		return { begin() + index, true };
+	}
+
 	std::pair<iterator, bool> Insert(const value_type& keyVal)
 	{
 		key_compare comp;
@@ -430,7 +448,7 @@ public:
 	}
 
 	template<typename NK, typename NV>
-		requires (!std::same_as<std::remove_cvref_t<NK>, key_type>)
+		requires (!std::same_as<std::remove_cvref_t<NK>, key_type> && std::constructible_from<key_type, NK>)
 	std::pair<iterator, bool> InsertOrAssign(NK&& key, NV&& value)
 	{
 		auto result = Emplace(std::forward<NK>(key), std::forward<NV>(value));
@@ -442,7 +460,27 @@ public:
 		return result;
 	}
 
-	bool Erase(const key_type& key)
+	mapped_type& operator[](const key_type& key)
+	{
+		auto result = Emplace(key);
+		return result.first->second;
+	}
+
+	mapped_type& operator[](key_type&& key)
+	{
+		auto result = Emplace(std::move(key));
+		return result.first->second;
+	}
+
+	template<typename Q>
+		requires (!std::same_as<std::remove_cvref_t<Q>, key_type>&& std::constructible_from<key_type, Q>)
+	mapped_type& operator[](Q&& key)
+	{
+		auto result = Emplace(std::forward<Q>(key));
+		return result.first->second;
+	}
+
+	iterator Erase(const key_type& key)
 	{
 		key_compare comp;
 		auto keyIt = std::upper_bound(m_Keys.begin(), m_Keys.end(), key, comp);
@@ -452,10 +490,56 @@ public:
 			m_Keys.Erase(index);
 			m_Values.Erase(index);
 			
-			return true;
+			return iterator{ m_Keys.Data() + index, m_Values.Data() + index };
 		}
 
-		return false;
+		return end();
+	}
+
+	template<typename Q>
+		requires (!std::same_as<std::remove_cvref_t<Q>, key_type>)
+	iterator Erase(const Q& key)
+	{
+		key_compare comp;
+		auto keyIt = std::upper_bound(m_Keys.begin(), m_Keys.end(), key, comp);
+		if (keyIt != m_Keys.begin() && !comp(*(keyIt - 1), key))
+		{
+			auto index = (keyIt - 1) - m_Keys.begin();
+			m_Keys.Erase(index);
+			m_Values.Erase(index);
+
+			return iterator{ m_Keys.Data() + index, m_Values.Data() + index };
+		}
+
+		return end();
+	}
+
+	iterator Erase(iterator pos)
+	{
+		auto index = std::distance(begin(), pos);
+		if (index >= m_Keys.Size())
+		{
+			return end();
+		}
+
+		m_Keys.Erase(index);
+		m_Values.Erase(index);
+
+		return iterator{ m_Keys.Data() + index, m_Values.Data() + index };
+	}
+
+	iterator Erase(const_iterator pos)
+	{
+		auto index = std::distance(begin(), pos);
+		if (index >= m_Keys.Size())
+		{
+			return end();
+		}
+
+		m_Keys.Erase(index);
+		m_Values.Erase(index);
+
+		return iterator{ m_Keys.Data() + index, m_Values.Data() + index };
 	}
 
 	void Clear(bool purge = false)
@@ -526,6 +610,36 @@ public:
 	}
 
 	const_iterator Find(const key_type& key) const
+	{
+		key_compare comp;
+		auto it = std::lower_bound(m_Keys.cbegin(), m_Keys.cend(), key, comp);
+		if (it != m_Keys.cend() && !comp(*it, key))
+		{
+			auto index = it - m_Keys.cbegin();
+			return cbegin() + index;
+		}
+
+		return cend();
+	}
+
+	template<typename NK>
+		requires (!std::same_as<std::remove_cvref_t<NK>, key_type>)
+	iterator Find(const NK& key)
+	{
+		key_compare comp;
+		auto it = std::lower_bound(m_Keys.begin(), m_Keys.end(), key, comp);
+		if (it != m_Keys.end() && !comp(*it, key))
+		{
+			auto index = it - m_Keys.begin();
+			return begin() + index;
+		}
+
+		return end();
+	}
+
+	template<typename NK>
+		requires (!std::same_as<std::remove_cvref_t<NK>, key_type>)
+	const_iterator Find(const NK& key) const
 	{
 		key_compare comp;
 		auto it = std::lower_bound(m_Keys.cbegin(), m_Keys.cend(), key, comp);

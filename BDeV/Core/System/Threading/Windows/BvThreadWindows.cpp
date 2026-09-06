@@ -11,27 +11,29 @@ BvThread::BvThread()
 
 
 BvThread::BvThread(BvThread && rhs) noexcept
-	: m_ThreadId(rhs.m_ThreadId), m_hThread(rhs.m_hThread), m_Task(std::move(rhs.m_Task)), m_IsRunning(rhs.m_IsRunning)
+	: m_ThreadId(rhs.m_ThreadId), m_hThread(rhs.m_hThread), m_pTaskData(rhs.m_pTaskData), m_IsRunning(rhs.m_IsRunning)
 {
-	rhs.m_ThreadId = 0;
 	rhs.m_hThread = kNullOSThreadHandle;
+	rhs.m_ThreadId = 0;
+	rhs.m_pTaskData = nullptr;
 	rhs.m_IsRunning = 0;
 }
 
 
-BvThread & BvThread::operator =(BvThread && rhs) noexcept
+BvThread& BvThread::operator=(BvThread&& rhs) noexcept
 {
 	if (this != &rhs)
 	{
 		Destroy();
 
-		m_ThreadId = rhs.m_ThreadId;
 		m_hThread = rhs.m_hThread;
-		m_Task = std::move(rhs.m_Task);
+		m_ThreadId = rhs.m_ThreadId;
+		m_pTaskData = rhs.m_pTaskData;
 		m_IsRunning = rhs.m_IsRunning;
 
-		rhs.m_ThreadId = 0;
 		rhs.m_hThread = kNullOSThreadHandle;
+		rhs.m_ThreadId = 0;
+		rhs.m_pTaskData = nullptr;
 		rhs.m_IsRunning = 0;
 	}
 
@@ -48,19 +50,19 @@ BvThread::~BvThread()
 void BvThread::Start()
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
-	if (!m_IsRunning)
+	if (!m_IsRunning && m_pTaskData)
 	{
 		m_IsRunning = true;
-		ResumeThread(m_hThread);
+		::ResumeThread(m_hThread);
 	}
 }
 
 
-void BvThread::Wait()
+void BvThread::Join()
 {
-	if (m_IsRunning)
+	if (m_IsRunning && m_pTaskData)
 	{
-		WaitForSingleObject(m_hThread, INFINITE);
+		::WaitForSingleObject(m_hThread, INFINITE);
 		m_IsRunning = false;
 	}
 }
@@ -70,26 +72,26 @@ void BvThread::SetAffinity(u32 logicalProcessorIndex) const
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
 
-	WORD groupCount = GetActiveProcessorGroupCount();
+	WORD groupCount = ::GetActiveProcessorGroupCount();
 	if (groupCount <= 1)
 	{
 		BV_ASSERT(logicalProcessorIndex < 64, "This implementation supports only up to 64 cores");
 
-		SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(logicalProcessorIndex));
+		::SetThreadAffinityMask(m_hThread, 1ull << static_cast<DWORD_PTR>(logicalProcessorIndex));
 	}
 	else
 	{
 		// Find which group the logicalProcessorIndex falls into
 		for (WORD group = 0; group < groupCount; ++group)
 		{
-			DWORD groupSize = GetActiveProcessorCount(group);
+			DWORD groupSize = ::GetActiveProcessorCount(group);
 			if (logicalProcessorIndex < groupSize)
 			{
 				GROUP_AFFINITY affinity{};
 				affinity.Group = group;
 				affinity.Mask = 1ull << logicalProcessorIndex;
 
-				BOOL result = SetThreadGroupAffinity(m_hThread, &affinity, nullptr);
+				BOOL result = ::SetThreadGroupAffinity(m_hThread, &affinity, nullptr);
 				BV_ASSERT(result != 0, "Failed to set thread group affinity");
 				
 				break;
@@ -104,7 +106,7 @@ void BvThread::SetAffinity(u32 logicalProcessorIndexCount, const u32* pLogicalPr
 {
 	BV_ASSERT(m_hThread != nullptr, "Thread handle is invalid");
 
-	WORD groupCount = GetActiveProcessorGroupCount();
+	WORD groupCount = ::GetActiveProcessorGroupCount();
 	if (groupCount <= 1)
 	{
 		DWORD_PTR affinityMask = 0;
@@ -113,7 +115,7 @@ void BvThread::SetAffinity(u32 logicalProcessorIndexCount, const u32* pLogicalPr
 			affinityMask |= 1ull << pLogicalProcessorIndices[i];
 		}
 
-		SetThreadAffinityMask(m_hThread, affinityMask);
+		::SetThreadAffinityMask(m_hThread, affinityMask);
 	}
 	else
 	{
@@ -123,7 +125,7 @@ void BvThread::SetAffinity(u32 logicalProcessorIndexCount, const u32* pLogicalPr
 		u32 groupEndIndex = 0;
 		for (WORD group = 0; group < groupCount; ++group)
 		{
-			DWORD groupSize = GetActiveProcessorCount(group);
+			DWORD groupSize = ::GetActiveProcessorCount(group);
 			u32 groupStartIndex = groupEndIndex;
 			groupEndIndex = groupStartIndex + groupSize;
 
@@ -158,7 +160,7 @@ void BvThread::SetAffinity(u32 logicalProcessorIndexCount, const u32* pLogicalPr
 		groupAffinity.Group = selectedGroup;
 		groupAffinity.Mask = affinityMask;
 
-		BOOL result = SetThreadGroupAffinity(m_hThread, &groupAffinity, nullptr);
+		BOOL result = ::SetThreadGroupAffinity(m_hThread, &groupAffinity, nullptr);
 		BV_ASSERT(result != 0, "Failed to set thread group affinity");
 	}
 }
@@ -170,11 +172,12 @@ void BvThread::SetName(const char* pThreadName) const
 	HRESULT hr = S_OK;
 	{
 		std::string_view sv(pThreadName);
-		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end()) + 1;
 		wchar_t* pThreadNameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
-		BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pThreadNameW, pThreadNameW + length);
+		BvUTFCharTraits::GetStr(sv.begin(), sv.end(), pThreadNameW, pThreadNameW + length);
+		pThreadNameW[length - 1] = 0;
 
-		hr = SetThreadDescription(m_hThread, pThreadNameW);
+		hr = ::SetThreadDescription(m_hThread, pThreadNameW);
 
 		if (FAILED(hr))
 		{
@@ -202,7 +205,7 @@ void BvThread::SetName(const char* pThreadName) const
 
 	__try
 	{
-		RaiseException(kMSVCException, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
+		::RaiseException(kMSVCException, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
@@ -224,7 +227,7 @@ void BvThread::SetPriority(Priority priority) const
 		THREAD_PRIORITY_LOWEST,
 	};
 
-	SetThreadPriority(m_hThread, priorities[(i32)priority]);
+	::SetThreadPriority(m_hThread, priorities[(i32)priority]);
 }
 
 
@@ -236,7 +239,7 @@ void BvThread::Sleep(u32 miliseconds)
 
 void BvThread::Yield()
 {
-	SwitchToThread();
+	::SwitchToThread();
 }
 
 
@@ -257,19 +260,21 @@ const BvThread& BvThread::GetCurrentThread()
 
 u32 BvThread::GetCurrentProcessor()
 {
-	return GetCurrentProcessorNumber();
+	return ::GetCurrentProcessorNumber();
 }
 
 
 void BvThread::Create(const CreateInfo& createInfo)
 {
 	m_IsRunning = !createInfo.m_CreateSuspended;
-	m_hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, createInfo.m_StackSize, BvThread::ThreadEntryPoint, this,
-		m_IsRunning ? 0u : CREATE_SUSPENDED, reinterpret_cast<u32*>(&m_ThreadId)));
+	u32 id;
+	m_hThread = reinterpret_cast<HANDLE>(::_beginthreadex(nullptr, createInfo.m_StackSize, BvThread::ThreadEntryPoint, m_pTaskData,
+		m_IsRunning ? 0u : CREATE_SUSPENDED, &id));
 	if (m_hThread == kNullOSThreadHandle)
 	{
 		BV_SYS_FATAL();
 	}
+	m_ThreadId = id;
 	if (createInfo.m_Priority != Priority::kAuto)
 	{
 		SetPriority(createInfo.m_Priority);
@@ -287,22 +292,24 @@ void BvThread::Create(const CreateInfo& createInfo)
 
 void BvThread::Destroy()
 {
-	if (m_hThread && m_Task)
+	if (m_hThread && m_pTaskData)
 	{
-		Wait();
-		CloseHandle(m_hThread);
-		m_Task.Reset();
-		m_hThread = nullptr;
+		Join();
+		::CloseHandle(m_hThread);
+		auto pArena = m_pTaskData->m_pArena;
+		pArena->Free(m_pTaskData);
+		m_pTaskData = nullptr;
+		m_hThread = kNullOSThreadHandle;
 	}
 }
 
 
-u32 CALLBACK BvThread::ThreadEntryPoint(void* pData)
+u32 WINAPI BvThread::ThreadEntryPoint(void* pData)
 {
-	BvThread* pThread = reinterpret_cast<BvThread*>(pData);
-	pThread->m_Task();
+	TaskData* pTaskData = reinterpret_cast<TaskData*>(pData);
+	pTaskData->m_pInvokeFn(pTaskData->m_pObj);
 
-	_endthreadex(0);
+	::_endthreadex(0);
 
 	return 0;
 }

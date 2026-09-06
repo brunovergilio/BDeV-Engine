@@ -29,6 +29,37 @@ i64 BvTime::GetCurrentUTCTimestampInUs()
 }
 
 
+u64 BvTime::GetClockCycles()
+{
+#if defined(BV_ARCH_X64)
+	return __rdtsc();
+#elif defined(BV_ARCH_ARM64)
+	// macOS ARM64: Read the hardware performance monitoring unit directly
+	// via the assembly instruction mapping or the OS provided high-res mach thread duty cycle
+	return __builtin_readcyclecounter(); // Clang compiler builtin for absolute core cycles
+#else
+#error "Unsupported architecture"
+	return 0;
+#endif // defined(BV_ARCH_X64)
+}
+
+
+u64 BvTime::GetClockCyclesSerial()
+{
+#if defined(BV_ARCH_X64)
+	_mm_lfence();
+	auto tsc = __rdtsc();
+	return tsc;
+#elif defined(BV_ARCH_ARM64)
+	// macOS ARM64: Read the hardware performance monitoring unit directly
+	// via the assembly instruction mapping or the OS provided high-res mach thread duty cycle
+	return __builtin_readcyclecounter(); // Clang compiler builtin for absolute core cycles
+#else
+#error "Unsupported architecture"
+	return 0;
+#endif // defined(BV_ARCH_X64)
+}
+
 BvTime::DateTime BvTime::GetCurrentDateTime()
 {
 	auto now = system_clock::now();

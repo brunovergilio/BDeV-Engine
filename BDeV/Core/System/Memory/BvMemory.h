@@ -12,8 +12,13 @@ namespace BvMemory
 	void Free(void* pMem);
 	size_t GetAllocationSize(void* pMem);
 	void* AlignMemory(void* pMem, size_t alignment);
+	BV_INLINE bool IsAligned(void* pMem, size_t alignment)
+	{
+		return (size_t(pMem) & (alignment - 1)) == 0;
+	}
 }
 
+#define BV_CHECK_ALIGNMENT(pMem, alignment) BV_ASSERT(BvMemory::IsAligned(pMem, alignment), "Misaligned memory");
 
 namespace BvVirtualMemory
 {

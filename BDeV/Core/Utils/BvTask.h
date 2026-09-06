@@ -150,10 +150,15 @@ public:
 		}
 	}
 
-	void operator()()
+	void Run()
 	{
 		BV_ASSERT(m_Func != nullptr, "Task needs a function");
 		m_Func(m_Data);
+	}
+
+	void operator()()
+	{
+		Run();
 	}
 
 	explicit operator bool() const
@@ -261,10 +266,15 @@ public:
 		}
 	}
 
-	void operator()()
+	void Run()
 	{
 		BV_ASSERT(m_Func != nullptr, "Task needs a function");
 		m_Func(m_Data);
+	}
+
+	void operator()()
+	{
+		Run();
 	}
 
 	explicit operator bool() const
@@ -409,10 +419,15 @@ public:
 		}
 	}
 
-	void operator()()
+	void Run()
 	{
 		BV_ASSERT(m_Func != nullptr, "Task needs a function");
 		m_Func(m_Data);
+	}
+
+	void operator()()
+	{
+		Run();
 	}
 
 	explicit operator bool() const
@@ -724,7 +739,7 @@ public:
 	// Set a callable and the parameters to bind
 	template<typename Fn, typename... Bound,
 		typename WCandidate = Internal::BoundCallable<Fn, Bound...>>
-		void SetBound(Fn&& fn, Bound&&... bound)
+		void Set(Fn&& fn, Bound&&... bound)
 	{
 		using WC = WCandidate;
 		static_assert(sizeof(WC) <= TaskSize, "Bound callable is too big, use a bigger task size");
@@ -753,10 +768,15 @@ public:
 		}
 	}
 
-	void operator()()
+	void Run()
 	{
 		BV_ASSERT(m_Func != nullptr, "Task needs a function");
 		m_Func(m_Data);
+	}
+
+	void operator()()
+	{
+		Run();
 	}
 
 	explicit operator bool() const { return m_Func != nullptr; }
@@ -813,7 +833,7 @@ public:
 
 	template<typename Fn, typename... Bound,
 		typename WCandidate = Internal::BoundCallable<Fn, Bound...>>
-		void SetBound(Fn&& fn, Bound&&... bound)
+		void Set(Fn&& fn, Bound&&... bound)
 	{
 		using WC = WCandidate;
 		static_assert(sizeof(WC) <= TaskSize, "Bound callable is too big, use a bigger task size");
@@ -848,10 +868,15 @@ public:
 		}
 	}
 
-	void operator()()
+	void Run()
 	{
 		BV_ASSERT(m_Func != nullptr, "Task needs a function");
 		m_Func(m_Data);
+	}
+
+	void operator()()
+	{
+		Run();
 	}
 
 	explicit operator bool() const { return m_Func != nullptr; }
@@ -870,7 +895,7 @@ public:
 
 	template<typename Fn, typename... Bound,
 		typename WCandidate = Internal::BoundCallable<Fn, Bound...>>
-		void SetBound(Fn&& fn, Bound&&... bound)
+		void Set(Fn&& fn, Bound&&... bound)
 	{
 		using WC = WCandidate;
 		static_assert(sizeof(WC) <= TaskSize, "Bound callable is too big, use a bigger task size");
@@ -979,10 +1004,15 @@ public:
 		}
 	}
 
-	void operator()()
+	void Run()
 	{
 		BV_ASSERT(m_Func != nullptr, "Task needs a function");
 		m_Func(m_Data);
+	}
+
+	void operator()()
+	{
+		Run();
 	}
 
 	explicit operator bool() const { return m_Func != nullptr; }
