@@ -30,18 +30,22 @@ int main()
 	desc.m_DynamicPoolSizes.m_JobPoolSize = 150;
 	desc.m_DynamicPoolSizes.m_ChildJobListPoolSize = 10;
 	desc.m_WorkerQueueSize = 100000;
-	js.Initialize(desc);
+	//js.Initialize(desc);
 
-	//JobSystem::Tests::RunAll(js);
+	std::string_view a1 = "Hello, World!";
+	std::string_view a2 = "hello, world!";
+	BvUTFCharTraits::CompareNoCase(a1, a2);
 
-	std::atomic<u32> sum;
-	auto p = js.ParallelFor([&sum](u32 i)
-		{
-			sum.fetch_add(i, std::memory_order_relaxed);
-		}, 4, 8);
-	p->Wait();
+	JobSystem::Tests::RunAll(js);
 
-	printf("%u", sum.load());
+	//std::atomic<u32> sum;
+	//auto p = js.ParallelFor([&sum](u32 i)
+	//	{
+	//		sum.fetch_add(i, std::memory_order_relaxed);
+	//	}, 4, 8);
+	//p->Wait();
+
+	//printf("%u", sum.load());
 	js.Shutdown();
 
 	//BvFlatMap<u32, u32> fm;

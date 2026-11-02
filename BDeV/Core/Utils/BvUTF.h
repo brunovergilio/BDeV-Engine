@@ -2,6 +2,8 @@
 
 
 #include "BDeV/Core/BvCore.h"
+#include <string_view>
+#include <locale>
 
 
 namespace Internal
@@ -471,5 +473,44 @@ struct BvUTFCharTraits
 	static auto GetStr(SrcIt src, DstIt dstBegin, DstIt dstEnd)
 	{
 		return GetStr(src.begin(), src.end(), dstBegin, dstEnd);
+	}
+
+	// Modern, templated case-insensitive string comparison
+	template <typename CharT>
+	static auto CompareNoCase(const std::basic_string_view<CharT>& s1, const std::basic_string_view<CharT>& s2, size_t count = kU64Max, const std::locale& loc = std::locale()) noexcept
+	{
+		// Apply optional count restriction to both string views
+		const auto r1 = (s1.size() > count) ? s1.substr(0, count) : s1;
+		const auto r2 = (s2.size() > count) ? s2.substr(0, count) : s2;
+
+		auto to_lower_proj = [&loc](CharT ch)
+			{
+				return std::tolower(ch, loc);
+			};
+
+		// Find the first mismatched character pair using case-folded values
+		auto [it1, it2] = std::ranges::mismatch(s1, s2, {}, to_lower_proj, to_lower_proj);
+
+		// If both reached their respective ends, the truncated strings match
+		if (it1 == s1.end() && it2 == s2.end())
+		{
+			return 0;
+		}
+		// If s1 ended first, s1 is lexicographically smaller
+		if (it1 == s1.end())
+		{
+			return -1;
+		}
+		// If s2 ended first, s1 is lexicographically larger
+		if (it2 == s2.end())
+		{
+			return 1;
+		}
+
+		// Otherwise, compare the mismatched pair
+		auto lower1 = to_lower_proj(*it1);
+		auto lower2 = to_lower_proj(*it2);
+
+		return (lower1 < lower2) ? -1 : 1;
 	}
 };

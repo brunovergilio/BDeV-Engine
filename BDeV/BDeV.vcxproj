@@ -169,7 +169,7 @@
     <ClInclude Include="Core\System\File\BvAsyncFile.h" />
     <ClInclude Include="Core\System\File\BvFile.h" />
     <ClInclude Include="Core\System\File\BvFileCommon.h" />
-    <ClInclude Include="Core\System\File\BvFileSystem.h" />
+    <ClInclude Include="Core\System\File\BvDirectory.h" />
     <ClInclude Include="Core\System\File\BvMemoryFile.h" />
     <ClInclude Include="Core\System\File\BvPath.h" />
     <ClInclude Include="Core\System\HID\BvXInput.h" />
@@ -220,7 +220,7 @@
     <ClCompile Include="Core\RenderAPI\BvRenderAPIUtils.cpp" />
     <ClCompile Include="Core\System\File\BvMemoryFile.cpp" />
     <ClCompile Include="Core\System\File\Windows\BvAsyncFileWindows.cpp" />
-    <ClCompile Include="Core\System\File\Windows\BvFileSystemWindows.cpp" />
+    <ClCompile Include="Core\System\File\Windows\BvDirectoryWindows.cpp" />
     <ClCompile Include="Core\System\File\Windows\BvFileWindows.cpp" />
     <ClCompile Include="Core\System\File\Windows\BvPathWindows.cpp" />
     <ClCompile Include="Core\System\HID\BvHIDCommon.cpp" />

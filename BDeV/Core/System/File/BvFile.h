@@ -37,6 +37,13 @@ public:
 	bool GetInfo(BvFileInfo& fileInfo);
 	bool IsValid() const;
 
+	static bool Exists(const char* pFilename);
+	static bool Delete(const char* pFilename);
+	
+	// This is used for asynchronous I/O where the buffer has to be aligned to
+	// as well as have a size that is a multiple of the physical sector size
+	static u32 GetPhysicalSectorSize();
+
 	OSFileHandle GetHandle() const { return m_hFile; }
 
 private:

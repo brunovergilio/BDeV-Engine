@@ -172,9 +172,10 @@ bool BvAsyncFile::Open(const char* const pFilename, BvFileAccessMode mode, BvFil
 
 	{
 		std::string_view sv(pFilename);
-		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end() + 1);
+		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end()) + 1;
 		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
-		BvUTFCharTraits::GetStr(sv.begin(), sv.end() + 1, pFilenameW, pFilenameW + length);
+		auto it = BvUTFCharTraits::GetStr(sv.begin(), sv.end(), pFilenameW, pFilenameW + length);
+		*it = 0;
 		m_hFile = CreateFileW(pFilenameW, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
 	}
 

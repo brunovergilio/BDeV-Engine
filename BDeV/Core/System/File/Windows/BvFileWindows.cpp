@@ -1,6 +1,7 @@
 #include "BDeV/Core/System/File/BvFile.h"
 #include "BDeV/Core/System/Diagnostics/BvDiagnostics.h"
 #include "BDeV/Core/Utils/BvUTF.h"
+#include <winioctl.h>
 
 
 BvFile::BvFile()
@@ -65,9 +66,10 @@ bool BvFile::Open(const char* pFilename, BvFileAccessMode mode, BvFileAction act
 
 	{
 		std::string_view sv(pFilename);
-		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.data(), sv.data() + sv.length() + 1);
+		auto length = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end()) + 1;
 		wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(length * sizeof(wchar_t));
-		BvUTFCharTraits::GetStr(sv.data(), sv.data() + sv.length() + 1, pFilenameW, pFilenameW + length);
+		auto it = BvUTFCharTraits::GetStr(sv.begin(), sv.end(), pFilenameW, pFilenameW + length);
+		*it = 0;
 		m_hFile = CreateFileW(pFilenameW, acccessMode, 0, nullptr, createMode, createFlags, nullptr);
 	}
 
@@ -249,4 +251,90 @@ bool BvFile::GetInfo(BvFileInfo& fileInfo)
 bool BvFile::IsValid() const
 {
 	return m_hFile != INVALID_HANDLE_VALUE;
+}
+
+
+bool BvFile::Exists(const char* pFilename)
+{
+	std::string_view sv(pFilename);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end()) + 1;
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	auto it = BvUTFCharTraits::GetStr(sv.begin(), sv.end(), pFilenameW, pFilenameW + sizeNeeded);
+	*it = 0;
+	DWORD attrib = GetFileAttributesW(pFilenameW);
+
+	if (attrib == INVALID_FILE_ATTRIBUTES)
+	{
+		DWORD error = GetLastError();
+		if (error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND)
+		{
+			BV_SYS_ERROR();
+		}
+		return false;
+	}
+
+	return (attrib & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+
+bool BvFile::Delete(const char* const pFilename)
+{
+	std::string_view sv(pFilename);
+	auto sizeNeeded = BvUTFCharTraits::LengthFor<wchar_t>(sv.begin(), sv.end()) + 1;
+	wchar_t* pFilenameW = (wchar_t*)BV_STACK_ALLOC(sizeNeeded * sizeof(wchar_t));
+	auto it = BvUTFCharTraits::GetStr(sv.begin(), sv.end(), pFilenameW, pFilenameW + sizeNeeded);
+	*it = 0;
+	BOOL result = DeleteFileW(pFilenameW);
+
+	if (!result)
+	{
+		BV_SYS_ERROR();
+
+		return false;
+	}
+
+	return true;
+}
+
+
+u32 BvFile::GetPhysicalSectorSize()
+{
+	static u32 sectorSize = []() -> u32
+		{
+			auto sizeNeeded = GetCurrentDirectoryW(0, nullptr);
+			wchar_t drivePath[8]{};
+			wcsncat_s(drivePath, 8, L"\\\\.\\", 4);
+
+			if (!GetCurrentDirectoryW(3, drivePath + 4))
+			{
+				BV_SYS_ERROR();
+				return 0;
+			}
+
+			HANDLE hDevice = CreateFileW(drivePath, 0, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+			if (hDevice == INVALID_HANDLE_VALUE)
+			{
+				BV_SYS_ERROR();
+				return 0;
+			}
+
+			// Now that we have the device handle for the disk, let us get the disk's metadata
+			DWORD outsize;
+			STORAGE_PROPERTY_QUERY storageQuery{};
+			storageQuery.PropertyId = StorageAccessAlignmentProperty;
+			storageQuery.QueryType = PropertyStandardQuery;
+
+			STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR diskAlignment{};
+			if (!DeviceIoControl(hDevice, IOCTL_STORAGE_QUERY_PROPERTY, &storageQuery, sizeof(STORAGE_PROPERTY_QUERY),
+				&diskAlignment, sizeof(STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR), &outsize, nullptr))
+			{
+				BV_SYS_ERROR();
+				return 0;
+			}
+			CloseHandle(hDevice);
+
+			return diskAlignment.BytesPerPhysicalSector;
+		}();
+
+	return sectorSize;
 }

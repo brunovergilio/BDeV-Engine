@@ -732,7 +732,7 @@ namespace JobSystem
 						{
 							BvConsole::Println("\tSteal success rate: {:.2f}%", 100.0 * double(stats.m_NumJobListsStolenByWorker) / double(stats.m_NumStealQueueProbes));
 						}
-						auto totalTime = double(stats.m_NumSchedulerCycles);
+						auto totalTime = double(stats.m_NumSchedulerCycles + stats.m_NumPausedCycles);
 						BvConsole::Println("\tSearch time rate: {:.2f}%", 100.0 * double(stats.m_NumSearchCycles) / totalTime);
 						BvConsole::Println("\tJob execution time rate: {:.2f}%", 100.0 * double(stats.m_NumJobExecutionCycles) / totalTime);
 						BvConsole::Println("\tPaused time rate: {:.2f}%", 100.0 * double(stats.m_NumPausedCycles) / totalTime);

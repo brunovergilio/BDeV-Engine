@@ -34,7 +34,7 @@
 
 #include "BDeV/Core/System/File/BvFile.h"
 #include "BDeV/Core/System/File/BvAsyncFile.h"
-#include "BDeV/Core/System/File/BvFileSystem.h"
+#include "BDeV/Core/System/File/BvDirectory.h"
 #include "BDeV/Core/System/File/BvMemoryFile.h"
 #include "BDeV/Core/System/File/BvPath.h"
 
