@@ -854,7 +854,7 @@ public:
 	BV_INLINE BvBoolVec operator<=(const BvVec3& v) const { return BvBoolVec(XMVector3LessOrEqual(m_Vec, v.m_Vec)); }
 
 	BV_INLINE operator vf32() const { return m_Vec; }
-	BV_INLINE XMFLOAT3 ToFloat() const { XMFLOAT3 result; XMStoreFloat3(& result, m_Vec); return result; }
+	BV_INLINE XMFLOAT3 ToFloat() const { XMFLOAT3 result; XMStoreFloat3(&result, m_Vec); return result; }
 
 private:
 	vf32 m_Vec;

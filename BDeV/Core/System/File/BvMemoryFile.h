@@ -32,6 +32,8 @@ public:
 
 	const bool IsValid() const;
 
+	BV_INLINE auto GetData() const { return m_pData; }
+
 private:
 	u8* m_pData = nullptr;
 	u64 m_Size = 0;
